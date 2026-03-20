@@ -1633,7 +1633,7 @@ function hasUnfinishedBuildingOfSameType(state, buildingId) {
   return false;
 }
 
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const players = new Map();
 const connections = new Map();
 
@@ -4837,7 +4837,6 @@ setInterval(() => {
 // SERVER START
 // ============================================================
 
-server.listen(PORT, () => {
-  console.log("RDC WS server running on ws://127.0.0.1:" + PORT);
-  console.log("Health check: http://127.0.0.1:" + PORT + "/health");
+server.listen(PORT, "0.0.0.0", () => {
+  console.log("Server started on " + PORT);
 });
