@@ -1797,14 +1797,14 @@ function makeDefaultState(playerId) {
     serverTimeUnixMs: nowMs(),
 
     resources: {
-      food: 500,
-      water: 500,
-      wood: 500,
-      iron: 500,
-      fuel: 500,
-      electricity: 500,
-      money: 500,
-      chips: 500
+      food: 50000,
+      water: 50000,
+      wood: 50000,
+      iron: 50000,
+      fuel: 50000,
+      electricity: 50000,
+      money: 50000,
+      chips: 50000
     },
 
     resourceCaps: getBaseResourceCaps(),
