@@ -3415,6 +3415,34 @@ function canMoveThisBuilding(building) {
   return true;
 }
 
+function removeRoadAtCell(state, x, z) {
+  if (!state || !Array.isArray(state.buildings))
+    return { ok: false, message: "Player state not found." };
+
+  const index = state.buildings.findIndex(
+    (b) =>
+      b &&
+      String(b.buildingId || "").trim().toLowerCase() === "road" &&
+      Number(b.x) === Number(x) &&
+      Number(b.z) === Number(z)
+  );
+
+  if (index < 0)
+    return { ok: false, message: "Road not found at target cell." };
+
+  const road = state.buildings[index];
+  if (road.isFixed)
+    return { ok: false, message: "This road cannot be deleted." };
+
+  state.buildings.splice(index, 1);
+  updateServerTime(state);
+  syncResourceSlotOccupancy(state);
+  refreshRoadAccessForBuildings(state);
+  refreshBuilderCapacity(state);
+
+  return { ok: true, removed: road };
+}
+
 // ============================================================
 // PLACE BUILDING WITHOUT STARTING CONSTRUCTION
 // ============================================================
@@ -4100,6 +4128,36 @@ case "research_start": {
 
         const state = getOrCreatePlayerState(playerId);
         const normalizedBuildingId = normalizeBuildingId(buildingId);
+
+        // Road delete client tərəfdə build request vasitəsilə xüsusi buildingId kimi göndərilir.
+        // Məsələn: road_delete, x, z
+        if (normalizedBuildingId === "road_delete") {
+          const result = removeRoadAtCell(state, x, z);
+          if (!result.ok) {
+            send(ws, { type: "error", message: result.message });
+            break;
+          }
+
+          send(ws, {
+            type: "road_deleted",
+            playerId: playerId,
+            serverTimeUnixMs: nowMs(),
+            payloadJson: JSON.stringify({
+              x: x,
+              z: z,
+              buildingId: "road"
+            })
+          });
+
+          send(ws, {
+            type: "state",
+            playerId: playerId,
+            serverTimeUnixMs: nowMs(),
+            payloadJson: JSON.stringify(makeClientState(state))
+          });
+
+          break;
+        }
 
         const unlockCheck = checkUnlockRequirements(state, normalizedBuildingId);
         if (!unlockCheck.ok) {
