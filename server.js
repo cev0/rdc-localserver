@@ -1637,6 +1637,29 @@ const PORT = process.env.PORT || 3001;
 const players = new Map();
 const connections = new Map();
 
+const STATE_CENTER_UNLOCK_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
+const STATE_NEW_PLAYER_SOFT_CAP = 200;
+
+const STATE_LOCAL_MAP_CONFIG = {
+  width: 1024,
+  height: 1024,
+  centerX: 512,
+  centerZ: 512,
+  innerZoneRadius: 140,
+  middleZoneRadius: 280,
+  outerZoneRadius: 460,
+  newPlayerSpawnMinRadius: 330,
+  newPlayerSpawnMaxRadius: 460,
+  minBaseDistance: 18,
+  maxSpawnAttempts: 200
+};
+
+const worldRuntime = {
+  nextStateId: 1,
+  activeStateIdForNewPlayers: 1,
+  states: {}
+};
+
 // ============================================================
 // BASIC HELPERS
 // ============================================================
@@ -1661,6 +1684,313 @@ function send(ws, obj) {
 function updateServerTime(state) {
   state.serverTimeUnixMs = nowMs();
 }
+
+function makeStateDisplayName(stateId) {
+  return "State#" + stateId;
+}
+
+function getDistanceSquared(ax, az, bx, bz) {
+  const dx = ax - bx;
+  const dz = az - bz;
+  return dx * dx + dz * dz;
+}
+
+function createWorldStateRuntime(stateId) {
+  const createdAtMs = nowMs();
+  const centerUnlockAtMs = createdAtMs + STATE_CENTER_UNLOCK_DELAY_MS;
+
+  return {
+    stateId,
+    displayName: makeStateDisplayName(stateId),
+    createdAtMs,
+    centerUnlockAtMs,
+    presidentPlayerId: null,
+    presidentAllianceId: null,
+    activeForNewPlayers: false,
+    playerIds: [],
+    localMap: {
+      width: STATE_LOCAL_MAP_CONFIG.width,
+      height: STATE_LOCAL_MAP_CONFIG.height,
+      centerX: STATE_LOCAL_MAP_CONFIG.centerX,
+      centerZ: STATE_LOCAL_MAP_CONFIG.centerZ,
+      innerZoneRadius: STATE_LOCAL_MAP_CONFIG.innerZoneRadius,
+      middleZoneRadius: STATE_LOCAL_MAP_CONFIG.middleZoneRadius,
+      outerZoneRadius: STATE_LOCAL_MAP_CONFIG.outerZoneRadius
+    },
+    centerBuilding: {
+      x: STATE_LOCAL_MAP_CONFIG.centerX,
+      z: STATE_LOCAL_MAP_CONFIG.centerZ,
+      unlockAtMs: centerUnlockAtMs,
+      isUnlocked: false,
+      occupiedByPlayerId: null,
+      occupiedByAllianceId: null
+    }
+  };
+}
+
+function ensureWorldRuntime() {
+  if (!worldRuntime.states || typeof worldRuntime.states !== "object") {
+    worldRuntime.states = {};
+  }
+
+  if (!Number.isInteger(worldRuntime.nextStateId) || worldRuntime.nextStateId < 1) {
+    worldRuntime.nextStateId = 1;
+  }
+
+  if (Object.keys(worldRuntime.states).length === 0) {
+    const firstState = createWorldStateRuntime(worldRuntime.nextStateId++);
+    worldRuntime.states[String(firstState.stateId)] = firstState;
+    worldRuntime.activeStateIdForNewPlayers = firstState.stateId;
+  }
+
+  if (!worldRuntime.states[String(worldRuntime.activeStateIdForNewPlayers)]) {
+    const sortedStates = Object.values(worldRuntime.states).sort((a, b) => a.stateId - b.stateId);
+    worldRuntime.activeStateIdForNewPlayers = sortedStates.length > 0 ? sortedStates[sortedStates.length - 1].stateId : 1;
+  }
+
+  refreshWorldRuntimeFlags();
+}
+
+function refreshWorldRuntimeFlags() {
+  const now = nowMs();
+
+  for (const stateRuntime of Object.values(worldRuntime.states)) {
+    if (!stateRuntime) continue;
+
+    if (!Array.isArray(stateRuntime.playerIds)) {
+      stateRuntime.playerIds = [];
+    }
+
+    stateRuntime.playerIds = Array.from(new Set(stateRuntime.playerIds.filter(Boolean)));
+    stateRuntime.activeForNewPlayers = stateRuntime.stateId === worldRuntime.activeStateIdForNewPlayers;
+
+    if (!stateRuntime.centerBuilding || typeof stateRuntime.centerBuilding !== "object") {
+      stateRuntime.centerBuilding = {
+        x: STATE_LOCAL_MAP_CONFIG.centerX,
+        z: STATE_LOCAL_MAP_CONFIG.centerZ,
+        unlockAtMs: Number(stateRuntime.centerUnlockAtMs) || (now + STATE_CENTER_UNLOCK_DELAY_MS),
+        isUnlocked: false,
+        occupiedByPlayerId: null,
+        occupiedByAllianceId: null
+      };
+    }
+
+    stateRuntime.centerBuilding.isUnlocked = now >= (Number(stateRuntime.centerUnlockAtMs) || 0);
+  }
+}
+
+function getWorldStateRuntime(stateId) {
+  ensureWorldRuntime();
+  return worldRuntime.states[String(stateId)] || null;
+}
+
+function getWorldStatePlayerCount(stateRuntime) {
+  if (!stateRuntime || !Array.isArray(stateRuntime.playerIds)) return 0;
+  return stateRuntime.playerIds.length;
+}
+
+function openNextWorldState() {
+  ensureWorldRuntime();
+
+  const newState = createWorldStateRuntime(worldRuntime.nextStateId++);
+  worldRuntime.states[String(newState.stateId)] = newState;
+  worldRuntime.activeStateIdForNewPlayers = newState.stateId;
+  refreshWorldRuntimeFlags();
+
+  console.log("[WORLD_STATE_OPENED]", {
+    stateId: newState.stateId,
+    createdAtMs: newState.createdAtMs,
+    centerUnlockAtMs: newState.centerUnlockAtMs
+  });
+
+  return newState;
+}
+
+function getOrCreateActiveWorldStateForNewPlayers() {
+  ensureWorldRuntime();
+
+  let activeState = getWorldStateRuntime(worldRuntime.activeStateIdForNewPlayers);
+  if (!activeState) {
+    activeState = openNextWorldState();
+  }
+
+  if (getWorldStatePlayerCount(activeState) >= STATE_NEW_PLAYER_SOFT_CAP) {
+    activeState = openNextWorldState();
+  }
+
+  return activeState;
+}
+
+function registerPlayerInWorldState(playerId, stateRuntime) {
+  if (!playerId || !stateRuntime) return;
+
+  if (!Array.isArray(stateRuntime.playerIds)) {
+    stateRuntime.playerIds = [];
+  }
+
+  if (!stateRuntime.playerIds.includes(playerId)) {
+    stateRuntime.playerIds.push(playerId);
+  }
+}
+
+function isSpawnPositionFarEnough(stateRuntime, baseX, baseZ) {
+  const minDistanceSq = STATE_LOCAL_MAP_CONFIG.minBaseDistance * STATE_LOCAL_MAP_CONFIG.minBaseDistance;
+
+  if (!stateRuntime || !Array.isArray(stateRuntime.playerIds)) return true;
+
+  for (const otherPlayerId of stateRuntime.playerIds) {
+    const otherState = players.get(otherPlayerId);
+    if (!otherState || !otherState.worldPlacement) continue;
+
+    const otherX = Number(otherState.worldPlacement.baseX);
+    const otherZ = Number(otherState.worldPlacement.baseZ);
+
+    if (!Number.isFinite(otherX) || !Number.isFinite(otherZ)) continue;
+
+    if (getDistanceSquared(baseX, baseZ, otherX, otherZ) < minDistanceSq) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function pickRandomSpawnForState(stateRuntime) {
+  const centerX = Number(stateRuntime?.localMap?.centerX) || STATE_LOCAL_MAP_CONFIG.centerX;
+  const centerZ = Number(stateRuntime?.localMap?.centerZ) || STATE_LOCAL_MAP_CONFIG.centerZ;
+  const width = Number(stateRuntime?.localMap?.width) || STATE_LOCAL_MAP_CONFIG.width;
+  const height = Number(stateRuntime?.localMap?.height) || STATE_LOCAL_MAP_CONFIG.height;
+
+  for (let attempt = 0; attempt < STATE_LOCAL_MAP_CONFIG.maxSpawnAttempts; attempt++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius =
+      STATE_LOCAL_MAP_CONFIG.newPlayerSpawnMinRadius +
+      Math.random() * (STATE_LOCAL_MAP_CONFIG.newPlayerSpawnMaxRadius - STATE_LOCAL_MAP_CONFIG.newPlayerSpawnMinRadius);
+
+    const baseX = Math.round(centerX + Math.cos(angle) * radius);
+    const baseZ = Math.round(centerZ + Math.sin(angle) * radius);
+
+    if (baseX < 0 || baseX >= width) continue;
+    if (baseZ < 0 || baseZ >= height) continue;
+    if (!isSpawnPositionFarEnough(stateRuntime, baseX, baseZ)) continue;
+
+    return {
+      baseX,
+      baseZ,
+      spawnZone: "outer"
+    };
+  }
+
+  const fallbackOffset = getWorldStatePlayerCount(stateRuntime) * STATE_LOCAL_MAP_CONFIG.minBaseDistance;
+
+  return {
+    baseX: Math.max(0, Math.min(width - 1, centerX - STATE_LOCAL_MAP_CONFIG.newPlayerSpawnMinRadius + fallbackOffset)),
+    baseZ: Math.max(0, Math.min(height - 1, centerZ + STATE_LOCAL_MAP_CONFIG.newPlayerSpawnMinRadius)),
+    spawnZone: "outer"
+  };
+}
+
+function makeWorldStateSnapshotForClient(stateRuntime) {
+  if (!stateRuntime) return null;
+
+  return {
+    stateId: stateRuntime.stateId,
+    displayName: stateRuntime.displayName,
+    createdAtMs: stateRuntime.createdAtMs,
+    centerUnlockAtMs: stateRuntime.centerUnlockAtMs,
+    presidentPlayerId: stateRuntime.presidentPlayerId || null,
+    presidentAllianceId: stateRuntime.presidentAllianceId || null,
+    activeForNewPlayers: !!stateRuntime.activeForNewPlayers,
+    playerCount: getWorldStatePlayerCount(stateRuntime),
+    localMap: {
+      width: Number(stateRuntime.localMap?.width) || STATE_LOCAL_MAP_CONFIG.width,
+      height: Number(stateRuntime.localMap?.height) || STATE_LOCAL_MAP_CONFIG.height,
+      centerX: Number(stateRuntime.localMap?.centerX) || STATE_LOCAL_MAP_CONFIG.centerX,
+      centerZ: Number(stateRuntime.localMap?.centerZ) || STATE_LOCAL_MAP_CONFIG.centerZ,
+      innerZoneRadius: Number(stateRuntime.localMap?.innerZoneRadius) || STATE_LOCAL_MAP_CONFIG.innerZoneRadius,
+      middleZoneRadius: Number(stateRuntime.localMap?.middleZoneRadius) || STATE_LOCAL_MAP_CONFIG.middleZoneRadius,
+      outerZoneRadius: Number(stateRuntime.localMap?.outerZoneRadius) || STATE_LOCAL_MAP_CONFIG.outerZoneRadius
+    },
+    centerBuilding: {
+      x: Number(stateRuntime.centerBuilding?.x) || STATE_LOCAL_MAP_CONFIG.centerX,
+      z: Number(stateRuntime.centerBuilding?.z) || STATE_LOCAL_MAP_CONFIG.centerZ,
+      unlockAtMs: Number(stateRuntime.centerBuilding?.unlockAtMs) || Number(stateRuntime.centerUnlockAtMs) || 0,
+      isUnlocked: !!stateRuntime.centerBuilding?.isUnlocked,
+      occupiedByPlayerId: stateRuntime.centerBuilding?.occupiedByPlayerId || null,
+      occupiedByAllianceId: stateRuntime.centerBuilding?.occupiedByAllianceId || null
+    }
+  };
+}
+
+function buildWorldMapPayloadForClient() {
+  ensureWorldRuntime();
+
+  const states = Object.values(worldRuntime.states)
+    .sort((a, b) => a.stateId - b.stateId)
+    .map(makeWorldStateSnapshotForClient);
+
+  return {
+    activeStateIdForNewPlayers: worldRuntime.activeStateIdForNewPlayers,
+    stateCount: states.length,
+    states
+  };
+}
+
+function applyWorldPlacementToPlayerState(state, stateRuntime, spawnInfo) {
+  if (!state || !stateRuntime || !spawnInfo) return;
+
+  state.worldPlacement = {
+    stateId: stateRuntime.stateId,
+    stateName: stateRuntime.displayName,
+    baseX: spawnInfo.baseX,
+    baseZ: spawnInfo.baseZ,
+    spawnZone: spawnInfo.spawnZone || "outer",
+    stateCreatedAtMs: stateRuntime.createdAtMs,
+    centerUnlockAtMs: stateRuntime.centerUnlockAtMs,
+    centerBuildingX: Number(stateRuntime.centerBuilding?.x) || STATE_LOCAL_MAP_CONFIG.centerX,
+    centerBuildingZ: Number(stateRuntime.centerBuilding?.z) || STATE_LOCAL_MAP_CONFIG.centerZ
+  };
+
+  state.worldMap = {
+    activeStateIdForNewPlayers: worldRuntime.activeStateIdForNewPlayers,
+    currentStateId: stateRuntime.stateId,
+    currentStateSnapshot: makeWorldStateSnapshotForClient(stateRuntime)
+  };
+}
+
+function ensurePlayerWorldPlacement(state, playerId) {
+  ensureWorldRuntime();
+
+  let stateRuntime = null;
+  let spawnInfo = null;
+
+  if (state && state.worldPlacement && Number.isInteger(Number(state.worldPlacement.stateId))) {
+    stateRuntime = getWorldStateRuntime(Number(state.worldPlacement.stateId));
+
+    if (stateRuntime) {
+      spawnInfo = {
+        baseX: Number(state.worldPlacement.baseX),
+        baseZ: Number(state.worldPlacement.baseZ),
+        spawnZone: state.worldPlacement.spawnZone || "outer"
+      };
+    }
+  }
+
+  if (!stateRuntime) {
+    stateRuntime = getOrCreateActiveWorldStateForNewPlayers();
+  }
+
+  if (!spawnInfo || !Number.isFinite(spawnInfo.baseX) || !Number.isFinite(spawnInfo.baseZ)) {
+    spawnInfo = pickRandomSpawnForState(stateRuntime);
+  }
+
+  registerPlayerInWorldState(playerId, stateRuntime);
+  applyWorldPlacementToPlayerState(state, stateRuntime, spawnInfo);
+
+  // active state dolubsa növbəti yeni gələnlər üçün yeni state açılsın
+  getOrCreateActiveWorldStateForNewPlayers();
+}
+
 
 function makeClientState(state) {
   const clientState = JSON.parse(JSON.stringify(state));
@@ -1820,6 +2150,14 @@ function makeDefaultState(playerId) {
       stats: getBaseTechnologyStats()
     },
 
+    worldPlacement: null,
+
+    worldMap: {
+      activeStateIdForNewPlayers: 1,
+      currentStateId: 1,
+      currentStateSnapshot: null
+    },
+
     map: {
       // Hələlik ümumi map ölçüsünü saxlayırıq ki digər sistemlər qırılmasın
       fullWidth: 40,
@@ -1853,11 +2191,13 @@ function makeDefaultState(playerId) {
   };
 }
 
+
 function getOrCreatePlayerState(playerId) {
   if (!players.has(playerId)) {
     const newState = makeDefaultState(playerId);
 
     ensureMapState(newState);
+    ensurePlayerWorldPlacement(newState, playerId);
     refreshRoadAccessForBuildings(newState);
     refreshBuilderCapacity(newState);
     refreshResourceCaps(newState);
@@ -1871,6 +2211,7 @@ function getOrCreatePlayerState(playerId) {
   const state = players.get(playerId);
 
   ensureMapState(state);
+  ensurePlayerWorldPlacement(state, playerId);
   refreshRoadAccessForBuildings(state);
   refreshBuilderCapacity(state);
   refreshResourceCaps(state);
@@ -4743,6 +5084,28 @@ updateServerTime(state);
         break;
       }
 
+
+case "get_world_map": {
+  const playerId = ws._authedPlayerId;
+
+  if (!playerId) {
+    send(ws, { type: "error", message: "Not authed" });
+    break;
+  }
+
+  const state = getOrCreatePlayerState(playerId);
+  updateServerTime(state);
+
+  send(ws, {
+    type: "world_map",
+    playerId,
+    serverTimeUnixMs: nowMs(),
+    payloadJson: JSON.stringify(buildWorldMapPayloadForClient())
+  });
+
+  break;
+}
+
       case "save_state": {
         const playerId = ws._authedPlayerId;
 
@@ -4761,6 +5124,7 @@ updateServerTime(state);
 
         incoming.playerId = playerId;
         ensureMapState(incoming);
+        ensurePlayerWorldPlacement(incoming, playerId);
         ensureResourcesObject(incoming);
         refreshRoadAccessForBuildings(incoming);
         refreshResourceCaps(incoming);
