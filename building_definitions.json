@@ -13791,7 +13791,7 @@
             "maxLevel": 25,
             "requiredMainBuildingLevel": 1,
             "requiredDepotLevel": 0,
-            "requiredBuildingId": "management_station",
+            "requiredBuildingId": "",
             "requiredBuildingLevel": 0,
             "unlockCountByMainBuildingLevel": [
                 {
