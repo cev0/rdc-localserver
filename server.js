@@ -1654,6 +1654,114 @@ const STATE_LOCAL_MAP_CONFIG = {
   maxSpawnAttempts: 200
 };
 
+
+const STATE_WORLD_OBJECT_CONFIG = {
+  resourceSitesPerState: 18,
+  infectedSitesPerState: 12,
+  neutralCitiesPerState: 6
+};
+
+function createSeededRng(seed) {
+  let s = (Number(seed) || 1) >>> 0;
+  return function next() {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+function clampNumber(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function pickRandomPointInRing(rng, centerX, centerZ, minRadius, maxRadius, width, height) {
+  const angle = rng() * Math.PI * 2;
+  const radius = minRadius + (rng() * Math.max(0, (maxRadius - minRadius)));
+
+  const x = Math.round(centerX + Math.cos(angle) * radius);
+  const z = Math.round(centerZ + Math.sin(angle) * radius);
+
+  return {
+    x: clampNumber(x, 0, Math.max(0, width - 1)),
+    z: clampNumber(z, 0, Math.max(0, height - 1))
+  };
+}
+
+function createStateWorldObjects(stateId, localMap) {
+  const width = Number(localMap?.width) || STATE_LOCAL_MAP_CONFIG.width;
+  const height = Number(localMap?.height) || STATE_LOCAL_MAP_CONFIG.height;
+  const centerX = Number(localMap?.centerX) || STATE_LOCAL_MAP_CONFIG.centerX;
+  const centerZ = Number(localMap?.centerZ) || STATE_LOCAL_MAP_CONFIG.centerZ;
+  const innerRadius = Number(localMap?.innerZoneRadius) || STATE_LOCAL_MAP_CONFIG.innerZoneRadius;
+  const middleRadius = Number(localMap?.middleZoneRadius) || STATE_LOCAL_MAP_CONFIG.middleZoneRadius;
+  const outerRadius = Number(localMap?.outerZoneRadius) || STATE_LOCAL_MAP_CONFIG.outerZoneRadius;
+
+  const rng = createSeededRng((Number(stateId) || 1) * 7919);
+
+  const resourceTypes = ["food", "water", "wood", "iron", "fuel"];
+  const resources = [];
+  const infected = [];
+  const neutralCities = [];
+
+  for (let i = 0; i < STATE_WORLD_OBJECT_CONFIG.resourceSitesPerState; i++) {
+    const ring = i < 10
+      ? { min: middleRadius + 20, max: outerRadius - 10, zone: "outer" }
+      : i < 15
+        ? { min: innerRadius + 20, max: middleRadius - 10, zone: "middle" }
+        : { min: 25, max: innerRadius - 15, zone: "inner_green" };
+
+    const point = pickRandomPointInRing(rng, centerX, centerZ, ring.min, ring.max, width, height);
+
+    resources.push({
+      id: `state_${stateId}_resource_${i + 1}`,
+      x: point.x,
+      z: point.z,
+      zone: ring.zone,
+      resourceType: resourceTypes[i % resourceTypes.length],
+      levelBand: ring.zone === "outer" ? 1 : ring.zone === "middle" ? 2 : 3
+    });
+  }
+
+  for (let i = 0; i < STATE_WORLD_OBJECT_CONFIG.infectedSitesPerState; i++) {
+    const ring = i < 6
+      ? { min: middleRadius + 15, max: outerRadius - 10, zone: "outer" }
+      : i < 10
+        ? { min: innerRadius + 15, max: middleRadius - 10, zone: "middle" }
+        : { min: 20, max: innerRadius - 15, zone: "inner_green" };
+
+    const point = pickRandomPointInRing(rng, centerX, centerZ, ring.min, ring.max, width, height);
+
+    infected.push({
+      id: `state_${stateId}_infected_${i + 1}`,
+      x: point.x,
+      z: point.z,
+      zone: ring.zone,
+      levelBand: ring.zone === "outer" ? 1 : ring.zone === "middle" ? 2 : 3
+    });
+  }
+
+  for (let i = 0; i < STATE_WORLD_OBJECT_CONFIG.neutralCitiesPerState; i++) {
+    const ring = i < 3
+      ? { min: innerRadius + 20, max: middleRadius - 20, zone: "middle" }
+      : { min: 30, max: innerRadius - 20, zone: "inner_green" };
+
+    const point = pickRandomPointInRing(rng, centerX, centerZ, ring.min, ring.max, width, height);
+
+    neutralCities.push({
+      id: `state_${stateId}_city_${i + 1}`,
+      x: point.x,
+      z: point.z,
+      zone: ring.zone,
+      levelBand: ring.zone === "middle" ? 2 : 3
+    });
+  }
+
+  return {
+    resources,
+    infected,
+    neutralCities
+  };
+}
+
 const worldRuntime = {
   nextStateId: 1,
   activeStateIdForNewPlayers: 1,
@@ -1699,6 +1807,16 @@ function createWorldStateRuntime(stateId) {
   const createdAtMs = nowMs();
   const centerUnlockAtMs = createdAtMs + STATE_CENTER_UNLOCK_DELAY_MS;
 
+  const localMap = {
+    width: STATE_LOCAL_MAP_CONFIG.width,
+    height: STATE_LOCAL_MAP_CONFIG.height,
+    centerX: STATE_LOCAL_MAP_CONFIG.centerX,
+    centerZ: STATE_LOCAL_MAP_CONFIG.centerZ,
+    innerZoneRadius: STATE_LOCAL_MAP_CONFIG.innerZoneRadius,
+    middleZoneRadius: STATE_LOCAL_MAP_CONFIG.middleZoneRadius,
+    outerZoneRadius: STATE_LOCAL_MAP_CONFIG.outerZoneRadius
+  };
+
   return {
     stateId,
     displayName: makeStateDisplayName(stateId),
@@ -1708,22 +1826,16 @@ function createWorldStateRuntime(stateId) {
     presidentAllianceId: null,
     activeForNewPlayers: false,
     playerIds: [],
-    localMap: {
-      width: STATE_LOCAL_MAP_CONFIG.width,
-      height: STATE_LOCAL_MAP_CONFIG.height,
-      centerX: STATE_LOCAL_MAP_CONFIG.centerX,
-      centerZ: STATE_LOCAL_MAP_CONFIG.centerZ,
-      innerZoneRadius: STATE_LOCAL_MAP_CONFIG.innerZoneRadius,
-      middleZoneRadius: STATE_LOCAL_MAP_CONFIG.middleZoneRadius,
-      outerZoneRadius: STATE_LOCAL_MAP_CONFIG.outerZoneRadius
-    },
+    localMap,
+    worldObjects: createStateWorldObjects(stateId, localMap),
     centerBuilding: {
-      x: STATE_LOCAL_MAP_CONFIG.centerX,
-      z: STATE_LOCAL_MAP_CONFIG.centerZ,
+      x: localMap.centerX,
+      z: localMap.centerZ,
       unlockAtMs: centerUnlockAtMs,
       isUnlocked: false,
       occupiedByPlayerId: null,
-      occupiedByAllianceId: null
+      occupiedByAllianceId: null,
+      occupiedAtMs: 0
     }
   };
 }
@@ -1764,18 +1876,34 @@ function refreshWorldRuntimeFlags() {
     stateRuntime.playerIds = Array.from(new Set(stateRuntime.playerIds.filter(Boolean)));
     stateRuntime.activeForNewPlayers = stateRuntime.stateId === worldRuntime.activeStateIdForNewPlayers;
 
+    if (!stateRuntime.worldObjects || typeof stateRuntime.worldObjects !== "object") {
+      stateRuntime.worldObjects = createStateWorldObjects(stateRuntime.stateId, stateRuntime.localMap);
+    }
+
     if (!stateRuntime.centerBuilding || typeof stateRuntime.centerBuilding !== "object") {
       stateRuntime.centerBuilding = {
-        x: STATE_LOCAL_MAP_CONFIG.centerX,
-        z: STATE_LOCAL_MAP_CONFIG.centerZ,
+        x: Number(stateRuntime.localMap?.centerX) || STATE_LOCAL_MAP_CONFIG.centerX,
+        z: Number(stateRuntime.localMap?.centerZ) || STATE_LOCAL_MAP_CONFIG.centerZ,
         unlockAtMs: Number(stateRuntime.centerUnlockAtMs) || (now + STATE_CENTER_UNLOCK_DELAY_MS),
         isUnlocked: false,
         occupiedByPlayerId: null,
-        occupiedByAllianceId: null
+        occupiedByAllianceId: null,
+        occupiedAtMs: 0
       };
     }
 
+    if (typeof stateRuntime.centerBuilding.occupiedAtMs !== "number") {
+      stateRuntime.centerBuilding.occupiedAtMs = 0;
+    }
+
     stateRuntime.centerBuilding.isUnlocked = now >= (Number(stateRuntime.centerUnlockAtMs) || 0);
+
+    if (stateRuntime.centerBuilding.occupiedByPlayerId) {
+      stateRuntime.presidentPlayerId = stateRuntime.centerBuilding.occupiedByPlayerId;
+    }
+    if (stateRuntime.centerBuilding.occupiedByAllianceId) {
+      stateRuntime.presidentAllianceId = stateRuntime.centerBuilding.occupiedByAllianceId;
+    }
   }
 }
 
@@ -1917,7 +2045,13 @@ function makeWorldStateSnapshotForClient(stateRuntime) {
       unlockAtMs: Number(stateRuntime.centerBuilding?.unlockAtMs) || Number(stateRuntime.centerUnlockAtMs) || 0,
       isUnlocked: !!stateRuntime.centerBuilding?.isUnlocked,
       occupiedByPlayerId: stateRuntime.centerBuilding?.occupiedByPlayerId || null,
-      occupiedByAllianceId: stateRuntime.centerBuilding?.occupiedByAllianceId || null
+      occupiedByAllianceId: stateRuntime.centerBuilding?.occupiedByAllianceId || null,
+      occupiedAtMs: Number(stateRuntime.centerBuilding?.occupiedAtMs) || 0
+    },
+    worldObjectSummary: {
+      resourceSiteCount: Array.isArray(stateRuntime.worldObjects?.resources) ? stateRuntime.worldObjects.resources.length : 0,
+      infectedSiteCount: Array.isArray(stateRuntime.worldObjects?.infected) ? stateRuntime.worldObjects.infected.length : 0,
+      neutralCityCount: Array.isArray(stateRuntime.worldObjects?.neutralCities) ? stateRuntime.worldObjects.neutralCities.length : 0
     }
   };
 }
@@ -1992,6 +2126,206 @@ function ensurePlayerWorldPlacement(state, playerId) {
 }
 
 
+
+
+function occupyStateCenter(stateRuntime, playerId, allianceId = null) {
+  if (!stateRuntime || !playerId) {
+    return { ok: false, message: "Invalid occupation request" };
+  }
+
+  refreshWorldRuntimeFlags();
+
+  if (!stateRuntime.centerBuilding || !stateRuntime.centerBuilding.isUnlocked) {
+    return { ok: false, message: "State center is not unlocked yet" };
+  }
+
+  if (!Array.isArray(stateRuntime.playerIds) || !stateRuntime.playerIds.includes(playerId)) {
+    return { ok: false, message: "Player does not belong to this state" };
+  }
+
+  stateRuntime.centerBuilding.occupiedByPlayerId = playerId;
+  stateRuntime.centerBuilding.occupiedByAllianceId = allianceId || null;
+  stateRuntime.centerBuilding.occupiedAtMs = nowMs();
+  stateRuntime.presidentPlayerId = playerId;
+  stateRuntime.presidentAllianceId = allianceId || null;
+
+  return {
+    ok: true,
+    stateId: stateRuntime.stateId,
+    occupiedByPlayerId: playerId,
+    occupiedByAllianceId: allianceId || null,
+    occupiedAtMs: stateRuntime.centerBuilding.occupiedAtMs
+  };
+}
+
+function getZoneNameForDistance(distance) {
+  const d = Math.max(0, Number(distance) || 0);
+
+  if (d <= STATE_LOCAL_MAP_CONFIG.innerZoneRadius) return "inner_green";
+  if (d <= STATE_LOCAL_MAP_CONFIG.middleZoneRadius) return "middle";
+  return "outer";
+}
+
+function buildStateLocalMapPayload(stateId, requestingPlayerId = null) {
+  ensureWorldRuntime();
+
+  const stateRuntime = getWorldStateRuntime(stateId);
+  if (!stateRuntime) {
+    return null;
+  }
+
+  refreshWorldRuntimeFlags();
+
+  const centerX = Number(stateRuntime.localMap?.centerX) || STATE_LOCAL_MAP_CONFIG.centerX;
+  const centerZ = Number(stateRuntime.localMap?.centerZ) || STATE_LOCAL_MAP_CONFIG.centerZ;
+
+  const bases = [];
+
+  if (Array.isArray(stateRuntime.playerIds)) {
+    for (const playerId of stateRuntime.playerIds) {
+      const playerState = players.get(playerId);
+      if (!playerState || !playerState.worldPlacement) continue;
+
+      const baseX = Number(playerState.worldPlacement.baseX);
+      const baseZ = Number(playerState.worldPlacement.baseZ);
+
+      if (!Number.isFinite(baseX) || !Number.isFinite(baseZ)) continue;
+
+      const distance = Math.round(Math.sqrt(getDistanceSquared(baseX, baseZ, centerX, centerZ)));
+
+      bases.push({
+        playerId,
+        stateId: Number(playerState.worldPlacement.stateId) || stateRuntime.stateId,
+        baseX,
+        baseZ,
+        zone: getZoneNameForDistance(distance),
+        spawnZone: playerState.worldPlacement.spawnZone || "outer",
+        isSelf: requestingPlayerId ? playerId === requestingPlayerId : false
+      });
+    }
+  }
+
+  return {
+    stateId: stateRuntime.stateId,
+    displayName: stateRuntime.displayName,
+    playerCount: bases.length,
+    requestingPlayerId: requestingPlayerId || null,
+    localMap: {
+      width: Number(stateRuntime.localMap?.width) || STATE_LOCAL_MAP_CONFIG.width,
+      height: Number(stateRuntime.localMap?.height) || STATE_LOCAL_MAP_CONFIG.height,
+      centerX,
+      centerZ,
+      innerZoneRadius: Number(stateRuntime.localMap?.innerZoneRadius) || STATE_LOCAL_MAP_CONFIG.innerZoneRadius,
+      middleZoneRadius: Number(stateRuntime.localMap?.middleZoneRadius) || STATE_LOCAL_MAP_CONFIG.middleZoneRadius,
+      outerZoneRadius: Number(stateRuntime.localMap?.outerZoneRadius) || STATE_LOCAL_MAP_CONFIG.outerZoneRadius
+    },
+    centerBuilding: {
+      x: Number(stateRuntime.centerBuilding?.x) || centerX,
+      z: Number(stateRuntime.centerBuilding?.z) || centerZ,
+      unlockAtMs: Number(stateRuntime.centerBuilding?.unlockAtMs) || Number(stateRuntime.centerUnlockAtMs) || 0,
+      isUnlocked: !!stateRuntime.centerBuilding?.isUnlocked,
+      occupiedByPlayerId: stateRuntime.centerBuilding?.occupiedByPlayerId || null,
+      occupiedByAllianceId: stateRuntime.centerBuilding?.occupiedByAllianceId || null,
+      occupiedAtMs: Number(stateRuntime.centerBuilding?.occupiedAtMs) || 0
+    },
+    worldObjects: {
+      resources: Array.isArray(stateRuntime.worldObjects?.resources) ? stateRuntime.worldObjects.resources : [],
+      infected: Array.isArray(stateRuntime.worldObjects?.infected) ? stateRuntime.worldObjects.infected : [],
+      neutralCities: Array.isArray(stateRuntime.worldObjects?.neutralCities) ? stateRuntime.worldObjects.neutralCities : []
+    },
+    zones: {
+      outer: {
+        minRadius: Number(stateRuntime.localMap?.middleZoneRadius) || STATE_LOCAL_MAP_CONFIG.middleZoneRadius,
+        maxRadius: Number(stateRuntime.localMap?.outerZoneRadius) || STATE_LOCAL_MAP_CONFIG.outerZoneRadius
+      },
+      middle: {
+        minRadius: Number(stateRuntime.localMap?.innerZoneRadius) || STATE_LOCAL_MAP_CONFIG.innerZoneRadius,
+        maxRadius: Number(stateRuntime.localMap?.middleZoneRadius) || STATE_LOCAL_MAP_CONFIG.middleZoneRadius
+      },
+      inner_green: {
+        minRadius: 0,
+        maxRadius: Number(stateRuntime.localMap?.innerZoneRadius) || STATE_LOCAL_MAP_CONFIG.innerZoneRadius
+      }
+    },
+    bases
+  };
+}
+
+function sendStateLocalMapToPlayer(ws, playerId) {
+  if (!ws || ws.readyState !== WebSocket.OPEN || !playerId) return;
+
+  const state = players.get(playerId);
+  if (!state || !state.worldPlacement) return;
+
+  const stateId = Number(state.worldPlacement.stateId);
+  if (!Number.isInteger(stateId)) return;
+
+  const payload = buildStateLocalMapPayload(stateId, playerId);
+  if (!payload) return;
+
+  send(ws, {
+    type: "state_local_map",
+    playerId,
+    serverTimeUnixMs: nowMs(),
+    payloadJson: JSON.stringify(payload)
+  });
+}
+
+
+function sendWorldMapToPlayer(ws, playerId) {
+  if (!ws || ws.readyState !== WebSocket.OPEN || !playerId) return;
+
+  send(ws, {
+    type: "world_map",
+    playerId,
+    serverTimeUnixMs: nowMs(),
+    payloadJson: JSON.stringify(buildWorldMapPayloadForClient())
+  });
+}
+
+function pushStateLocalMapToStatePlayers(stateId) {
+  if (!Number.isInteger(Number(stateId))) return;
+
+  const payload = buildStateLocalMapPayload(Number(stateId), null);
+  if (!payload) return;
+
+  for (const ws of wss.clients) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) continue;
+
+    const playerId = ws._authedPlayerId;
+    if (!playerId) continue;
+
+    const playerState = players.get(playerId);
+    if (!playerState || !playerState.worldPlacement) continue;
+    if (Number(playerState.worldPlacement.stateId) !== Number(stateId)) continue;
+
+    const perPlayerPayload = buildStateLocalMapPayload(Number(stateId), playerId);
+
+    send(ws, {
+      type: "state_local_map",
+      playerId,
+      serverTimeUnixMs: nowMs(),
+      payloadJson: JSON.stringify(perPlayerPayload)
+    });
+  }
+}
+
+function pushWorldMapToAllAuthedPlayers() {
+  const payload = JSON.stringify(buildWorldMapPayloadForClient());
+
+  for (const ws of wss.clients) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) continue;
+    if (!ws._authedPlayerId) continue;
+
+    send(ws, {
+      type: "world_map",
+      playerId: ws._authedPlayerId,
+      serverTimeUnixMs: nowMs(),
+      payloadJson: payload
+    });
+  }
+}
+
 function makeClientState(state) {
   const clientState = JSON.parse(JSON.stringify(state));
 
@@ -2023,6 +2357,9 @@ function pushStateToPlayerConnections(playerId, state) {
       serverTimeUnixMs: nowMs(),
       payloadJson: JSON.stringify(clientState)
     });
+
+    sendStateLocalMapToPlayer(client, playerId);
+    sendWorldMapToPlayer(client, playerId);
   });
 }
 
@@ -4596,6 +4933,9 @@ refreshBuilderCapacity(state);
           payloadJson: JSON.stringify(makeClientState(state))
         });
 
+        sendStateLocalMapToPlayer(ws, playerId);
+        sendWorldMapToPlayer(ws, playerId);
+
         break;
       }
 
@@ -5060,6 +5400,9 @@ updateServerTime(state);
           payloadJson: JSON.stringify(makeClientState(state))
         });
 
+        sendStateLocalMapToPlayer(ws, playerId);
+        sendWorldMapToPlayer(ws, playerId);
+
         break;
       }
 
@@ -5085,7 +5428,89 @@ updateServerTime(state);
       }
 
 
-case "get_world_map": {
+case "occupy_state_center_request": {
+        const playerId =
+          (msg.playerId && typeof msg.playerId === "string" && msg.playerId) ||
+          ws._authedPlayerId;
+
+        if (!playerId) {
+          send(ws, { type: "error", message: "Not authed. Send auth first." });
+          break;
+        }
+
+        const playerState = getOrCreatePlayerState(playerId);
+        if (!playerState || !playerState.worldPlacement) {
+          send(ws, { type: "error", message: "Player world placement not found" });
+          break;
+        }
+
+        const stateId = Number.isInteger(msg.stateId) ? msg.stateId : Number(playerState.worldPlacement.stateId);
+        const stateRuntime = getWorldStateRuntime(stateId);
+
+        if (!stateRuntime) {
+          send(ws, { type: "error", message: "World state not found" });
+          break;
+        }
+
+        if (Number(playerState.worldPlacement.stateId) !== Number(stateId)) {
+          send(ws, { type: "error", message: "Player is not inside this state" });
+          break;
+        }
+
+        const result = occupyStateCenter(stateRuntime, playerId, null);
+        if (!result.ok) {
+          send(ws, { type: "error", message: result.message || "Occupation failed" });
+          break;
+        }
+
+        send(ws, {
+          type: "state_center_occupied",
+          playerId,
+          serverTimeUnixMs: nowMs(),
+          payloadJson: JSON.stringify(result)
+        });
+
+        pushStateLocalMapToStatePlayers(stateId);
+        pushWorldMapToAllAuthedPlayers();
+
+        break;
+      }
+
+      case "get_state_local_map": {
+        const playerId =
+          (msg.playerId && typeof msg.playerId === "string" && msg.playerId) ||
+          ws._authedPlayerId;
+
+        if (!playerId) {
+          send(ws, { type: "error", message: "Not authed. Send auth first." });
+          break;
+        }
+
+        const state = getOrCreatePlayerState(playerId);
+        if (!state || !state.worldPlacement) {
+          send(ws, { type: "error", message: "Player world placement not found" });
+          break;
+        }
+
+        const requestedStateId = Number.isInteger(msg.stateId) ? msg.stateId : Number(state.worldPlacement.stateId);
+        const payload = buildStateLocalMapPayload(requestedStateId, playerId);
+
+        if (!payload) {
+          send(ws, { type: "error", message: "State local map not found" });
+          break;
+        }
+
+        send(ws, {
+          type: "state_local_map",
+          playerId,
+          serverTimeUnixMs: nowMs(),
+          payloadJson: JSON.stringify(payload)
+        });
+
+        break;
+      }
+
+      case "get_world_map": {
   const playerId = ws._authedPlayerId;
 
   if (!playerId) {
@@ -5137,6 +5562,9 @@ case "get_world_map": {
           type: "save_ok",
           playerId: playerId
         });
+
+        sendStateLocalMapToPlayer(ws, playerId);
+        sendWorldMapToPlayer(ws, playerId);
 
         break;
       }
