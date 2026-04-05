@@ -1825,6 +1825,7 @@ function createWorldStateRuntime(stateId) {
     presidentPlayerId: null,
     presidentAllianceId: null,
     activeForNewPlayers: false,
+    isOpen: true,
     playerIds: [],
     localMap,
     worldObjects: createStateWorldObjects(stateId, localMap),
@@ -1875,6 +1876,10 @@ function refreshWorldRuntimeFlags() {
 
     stateRuntime.playerIds = Array.from(new Set(stateRuntime.playerIds.filter(Boolean)));
     stateRuntime.activeForNewPlayers = stateRuntime.stateId === worldRuntime.activeStateIdForNewPlayers;
+
+    if (typeof stateRuntime.isOpen !== "boolean") {
+      stateRuntime.isOpen = true;
+    }
 
     if (!stateRuntime.worldObjects || typeof stateRuntime.worldObjects !== "object") {
       stateRuntime.worldObjects = createStateWorldObjects(stateRuntime.stateId, stateRuntime.localMap);
@@ -2028,7 +2033,10 @@ function makeWorldStateSnapshotForClient(stateRuntime) {
     centerUnlockAtMs: stateRuntime.centerUnlockAtMs,
     presidentPlayerId: stateRuntime.presidentPlayerId || null,
     presidentAllianceId: stateRuntime.presidentAllianceId || null,
+    isOpen: stateRuntime.isOpen !== false,
     activeForNewPlayers: !!stateRuntime.activeForNewPlayers,
+    isActiveForNewPlayers: !!stateRuntime.activeForNewPlayers,
+    centerUnlocked: !!stateRuntime.centerBuilding?.isUnlocked,
     playerCount: getWorldStatePlayerCount(stateRuntime),
     localMap: {
       width: Number(stateRuntime.localMap?.width) || STATE_LOCAL_MAP_CONFIG.width,
