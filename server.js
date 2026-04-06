@@ -2100,6 +2100,129 @@ function applyWorldPlacementToPlayerState(state, stateRuntime, spawnInfo) {
   };
 }
 
+function canTeleportBaseInsideState(stateRuntime, playerId, targetBaseX, targetBaseZ) {
+  if (!stateRuntime) {
+    return { ok: false, message: "World state not found" };
+  }
+
+  if (!Number.isInteger(targetBaseX) || !Number.isInteger(targetBaseZ)) {
+    return { ok: false, message: "Invalid base coordinates" };
+  }
+
+  const width = Number(stateRuntime.localMap?.width) || STATE_LOCAL_MAP_CONFIG.width;
+  const height = Number(stateRuntime.localMap?.height) || STATE_LOCAL_MAP_CONFIG.height;
+
+  if (targetBaseX < 0 || targetBaseX >= width || targetBaseZ < 0 || targetBaseZ >= height) {
+    return { ok: false, message: "Target base coordinates are outside the state map" };
+  }
+
+  const centerX = Number(stateRuntime.centerBuilding?.x) || Number(stateRuntime.localMap?.centerX) || STATE_LOCAL_MAP_CONFIG.centerX;
+  const centerZ = Number(stateRuntime.centerBuilding?.z) || Number(stateRuntime.localMap?.centerZ) || STATE_LOCAL_MAP_CONFIG.centerZ;
+
+  if (targetBaseX === centerX && targetBaseZ === centerZ) {
+    return { ok: false, message: "Cannot teleport onto the state center" };
+  }
+
+  const minDistanceSq = STATE_LOCAL_MAP_CONFIG.minBaseDistance * STATE_LOCAL_MAP_CONFIG.minBaseDistance;
+
+  for (const otherPlayerId of stateRuntime.playerIds || []) {
+    if (!otherPlayerId || otherPlayerId === playerId) continue;
+
+    const otherState = players.get(otherPlayerId);
+    if (!otherState || !otherState.worldPlacement) continue;
+
+    const otherX = Number(otherState.worldPlacement.baseX);
+    const otherZ = Number(otherState.worldPlacement.baseZ);
+
+    if (!Number.isFinite(otherX) || !Number.isFinite(otherZ)) continue;
+
+    if (getDistanceSquared(targetBaseX, targetBaseZ, otherX, otherZ) < minDistanceSq) {
+      return {
+        ok: false,
+        message: "Target location is too close to another base"
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
+function teleportPlayerBaseInsideState(state, playerId, targetBaseX, targetBaseZ) {
+  if (!state || !state.worldPlacement) {
+    return { ok: false, message: "Player world placement not found" };
+  }
+
+  const stateId = Number(state.worldPlacement.stateId);
+  if (!Number.isInteger(stateId) || stateId <= 0) {
+    return { ok: false, message: "Player stateId is invalid" };
+  }
+
+  const stateRuntime = getWorldStateRuntime(stateId);
+  if (!stateRuntime) {
+    return { ok: false, message: "World state not found" };
+  }
+
+  const check = canTeleportBaseInsideState(stateRuntime, playerId, targetBaseX, targetBaseZ);
+  if (!check.ok) {
+    return check;
+  }
+
+  const currentBaseX = Number(state.worldPlacement.baseX);
+  const currentBaseZ = Number(state.worldPlacement.baseZ);
+
+  if (currentBaseX === targetBaseX && currentBaseZ === targetBaseZ) {
+    return {
+      ok: true,
+      ignored: true,
+      stateId,
+      baseX: currentBaseX,
+      baseZ: currentBaseZ,
+      zone: getZoneNameForDistance(
+        Math.round(
+          Math.sqrt(
+            getDistanceSquared(
+              currentBaseX,
+              currentBaseZ,
+              Number(stateRuntime.localMap?.centerX) || STATE_LOCAL_MAP_CONFIG.centerX,
+              Number(stateRuntime.localMap?.centerZ) || STATE_LOCAL_MAP_CONFIG.centerZ
+            )
+          )
+        )
+      )
+    };
+  }
+
+  const centerX = Number(stateRuntime.localMap?.centerX) || STATE_LOCAL_MAP_CONFIG.centerX;
+  const centerZ = Number(stateRuntime.localMap?.centerZ) || STATE_LOCAL_MAP_CONFIG.centerZ;
+  const distance = Math.round(Math.sqrt(getDistanceSquared(targetBaseX, targetBaseZ, centerX, centerZ)));
+  const zone = getZoneNameForDistance(distance);
+
+  state.worldPlacement.baseX = targetBaseX;
+  state.worldPlacement.baseZ = targetBaseZ;
+  state.worldPlacement.lastTeleportAtMs = nowMs();
+  state.worldPlacement.currentZone = zone;
+
+  if (!state.worldMap || typeof state.worldMap !== "object") {
+    state.worldMap = {};
+  }
+
+  state.worldMap.activeStateIdForNewPlayers = worldRuntime.activeStateIdForNewPlayers;
+  state.worldMap.currentStateId = stateId;
+  state.worldMap.currentStateSnapshot = makeWorldStateSnapshotForClient(stateRuntime);
+
+  updateServerTime(state);
+
+  return {
+    ok: true,
+    ignored: false,
+    stateId,
+    baseX: targetBaseX,
+    baseZ: targetBaseZ,
+    zone,
+    teleportedAtMs: Number(state.worldPlacement.lastTeleportAtMs) || 0
+  };
+}
+
 function ensurePlayerWorldPlacement(state, playerId) {
   ensureWorldRuntime();
 
@@ -5270,6 +5393,55 @@ case "technology_research_start": {
 
   break;
 }
+
+
+      case "base_teleport_request": {
+        const playerId =
+          (msg.playerId && typeof msg.playerId === "string" && msg.playerId) ||
+          ws._authedPlayerId;
+
+        if (!playerId) {
+          send(ws, { type: "error", message: "Not authed. Send auth first." });
+          break;
+        }
+
+        const targetBaseX = Number.isInteger(msg.x) ? msg.x : parseInt(msg.x, 10);
+        const targetBaseZ = Number.isInteger(msg.z) ? msg.z : parseInt(msg.z, 10);
+
+        if (!Number.isInteger(targetBaseX) || !Number.isInteger(targetBaseZ)) {
+          send(ws, { type: "error", message: "Invalid base teleport coordinates" });
+          break;
+        }
+
+        const state = getOrCreatePlayerState(playerId);
+        const result = teleportPlayerBaseInsideState(state, playerId, targetBaseX, targetBaseZ);
+
+        if (!result.ok) {
+          send(ws, { type: "error", message: result.message || "Base teleport failed" });
+          break;
+        }
+
+        send(ws, {
+          type: result.ignored ? "base_teleport_ignored" : "base_teleported",
+          playerId,
+          serverTimeUnixMs: nowMs(),
+          payloadJson: JSON.stringify(result)
+        });
+
+        pushStateToPlayerConnections(playerId, state);
+        pushStateLocalMapToStatePlayers(result.stateId);
+
+        console.log("[BASE_TELEPORT]", {
+          playerId,
+          stateId: result.stateId,
+          baseX: result.baseX,
+          baseZ: result.baseZ,
+          zone: result.zone,
+          ignored: !!result.ignored
+        });
+
+        break;
+      }
 
       case "move_request": {
         const playerId =
