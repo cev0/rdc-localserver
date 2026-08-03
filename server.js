@@ -639,6 +639,45 @@ function ensureResourcesObject(state) {
   }
 }
 
+// ============================================================
+// OYUNCU STATUSU
+// ------------------------------------------------------------
+// Almaz, VIP səviyyəsi və oyunçu gücü serverdə saxlanılır.
+// Köhnə oyunçu state-lərində bu sahə yoxdursa avtomatik yaradılır.
+// ============================================================
+
+function oyuncuStatusunuTeminEt(state) {
+  if (!state || typeof state !== "object") return;
+
+  if (
+    !state.oyuncuStatusu ||
+    typeof state.oyuncuStatusu !== "object" ||
+    Array.isArray(state.oyuncuStatusu)
+  ) {
+    state.oyuncuStatusu = {
+      almaz: 0,
+      vipSeviyesi: 0,
+      oyuncuGucu: 0
+    };
+  }
+
+  const almaz = Number(state.oyuncuStatusu.almaz);
+  const vipSeviyesi = Number(state.oyuncuStatusu.vipSeviyesi);
+  const oyuncuGucu = Number(state.oyuncuStatusu.oyuncuGucu);
+
+  state.oyuncuStatusu.almaz = Number.isFinite(almaz)
+    ? Math.max(0, Math.trunc(almaz))
+    : 0;
+
+  state.oyuncuStatusu.vipSeviyesi = Number.isFinite(vipSeviyesi)
+    ? Math.max(0, Math.trunc(vipSeviyesi))
+    : 0;
+
+  state.oyuncuStatusu.oyuncuGucu = Number.isFinite(oyuncuGucu)
+    ? Math.max(0, Math.trunc(oyuncuGucu))
+    : 0;
+}
+
 function getBaseResourceCaps() {
   return {
     food: 5000,
@@ -2458,6 +2497,9 @@ function pushWorldMapToAllAuthedPlayers() {
 }
 
 function makeClientState(state) {
+  // Hər çıxan state-də status sahəsinin olmasına zəmanət verir.
+  oyuncuStatusunuTeminEt(state);
+
   const clientState = JSON.parse(JSON.stringify(state));
 
   if (
@@ -2605,6 +2647,12 @@ function makeDefaultState(playerId) {
       chips: 50000
     },
 
+    oyuncuStatusu: {
+      almaz: 0,
+      vipSeviyesi: 0,
+      oyuncuGucu: 0
+    },
+
     resourceCaps: getBaseResourceCaps(),
     specialStats: getBaseSpecialStats(),
     population: {
@@ -2678,6 +2726,8 @@ function getOrCreatePlayerState(playerId) {
 
   const state = players.get(playerId);
 
+  // Köhnə oyunçu state-lərini yeni status strukturu ilə tamamlayır.
+  oyuncuStatusunuTeminEt(state);
   ensureMapState(state);
   ensurePlayerWorldPlacement(state, playerId);
   refreshRoadAccessForBuildings(state);
@@ -5728,6 +5778,20 @@ case "occupy_state_center_request": {
         }
 
         incoming.playerId = playerId;
+
+        // Bu dəyərlər server-authoritative qalır.
+        // Unity-dən gələn save_state onların üzərinə yaza bilməz.
+        const movcudVeziyyet = players.get(playerId);
+        if (movcudVeziyyet) {
+          oyuncuStatusunuTeminEt(movcudVeziyyet);
+          incoming.oyuncuStatusu = {
+            almaz: movcudVeziyyet.oyuncuStatusu.almaz,
+            vipSeviyesi: movcudVeziyyet.oyuncuStatusu.vipSeviyesi,
+            oyuncuGucu: movcudVeziyyet.oyuncuStatusu.oyuncuGucu
+          };
+        }
+
+        oyuncuStatusunuTeminEt(incoming);
         ensureMapState(incoming);
         ensurePlayerWorldPlacement(incoming, playerId);
         ensureResourcesObject(incoming);
