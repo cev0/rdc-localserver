@@ -2648,9 +2648,9 @@ function makeDefaultState(playerId) {
     },
 
     oyuncuStatusu: {
-      almaz: 0,
-      vipSeviyesi: 0,
-      oyuncuGucu: 0
+      almaz: 9,
+      vipSeviyesi: 2,
+      oyuncuGucu: 1234
     },
 
     resourceCaps: getBaseResourceCaps(),
