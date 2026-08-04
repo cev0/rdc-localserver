@@ -655,9 +655,9 @@ function oyuncuStatusunuTeminEt(state) {
     Array.isArray(state.oyuncuStatusu)
   ) {
     state.oyuncuStatusu = {
-      almaz: 9,
-      vipSeviyesi: 2,
-      oyuncuGucu: 1234
+      almaz: 0,
+      vipSeviyesi: 0,
+      oyuncuGucu: 0
     };
   }
 
@@ -2648,9 +2648,9 @@ function makeDefaultState(playerId) {
     },
 
     oyuncuStatusu: {
-      almaz: 9,
-      vipSeviyesi: 2,
-      oyuncuGucu: 1234
+      almaz: 0,
+      vipSeviyesi: 0,
+      oyuncuGucu: 0
     },
 
     resourceCaps: getBaseResourceCaps(),
