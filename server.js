@@ -941,7 +941,9 @@ function refreshSpecialStats(state) {
   if (!state || typeof state !== "object") return;
 
   ensureSpecialStatsObject(state);
+
   state.specialStats = calculateSpecialStats(state);
+
   ensureSpecialStatsObject(state);
 
   if (!state.population || typeof state.population !== "object") {
@@ -953,11 +955,23 @@ function refreshSpecialStats(state) {
     if (typeof state.population.current !== "number") {
       state.population.current = 0;
     }
-    state.population.cap = Math.max(0, Number(state.specialStats.populationCap) || 0);
+
+    state.population.cap = Math.max(
+      0,
+      Number(state.specialStats.populationCap) || 0
+    );
+
     if (state.population.current > state.population.cap) {
       state.population.current = state.population.cap;
     }
   }
+
+  console.log("[EHALI_YENILENDI]", {
+    playerId: state.playerId,
+    cariEhali: state.population.current,
+    maksimumEhali: state.population.cap,
+    populationCap: state.specialStats.populationCap
+  });
 }
 
 function cloneCostArray(cost) {
@@ -2532,8 +2546,22 @@ function pushWorldMapToAllAuthedPlayers() {
 }
 
 function makeClientState(state) {
-  // Hər çıxan state-də status sahəsinin olmasına zəmanət verir.
+  if (!state || typeof state !== "object") {
+    return null;
+  }
+
+  // Oyunçu status sahəsini yoxla.
   oyuncuStatusunuTeminEt(state);
+
+  // Resurs tutumlarını yenidən hesabla.
+  refreshResourceCaps(state);
+
+  // Əhali və digər xüsusi bina bonuslarını yenidən hesabla.
+  refreshSpecialStats(state);
+
+  // Texnologiya məlumatlarını yoxla və yenilə.
+  ensureTechnologyObject(state);
+  refreshTechnologyStats(state);
 
   const clientState = JSON.parse(JSON.stringify(state));
 
@@ -4500,12 +4528,24 @@ function completeFinishedJobsForState(state) {
 
   state.builders.jobs = state.builders.jobs.filter(job => job && !job.isCompleted);
 
-  if (changed) {
-    updateServerTime(state);
-    refreshRoadAccessForBuildings(state);
-    refreshBuilderCapacity(state);
-    refreshTechnologyStats(state);
-  }
+if (changed) {
+  updateServerTime(state);
+
+  // Binaların yol bağlantısını yenilə.
+  refreshRoadAccessForBuildings(state);
+
+  // Tikinti işçisi sayını yenilə.
+  refreshBuilderCapacity(state);
+
+  // Anbar tutumlarını yenilə.
+  refreshResourceCaps(state);
+
+  // Əhali və xüsusi bina bonuslarını yenilə.
+  refreshSpecialStats(state);
+
+  // Texnologiya bonuslarını yenilə.
+  refreshTechnologyStats(state);
+}
 
   return changed;
 }
