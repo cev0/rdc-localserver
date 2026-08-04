@@ -1524,22 +1524,57 @@ function getLevelData(buildingId, targetLevel) {
   if (cfg && Array.isArray(cfg.levels) && cfg.levels.length > 0) {
     const index = level - 1;
 
-    if (index >= 0 && index < cfg.levels.length) {
-      return {
-        buildTimeSeconds: Math.max(0, Number(cfg.levels[index].buildTimeSeconds) || 0),
-        productionPerTick: Math.max(0, Number(cfg.levels[index].productionPerTick) || 0),
-        storageCapacityBonus: Math.max(0, Number(cfg.levels[index].storageCapacityBonus) || 0),
-        cost: cloneCostArray(cfg.levels[index].cost)
-      };
-    }
+if (index >= 0 && index < cfg.levels.length) {
+  return {
+    buildTimeSeconds: Math.max(
+      0,
+      Number(cfg.levels[index].buildTimeSeconds) || 0
+    ),
 
-    const last = cfg.levels[cfg.levels.length - 1];
-    return {
-      buildTimeSeconds: Math.max(0, Number(last.buildTimeSeconds) || 0),
-      productionPerTick: Math.max(0, Number(last.productionPerTick) || 0),
-      storageCapacityBonus: Math.max(0, Number(last.storageCapacityBonus) || 0),
-      cost: cloneCostArray(last.cost)
-    };
+    productionPerTick: Math.max(
+      0,
+      Number(cfg.levels[index].productionPerTick) || 0
+    ),
+
+    storageCapacityBonus: Math.max(
+      0,
+      Number(cfg.levels[index].storageCapacityBonus) || 0
+    ),
+
+    specialEffectValue: Math.max(
+      0,
+      Number(cfg.levels[index].specialEffectValue) || 0
+    ),
+
+    cost: cloneCostArray(cfg.levels[index].cost)
+  };
+}
+
+const last = cfg.levels[cfg.levels.length - 1];
+
+return {
+  buildTimeSeconds: Math.max(
+    0,
+    Number(last.buildTimeSeconds) || 0
+  ),
+
+  productionPerTick: Math.max(
+    0,
+    Number(last.productionPerTick) || 0
+  ),
+
+  storageCapacityBonus: Math.max(
+    0,
+    Number(last.storageCapacityBonus) || 0
+  ),
+
+  specialEffectValue: Math.max(
+    0,
+    Number(last.specialEffectValue) || 0
+  ),
+
+  cost: cloneCostArray(last.cost)
+};
   }
 
   return makeFallbackLevelData(id, level);
