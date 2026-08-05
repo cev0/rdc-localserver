@@ -1050,14 +1050,14 @@ function oyuncuStatusunuTeminEt(state) {
 
 function getBaseResourceCaps() {
   return {
-    food: 5000,
-    water: 5000,
-    wood: 5000,
-    iron: 5000,
-    fuel: 5000,
-    electricity: 5000,
-    money: 5000,
-    chips: 5000
+    food: 100000,
+    water: 100000,
+    wood: 100000,
+    iron: 100000,
+    fuel: 100000,
+    electricity: 100000,
+    money: 100000,
+    chips: 100000
   };
 }
 
