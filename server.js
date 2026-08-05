@@ -263,6 +263,39 @@ hq: {
 };
 
 
+// ============================================================
+// MISSION DEFINITIONS
+// ------------------------------------------------------------
+// Missiya şərti və mükafat serverdə saxlanılır.
+// Client yalnız missionId göndərir.
+// Mükafat miqdarını client dəyişə bilməz.
+// ============================================================
+
+const MISSION_DEFINITIONS = {
+  ev_tik_001: {
+    missionId: "ev_tik_001",
+
+    // Missiya tipi:
+    // tamamlanmış bina sayını yoxlayır
+    type: "completed_building_count",
+
+    // Hansı bina tikilməlidir
+    targetId: "house",
+
+    // Neçə ədəd tamamlanmış bina tələb olunur
+    requiredCount: 1,
+
+    // Serverin verəcəyi mükafat
+    rewards: [
+      {
+        resourceId: "food",
+        amount: 500
+      }
+    ]
+  }
+};
+
+
 
 // ============================================================
 // TECHNOLOGY / INSTITUTE RESEARCH
@@ -638,6 +671,343 @@ function ensureResourcesObject(state) {
     }
   }
 }
+
+
+// ============================================================
+// MISSIYA MÜKAFATI FUNKSİYALARI
+// ============================================================
+
+function normalizeMissionId(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+
+// ------------------------------------------------------------
+// Köhnə oyunçu state-lərində missions obyekti yoxdursa yaradır.
+// ------------------------------------------------------------
+function ensureMissionState(state) {
+  if (!state || typeof state !== "object") {
+    return;
+  }
+
+  if (
+    !state.missions ||
+    typeof state.missions !== "object" ||
+    Array.isArray(state.missions)
+  ) {
+    state.missions = {
+      claimedRewardIds: []
+    };
+  }
+
+  if (!Array.isArray(state.missions.claimedRewardIds)) {
+    state.missions.claimedRewardIds = [];
+  }
+
+  /*
+   * Təkrar ID-ləri silirik.
+   * Bütün missiya ID-lərini kiçik hərfə çeviririk.
+   */
+  state.missions.claimedRewardIds = Array.from(
+    new Set(
+      state.missions.claimedRewardIds
+        .map(normalizeMissionId)
+        .filter(Boolean)
+    )
+  );
+}
+
+
+// ------------------------------------------------------------
+// Missiyanın server konfiqurasiyasını qaytarır.
+// ------------------------------------------------------------
+function getMissionDefinition(missionId) {
+  const id = normalizeMissionId(missionId);
+
+  return MISSION_DEFINITIONS[id] || null;
+}
+
+
+// ------------------------------------------------------------
+// Server state əsasında missiyanın cari proqresini hesablayır.
+// Clientin göndərdiyi 1/1 məlumatına etibar etmir.
+// ------------------------------------------------------------
+function getMissionProgress(state, definition) {
+  if (!state || !definition) {
+    return 0;
+  }
+
+  switch (definition.type) {
+    case "completed_building_count": {
+      if (!Array.isArray(state.buildings)) {
+        return 0;
+      }
+
+      const targetId = normalizeBuildingId(
+        definition.targetId
+      );
+
+      let count = 0;
+
+      for (const building of state.buildings) {
+        if (!building) {
+          continue;
+        }
+
+        // Tikintisi bitməyən bina sayılmır.
+        if (!building.isCompleted) {
+          continue;
+        }
+
+        if (
+          normalizeBuildingId(building.buildingId) !==
+          targetId
+        ) {
+          continue;
+        }
+
+        count++;
+      }
+
+      return count;
+    }
+
+    default:
+      return 0;
+  }
+}
+
+
+// ------------------------------------------------------------
+// Missiyanın mükafatı əvvəl alınıbmı?
+// ------------------------------------------------------------
+function isMissionRewardClaimed(state, missionId) {
+  ensureMissionState(state);
+
+  const id = normalizeMissionId(missionId);
+
+  return state.missions.claimedRewardIds.includes(id);
+}
+
+
+// ------------------------------------------------------------
+// Mükafat anbarda yerləşirmi?
+// Mükafat itirilməsin deyə əvvəlcədən yoxlayırıq.
+// ------------------------------------------------------------
+function canAddMissionRewardsToState(state, rewards) {
+  ensureResourcesObject(state);
+  refreshResourceCaps(state);
+
+  for (const reward of rewards || []) {
+    const resourceId = normalizeResourceKey(
+      reward?.resourceId
+    );
+
+    const amount = Math.max(
+      0,
+      Math.trunc(
+        Number(reward?.amount) || 0
+      )
+    );
+
+    if (!resourceId || amount <= 0) {
+      continue;
+    }
+
+    if (typeof state.resources[resourceId] !== "number") {
+      return {
+        ok: false,
+        message:
+          `Unsupported reward resource: ${resourceId}`
+      };
+    }
+
+    const before =
+      Number(state.resources[resourceId]) || 0;
+
+    const cap =
+      typeof state.resourceCaps?.[resourceId] === "number"
+        ? state.resourceCaps[resourceId]
+        : Number.POSITIVE_INFINITY;
+
+    if (before + amount > cap) {
+      return {
+        ok: false,
+        message:
+          `Not enough ${resourceId} storage capacity for mission reward`
+      };
+    }
+  }
+
+  return {
+    ok: true
+  };
+}
+
+
+// ------------------------------------------------------------
+// Mükafatı server state resurslarına əlavə edir.
+// ------------------------------------------------------------
+function addMissionRewardsToState(state, rewards) {
+  ensureResourcesObject(state);
+  refreshResourceCaps(state);
+
+  const appliedRewards = [];
+
+  for (const reward of rewards || []) {
+    const resourceId = normalizeResourceKey(
+      reward?.resourceId
+    );
+
+    const amount = Math.max(
+      0,
+      Math.trunc(
+        Number(reward?.amount) || 0
+      )
+    );
+
+    if (!resourceId || amount <= 0) {
+      continue;
+    }
+
+    if (typeof state.resources[resourceId] !== "number") {
+      continue;
+    }
+
+    const before =
+      Number(state.resources[resourceId]) || 0;
+
+    const cap =
+      typeof state.resourceCaps?.[resourceId] === "number"
+        ? state.resourceCaps[resourceId]
+        : Number.POSITIVE_INFINITY;
+
+    const after = Math.min(
+      cap,
+      before + amount
+    );
+
+    const actuallyAdded = Math.max(
+      0,
+      after - before
+    );
+
+    state.resources[resourceId] = after;
+
+    appliedRewards.push({
+      resourceId: resourceId,
+      amount: actuallyAdded
+    });
+  }
+
+  return appliedRewards;
+}
+
+
+// ------------------------------------------------------------
+// Missiya mükafatının əsas server-authoritative yoxlaması.
+// ------------------------------------------------------------
+function claimMissionReward(state, missionId) {
+  ensureMissionState(state);
+
+  const id = normalizeMissionId(missionId);
+
+  const definition =
+    getMissionDefinition(id);
+
+  // Missiya serverdə tapılmadı.
+  if (!definition) {
+    return {
+      success: false,
+      alreadyClaimed: false,
+      missionId: id,
+      message: "Mission definition not found",
+      rewards: []
+    };
+  }
+
+  // Mükafat artıq alınıb.
+  if (isMissionRewardClaimed(state, id)) {
+    return {
+      success: false,
+      alreadyClaimed: true,
+      missionId: id,
+      message: "Mission reward already claimed",
+      rewards: []
+    };
+  }
+
+  // Missiya proqresini server hesablayır.
+  const progress =
+    getMissionProgress(
+      state,
+      definition
+    );
+
+  const requiredCount = Math.max(
+    1,
+    Number(definition.requiredCount) || 1
+  );
+
+  if (progress < requiredCount) {
+    return {
+      success: false,
+      alreadyClaimed: false,
+      missionId: id,
+      message:
+        `Mission is not completed. Progress ${progress}/${requiredCount}`,
+      rewards: []
+    };
+  }
+
+  // Anbarda yer olub-olmadığını yoxla.
+  const capacityCheck =
+    canAddMissionRewardsToState(
+      state,
+      definition.rewards
+    );
+
+  if (!capacityCheck.ok) {
+    return {
+      success: false,
+      alreadyClaimed: false,
+      missionId: id,
+      message:
+        capacityCheck.message ||
+        "Not enough storage capacity",
+      rewards: []
+    };
+  }
+
+  // Mükafatı state-ə əlavə et.
+  const appliedRewards =
+    addMissionRewardsToState(
+      state,
+      definition.rewards
+    );
+
+  // Missiyanı alınmış kimi qeyd et.
+  state.missions.claimedRewardIds.push(id);
+
+  state.missions.claimedRewardIds = Array.from(
+    new Set(
+      state.missions.claimedRewardIds
+    )
+  );
+
+  updateServerTime(state);
+
+  return {
+    success: true,
+    alreadyClaimed: false,
+    missionId: id,
+    message: "Mission reward claimed",
+    rewards: appliedRewards
+  };
+}
+
 
 // ============================================================
 // OYUNCU STATUSU
@@ -2553,6 +2923,9 @@ function makeClientState(state) {
   // Oyunçu status sahəsini yoxla.
   oyuncuStatusunuTeminEt(state);
 
+  // Missiya mükafatı state-ni yoxla.
+  ensureMissionState(state);
+
   // Resurs tutumlarını yenidən hesabla.
   refreshResourceCaps(state);
 
@@ -2758,7 +3131,11 @@ function makeDefaultState(playerId) {
     ],
 
     inventory: [],
-
+    
+ missions: {
+      claimedRewardIds: []
+    },
+    
     builders: {
       baseBuilders: 1,
       completedGarageCount: 0,
@@ -2783,6 +3160,7 @@ function getOrCreatePlayerState(playerId) {
     refreshSpecialStats(newState);
     ensureTechnologyObject(newState);
     refreshTechnologyStats(newState);
+    ensureMissionState(newState);
 
     players.set(playerId, newState);
   }
@@ -2799,6 +3177,7 @@ function getOrCreatePlayerState(playerId) {
   refreshSpecialStats(state);
   ensureTechnologyObject(state);
   refreshTechnologyStats(state);
+  ensureMissionState(state);
 
   return state;
 }
@@ -5836,6 +6215,113 @@ case "occupy_state_center_request": {
   break;
 }
 
+      case "mission_reward_claim_request": {
+        const playerId =
+          (
+            msg.playerId &&
+            typeof msg.playerId === "string" &&
+            msg.playerId
+          ) ||
+          ws._authedPlayerId;
+
+        const missionId =
+          normalizeMissionId(
+            msg.missionId
+          );
+
+        // Oyunçu auth olmayıb.
+        if (!playerId) {
+          send(ws, {
+            type: "mission_reward_claim_result",
+            playerId: null,
+            missionId: missionId,
+            success: false,
+            alreadyClaimed: false,
+            message: "Not authed. Send auth first.",
+            rewards: []
+          });
+
+          break;
+        }
+
+        // Missiya ID-si boşdur.
+        if (!missionId) {
+          send(ws, {
+            type: "mission_reward_claim_result",
+            playerId: playerId,
+            missionId: "",
+            success: false,
+            alreadyClaimed: false,
+            message: "Missing missionId",
+            rewards: []
+          });
+
+          break;
+        }
+
+        const state =
+          getOrCreatePlayerState(
+            playerId
+          );
+
+        const result =
+          claimMissionReward(
+            state,
+            missionId
+          );
+
+        /*
+         * Nəticəni həmin Unity clientinə göndəririk.
+         */
+        send(ws, {
+          type: "mission_reward_claim_result",
+          playerId: playerId,
+          missionId: result.missionId,
+          success: !!result.success,
+          alreadyClaimed: !!result.alreadyClaimed,
+          message: result.message || "",
+          rewards:
+            Array.isArray(result.rewards)
+              ? result.rewards
+              : []
+        });
+
+        if (result.success) {
+          /*
+           * Resurs dəyişdiyi üçün yeni state-i
+           * oyunçunun bütün bağlantılarına göndəririk.
+           */
+          pushStateToPlayerConnections(
+            playerId,
+            state
+          );
+
+          console.log(
+            "[MISSION_REWARD_CLAIMED]",
+            {
+              playerId: playerId,
+              missionId: result.missionId,
+              rewards: result.rewards
+            }
+          );
+        } else {
+          console.log(
+            "[MISSION_REWARD_REJECTED]",
+            {
+              playerId: playerId,
+              missionId: result.missionId,
+              alreadyClaimed:
+                result.alreadyClaimed,
+              message:
+                result.message
+            }
+          );
+        }
+
+        break;
+      }
+
+        
       case "save_state": {
         const playerId = ws._authedPlayerId;
 
@@ -5856,17 +6342,45 @@ case "occupy_state_center_request": {
 
         // Bu dəyərlər server-authoritative qalır.
         // Unity-dən gələn save_state onların üzərinə yaza bilməz.
-        const movcudVeziyyet = players.get(playerId);
+        const movcudVeziyyet =
+          players.get(playerId);
+
         if (movcudVeziyyet) {
-          oyuncuStatusunuTeminEt(movcudVeziyyet);
+          oyuncuStatusunuTeminEt(
+            movcudVeziyyet
+          );
+
+          ensureMissionState(
+            movcudVeziyyet
+          );
+
+          /*
+           * Oyunçu statusu server-authoritative qalır.
+           */
           incoming.oyuncuStatusu = {
-            almaz: movcudVeziyyet.oyuncuStatusu.almaz,
-            vipSeviyesi: movcudVeziyyet.oyuncuStatusu.vipSeviyesi,
-            oyuncuGucu: movcudVeziyyet.oyuncuStatusu.oyuncuGucu
+            almaz:
+              movcudVeziyyet.oyuncuStatusu.almaz,
+
+            vipSeviyesi:
+              movcudVeziyyet.oyuncuStatusu.vipSeviyesi,
+
+            oyuncuGucu:
+              movcudVeziyyet.oyuncuStatusu.oyuncuGucu
           };
+
+          /*
+           * Client özündən claimedRewardIds göndərib
+           * server məlumatının üzərinə yaza bilməsin.
+           */
+          incoming.missions = JSON.parse(
+            JSON.stringify(
+              movcudVeziyyet.missions
+            )
+          );
         }
 
         oyuncuStatusunuTeminEt(incoming);
+        ensureMissionState(incoming);
         ensureMapState(incoming);
         ensurePlayerWorldPlacement(incoming, playerId);
         ensureResourcesObject(incoming);
