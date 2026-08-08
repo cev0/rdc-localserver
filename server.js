@@ -1010,6 +1010,35 @@ function claimMissionReward(state, missionId) {
 
 
 // ============================================================
+// OYUNCU PROFİLİ
+// ------------------------------------------------------------
+// Oyunçu adı və ittifaq adı server-authoritative saxlanılır.
+// Köhnə state-lərdə bu sahələr yoxdursa avtomatik yaradılır.
+// ============================================================
+
+function oyuncuProfiliniTeminEt(state) {
+  if (!state || typeof state !== "object") {
+    return;
+  }
+
+  if (
+    typeof state.oyuncuAdi !== "string" ||
+    !state.oyuncuAdi.trim()
+  ) {
+    state.oyuncuAdi = "Komandir";
+  } else {
+    state.oyuncuAdi = state.oyuncuAdi.trim();
+  }
+
+  if (typeof state.ittifaqAdi !== "string") {
+    state.ittifaqAdi = "";
+  } else {
+    state.ittifaqAdi = state.ittifaqAdi.trim();
+  }
+}
+
+
+// ============================================================
 // OYUNCU STATUSU
 // ------------------------------------------------------------
 // Almaz, VIP səviyyəsi və oyunçu gücü serverdə saxlanılır.
@@ -1306,7 +1335,6 @@ function calculateSpecialStats(state) {
 
   return stats;
 }
-
 function refreshSpecialStats(state) {
   if (!state || typeof state !== "object") return;
 
@@ -2920,6 +2948,9 @@ function makeClientState(state) {
     return null;
   }
 
+  // Oyunçu profil məlumatlarını yoxla.
+  oyuncuProfiliniTeminEt(state);
+
   // Oyunçu status sahəsini yoxla.
   oyuncuStatusunuTeminEt(state);
 
@@ -3070,6 +3101,11 @@ function makeDefaultState(playerId) {
 
   return {
     playerId: playerId,
+
+    // Server-authoritative profil məlumatları
+    oyuncuAdi: "Komandir",
+    ittifaqAdi: "",
+
     serverTimeUnixMs: nowMs(),
 
     resources: {
@@ -3152,6 +3188,7 @@ function getOrCreatePlayerState(playerId) {
   if (!players.has(playerId)) {
     const newState = makeDefaultState(playerId);
 
+    oyuncuProfiliniTeminEt(newState);
     ensureMapState(newState);
     ensurePlayerWorldPlacement(newState, playerId);
     refreshRoadAccessForBuildings(newState);
@@ -3167,7 +3204,8 @@ function getOrCreatePlayerState(playerId) {
 
   const state = players.get(playerId);
 
-  // Köhnə oyunçu state-lərini yeni status strukturu ilə tamamlayır.
+  // Köhnə oyunçu state-lərini yeni profil/status strukturları ilə tamamlayır.
+  oyuncuProfiliniTeminEt(state);
   oyuncuStatusunuTeminEt(state);
   ensureMapState(state);
   ensurePlayerWorldPlacement(state, playerId);
@@ -6090,6 +6128,113 @@ updateServerTime(state);
         break;
       }
 
+      case "player_name_change_request": {
+        // Oyunçunun kimliyi yalnız autentifikasiya olunmuş WebSocket-dən götürülür.
+        const playerId = ws._authedPlayerId;
+
+        if (!playerId) {
+          send(ws, {
+            type: "player_name_change_result",
+            playerId: null,
+            success: false,
+            message: "Not authed"
+          });
+          break;
+        }
+
+        // Client başqa playerId göndərərək başqa oyunçunun adını dəyişə bilməz.
+        if (
+          msg.playerId &&
+          typeof msg.playerId === "string" &&
+          msg.playerId !== playerId
+        ) {
+          send(ws, {
+            type: "player_name_change_result",
+            playerId: playerId,
+            success: false,
+            message: "Player ID mismatch"
+          });
+          break;
+        }
+
+        const yeniAd =
+          typeof msg.yeniAd === "string"
+            ? msg.yeniAd.trim()
+            : "";
+
+        if (!yeniAd) {
+          send(ws, {
+            type: "player_name_change_result",
+            playerId: playerId,
+            success: false,
+            message: "Ad boş ola bilməz"
+          });
+          break;
+        }
+
+        if (yeniAd.length < 3) {
+          send(ws, {
+            type: "player_name_change_result",
+            playerId: playerId,
+            success: false,
+            message: "Ad minimum 3 simvol olmalıdır"
+          });
+          break;
+        }
+
+        if (yeniAd.length > 16) {
+          send(ws, {
+            type: "player_name_change_result",
+            playerId: playerId,
+            success: false,
+            message: "Ad maksimum 16 simvol ola bilər"
+          });
+          break;
+        }
+
+        const state = getOrCreatePlayerState(playerId);
+        oyuncuProfiliniTeminEt(state);
+
+        if (
+          String(state.oyuncuAdi || "").toLowerCase() ===
+          yeniAd.toLowerCase()
+        ) {
+          send(ws, {
+            type: "player_name_change_result",
+            playerId: playerId,
+            success: false,
+            message: "Yeni ad cari addan fərqli olmalıdır"
+          });
+          break;
+        }
+
+        const kohneAd = state.oyuncuAdi;
+
+        // Yalnız server authoritative state-i dəyişir.
+        state.oyuncuAdi = yeniAd;
+        updateServerTime(state);
+
+        send(ws, {
+          type: "player_name_change_result",
+          playerId: playerId,
+          success: true,
+          oyuncuAdi: yeniAd,
+          message: "Oyunçu adı dəyişdirildi",
+          serverTimeUnixMs: nowMs()
+        });
+
+        // Eyni oyunçunun bütün aktiv bağlantılarına yenilənmiş state göndərilir.
+        pushStateToPlayerConnections(playerId, state);
+
+        console.log("[OYUNCU_ADI_DEYISDI]", {
+          playerId: playerId,
+          kohneAd: kohneAd,
+          yeniAd: yeniAd
+        });
+
+        break;
+      }
+
       case "get_state": {
         const playerId = ws._authedPlayerId;
 
@@ -6346,6 +6491,10 @@ case "occupy_state_center_request": {
           players.get(playerId);
 
         if (movcudVeziyyet) {
+          oyuncuProfiliniTeminEt(
+            movcudVeziyyet
+          );
+
           oyuncuStatusunuTeminEt(
             movcudVeziyyet
           );
@@ -6353,6 +6502,16 @@ case "occupy_state_center_request": {
           ensureMissionState(
             movcudVeziyyet
           );
+
+          /*
+           * Oyunçu profil məlumatları server-authoritative qalır.
+           * Client save_state ilə adı və ittifaq adını özbaşına dəyişə bilməz.
+           */
+          incoming.oyuncuAdi =
+            movcudVeziyyet.oyuncuAdi;
+
+          incoming.ittifaqAdi =
+            movcudVeziyyet.ittifaqAdi;
 
           /*
            * Oyunçu statusu server-authoritative qalır.
@@ -6379,6 +6538,7 @@ case "occupy_state_center_request": {
           );
         }
 
+        oyuncuProfiliniTeminEt(incoming);
         oyuncuStatusunuTeminEt(incoming);
         ensureMissionState(incoming);
         ensureMapState(incoming);
@@ -6523,3 +6683,4 @@ setInterval(() => {
 server.listen(PORT, "0.0.0.0", () => {
   console.log("Server started on " + PORT);
 });
+
