@@ -1233,6 +1233,171 @@ function binaGucunuHesabla(state) {
 
 
 // ============================================================
+// BİR QOŞUN VAHİDİNİN GÜCÜ
+// ============================================================
+
+function birQosununGucunuAl(unitId) {
+  const id =
+    String(unitId || "")
+      .trim()
+      .toLowerCase();
+
+  const netice =
+    id.match(
+      /^(fighter|shooter|vehicle)_lv(\d+)$/
+    );
+
+  if (!netice) {
+    return 0;
+  }
+
+  const qosunNovu =
+    netice[1];
+
+  const level =
+    Math.max(
+      1,
+      Math.min(
+        10,
+        Math.trunc(
+          Number(netice[2]) || 1
+        )
+      )
+    );
+
+  let esasGuc = 0;
+
+  switch (qosunNovu) {
+    case "fighter":
+      esasGuc = 5;
+      break;
+
+    case "shooter":
+      esasGuc = 6;
+      break;
+
+    case "vehicle":
+      esasGuc = 20;
+      break;
+
+    default:
+      esasGuc = 0;
+      break;
+  }
+
+  return esasGuc * level;
+}
+
+
+// ============================================================
+// OYUNÇUNUN BÜTÜN QOŞUN GÜCÜ
+// ============================================================
+
+function qosunGucunuHesabla(state) {
+  if (
+    !state ||
+    !state.army ||
+    !state.army.troops ||
+    typeof state.army.troops !== "object"
+  ) {
+    return 0;
+  }
+
+  const troops =
+    state.army.troops;
+
+  let umumiQosunGucu = 0;
+
+  for (
+    const [unitId, rawCount]
+    of Object.entries(troops)
+  ) {
+    const say =
+      Math.max(
+        0,
+        Math.trunc(
+          Number(rawCount) || 0
+        )
+      );
+
+    if (say <= 0) {
+      continue;
+    }
+
+    const birEdedGuc =
+      birQosununGucunuAl(unitId);
+
+    umumiQosunGucu +=
+      birEdedGuc * say;
+  }
+
+  return Math.max(
+    0,
+    Math.trunc(umumiQosunGucu)
+  );
+}
+
+
+// ============================================================
+// QƏHRƏMAN GÜCÜ
+// Hələlik 0.
+// Hero sistemi server state-ə tam qoşulanda genişləndirəcəyik.
+// ============================================================
+
+function qehremanGucunuHesabla(state) {
+  return 0;
+}
+
+
+// ============================================================
+// OYUNÇUNUN ÜMUMİ GÜCÜNÜ YENİLƏ
+// ============================================================
+
+function oyuncuGucunuYenile(state) {
+  if (!state || typeof state !== "object") {
+    return;
+  }
+
+  oyuncuStatusunuTeminEt(state);
+  oyuncuGucMelumatlariniTeminEt(state);
+
+  const binaGucu =
+    binaGucunuHesabla(state);
+
+  const qosunGucu =
+    qosunGucunuHesabla(state);
+
+  const qehremanGucu =
+    qehremanGucunuHesabla(state);
+
+  const umumiGuc =
+    Math.max(
+      0,
+      binaGucu +
+      qosunGucu +
+      qehremanGucu
+    );
+
+  state.gucMelumatlari.binaGucu =
+    binaGucu;
+
+  state.gucMelumatlari.qosunGucu =
+    qosunGucu;
+
+  state.gucMelumatlari.qehremanGucu =
+    qehremanGucu;
+
+  state.gucMelumatlari.umumiGuc =
+    umumiGuc;
+
+  // Köhnə UI və PlayerStateCache qırılmasın.
+  state.oyuncuStatusu.oyuncuGucu =
+    umumiGuc;
+}
+
+
+
+// ============================================================
 // OYUNÇU GÜC SİSTEMİ
 // Server-authoritative
 // ============================================================
