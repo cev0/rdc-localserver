@@ -1176,18 +1176,30 @@ function bazaMelumatlariniTeminEt(state) {
     typeof state.bazaMelumatlari !== "object" ||
     Array.isArray(state.bazaMelumatlari)
   ) {
-    state.bazaMelumatlari = {
-      umumiTikintiMasinlari: 0,
-      umumiZirehliMasinlar: 0,
-      umumiQosunSayi: 0
-    };
+state.bazaMelumatlari = {
+  umumiTikintiMasinlari: 0,
+  umumiZirehliMasinlar: 0,
+  umumiQosunSayi: 0,
+
+  yaraliBirlikler: 0,
+  hospitalTutumu: 0,
+
+  toplanisLimiti: 1,
+  komekTutumu: 1
+};
   }
 
-  const saheler = [
-    "umumiTikintiMasinlari",
-    "umumiZirehliMasinlar",
-    "umumiQosunSayi"
-  ];
+const saheler = [
+  "umumiTikintiMasinlari",
+  "umumiZirehliMasinlar",
+  "umumiQosunSayi",
+
+  "yaraliBirlikler",
+  "hospitalTutumu",
+
+  "toplanisLimiti",
+  "komekTutumu"
+];
 
   for (const sahe of saheler) {
     const deyer =
@@ -1199,6 +1211,195 @@ function bazaMelumatlariniTeminEt(state) {
         : 0;
   }
 }
+
+
+// ============================================================
+// TAMAMLANMIŞ BİNANIN ƏN YÜKSƏK LEVELİNİ TAP
+// ============================================================
+
+function tamamlanmisBinaMaksimumLeveliniTap(
+  state,
+  axtarilanBinaId
+) {
+  if (
+    !state ||
+    !Array.isArray(state.buildings)
+  ) {
+    return 0;
+  }
+
+  const hedefId =
+    String(axtarilanBinaId || "")
+      .trim()
+      .toLowerCase();
+
+  if (!hedefId) {
+    return 0;
+  }
+
+  let maksimumLevel = 0;
+
+  for (const building of state.buildings) {
+    if (!building) {
+      continue;
+    }
+
+    if (!building.isCompleted) {
+      continue;
+    }
+
+    const binaId =
+      String(building.buildingId || "")
+        .trim()
+        .toLowerCase();
+
+    if (binaId !== hedefId) {
+      continue;
+    }
+
+    const level =
+      Math.max(
+        1,
+        Math.trunc(
+          Number(building.level) || 1
+        )
+      );
+
+    maksimumLevel =
+      Math.max(
+        maksimumLevel,
+        level
+      );
+  }
+
+  return maksimumLevel;
+}
+
+// ============================================================
+// HOSPİTAL TUTUMU
+// ------------------------------------------------------------
+// Hər tamamlanmış Hospital:
+// Level 1 = 2.000
+// Level 2 = 4.000
+// Level 3 = 6.000
+// ...
+//
+// Birdən çox Hospital varsa hamısının tutumu toplanır.
+// ============================================================
+
+function hospitalTutumunuHesabla(state) {
+  if (
+    !state ||
+    !Array.isArray(state.buildings)
+  ) {
+    return 0;
+  }
+
+  let umumiTutum = 0;
+
+  for (const building of state.buildings) {
+    if (!building) {
+      continue;
+    }
+
+    if (!building.isCompleted) {
+      continue;
+    }
+
+    const binaId =
+      String(building.buildingId || "")
+        .trim()
+        .toLowerCase();
+
+    if (binaId !== "hospital") {
+      continue;
+    }
+
+    const level =
+      Math.max(
+        1,
+        Math.trunc(
+          Number(building.level) || 1
+        )
+      );
+
+    const buHospitalTutumu =
+      2000 * level;
+
+    umumiTutum +=
+      buHospitalTutumu;
+  }
+
+  return Math.max(
+    0,
+    Math.trunc(umumiTutum)
+  );
+}
+
+
+// ============================================================
+// TOPLANIŞ LİMİTİ
+// Command Center əsasında
+// ============================================================
+
+function toplanisLimitiniHesabla(state) {
+  const commandCenterLevel =
+    tamamlanmisBinaMaksimumLeveliniTap(
+      state,
+      "command_center"
+    );
+
+  // Command Center yoxdursa baza limit.
+  if (commandCenterLevel <= 0) {
+    return 1;
+  }
+
+  // İlkin balans:
+  // Lv.1 = 1
+  // Lv.2 = 2
+  // Lv.3 = 3
+  // Lv.4 = 4
+  // Lv.5+ = maksimum 5
+  return Math.min(
+    5,
+    Math.max(
+      1,
+      commandCenterLevel
+    )
+  );
+}
+
+
+// ============================================================
+// İTTİFAQ KÖMƏK TUTUMU
+// Embassy əsasında
+// ============================================================
+
+function komekTutumunuHesabla(state) {
+  const embassyLevel =
+    tamamlanmisBinaMaksimumLeveliniTap(
+      state,
+      "embassy"
+    );
+
+  // Embassy yoxdursa başlanğıc limit.
+  if (embassyLevel <= 0) {
+    return 1;
+  }
+
+  // İlkin balans:
+  // Embassy yoxdur = 1
+  // Lv.1 = 2
+  // Lv.2 = 3
+  // Lv.3 = 4
+  // ...
+  // Maksimum = 30
+  return Math.min(
+    30,
+    1 + embassyLevel
+  );
+}
+
 
 
 // ============================================================
@@ -1350,6 +1551,57 @@ function bazaMelumatlariniYenile(state) {
   state.bazaMelumatlari.umumiQosunSayi =
     umumiQosunSayi;
 }
+
+
+// ----------------------------------------------------------
+// HOSPİTAL
+// ----------------------------------------------------------
+
+const hospitalTutumu =
+  hospitalTutumunuHesabla(state);
+
+const yaraliBirlikler =
+  Math.max(
+    0,
+    Math.trunc(
+      Number(
+        state.bazaMelumatlari.yaraliBirlikler
+      ) || 0
+    )
+  );
+
+
+// ----------------------------------------------------------
+// TOPLANIŞ LİMİTİ
+// ----------------------------------------------------------
+
+const toplanisLimiti =
+  toplanisLimitiniHesabla(state);
+
+
+// ----------------------------------------------------------
+// KÖMƏK TUTUMU
+// ----------------------------------------------------------
+
+const komekTutumu =
+  komekTutumunuHesabla(state);
+
+
+// ----------------------------------------------------------
+// STATE-Ə YAZ
+// ----------------------------------------------------------
+
+state.bazaMelumatlari.yaraliBirlikler =
+  yaraliBirlikler;
+
+state.bazaMelumatlari.hospitalTutumu =
+  hospitalTutumu;
+
+state.bazaMelumatlari.toplanisLimiti =
+  toplanisLimiti;
+
+state.bazaMelumatlari.komekTutumu =
+  komekTutumu;
 
 // ============================================================
 // OYUNÇU STATİSTİKASINI HAZIRLA
@@ -4056,10 +4308,16 @@ function makeDefaultState(playerId) {
   sagaldilanBirlikler: 0,
   mehvedilenZombiler: 0
 },
-    bazaMelumatlari: {
+bazaMelumatlari: {
   umumiTikintiMasinlari: 0,
   umumiZirehliMasinlar: 0,
-  umumiQosunSayi: 0
+  umumiQosunSayi: 0,
+
+  yaraliBirlikler: 0,
+  hospitalTutumu: 0,
+
+  toplanisLimiti: 1,
+  komekTutumu: 1
 },
     oyuncuStatistikasi: {
   mehvedilenDusmen: 0,
