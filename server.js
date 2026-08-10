@@ -1162,6 +1162,196 @@ function doyusStatistikasiniTeminEt(state) {
 }
 
 // ============================================================
+// BAZA MƏLUMATLARI
+// Server-authoritative
+// ============================================================
+
+function bazaMelumatlariniTeminEt(state) {
+  if (!state || typeof state !== "object") {
+    return;
+  }
+
+  if (
+    !state.bazaMelumatlari ||
+    typeof state.bazaMelumatlari !== "object" ||
+    Array.isArray(state.bazaMelumatlari)
+  ) {
+    state.bazaMelumatlari = {
+      umumiTikintiMasinlari: 0,
+      umumiZirehliMasinlar: 0,
+      umumiQosunSayi: 0
+    };
+  }
+
+  const saheler = [
+    "umumiTikintiMasinlari",
+    "umumiZirehliMasinlar",
+    "umumiQosunSayi"
+  ];
+
+  for (const sahe of saheler) {
+    const deyer =
+      Number(state.bazaMelumatlari[sahe]);
+
+    state.bazaMelumatlari[sahe] =
+      Number.isFinite(deyer)
+        ? Math.max(0, Math.trunc(deyer))
+        : 0;
+  }
+}
+
+
+// ============================================================
+// ÜMUMİ ZİREHLİ MAŞIN SAYI
+// vehicle_lv1 ... vehicle_lv10
+// ============================================================
+
+function umumiZirehliMasinSayiniHesabla(state) {
+  if (
+    !state ||
+    !state.army ||
+    !state.army.troops ||
+    typeof state.army.troops !== "object"
+  ) {
+    return 0;
+  }
+
+  const troops =
+    state.army.troops;
+
+  let umumiSay = 0;
+
+  for (let level = 1; level <= 10; level++) {
+    const unitId =
+      "vehicle_lv" + level;
+
+    const say =
+      Math.max(
+        0,
+        Math.trunc(
+          Number(troops[unitId]) || 0
+        )
+      );
+
+    umumiSay += say;
+  }
+
+  return umumiSay;
+}
+
+
+// ============================================================
+// ÜMUMİ QOŞUN SAYI
+// Fighter + Shooter + Vehicle
+// ============================================================
+
+function umumiQosunSayiniHesabla(state) {
+  if (
+    !state ||
+    !state.army ||
+    !state.army.troops ||
+    typeof state.army.troops !== "object"
+  ) {
+    return 0;
+  }
+
+  const troops =
+    state.army.troops;
+
+  let umumiSay = 0;
+
+  for (
+    const [unitId, rawCount]
+    of Object.entries(troops)
+  ) {
+    const id =
+      String(unitId || "")
+        .trim()
+        .toLowerCase();
+
+    const uygunQosundur =
+      /^(fighter|shooter|vehicle)_lv([1-9]|10)$/
+        .test(id);
+
+    if (!uygunQosundur) {
+      continue;
+    }
+
+    const say =
+      Math.max(
+        0,
+        Math.trunc(
+          Number(rawCount) || 0
+        )
+      );
+
+    umumiSay += say;
+  }
+
+  return umumiSay;
+}
+
+
+// ============================================================
+// BAZA MƏLUMATLARINI YENİLƏ
+// ============================================================
+
+function bazaMelumatlariniYenile(state) {
+  if (!state || typeof state !== "object") {
+    return;
+  }
+
+  bazaMelumatlariniTeminEt(state);
+
+  // ----------------------------------------------------------
+  // ÜMUMİ TİKİNTİ MAŞINLARI
+  // Mövcud builder slotlarının maksimum sayı.
+  // ----------------------------------------------------------
+
+  let umumiTikintiMasinlari = 0;
+
+  if (
+    state.builders &&
+    typeof state.builders === "object"
+  ) {
+    const maxBuilders =
+      Number(state.builders.maxBuilders);
+
+    if (Number.isFinite(maxBuilders)) {
+      umumiTikintiMasinlari =
+        Math.max(
+          0,
+          Math.trunc(maxBuilders)
+        );
+    }
+  }
+
+  // ----------------------------------------------------------
+  // ZİREHLİ MAŞINLAR
+  // ----------------------------------------------------------
+
+  const umumiZirehliMasinlar =
+    umumiZirehliMasinSayiniHesabla(state);
+
+  // ----------------------------------------------------------
+  // BÜTÜN QOŞUNLAR
+  // ----------------------------------------------------------
+
+  const umumiQosunSayi =
+    umumiQosunSayiniHesabla(state);
+
+
+  state.bazaMelumatlari.umumiTikintiMasinlari =
+    umumiTikintiMasinlari;
+
+  state.bazaMelumatlari.umumiZirehliMasinlar =
+    umumiZirehliMasinlar;
+
+  state.bazaMelumatlari.umumiQosunSayi =
+    umumiQosunSayi;
+}
+
+// ============================================================
 // OYUNÇU STATİSTİKASINI HAZIRLA
 // ============================================================
 
@@ -3680,7 +3870,7 @@ function makeClientState(state) {
   doyusStatistikasiniTeminEt(state);
 
   oyuncuStatistikasiniTeminEt(state);
-
+bazaMelumatlariniYenile(state);
   // Missiya mükafatı state-ni yoxla.
   ensureMissionState(state);
 
@@ -3865,6 +4055,11 @@ function makeDefaultState(playerId) {
   itirilenOzBirlikleri: 0,
   sagaldilanBirlikler: 0,
   mehvedilenZombiler: 0
+},
+    bazaMelumatlari: {
+  umumiTikintiMasinlari: 0,
+  umumiZirehliMasinlar: 0,
+  umumiQosunSayi: 0
 },
     oyuncuStatistikasi: {
   mehvedilenDusmen: 0,
