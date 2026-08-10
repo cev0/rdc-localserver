@@ -1079,6 +1079,160 @@ function oyuncuStatusunuTeminEt(state) {
 
 
 // ============================================================
+// OYUNÇU GÜC MƏLUMATLARINI HAZIRLA
+// ============================================================
+
+function oyuncuGucMelumatlariniTeminEt(state) {
+  if (!state || typeof state !== "object") {
+    return;
+  }
+
+  if (
+    !state.gucMelumatlari ||
+    typeof state.gucMelumatlari !== "object" ||
+    Array.isArray(state.gucMelumatlari)
+  ) {
+    state.gucMelumatlari = {
+      umumiGuc: 0,
+      binaGucu: 0,
+      qosunGucu: 0,
+      qehremanGucu: 0
+    };
+  }
+
+  const saheler = [
+    "umumiGuc",
+    "binaGucu",
+    "qosunGucu",
+    "qehremanGucu"
+  ];
+
+  for (const sahe of saheler) {
+    const deyer =
+      Number(state.gucMelumatlari[sahe]);
+
+    state.gucMelumatlari[sahe] =
+      Number.isFinite(deyer)
+        ? Math.max(0, Math.trunc(deyer))
+        : 0;
+  }
+}
+
+
+// ============================================================
+// BİNA ID TƏMİZLƏMƏ
+// ============================================================
+
+function gucUcunBinaIdNormallasdir(buildingId) {
+  return String(buildingId || "")
+    .trim()
+    .toLowerCase();
+}
+
+
+// ============================================================
+// BİR BİNANIN GÜCÜ
+// ============================================================
+
+function birBinaninGucunuHesabla(building) {
+  if (!building) {
+    return 0;
+  }
+
+  // Tikintisi tamamlanmamış bina güc vermir.
+  if (!building.isCompleted) {
+    return 0;
+  }
+
+  const binaId =
+    gucUcunBinaIdNormallasdir(
+      building.buildingId
+    );
+
+  if (!binaId) {
+    return 0;
+  }
+
+  // Yol güc vermir.
+  if (binaId === "road") {
+    return 0;
+  }
+
+  const level =
+    Math.max(
+      1,
+      Math.trunc(
+        Number(building.level) || 1
+      )
+    );
+
+  let levelBasiGuc = 100;
+
+  switch (binaId) {
+    case "hq":
+      levelBasiGuc = 500;
+      break;
+
+    case "command_center":
+      levelBasiGuc = 250;
+      break;
+
+    case "fighter_camp":
+      levelBasiGuc = 200;
+      break;
+
+    case "shooter_camp":
+      levelBasiGuc = 200;
+      break;
+
+    case "vehicle_factory":
+      levelBasiGuc = 300;
+      break;
+
+    case "bunker":
+      levelBasiGuc = 250;
+      break;
+
+    case "heroes_hall":
+      levelBasiGuc = 200;
+      break;
+
+    default:
+      levelBasiGuc = 100;
+      break;
+  }
+
+  return levelBasiGuc * level;
+}
+
+
+// ============================================================
+// OYUNÇUNUN BÜTÜN BİNA GÜCÜ
+// ============================================================
+
+function binaGucunuHesabla(state) {
+  if (
+    !state ||
+    !Array.isArray(state.buildings)
+  ) {
+    return 0;
+  }
+
+  let umumiBinaGucu = 0;
+
+  for (const building of state.buildings) {
+    umumiBinaGucu +=
+      birBinaninGucunuHesabla(building);
+  }
+
+  return Math.max(
+    0,
+    Math.trunc(umumiBinaGucu)
+  );
+}
+
+
+// ============================================================
 // OYUNÇU GÜC SİSTEMİ
 // Server-authoritative
 // ============================================================
