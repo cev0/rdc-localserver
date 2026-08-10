@@ -1119,6 +1119,89 @@ function oyuncuGucMelumatlariniTeminEt(state) {
 }
 
 
+
+
+function doyusStatistikasiniTeminEt(state) {
+  if (!state || typeof state !== "object") {
+    return;
+  }
+
+  if (
+    !state.doyusStatistikasi ||
+    typeof state.doyusStatistikasi !== "object" ||
+    Array.isArray(state.doyusStatistikasi)
+  ) {
+    state.doyusStatistikasi = {
+      umumiDoyusler: 0,
+      qazanilanDoyusler: 0,
+      mehvedilenDusmenBirlikleri: 0,
+      itirilenOzBirlikleri: 0,
+      sagaldilanBirlikler: 0,
+      mehvedilenZombiler: 0
+    };
+  }
+
+  const saheler = [
+    "umumiDoyusler",
+    "qazanilanDoyusler",
+    "mehvedilenDusmenBirlikleri",
+    "itirilenOzBirlikleri",
+    "sagaldilanBirlikler",
+    "mehvedilenZombiler"
+  ];
+
+  for (const sahe of saheler) {
+    const deyer =
+      Number(state.doyusStatistikasi[sahe]);
+
+    state.doyusStatistikasi[sahe] =
+      Number.isFinite(deyer)
+        ? Math.max(0, Math.trunc(deyer))
+        : 0;
+  }
+}
+
+// ============================================================
+// OYUNÇU STATİSTİKASINI HAZIRLA
+// ============================================================
+
+function oyuncuStatistikasiniTeminEt(state) {
+  if (!state || typeof state !== "object") {
+    return;
+  }
+
+  if (
+    !state.oyuncuStatistikasi ||
+    typeof state.oyuncuStatistikasi !== "object" ||
+    Array.isArray(state.oyuncuStatistikasi)
+  ) {
+    state.oyuncuStatistikasi = {
+      mehvedilenDusmen: 0,
+      qazanilanDoyus: 0,
+      meglubiyyetSayi: 0,
+      toplanmisResurs: 0
+    };
+  }
+
+  const saheler = [
+    "mehvedilenDusmen",
+    "qazanilanDoyus",
+    "meglubiyyetSayi",
+    "toplanmisResurs"
+  ];
+
+  for (const sahe of saheler) {
+    const deyer =
+      Number(state.oyuncuStatistikasi[sahe]);
+
+    state.oyuncuStatistikasi[sahe] =
+      Number.isFinite(deyer)
+        ? Math.max(0, Math.trunc(deyer))
+        : 0;
+  }
+}
+
+
 // ============================================================
 // BİNA ID TƏMİZLƏMƏ
 // ============================================================
@@ -3594,6 +3677,9 @@ function makeClientState(state) {
 
    // OYUNÇU GÜCÜNÜ HESABLA
   oyuncuGucunuYenile(state);
+  doyusStatistikasiniTeminEt(state);
+
+  oyuncuStatistikasiniTeminEt(state);
 
   // Missiya mükafatı state-ni yoxla.
   ensureMissionState(state);
@@ -3771,6 +3857,20 @@ function makeDefaultState(playerId) {
   binaGucu: 0,
   qosunGucu: 0,
   qehremanGucu: 0
+},
+    doyusStatistikasi: {
+  umumiDoyusler: 0,
+  qazanilanDoyusler: 0,
+  mehvedilenDusmenBirlikleri: 0,
+  itirilenOzBirlikleri: 0,
+  sagaldilanBirlikler: 0,
+  mehvedilenZombiler: 0
+},
+    oyuncuStatistikasi: {
+  mehvedilenDusmen: 0,
+  qazanilanDoyus: 0,
+  meglubiyyetSayi: 0,
+  toplanmisResurs: 0
 },
 
     resourceCaps: getBaseResourceCaps(),
