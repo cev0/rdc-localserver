@@ -1077,6 +1077,325 @@ function oyuncuStatusunuTeminEt(state) {
     : 0;
 }
 
+
+// ============================================================
+// OYUNÇU GÜC SİSTEMİ
+// Server-authoritative
+// ============================================================
+
+function oyuncuGucMelumatlariniTeminEt(state) {
+  if (!state || typeof state !== "object") {
+    return;
+  }
+
+  if (
+    !state.gucMelumatlari ||
+    typeof state.gucMelumatlari !== "object" ||
+    Array.isArray(state.gucMelumatlari)
+  ) {
+    state.gucMelumatlari = {
+      umumiGuc: 0,
+      binaGucu: 0,
+      qosunGucu: 0,
+      qehremanGucu: 0
+    };
+  }
+
+  const saheler = [
+    "umumiGuc",
+    "binaGucu",
+    "qosunGucu",
+    "qehremanGucu"
+  ];
+
+  for (const sahe of saheler) {
+    const deyer =
+      Number(state.gucMelumatlari[sahe]);
+
+    state.gucMelumatlari[sahe] =
+      Number.isFinite(deyer)
+        ? Math.max(0, Math.trunc(deyer))
+        : 0;
+  }
+}
+
+
+// ============================================================
+// BİNA ID NORMALİZASİYASI
+// ============================================================
+
+function gucUcunBinaIdNormallasdir(buildingId) {
+  return String(buildingId || "")
+    .trim()
+    .toLowerCase();
+}
+
+
+// ============================================================
+// BİR BİNANIN GÜCÜ
+// ============================================================
+
+function birBinaninGucunuHesabla(building) {
+  if (!building) {
+    return 0;
+  }
+
+  // Tikintisi tamamlanmayıbsa güc vermir.
+  if (!building.isCompleted) {
+    return 0;
+  }
+
+  const binaId =
+    gucUcunBinaIdNormallasdir(
+      building.buildingId
+    );
+
+  if (!binaId) {
+    return 0;
+  }
+
+  // Yol oyunçu gücünü artırmır.
+  if (binaId === "road") {
+    return 0;
+  }
+
+  const level =
+    Math.max(
+      1,
+      Math.trunc(
+        Number(building.level) || 1
+      )
+    );
+
+  let levelBasiGuc = 100;
+
+  switch (binaId) {
+    case "hq":
+      levelBasiGuc = 500;
+      break;
+
+    case "command_center":
+      levelBasiGuc = 250;
+      break;
+
+    case "fighter_camp":
+      levelBasiGuc = 200;
+      break;
+
+    case "shooter_camp":
+      levelBasiGuc = 200;
+      break;
+
+    case "vehicle_factory":
+      levelBasiGuc = 300;
+      break;
+
+    case "bunker":
+      levelBasiGuc = 250;
+      break;
+
+    case "heroes_hall":
+      levelBasiGuc = 200;
+      break;
+
+    default:
+      levelBasiGuc = 100;
+      break;
+  }
+
+  return levelBasiGuc * level;
+}
+
+
+// ============================================================
+// BÜTÜN BİNALARIN GÜCÜ
+// ============================================================
+
+function binaGucunuHesabla(state) {
+  if (
+    !state ||
+    !Array.isArray(state.buildings)
+  ) {
+    return 0;
+  }
+
+  let umumiBinaGucu = 0;
+
+  for (const building of state.buildings) {
+    umumiBinaGucu +=
+      birBinaninGucunuHesabla(building);
+  }
+
+  return Math.max(
+    0,
+    Math.trunc(umumiBinaGucu)
+  );
+}
+
+
+// ============================================================
+// BİR QOŞUN VAHİDİNİN GÜCÜ
+// ============================================================
+
+function birQosununGucunuAl(unitId) {
+  const id =
+    String(unitId || "")
+      .trim()
+      .toLowerCase();
+
+  const netice =
+    id.match(
+      /^(fighter|shooter|vehicle)_lv(\d+)$/
+    );
+
+  if (!netice) {
+    return 0;
+  }
+
+  const qosunNovu =
+    netice[1];
+
+  const level =
+    Math.max(
+      1,
+      Math.min(
+        10,
+        Math.trunc(
+          Number(netice[2]) || 1
+        )
+      )
+    );
+
+  let esasGuc = 0;
+
+  switch (qosunNovu) {
+    case "fighter":
+      esasGuc = 5;
+      break;
+
+    case "shooter":
+      esasGuc = 6;
+      break;
+
+    case "vehicle":
+      esasGuc = 20;
+      break;
+
+    default:
+      esasGuc = 0;
+      break;
+  }
+
+  return esasGuc * level;
+}
+
+
+// ============================================================
+// BÜTÜN QOŞUNLARIN GÜCÜ
+// ============================================================
+
+function qosunGucunuHesabla(state) {
+  if (
+    !state ||
+    !state.army ||
+    !state.army.troops ||
+    typeof state.army.troops !== "object"
+  ) {
+    return 0;
+  }
+
+  const troops =
+    state.army.troops;
+
+  let umumiQosunGucu = 0;
+
+  for (
+    const [unitId, rawCount]
+    of Object.entries(troops)
+  ) {
+    const say =
+      Math.max(
+        0,
+        Math.trunc(
+          Number(rawCount) || 0
+        )
+      );
+
+    if (say <= 0) {
+      continue;
+    }
+
+    const birEdedGuc =
+      birQosununGucunuAl(unitId);
+
+    umumiQosunGucu +=
+      birEdedGuc * say;
+  }
+
+  return Math.max(
+    0,
+    Math.trunc(umumiQosunGucu)
+  );
+}
+
+
+// ============================================================
+// QƏHRƏMAN GÜCÜ
+// Hero sistemi server state-ə tam qoşulanda genişləndiriləcək.
+// ============================================================
+
+function qehremanGucunuHesabla(state) {
+  return 0;
+}
+
+
+// ============================================================
+// OYUNÇUNUN BÜTÜN GÜCÜNÜ YENİLƏ
+// ============================================================
+
+function oyuncuGucunuYenile(state) {
+  if (!state || typeof state !== "object") {
+    return;
+  }
+
+  oyuncuStatusunuTeminEt(state);
+  oyuncuGucMelumatlariniTeminEt(state);
+
+  const binaGucu =
+    binaGucunuHesabla(state);
+
+  const qosunGucu =
+    qosunGucunuHesabla(state);
+
+  const qehremanGucu =
+    qehremanGucunuHesabla(state);
+
+  const umumiGuc =
+    Math.max(
+      0,
+      binaGucu +
+      qosunGucu +
+      qehremanGucu
+    );
+
+  state.gucMelumatlari.binaGucu =
+    binaGucu;
+
+  state.gucMelumatlari.qosunGucu =
+    qosunGucu;
+
+  state.gucMelumatlari.qehremanGucu =
+    qehremanGucu;
+
+  state.gucMelumatlari.umumiGuc =
+    umumiGuc;
+
+  // Köhnə sistemlərlə compatibility.
+  state.oyuncuStatusu.oyuncuGucu =
+    umumiGuc;
+}
+
+
 function getBaseResourceCaps() {
   return {
     food: 100000,
@@ -2954,6 +3273,9 @@ function makeClientState(state) {
   // Oyunçu status sahəsini yoxla.
   oyuncuStatusunuTeminEt(state);
 
+   // OYUNÇU GÜCÜNÜ HESABLA
+  oyuncuGucunuYenile(state);
+
   // Missiya mükafatı state-ni yoxla.
   ensureMissionState(state);
 
@@ -3124,6 +3446,13 @@ function makeDefaultState(playerId) {
       vipSeviyesi: 0,
       oyuncuGucu: 0
     },
+
+    gucMelumatlari: {
+  umumiGuc: 0,
+  binaGucu: 0,
+  qosunGucu: 0,
+  qehremanGucu: 0
+},
 
     resourceCaps: getBaseResourceCaps(),
     specialStats: getBaseSpecialStats(),
