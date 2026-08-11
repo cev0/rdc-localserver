@@ -195,6 +195,453 @@ function sifreDuzgundur(
 
 
 // ============================================================
+// EMAIL TƏSDİQ KONFİQURASİYASI
+// ============================================================
+
+const EMAIL_TESDIQ_KOD_MUDDETI_MS =
+    10 * 60 * 1000;
+
+const EMAIL_TESDIQ_YENIDEN_GONDERME_MS =
+    60 * 1000;
+
+const EMAIL_TESDIQ_MAKSIMUM_CEHD =
+    5;
+
+
+// ============================================================
+// 6 RƏQƏMLİ KOD YARAT
+// ============================================================
+
+function emailTesdiqKoduRandomYarat() {
+    return crypto
+        .randomInt(
+            0,
+            1000000
+        )
+        .toString()
+        .padStart(
+            6,
+            "0"
+        );
+}
+
+
+// ============================================================
+// KOD HASH
+// ------------------------------------------------------------
+// Kod özü hesablar.json daxilində saxlanmır.
+// ============================================================
+
+function emailTesdiqKoduHashYarat(
+    kod,
+    duz
+) {
+    return crypto
+        .scryptSync(
+            String(kod),
+            String(duz),
+            32
+        )
+        .toString("hex");
+}
+
+
+// ============================================================
+// YENİ TƏSDİQ KODU HAZIRLA
+// ============================================================
+
+function emailTesdiqKoduHazirla(
+    playerId
+) {
+    const hesab =
+        hesabPlayerIdIleTap(
+            playerId
+        );
+
+
+    if (!hesab) {
+        return {
+            success: false,
+            message:
+                "Bağlanmış hesab tapılmadı."
+        };
+    }
+
+
+    if (hesab.emailVerified === true) {
+        return {
+            success: true,
+            alreadyVerified: true,
+            message:
+                "E-poçt artıq təsdiqlənib.",
+
+            account:
+                clientHesabMelumati(
+                    hesab
+                )
+        };
+    }
+
+
+    const indi =
+        Date.now();
+
+
+    // --------------------------------------------------------
+    // SPAM / TƏKRAR GÖNDƏRMƏ BLOKU
+    // --------------------------------------------------------
+
+    const sonGonderilme =
+        Number(
+            hesab
+                .emailVerification
+                ?.lastSentAtMs || 0
+        );
+
+
+    if (
+        sonGonderilme > 0 &&
+        indi - sonGonderilme <
+            EMAIL_TESDIQ_YENIDEN_GONDERME_MS
+    ) {
+        const qalanMs =
+            EMAIL_TESDIQ_YENIDEN_GONDERME_MS -
+            (
+                indi -
+                sonGonderilme
+            );
+
+        return {
+            success: false,
+
+            message:
+                "Yeni kod göndərmək üçün bir qədər gözləyin.",
+
+            retryAfterSeconds:
+                Math.max(
+                    1,
+                    Math.ceil(
+                        qalanMs / 1000
+                    )
+                )
+        };
+    }
+
+
+    const kod =
+        emailTesdiqKoduRandomYarat();
+
+    const duz =
+        crypto
+            .randomBytes(16)
+            .toString("hex");
+
+    const kodHash =
+        emailTesdiqKoduHashYarat(
+            kod,
+            duz
+        );
+
+    const bitmeVaxti =
+        indi +
+        EMAIL_TESDIQ_KOD_MUDDETI_MS;
+
+
+    hesab.emailVerification = {
+        codeHash:
+            kodHash,
+
+        salt:
+            duz,
+
+        expiresAtMs:
+            bitmeVaxti,
+
+        attempts:
+            0,
+
+        lastSentAtMs:
+            indi
+    };
+
+
+    hesab.updatedAtMs =
+        indi;
+
+
+    hesablarYaddaSaxla();
+
+
+    return {
+        success: true,
+
+        alreadyVerified: false,
+
+        message:
+            "Təsdiq kodu hazırlandı.",
+
+        email:
+            hesab.primaryEmail,
+
+        kod:
+            kod,
+
+        expiresAtMs:
+            bitmeVaxti
+    };
+}
+
+
+// ============================================================
+// EMAIL TƏSDİQ KODUNU YOXLAMA
+// ============================================================
+
+function emailTesdiqKodunuYoxla(
+    playerId,
+    kod
+) {
+    const hesab =
+        hesabPlayerIdIleTap(
+            playerId
+        );
+
+
+    if (!hesab) {
+        return {
+            success: false,
+
+            message:
+                "Hesab tapılmadı."
+        };
+    }
+
+
+    if (hesab.emailVerified === true) {
+        return {
+            success: true,
+
+            alreadyVerified: true,
+
+            message:
+                "E-poçt artıq təsdiqlənib.",
+
+            account:
+                clientHesabMelumati(
+                    hesab
+                )
+        };
+    }
+
+
+    const temizKod =
+        String(kod || "")
+            .trim();
+
+
+    if (!/^\d{6}$/.test(temizKod)) {
+        return {
+            success: false,
+
+            message:
+                "6 rəqəmli təsdiq kodu daxil edin."
+        };
+    }
+
+
+    const tesdiq =
+        hesab.emailVerification;
+
+
+    if (
+        !tesdiq ||
+        typeof tesdiq !== "object"
+    ) {
+        return {
+            success: false,
+
+            message:
+                "Aktiv təsdiq kodu yoxdur. Yeni kod istəyin."
+        };
+    }
+
+
+    const indi =
+        Date.now();
+
+
+    if (
+        indi >
+        Number(
+            tesdiq.expiresAtMs || 0
+        )
+    ) {
+        delete hesab.emailVerification;
+
+        hesab.updatedAtMs =
+            indi;
+
+        hesablarYaddaSaxla();
+
+
+        return {
+            success: false,
+
+            expired: true,
+
+            message:
+                "Təsdiq kodunun vaxtı bitib. Yeni kod istəyin."
+        };
+    }
+
+
+    const cehdSayi =
+        Math.max(
+            0,
+            Math.trunc(
+                Number(
+                    tesdiq.attempts
+                ) || 0
+            )
+        );
+
+
+    if (
+        cehdSayi >=
+        EMAIL_TESDIQ_MAKSIMUM_CEHD
+    ) {
+        return {
+            success: false,
+
+            tooManyAttempts: true,
+
+            message:
+                "Çox sayda səhv cəhd edildi. Yeni kod istəyin."
+        };
+    }
+
+
+    let yeniHash;
+
+    try {
+        yeniHash =
+            emailTesdiqKoduHashYarat(
+                temizKod,
+                tesdiq.salt
+            );
+    }
+    catch {
+        return {
+            success: false,
+
+            message:
+                "Təsdiq kodu yoxlanıla bilmədi."
+        };
+    }
+
+
+    const saxlanmisBuffer =
+        Buffer.from(
+            String(
+                tesdiq.codeHash || ""
+            ),
+            "hex"
+        );
+
+    const yeniBuffer =
+        Buffer.from(
+            yeniHash,
+            "hex"
+        );
+
+
+    let kodDuzgundur =
+        false;
+
+
+    if (
+        saxlanmisBuffer.length ===
+        yeniBuffer.length &&
+        saxlanmisBuffer.length > 0
+    ) {
+        kodDuzgundur =
+            crypto.timingSafeEqual(
+                saxlanmisBuffer,
+                yeniBuffer
+            );
+    }
+
+
+    if (!kodDuzgundur) {
+        tesdiq.attempts =
+            cehdSayi + 1;
+
+        hesab.updatedAtMs =
+            indi;
+
+        hesablarYaddaSaxla();
+
+
+        return {
+            success: false,
+
+            attemptsRemaining:
+                Math.max(
+                    0,
+                    EMAIL_TESDIQ_MAKSIMUM_CEHD -
+                    tesdiq.attempts
+                ),
+
+            message:
+                "Təsdiq kodu yanlışdır."
+        };
+    }
+
+
+    // ========================================================
+    // UĞURLU TƏSDİQ
+    // ========================================================
+
+    hesab.emailVerified =
+        true;
+
+    hesab.updatedAtMs =
+        indi;
+
+    delete hesab.emailVerification;
+
+
+    hesablarYaddaSaxla();
+
+
+    console.log(
+        "[HESAB] E-poçt təsdiqləndi:",
+        {
+            playerId:
+                hesab.playerId,
+
+            email:
+                hesab.primaryEmail
+        }
+    );
+
+
+    return {
+        success: true,
+
+        alreadyVerified: false,
+
+        message:
+            "E-poçt uğurla təsdiqləndi.",
+
+        account:
+            clientHesabMelumati(
+                hesab
+            )
+    };
+}
+
+
+// ============================================================
 // DİSKDƏN YÜKLƏ
 // ============================================================
 
@@ -553,5 +1000,8 @@ module.exports = {
     hesabPlayerIdIleTap,
 
     hesabYaratVeBagla,
-    clientHesabMelumati
+    clientHesabMelumati,
+
+    emailTesdiqKoduHazirla,
+    emailTesdiqKodunuYoxla
 };
