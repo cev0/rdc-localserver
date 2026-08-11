@@ -27,7 +27,7 @@ const {
   clientHesabMelumati,
   emailTesdiqKoduHazirla,
   emailTesdiqKodunuYoxla
-} = require("./hesab_yaddasi");
+} = require("./hesab_yaddasi_postgres");
 
 const {
   tesdiqKoduEmailiGonder
