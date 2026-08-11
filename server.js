@@ -24,8 +24,14 @@ const path = require("path");
 const {
   hesabYaratVeBagla,
   hesabPlayerIdIleTap,
-  clientHesabMelumati
+  clientHesabMelumati,
+  emailTesdiqKoduHazirla,
+  emailTesdiqKodunuYoxla
 } = require("./hesab_yaddasi");
+
+const {
+  tesdiqKoduEmailiGonder
+} = require("./email_gonderici");
 
 // ============================================================
 // TEMP BUILDING LEVEL DATA
@@ -6238,7 +6244,7 @@ wss.on("connection", (ws, req) => {
     serverTimeUnixMs: nowMs()
   });
 
-  ws.on("message", (data) => {
+  ws.on("message", async (data) => {
     const text = data.toString();
     console.log("[SERVER RAW MESSAGE]", text);
 
@@ -7751,6 +7757,247 @@ case "account_info_request": {
 
   break;
 }
+
+
+// ========================================================
+// EMAIL TƏSDİQ KODU GÖNDƏR
+// ========================================================
+
+case "account_email_verification_send_request": {
+  const playerId =
+    ws._authedPlayerId;
+
+
+  if (!playerId) {
+    send(ws, {
+      type:
+        "account_email_verification_send_result",
+
+      success:
+        false,
+
+      message:
+        "Oyunçu autentifikasiya olunmayıb.",
+
+      serverTimeUnixMs:
+        nowMs()
+    });
+
+    break;
+  }
+
+
+  const netice =
+    emailTesdiqKoduHazirla(
+      playerId
+    );
+
+
+  if (!netice.success) {
+    send(ws, {
+      type:
+        "account_email_verification_send_result",
+
+      playerId:
+        playerId,
+
+      success:
+        false,
+
+      message:
+        netice.message || "",
+
+      retryAfterSeconds:
+        Number(
+          netice.retryAfterSeconds || 0
+        ),
+
+      serverTimeUnixMs:
+        nowMs()
+    });
+
+    break;
+  }
+
+
+  if (netice.alreadyVerified) {
+    send(ws, {
+      type:
+        "account_email_verification_send_result",
+
+      playerId:
+        playerId,
+
+      success:
+        true,
+
+      alreadyVerified:
+        true,
+
+      message:
+        netice.message,
+
+      serverTimeUnixMs:
+        nowMs()
+    });
+
+    break;
+  }
+
+
+  const emailNeticesi =
+    await tesdiqKoduEmailiGonder(
+      netice.email,
+      netice.kod
+    );
+
+
+  if (!emailNeticesi.success) {
+    send(ws, {
+      type:
+        "account_email_verification_send_result",
+
+      playerId:
+        playerId,
+
+      success:
+        false,
+
+      message:
+        emailNeticesi.message,
+
+      serverTimeUnixMs:
+        nowMs()
+    });
+
+    break;
+  }
+
+
+  send(ws, {
+    type:
+      "account_email_verification_send_result",
+
+    playerId:
+      playerId,
+
+    success:
+      true,
+
+    alreadyVerified:
+      false,
+
+    message:
+      "Təsdiq kodu e-poçt ünvanınıza göndərildi.",
+
+    expiresAtMs:
+      Number(
+        netice.expiresAtMs || 0
+      ),
+
+    serverTimeUnixMs:
+      nowMs()
+  });
+
+
+  break;
+}
+
+
+// ========================================================
+// EMAIL TƏSDİQ KODUNU YOXLAMA
+// ========================================================
+
+case "account_email_verification_confirm_request": {
+  const playerId =
+    ws._authedPlayerId;
+
+
+  if (!playerId) {
+    send(ws, {
+      type:
+        "account_email_verification_confirm_result",
+
+      success:
+        false,
+
+      message:
+        "Oyunçu autentifikasiya olunmayıb.",
+
+      emailVerified:
+        false,
+
+      serverTimeUnixMs:
+        nowMs()
+    });
+
+    break;
+  }
+
+
+  const kod =
+    typeof msg.kod === "string"
+      ? msg.kod.trim()
+      : "";
+
+
+  const netice =
+    emailTesdiqKodunuYoxla(
+      playerId,
+      kod
+    );
+
+
+  const hesab =
+    netice.account || null;
+
+
+  send(ws, {
+    type:
+      "account_email_verification_confirm_result",
+
+    playerId:
+      playerId,
+
+    success:
+      netice.success === true,
+
+    alreadyVerified:
+      netice.alreadyVerified === true,
+
+    expired:
+      netice.expired === true,
+
+    tooManyAttempts:
+      netice.tooManyAttempts === true,
+
+    attemptsRemaining:
+      Number(
+        netice.attemptsRemaining || 0
+      ),
+
+    message:
+      netice.message || "",
+
+    emailVerified:
+      Boolean(
+        hesab &&
+        hesab.emailVerified
+      ),
+
+    primaryEmail:
+      hesab
+        ? hesab.primaryEmail || ""
+        : "",
+
+    serverTimeUnixMs:
+      nowMs()
+  });
+
+
+  break;
+}
+
         
       case "player_name_change_request": {
         // Oyunçunun kimliyi yalnız autentifikasiya olunmuş WebSocket-dən götürülür.
