@@ -22,7 +22,9 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const {
-  hesabYaratVeBagla
+  hesabYaratVeBagla,
+  hesabPlayerIdIleTap,
+  clientHesabMelumati
 } = require("./hesab_yaddasi");
 
 // ============================================================
@@ -7541,7 +7543,214 @@ updateServerTime(state);
       }
 
 
+// ========================================================
+// HESAB MƏLUMATINI OXU
+// --------------------------------------------------------
+// Client yalnız sorğu göndərir.
+// Həqiqi playerId socket autentifikasiyasından götürülür.
+// ========================================================
 
+case "account_info_request": {
+  const playerId =
+    ws._authedPlayerId;
+
+
+  // -----------------------------------------------------
+  // 1. Autentifikasiya
+  // -----------------------------------------------------
+
+  if (!playerId) {
+    send(ws, {
+      type: "account_info_result",
+
+      playerId: null,
+
+      success: false,
+      isBound: false,
+
+      message:
+        "Oyunçu autentifikasiya olunmayıb.",
+
+      accountId: "",
+      primaryEmail: "",
+      secondaryEmail: "",
+      emailVerified: false,
+
+      serverTimeUnixMs:
+        nowMs()
+    });
+
+    break;
+  }
+
+
+  // -----------------------------------------------------
+  // 2. Client başqa playerId göndərə bilməz
+  // -----------------------------------------------------
+
+  if (
+    msg.playerId &&
+    typeof msg.playerId === "string" &&
+    msg.playerId !== playerId
+  ) {
+    send(ws, {
+      type: "account_info_result",
+
+      playerId:
+        playerId,
+
+      success: false,
+      isBound: false,
+
+      message:
+        "Oyunçu ID uyğun deyil.",
+
+      accountId: "",
+      primaryEmail: "",
+      secondaryEmail: "",
+      emailVerified: false,
+
+      serverTimeUnixMs:
+        nowMs()
+    });
+
+    break;
+  }
+
+
+  // -----------------------------------------------------
+  // 3. Hesabı tap
+  // -----------------------------------------------------
+
+  let hesab = null;
+
+  try {
+    const tapilanHesab =
+      hesabPlayerIdIleTap(
+        playerId
+      );
+
+    hesab =
+      tapilanHesab
+        ? clientHesabMelumati(
+            tapilanHesab
+          )
+        : null;
+  }
+  catch (xeta) {
+    console.error(
+      "[HESAB] Hesab məlumatı oxunarkən xəta:",
+      xeta
+    );
+
+    send(ws, {
+      type: "account_info_result",
+
+      playerId:
+        playerId,
+
+      success: false,
+      isBound: false,
+
+      message:
+        "Hesab məlumatı oxuna bilmədi.",
+
+      accountId: "",
+      primaryEmail: "",
+      secondaryEmail: "",
+      emailVerified: false,
+
+      serverTimeUnixMs:
+        nowMs()
+    });
+
+    break;
+  }
+
+
+  // -----------------------------------------------------
+  // 4. Oyun hesabı hələ bağlanmayıb
+  // -----------------------------------------------------
+
+  if (!hesab) {
+    send(ws, {
+      type: "account_info_result",
+
+      playerId:
+        playerId,
+
+      success: true,
+      isBound: false,
+
+      message:
+        "Oyun hesabı hələ bağlanmayıb.",
+
+      accountId: "",
+      primaryEmail: "",
+      secondaryEmail: "",
+      emailVerified: false,
+
+      serverTimeUnixMs:
+        nowMs()
+    });
+
+    break;
+  }
+
+
+  // -----------------------------------------------------
+  // 5. Bağlanmış hesab
+  // -----------------------------------------------------
+
+  send(ws, {
+    type: "account_info_result",
+
+    playerId:
+      playerId,
+
+    success:
+      true,
+
+    isBound:
+      true,
+
+    message:
+      "Hesab məlumatı alındı.",
+
+    accountId:
+      hesab.accountId || "",
+
+    primaryEmail:
+      hesab.primaryEmail || "",
+
+    secondaryEmail:
+      hesab.secondaryEmail || "",
+
+    emailVerified:
+      hesab.emailVerified === true,
+
+    serverTimeUnixMs:
+      nowMs()
+  });
+
+
+  console.log(
+    "[HESAB] Hesab məlumatı göndərildi:",
+    {
+      playerId:
+        playerId,
+
+      email:
+        hesab.primaryEmail || "",
+
+      emailVerified:
+        hesab.emailVerified === true
+    }
+  );
+
+
+  break;
+}
         
       case "player_name_change_request": {
         // Oyunçunun kimliyi yalnız autentifikasiya olunmuş WebSocket-dən götürülür.
