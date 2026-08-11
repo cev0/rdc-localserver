@@ -8,124 +8,102 @@ const {
     hovuzlariBagla
 } = require("./verilenler_bazasi");
 
+const MIQRASIYA_QOVLUGU =
+    path.join(__dirname, "miqrasiyalar");
 
-const MIQRASIYA_ADI =
-    "001_hesab_sistemi";
+function miqrasiyaFayllariniAl() {
+    if (!fs.existsSync(MIQRASIYA_QOVLUGU)) {
+        throw new Error("Miqrasiyalar qovluğu tapılmadı.");
+    }
 
-const MIQRASIYA_FAYLI =
-    path.join(
-        __dirname,
-        "miqrasiyalar",
-        "001_hesab_sistemi.sql"
-    );
+    return fs
+        .readdirSync(MIQRASIYA_QOVLUGU)
+        .filter((ad) => ad.toLowerCase().endsWith(".sql"))
+        .sort((a, b) => a.localeCompare(b));
+}
 
-
-async function miqrasiyaniBaslat()
-{
-    const hovuz =
-        adminHovuzunuAl();
-
-    const client =
-        await hovuz.connect();
-
+async function miqrasiyalariBaslat() {
+    const hovuz = adminHovuzunuAl();
+    const client = await hovuz.connect();
 
     try {
-        console.log(
-            "[DB_MIQ] Miqrasiya başlayır:",
-            MIQRASIYA_ADI
-        );
-
-
-        // Miqrasiya cədvəli yoxdursa əvvəl yaradırıq.
         await client.query(`
             CREATE TABLE IF NOT EXISTS miqrasiyalar (
                 ad TEXT PRIMARY KEY,
-                tetbiq_vaxti TIMESTAMPTZ
-                    NOT NULL
-                    DEFAULT NOW()
+                tetbiq_vaxti TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         `);
 
+        const fayllar = miqrasiyaFayllariniAl();
 
-        const yoxlama =
-            await client.query(
+        if (fayllar.length === 0) {
+            console.log("[DB_MIQ] Tətbiq ediləcək miqrasiya yoxdur.");
+            return;
+        }
+
+        console.log(
+            "[DB_MIQ] Miqrasiya faylları:",
+            fayllar.join(", ")
+        );
+
+        for (const faylAdi of fayllar) {
+            const miqrasiyaAdi = path.basename(faylAdi, ".sql");
+
+            const yoxlama = await client.query(
                 `
                 SELECT ad
                 FROM miqrasiyalar
                 WHERE ad = $1
                 LIMIT 1
                 `,
-                [
-                    MIQRASIYA_ADI
-                ]
+                [miqrasiyaAdi]
             );
 
+            if (yoxlama.rows && yoxlama.rows.length > 0) {
+                console.log(
+                    "[DB_MIQ] Artıq tətbiq olunub:",
+                    miqrasiyaAdi
+                );
+                continue;
+            }
 
-        if (
-            yoxlama.rows &&
-            yoxlama.rows.length > 0
-        ) {
+            const tamYol = path.join(MIQRASIYA_QOVLUGU, faylAdi);
+            const sql = fs.readFileSync(tamYol, "utf8");
+
+            if (!sql.trim()) {
+                throw new Error(
+                    `Miqrasiya SQL faylı boşdur: ${faylAdi}`
+                );
+            }
+
             console.log(
-                "[DB_MIQ] Bu miqrasiya artıq tətbiq olunub:",
-                MIQRASIYA_ADI
+                "[DB_MIQ] Miqrasiya başlayır:",
+                miqrasiyaAdi
             );
 
-            return;
-        }
+            await client.query(sql);
 
-
-        if (
-            !fs.existsSync(
-                MIQRASIYA_FAYLI
-            )
-        ) {
-            throw new Error(
-                "Miqrasiya SQL faylı tapılmadı."
-            );
-        }
-
-
-        const sql =
-            fs.readFileSync(
-                MIQRASIYA_FAYLI,
-                "utf8"
+            await client.query(
+                `
+                INSERT INTO miqrasiyalar (ad)
+                VALUES ($1)
+                `,
+                [miqrasiyaAdi]
             );
 
-
-        if (!sql.trim()) {
-            throw new Error(
-                "Miqrasiya SQL faylı boşdur."
+            console.log(
+                "[DB_MIQ] Miqrasiya uğurla tamamlandı:",
+                miqrasiyaAdi
             );
         }
 
-
-        await client.query(sql);
-
-
-        await client.query(
-            `
-            INSERT INTO miqrasiyalar (
-                ad
-            )
-            VALUES ($1)
-            `,
-            [
-                MIQRASIYA_ADI
-            ]
-        );
-
-
-        console.log(
-            "[DB_MIQ] Miqrasiya uğurla tamamlandı:",
-            MIQRASIYA_ADI
-        );
+        console.log("[DB_MIQ] Bütün miqrasiyalar yoxlanıldı.");
     }
     catch (xeta) {
         console.error(
             "[DB_MIQ] Miqrasiya uğursuz oldu:",
             xeta
         );
-
         process.exitCode = 1;
     }
     finally {
@@ -143,5 +121,4 @@ async function miqrasiyaniBaslat()
     }
 }
 
-
-miqrasiyaniBaslat();
+miqrasiyalariBaslat();
