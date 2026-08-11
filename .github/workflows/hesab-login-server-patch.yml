@@ -34,28 +34,39 @@ jobs:
           } = require("./hesab_login_handler");`;
 
           if (!server.includes('require("./hesab_login_handler")')) {
-            const marker = `const {
+            const importMarker = `const {
             tesdiqKoduEmailiGonder
           } = require("./email_gonderici");`;
 
-            if (!server.includes(marker)) {
+            if (!server.includes(importMarker)) {
               throw new Error("email_gonderici import marker-i tapilmadi");
             }
 
             server = server.replace(
-              marker,
-              marker + "\n\n" + importCode
+              importMarker,
+              importMarker + "\n\n" + importCode
             );
           }
 
           if (!server.includes("hesabLoginEmalOlundu")) {
-            const marker = `    const type = msg.type;
+            const typeMarker = "const type = msg.type;";
+            const typeIndex = server.indexOf(typeMarker);
 
-            switch (type) {`;
+            if (typeIndex < 0) {
+              throw new Error("const type = msg.type marker-i tapilmadi");
+            }
 
-            const replacement = `    const type = msg.type;
+            const switchMarker = "switch (type) {";
+            const switchIndex = server.indexOf(
+              switchMarker,
+              typeIndex + typeMarker.length
+            );
 
-            const hesabLoginEmalOlundu =
+            if (switchIndex < 0) {
+              throw new Error("switch (type) marker-i tapilmadi");
+            }
+
+            const daxilEt = `const hesabLoginEmalOlundu =
               await hesabLoginMesajiniEmalEt({
                 type,
                 msg,
@@ -74,21 +85,29 @@ jobs:
               return;
             }
 
-            switch (type) {`;
+            `;
 
-            if (!server.includes(marker)) {
-              throw new Error("switch type marker-i tapilmadi");
-            }
-
-            server = server.replace(marker, replacement);
+            server =
+              server.slice(0, switchIndex) +
+              daxilEt +
+              server.slice(switchIndex);
           }
 
           fs.writeFileSync(serverPath, server, "utf8");
 
-          const paket = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+          const paket = JSON.parse(
+            fs.readFileSync(packagePath, "utf8")
+          );
+
           paket.scripts = paket.scripts || {};
-          paket.scripts["server:login-test"] = "node server_hesab_login_testi.js";
-          fs.writeFileSync(packagePath, JSON.stringify(paket, null, 2) + "\n", "utf8");
+          paket.scripts["server:login-test"] =
+            "node server_hesab_login_testi.js";
+
+          fs.writeFileSync(
+            packagePath,
+            JSON.stringify(paket, null, 2) + "\n",
+            "utf8"
+          );
           NODE
 
       - name: Deyisiklikleri commit et
