@@ -21,6 +21,9 @@ const WebSocket = require("ws");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+const {
+  hesabYaratVeBagla
+} = require("./hesab_yaddasi");
 
 // ============================================================
 // TEMP BUILDING LEVEL DATA
@@ -7329,6 +7332,202 @@ updateServerTime(state);
         break;
       }
 
+
+      // ========================================================
+      // HESABI E-POÇTA BAĞLA
+      // --------------------------------------------------------
+      // Client:
+      // {
+      //   type: "account_bind_request",
+      //   playerId: "...",
+      //   email: "...",
+      //   sifre: "..."
+      // }
+      //
+      // Təhlükəsizlik:
+      // həqiqi playerId yalnız ws._authedPlayerId-dən götürülür.
+      // ========================================================
+
+      case "account_bind_request": {
+        const playerId =
+          ws._authedPlayerId;
+
+        // -----------------------------------------------
+        // 1. WebSocket autentifikasiya olunmayıb
+        // -----------------------------------------------
+
+        if (!playerId) {
+          send(ws, {
+            type: "account_bind_result",
+            playerId: null,
+            success: false,
+            message: "Oyunçu autentifikasiya olunmayıb.",
+            serverTimeUnixMs: nowMs()
+          });
+
+          break;
+        }
+
+
+        // -----------------------------------------------
+        // 2. Client başqa playerId göndərməyə çalışırsa
+        // blokla.
+        // -----------------------------------------------
+
+        if (
+          msg.playerId &&
+          typeof msg.playerId === "string" &&
+          msg.playerId !== playerId
+        ) {
+          send(ws, {
+            type: "account_bind_result",
+            playerId: playerId,
+            success: false,
+            message: "Oyunçu ID uyğun deyil.",
+            serverTimeUnixMs: nowMs()
+          });
+
+          break;
+        }
+
+
+        // -----------------------------------------------
+        // 3. Email
+        // -----------------------------------------------
+
+        const email =
+          typeof msg.email === "string"
+            ? msg.email.trim()
+            : "";
+
+
+        // -----------------------------------------------
+        // 4. Şifrə
+        // -----------------------------------------------
+
+        // Şifrəni trim ETMİRİK.
+        // İstifadəçinin daxil etdiyi şifrə olduğu kimi qalmalıdır.
+        const sifre =
+          typeof msg.sifre === "string"
+            ? msg.sifre
+            : "";
+
+
+        // -----------------------------------------------
+        // 5. Hesab moduluna ötür
+        // -----------------------------------------------
+
+        let netice;
+
+        try {
+          netice =
+            hesabYaratVeBagla(
+              playerId,
+              email,
+              sifre
+            );
+        }
+        catch (xeta) {
+          console.error(
+            "[HESAB] Hesab bağlama xətası:",
+            xeta
+          );
+
+          send(ws, {
+            type: "account_bind_result",
+            playerId: playerId,
+            success: false,
+            message:
+              "Hesab yaradılarkən server xətası baş verdi.",
+            serverTimeUnixMs: nowMs()
+          });
+
+          break;
+        }
+
+
+        // -----------------------------------------------
+        // 6. Uğursuz nəticə
+        // -----------------------------------------------
+
+        if (
+          !netice ||
+          netice.success !== true
+        ) {
+          send(ws, {
+            type: "account_bind_result",
+            playerId: playerId,
+            success: false,
+            message:
+              netice && netice.message
+                ? netice.message
+                : "Hesab bağlana bilmədi.",
+            serverTimeUnixMs: nowMs()
+          });
+
+          break;
+        }
+
+
+        // -----------------------------------------------
+        // 7. Client-ə təhlükəsiz hesab məlumatı
+        // -----------------------------------------------
+
+        const hesab =
+          netice.account || {};
+
+
+        send(ws, {
+          type: "account_bind_result",
+
+          playerId:
+            playerId,
+
+          success:
+            true,
+
+          message:
+            netice.message ||
+            "Hesab uğurla bağlandı.",
+
+          accountId:
+            hesab.accountId || "",
+
+          primaryEmail:
+            hesab.primaryEmail || "",
+
+          secondaryEmail:
+            hesab.secondaryEmail || "",
+
+          emailVerified:
+            hesab.emailVerified === true,
+
+          serverTimeUnixMs:
+            nowMs()
+        });
+
+
+        console.log(
+          "[HESAB] Account bind uğurlu:",
+          {
+            playerId:
+              playerId,
+
+            accountId:
+              hesab.accountId || "",
+
+            email:
+              hesab.primaryEmail || ""
+          }
+        );
+
+
+        break;
+      }
+
+
+
+        
       case "player_name_change_request": {
         // Oyunçunun kimliyi yalnız autentifikasiya olunmuş WebSocket-dən götürülür.
         const playerId = ws._authedPlayerId;
