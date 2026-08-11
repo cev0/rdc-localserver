@@ -33,6 +33,10 @@ const {
   tesdiqKoduEmailiGonder
 } = require("./email_gonderici");
 
+const {
+  hesabLoginMesajiniEmalEt
+} = require("./hesab_login_handler");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -6259,7 +6263,26 @@ wss.on("connection", (ws, req) => {
 
     const type = msg.type;
 
-    switch (type) {
+    const hesabLoginEmalOlundu =
+    await hesabLoginMesajiniEmalEt({
+      type,
+      msg,
+      ws,
+      send,
+      nowMs,
+      connections,
+      getOrCreatePlayerState,
+      updateServerTime,
+      makeClientState,
+      sendStateLocalMapToPlayer,
+      sendWorldMapToPlayer
+    });
+
+  if (hesabLoginEmalOlundu) {
+    return;
+  }
+
+  switch (type) {
 
 
 
