@@ -240,18 +240,28 @@ async function tesdiqKoduEmailiGonder(
     // Production-da EMAIL_DEV_LOG_CODE=false olmalıdır.
     // ========================================================
 
-    if (EMAIL_DEV_LOG_CODE) {
-        console.log(
-            "[EMAIL_DEV] Təsdiq kodu:",
-            {
-                email:
-                    temizEmail,
+if (EMAIL_DEV_LOG_CODE) {
+    console.log(
+        "[EMAIL_DEV] Təsdiq kodu:",
+        {
+            email:
+                temizEmail,
 
-                kod:
-                    temizKod
-            }
-        );
-    }
+            kod:
+                temizKod
+        }
+    );
+
+    // DEV rejimində real email göndərmirik.
+    // Server kodu Console-da göstərir və uğurlu sayır.
+    return {
+        success: true,
+        message:
+            "DEV rejimi: təsdiq kodu server loguna yazıldı.",
+        emailId:
+            "dev-test"
+    };
+}
 
 
     const html = `
