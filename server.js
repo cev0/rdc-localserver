@@ -7444,11 +7444,11 @@ updateServerTime(state);
 
         try {
           netice =
-            hesabYaratVeBagla(
-              playerId,
-              email,
-              sifre
-            );
+        await hesabYaratVeBagla(
+        playerId,
+        email,
+        sifre
+        );
         }
         catch (xeta) {
           console.error(
@@ -7632,9 +7632,9 @@ case "account_info_request": {
 
   try {
     const tapilanHesab =
-      hesabPlayerIdIleTap(
-        playerId
-      );
+  await hesabPlayerIdIleTap(
+    playerId
+  );
 
     hesab =
       tapilanHesab
@@ -7788,9 +7788,9 @@ case "account_email_verification_send_request": {
 
 
   const netice =
-    emailTesdiqKoduHazirla(
-      playerId
-    );
+  await emailTesdiqKoduHazirla(
+    playerId
+  );
 
 
   if (!netice.success) {
@@ -7808,9 +7808,11 @@ case "account_email_verification_send_request": {
         netice.message || "",
 
       retryAfterSeconds:
-        Number(
-          netice.retryAfterSeconds || 0
-        ),
+  Math.ceil(
+    Number(
+      netice.retryAfterMs || 0
+    ) / 1000
+  ),
 
       serverTimeUnixMs:
         nowMs()
@@ -7959,10 +7961,10 @@ case "account_email_verification_confirm_request": {
 
 
   const netice =
-    emailTesdiqKodunuYoxla(
-      playerId,
-      kod
-    );
+  await emailTesdiqKodunuYoxla(
+    playerId,
+    kod
+  );
 
 
   const hesab =
