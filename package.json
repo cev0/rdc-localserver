@@ -74,9 +74,10 @@
     "wrappy": "^1.0.2",
     "ws": "^8.19.0"
   },
-  "scripts": {
+"scripts": {
   "test": "echo \"Error: no test specified\" && exit 1",
   "db:test": "node verilenler_bazasi_testi.js",
+  "db:migrate": "node verilenler_bazasi_miqrasiya.js",
   "start": "node server.js"
 },
   "repository": {
