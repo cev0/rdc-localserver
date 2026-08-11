@@ -1,0 +1,102 @@
+name: Hesab Login Server Patch
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/hesab-login-server-patch.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  server-patch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repo-nu al
+        uses: actions/checkout@v4
+
+      - name: Login handler-i servere qos
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+
+          const serverPath = "server.js";
+          const packagePath = "package.json";
+
+          let server = fs.readFileSync(serverPath, "utf8");
+
+          const importCode = `const {
+            hesabLoginMesajiniEmalEt
+          } = require("./hesab_login_handler");`;
+
+          if (!server.includes('require("./hesab_login_handler")')) {
+            const marker = `const {
+            tesdiqKoduEmailiGonder
+          } = require("./email_gonderici");`;
+
+            if (!server.includes(marker)) {
+              throw new Error("email_gonderici import marker-i tapilmadi");
+            }
+
+            server = server.replace(
+              marker,
+              marker + "\n\n" + importCode
+            );
+          }
+
+          if (!server.includes("hesabLoginEmalOlundu")) {
+            const marker = `    const type = msg.type;
+
+            switch (type) {`;
+
+            const replacement = `    const type = msg.type;
+
+            const hesabLoginEmalOlundu =
+              await hesabLoginMesajiniEmalEt({
+                type,
+                msg,
+                ws,
+                send,
+                nowMs,
+                connections,
+                getOrCreatePlayerState,
+                updateServerTime,
+                makeClientState,
+                sendStateLocalMapToPlayer,
+                sendWorldMapToPlayer
+              });
+
+            if (hesabLoginEmalOlundu) {
+              return;
+            }
+
+            switch (type) {`;
+
+            if (!server.includes(marker)) {
+              throw new Error("switch type marker-i tapilmadi");
+            }
+
+            server = server.replace(marker, replacement);
+          }
+
+          fs.writeFileSync(serverPath, server, "utf8");
+
+          const paket = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+          paket.scripts = paket.scripts || {};
+          paket.scripts["server:login-test"] = "node server_hesab_login_testi.js";
+          fs.writeFileSync(packagePath, JSON.stringify(paket, null, 2) + "\n", "utf8");
+          NODE
+
+      - name: Deyisiklikleri commit et
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js package.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Integrate account login and session handlers"
+          git push
