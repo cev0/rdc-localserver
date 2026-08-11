@@ -1507,10 +1507,10 @@ function bazaMelumatlariniYenile(state) {
 
   bazaMelumatlariniTeminEt(state);
 
-  // ----------------------------------------------------------
+
+  // ========================================================
   // ÜMUMİ TİKİNTİ MAŞINLARI
-  // Mövcud builder slotlarının maksimum sayı.
-  // ----------------------------------------------------------
+  // ========================================================
 
   let umumiTikintiMasinlari = 0;
 
@@ -1530,86 +1530,100 @@ function bazaMelumatlariniYenile(state) {
     }
   }
 
-  // ----------------------------------------------------------
+
+  // ========================================================
   // ZİREHLİ MAŞINLAR
-  // ----------------------------------------------------------
+  // ========================================================
 
   const umumiZirehliMasinlar =
-    umumiZirehliMasinSayiniHesabla(state);
+    umumiZirehliMasinSayiniHesabla(
+      state
+    );
 
-  // ----------------------------------------------------------
+
+  // ========================================================
   // BÜTÜN QOŞUNLAR
-  // ----------------------------------------------------------
+  // ========================================================
 
   const umumiQosunSayi =
-    umumiQosunSayiniHesabla(state);
+    umumiQosunSayiniHesabla(
+      state
+    );
 
 
-  state.bazaMelumatlari.umumiTikintiMasinlari =
-    umumiTikintiMasinlari;
+  // ========================================================
+  // HOSPİTAL
+  // ========================================================
 
-  state.bazaMelumatlari.umumiZirehliMasinlar =
-    umumiZirehliMasinlar;
+  const hospitalTutumu =
+    hospitalTutumunuHesabla(
+      state
+    );
 
-  state.bazaMelumatlari.umumiQosunSayi =
-    umumiQosunSayi;
+  const yaraliBirlikler =
+    Math.max(
+      0,
+      Math.trunc(
+        Number(
+          state.bazaMelumatlari
+            .yaraliBirlikler
+        ) || 0
+      )
+    );
+
+
+  // ========================================================
+  // TOPLANIŞ LİMİTİ
+  // ========================================================
+
+  const toplanisLimiti =
+    toplanisLimitiniHesabla(
+      state
+    );
+
+
+  // ========================================================
+  // KÖMƏK TUTUMU
+  // ========================================================
+
+  const komekTutumu =
+    komekTutumunuHesabla(
+      state
+    );
+
+
+  // ========================================================
+  // STATE-Ə YAZ
+  // ========================================================
+
+  state.bazaMelumatlari
+    .umumiTikintiMasinlari =
+      umumiTikintiMasinlari;
+
+  state.bazaMelumatlari
+    .umumiZirehliMasinlar =
+      umumiZirehliMasinlar;
+
+  state.bazaMelumatlari
+    .umumiQosunSayi =
+      umumiQosunSayi;
+
+  state.bazaMelumatlari
+    .yaraliBirlikler =
+      yaraliBirlikler;
+
+  state.bazaMelumatlari
+    .hospitalTutumu =
+      hospitalTutumu;
+
+  state.bazaMelumatlari
+    .toplanisLimiti =
+      toplanisLimiti;
+
+  state.bazaMelumatlari
+    .komekTutumu =
+      komekTutumu;
 }
-
-
-// ----------------------------------------------------------
-// HOSPİTAL
-// ----------------------------------------------------------
-
-const hospitalTutumu =
-  hospitalTutumunuHesabla(state);
-
-const yaraliBirlikler =
-  Math.max(
-    0,
-    Math.trunc(
-      Number(
-        state.bazaMelumatlari.yaraliBirlikler
-      ) || 0
-    )
-  );
-
-
-// ----------------------------------------------------------
-// TOPLANIŞ LİMİTİ
-// ----------------------------------------------------------
-
-const toplanisLimiti =
-  toplanisLimitiniHesabla(state);
-
-
-// ----------------------------------------------------------
-// KÖMƏK TUTUMU
-// ----------------------------------------------------------
-
-const komekTutumu =
-  komekTutumunuHesabla(state);
-
-
-// ----------------------------------------------------------
-// STATE-Ə YAZ
-// ----------------------------------------------------------
-
-state.bazaMelumatlari.yaraliBirlikler =
-  yaraliBirlikler;
-
-state.bazaMelumatlari.hospitalTutumu =
-  hospitalTutumu;
-
-state.bazaMelumatlari.toplanisLimiti =
-  toplanisLimiti;
-
-state.bazaMelumatlari.komekTutumu =
-  komekTutumu;
-
-// ============================================================
-// OYUNÇU STATİSTİKASINI HAZIRLA
-// ============================================================
-
 function oyuncuStatistikasiniTeminEt(state) {
   if (!state || typeof state !== "object") {
     return;
