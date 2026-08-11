@@ -74,14 +74,17 @@
     "wrappy": "^1.0.2",
     "ws": "^8.19.0"
   },
+  
   "scripts": {
   "test": "echo \"Error: no test specified\" && exit 1",
   "db:test": "node verilenler_bazasi_testi.js",
   "db:migrate": "node verilenler_bazasi_miqrasiya.js",
   "db:hesab-test": "node hesab_db_testi.js",
   "db:hesab-modul-test": "node hesab_yaddasi_postgres_testi.js",
+  "db:email-test": "node email_tesdiq_postgres_testi.js",
   "start": "node server.js"
 },
+  
   "repository": {
     "type": "git",
     "url": "git+https://github.com/cev0/rdc-localserver.git"
