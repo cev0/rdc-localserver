@@ -4,6 +4,7 @@
   "description": "",
   "main": "server.js",
   "dependencies": {
+    "pg": "^8.22.0",
     "accepts": "^2.0.0",
     "body-parser": "^2.2.2",
     "bytes": "^3.1.2",
@@ -74,9 +75,10 @@
     "ws": "^8.19.0"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
-  },
+  "test": "echo \"Error: no test specified\" && exit 1",
+  "db:test": "node verilenler_bazasi_testi.js",
+  "start": "node server.js"
+},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/cev0/rdc-localserver.git"
