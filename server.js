@@ -7874,30 +7874,47 @@ case "account_email_verification_send_request": {
   }
 
 
-  send(ws, {
-    type:
-      "account_email_verification_send_result",
+  const devRejimi =
+  String(
+    process.env.EMAIL_DEV_LOG_CODE || ""
+  )
+    .trim()
+    .toLowerCase() === "true";
 
-    playerId:
-      playerId,
 
-    success:
-      true,
+send(ws, {
+  type:
+    "account_email_verification_send_result",
 
-    alreadyVerified:
-      false,
+  playerId:
+    playerId,
 
-    message:
-      "Təsdiq kodu e-poçt ünvanınıza göndərildi.",
+  success:
+    true,
 
-    expiresAtMs:
-      Number(
-        netice.expiresAtMs || 0
-      ),
+  alreadyVerified:
+    false,
 
-    serverTimeUnixMs:
-      nowMs()
-  });
+  message:
+    devRejimi
+      ? "DEV rejimi: təsdiq kodu yaradıldı."
+      : "Təsdiq kodu e-poçt ünvanınıza göndərildi.",
+
+  // YALNIZ DEV rejimində client-ə gedir.
+  // Production-da boş string olur.
+  devCode:
+    devRejimi
+      ? String(netice.kod || "")
+      : "",
+
+  expiresAtMs:
+    Number(
+      netice.expiresAtMs || 0
+    ),
+
+  serverTimeUnixMs:
+    nowMs()
+});
 
 
   break;
