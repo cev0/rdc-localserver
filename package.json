@@ -82,9 +82,10 @@
     "db:hesab-modul-test": "node hesab_yaddasi_postgres_testi.js",
     "db:email-test": "node email_tesdiq_postgres_testi.js",
     "db:hesab-kocur": "node hesablari_postgrese_kocur.js",
+    "db:sifre-reset-test": "node sifre_sifirlama_postgres_testi.js",
     "server:hesab-test": "node server_hesab_smoke_testi.js",
-    "start": "node server.js",
-    "server:login-test": "node server_hesab_login_testi.js"
+    "server:login-test": "node server_hesab_login_testi.js",
+    "start": "node server.js"
   },
   "repository": {
     "type": "git",
