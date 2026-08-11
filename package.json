@@ -82,6 +82,7 @@
   "db:hesab-test": "node hesab_db_testi.js",
   "db:hesab-modul-test": "node hesab_yaddasi_postgres_testi.js",
   "db:email-test": "node email_tesdiq_postgres_testi.js",
+  "db:hesab-kocur": "node hesablari_postgrese_kocur.js",
   "start": "node server.js"
 },
   
