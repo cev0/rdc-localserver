@@ -78,6 +78,7 @@
   "test": "echo \"Error: no test specified\" && exit 1",
   "db:test": "node verilenler_bazasi_testi.js",
   "db:migrate": "node verilenler_bazasi_miqrasiya.js",
+  "db:hesab-test": "node hesab_db_testi.js",
   "start": "node server.js"
 },
   "repository": {
