@@ -19,11 +19,12 @@ const {
 } = require("./hesab_cihaz_pin_qoruma");
 
 function metnAl(deyer, maksimum = 512) {
-  if (typeof deyer !== "string") return "";
-  return deyer.trim().slice(0, maksimum);
+  return typeof deyer === "string"
+    ? deyer.trim().slice(0, maksimum)
+    : "";
 }
 
-function socketiOyuncuyaBagla(ws, playerId, sessiyaId, connections) {
+function socketiBagla(ws, connections, playerId, sessiyaId = null) {
   const kohnePlayerId = metnAl(ws && ws._authedPlayerId, 128);
 
   if (
@@ -101,27 +102,21 @@ function oyunStateGonder(kontekst, playerId) {
 }
 
 function cihazPinTelebiGonder(kontekst, challenge) {
-  const { ws, send, nowMs } = kontekst;
-
-  send(ws, {
+  kontekst.send(kontekst.ws, {
     type: "account_device_pin_required",
     success: false,
     pinRequired: true,
-    challengeId: challenge && challenge.challengeId
-      ? challenge.challengeId
-      : "",
-    reason: challenge && challenge.reason
-      ? challenge.reason
-      : "login",
+    challengeId: challenge && challenge.challengeId || "",
+    reason: challenge && challenge.reason || "login",
     expiresAtMs: Number(challenge && challenge.expiresAtMs || 0),
     message: challenge && challenge.message
       ? challenge.message
       : "Bu cihaz üçün PIN təsdiqi tələb olunur.",
-    serverTimeUnixMs: nowMs()
+    serverTimeUnixMs: kontekst.nowMs()
   });
 }
 
-async function hesabInfoSorqusunuEmalEt(kontekst) {
+async function hesabInfo(kontekst) {
   const { ws, send, nowMs } = kontekst;
   const playerId = metnAl(ws && ws._authedPlayerId, 128);
 
@@ -145,17 +140,14 @@ async function hesabInfoSorqusunuEmalEt(kontekst) {
       success: netice && netice.success === true,
       linked: netice && netice.linked === true,
       playerId,
-      account: netice && netice.account ? netice.account : null,
+      account: netice && netice.account || null,
       providerConfig: provayderKonfiqurasiyaStatusu(),
-      message: netice && netice.message
-        ? netice.message
-        : "Hesab məlumatı alına bilmədi.",
+      message: netice && netice.message || "Hesab məlumatı alına bilmədi.",
       serverTimeUnixMs: nowMs()
     });
   }
   catch (xeta) {
     console.error("[HESAB_INFO] Server xətası:", xeta);
-
     send(ws, {
       type: "account_info_result",
       success: false,
@@ -170,14 +162,8 @@ async function hesabInfoSorqusunuEmalEt(kontekst) {
   return true;
 }
 
-async function yeniOyunSorqusunuEmalEt(kontekst) {
-  const {
-    ws,
-    send,
-    nowMs,
-    connections
-  } = kontekst;
-
+async function yeniOyun(kontekst) {
+  const { ws, send, nowMs, connections } = kontekst;
   const kohnePlayerId = metnAl(ws && ws._authedPlayerId, 128);
 
   if (!kohnePlayerId) {
@@ -196,13 +182,7 @@ async function yeniOyunSorqusunuEmalEt(kontekst) {
     }
 
     const yeniPlayerId = yeniGuestPlayerIdYarat();
-
-    socketiOyuncuyaBagla(
-      ws,
-      yeniPlayerId,
-      null,
-      connections
-    );
+    socketiBagla(ws, connections, yeniPlayerId, null);
 
     send(ws, {
       type: "account_new_game_result",
@@ -216,15 +196,9 @@ async function yeniOyunSorqusunuEmalEt(kontekst) {
     });
 
     oyunStateGonder(kontekst, yeniPlayerId);
-
-    console.log("[YENI_OYUN] Yeni guest oyun yaradıldı:", {
-      previousPlayerId: kohnePlayerId,
-      newPlayerId: yeniPlayerId
-    });
   }
   catch (xeta) {
     console.error("[YENI_OYUN] Server xətası:", xeta);
-
     send(ws, {
       type: "account_new_game_result",
       success: false,
@@ -236,63 +210,31 @@ async function yeniOyunSorqusunuEmalEt(kontekst) {
   return true;
 }
 
-async function provayderLoginSorqusunuEmalEt(kontekst) {
-  const {
-    msg,
-    ws,
-    send,
-    nowMs,
-    connections
-  } = kontekst;
-
-  const provayder = metnAl(msg && msg.provider, 32).toLowerCase();
+async function provayderLogin(kontekst) {
+  const { msg, ws, send, nowMs, connections } = kontekst;
+  const provider = metnAl(msg && msg.provider, 32).toLowerCase();
   const cihazId = metnAl(msg && msg.cihazId, 128);
   const kohnePlayerId = metnAl(ws && ws._authedPlayerId, 128);
   const kohneAuthKind = metnAl(ws && ws._authKind, 32);
   const kohneSessiyaId = metnAl(ws && ws._accountSessionId, 128);
 
-  let yoxlama;
-
   try {
-    yoxlama = await provayderMelumatiniYoxla(
-      provayder,
-      msg || {}
-    );
-  }
-  catch (xeta) {
-    console.error("[PROVAYDER_LOGIN] Token yoxlama xətası:", xeta);
+    const yoxlama = await provayderMelumatiniYoxla(provider, msg || {});
 
-    send(ws, {
-      type: "account_provider_login_result",
-      success: false,
-      provider: provayder,
-      message: "Provayder giriş yoxlaması zamanı server xətası baş verdi.",
-      serverTimeUnixMs: nowMs()
-    });
+    if (!yoxlama || yoxlama.success !== true) {
+      send(ws, {
+        type: "account_provider_login_result",
+        success: false,
+        provider,
+        notConfigured: yoxlama && yoxlama.notConfigured === true,
+        temporary: yoxlama && yoxlama.temporary === true,
+        message: yoxlama && yoxlama.message || "Provayder giriş məlumatı təsdiqlənmədi.",
+        serverTimeUnixMs: nowMs()
+      });
+      return true;
+    }
 
-    return true;
-  }
-
-  if (!yoxlama || yoxlama.success !== true) {
-    send(ws, {
-      type: "account_provider_login_result",
-      success: false,
-      provider: provayder,
-      notConfigured: yoxlama && yoxlama.notConfigured === true,
-      temporary: yoxlama && yoxlama.temporary === true,
-      message: yoxlama && yoxlama.message
-        ? yoxlama.message
-        : "Provayder giriş məlumatı təsdiqlənmədi.",
-      serverTimeUnixMs: nowMs()
-    });
-
-    return true;
-  }
-
-  let hazirliq;
-
-  try {
-    hazirliq = await provayderLoginHesabiniHazirla({
+    const hazirliq = await provayderLoginHesabiniHazirla({
       provider: yoxlama.provider,
       providerUserId: yoxlama.providerUserId,
       email: yoxlama.email,
@@ -302,41 +244,23 @@ async function provayderLoginSorqusunuEmalEt(kontekst) {
       currentAuthKind: kohneAuthKind,
       mode: "login"
     });
-  }
-  catch (xeta) {
-    console.error("[PROVAYDER_LOGIN] Hesab hazırlama xətası:", xeta);
 
-    send(ws, {
-      type: "account_provider_login_result",
-      success: false,
-      provider: provayder,
-      message: "Provayder hesabı hazırlanarkən server xətası baş verdi.",
-      serverTimeUnixMs: nowMs()
-    });
+    if (!hazirliq || hazirliq.success !== true || !hazirliq.rawAccount) {
+      send(ws, {
+        type: "account_provider_login_result",
+        success: false,
+        provider,
+        message: hazirliq && hazirliq.message || "Provayder hesabı açıla bilmədi.",
+        serverTimeUnixMs: nowMs()
+      });
+      return true;
+    }
 
-    return true;
-  }
-
-  if (!hazirliq || hazirliq.success !== true || !hazirliq.rawAccount) {
-    send(ws, {
-      type: "account_provider_login_result",
-      success: false,
-      provider: provayder,
-      message: hazirliq && hazirliq.message
-        ? hazirliq.message
-        : "Provayder hesabı açıla bilmədi.",
-      serverTimeUnixMs: nowMs()
-    });
-
-    return true;
-  }
-
-  const hedefHesab = hazirliq.rawAccount;
-
-  try {
     if (kohneSessiyaId) {
       await sessiyaniIdIleLegvEt(kohneSessiyaId);
     }
+
+    const hedefHesab = hazirliq.rawAccount;
 
     if (await hesabUcunPinTelebiLazimdir(hedefHesab, cihazId)) {
       const challenge = await cihazPinSorqusuYarat(
@@ -349,21 +273,14 @@ async function provayderLoginSorqusunuEmalEt(kontekst) {
         send(ws, {
           type: "account_provider_login_result",
           success: false,
-          provider: provayder,
-          message: challenge && challenge.message
-            ? challenge.message
-            : "Cihaz PIN yoxlaması başlana bilmədi.",
+          provider,
+          message: challenge && challenge.message || "Cihaz PIN yoxlaması başlana bilmədi.",
           serverTimeUnixMs: nowMs()
         });
         return true;
       }
 
-      socketiPinGozlemeyeAl(
-        ws,
-        connections,
-        challenge.challengeId
-      );
-
+      socketiPinGozlemeyeAl(ws, connections, challenge.challengeId);
       cihazPinTelebiGonder(kontekst, challenge);
       return true;
     }
@@ -371,17 +288,15 @@ async function provayderLoginSorqusunuEmalEt(kontekst) {
     const sessiyaNeticesi = await provayderSessiyasiYarat(
       hedefHesab,
       cihazId,
-      provayder
+      provider
     );
 
     if (!sessiyaNeticesi || sessiyaNeticesi.success !== true) {
       send(ws, {
         type: "account_provider_login_result",
         success: false,
-        provider: provayder,
-        message: sessiyaNeticesi && sessiyaNeticesi.message
-          ? sessiyaNeticesi.message
-          : "Provayder sessiyası yaradıla bilmədi.",
+        provider,
+        message: sessiyaNeticesi && sessiyaNeticesi.message || "Provayder sessiyası yaradıla bilmədi.",
         serverTimeUnixMs: nowMs()
       });
       return true;
@@ -395,24 +310,19 @@ async function provayderLoginSorqusunuEmalEt(kontekst) {
       send(ws, {
         type: "account_provider_login_result",
         success: false,
-        provider: provayder,
+        provider,
         message: "Provayder hesabının oyunçu ID-si tapılmadı.",
         serverTimeUnixMs: nowMs()
       });
       return true;
     }
 
-    socketiOyuncuyaBagla(
-      ws,
-      playerId,
-      sessiya.sessionId,
-      connections
-    );
+    socketiBagla(ws, connections, playerId, sessiya.sessionId);
 
     send(ws, {
       type: "account_provider_login_result",
       success: true,
-      provider: provayder,
+      provider,
       isNewAccount: hazirliq.isNewAccount === true,
       guestProgressBound: hazirliq.linked === true,
       playerId,
@@ -430,12 +340,11 @@ async function provayderLoginSorqusunuEmalEt(kontekst) {
     oyunStateGonder(kontekst, playerId);
   }
   catch (xeta) {
-    console.error("[PROVAYDER_LOGIN] Sessiya/PIN xətası:", xeta);
-
+    console.error("[PROVAYDER_LOGIN] Server xətası:", xeta);
     send(ws, {
       type: "account_provider_login_result",
       success: false,
-      provider: provayder,
+      provider,
       message: "Provayder girişinin tamamlanması zamanı server xətası baş verdi.",
       serverTimeUnixMs: nowMs()
     });
@@ -447,17 +356,9 @@ async function provayderLoginSorqusunuEmalEt(kontekst) {
 async function hesabElaveMesajiniEmalEt(kontekst) {
   const type = metnAl(kontekst && kontekst.type, 128);
 
-  if (type === "account_info_request") {
-    return await hesabInfoSorqusunuEmalEt(kontekst);
-  }
-
-  if (type === "account_new_game_request") {
-    return await yeniOyunSorqusunuEmalEt(kontekst);
-  }
-
-  if (type === "account_provider_login_request") {
-    return await provayderLoginSorqusunuEmalEt(kontekst);
-  }
+  if (type === "account_info_request") return await hesabInfo(kontekst);
+  if (type === "account_new_game_request") return await yeniOyun(kontekst);
+  if (type === "account_provider_login_request") return await provayderLogin(kontekst);
 
   return false;
 }
