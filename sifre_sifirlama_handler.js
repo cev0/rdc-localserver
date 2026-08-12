@@ -11,6 +11,10 @@ const {
     sifreSifirlamaKoduEmailiGonder
 } = require("./sifre_sifirlama_email_gonderici");
 
+const {
+    hesabPinMesajiniEmalEt
+} = require("./hesab_pin_handler");
+
 function metnAl(deyer) {
     return typeof deyer === "string" ? deyer.trim() : "";
 }
@@ -23,6 +27,13 @@ async function sifreSifirlamaMesajiniEmalEt(kontekst) {
         send,
         nowMs
     } = kontekst;
+
+    const pinEmalOlundu =
+        await hesabPinMesajiniEmalEt(kontekst);
+
+    if (pinEmalOlundu) {
+        return true;
+    }
 
     if (type === "account_password_reset_send_request") {
         const email = metnAl(msg.email);
