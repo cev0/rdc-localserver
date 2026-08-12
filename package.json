@@ -86,6 +86,7 @@
     "server:hesab-test": "node server_hesab_smoke_testi.js",
     "server:login-test": "node server_hesab_login_testi.js",
     "server:sifre-reset-test": "node server_sifre_reset_smoke_testi.js",
+    "hesab:yoxla": "node hesab_db_yoxla.js",
     "start": "node server.js"
   },
   "repository": {
