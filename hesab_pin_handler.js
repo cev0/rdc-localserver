@@ -20,6 +20,17 @@ const {
   hesabiSil
 } = require("./hesab_silme_postgres");
 
+const {
+  pinBerpaKodunuHazirla,
+  pinBerpaSorqusunuLegvEt,
+  pinBerpaKodunuYoxla,
+  pinBerpasiniTamamla
+} = require("./hesab_pin_berpa_postgres");
+
+const {
+  pinBerpaKoduEmailiGonder
+} = require("./hesab_pin_berpa_email_gonderici");
+
 function metnAl(deyer) {
   return typeof deyer === "string" ? deyer.trim() : "";
 }
@@ -86,6 +97,168 @@ async function hesabPinMesajiniEmalEt(kontekst) {
   }
 
   const playerId = metnAl(ws._authedPlayerId);
+
+  if (type === "account_pin_recovery_send_request") {
+    let netice;
+
+    try {
+      netice = await pinBerpaKodunuHazirla(playerId);
+
+      if (
+        netice &&
+        netice.success === true &&
+        netice.emailGonderilmeli === true &&
+        netice.email &&
+        netice.kod
+      ) {
+        const emailNeticesi =
+          await pinBerpaKoduEmailiGonder(
+            netice.email,
+            netice.kod
+          );
+
+        if (!emailNeticesi || emailNeticesi.success !== true) {
+          try {
+            await pinBerpaSorqusunuLegvEt(
+              netice.sorquId
+            );
+          }
+          catch {
+          }
+
+          send(ws, {
+            type: "account_pin_recovery_send_result",
+            success: false,
+            hasPin: true,
+            recoveryRequestId: "",
+            maskedEmail: netice.maskedEmail || "",
+            message: emailNeticesi && emailNeticesi.message
+              ? emailNeticesi.message
+              : "PIN bərpa kodu e-poçta göndərilə bilmədi.",
+            serverTimeUnixMs: nowMs()
+          });
+
+          return true;
+        }
+      }
+
+      send(ws, {
+        type: "account_pin_recovery_send_result",
+        success: netice && netice.success === true,
+        hasPin: netice && netice.hasPin === true,
+        cooldown: netice && netice.cooldown === true,
+        retryAfterSeconds: netice && netice.retryAfterMs
+          ? Math.max(1, Math.ceil(Number(netice.retryAfterMs) / 1000))
+          : 0,
+        recoveryRequestId: netice && netice.sorquId
+          ? netice.sorquId
+          : "",
+        maskedEmail: netice && netice.maskedEmail
+          ? netice.maskedEmail
+          : "",
+        expiresAtMs: Number(netice && netice.expiresAtMs || 0),
+        message: netice && netice.message
+          ? netice.message
+          : "PIN bərpa sorğusu tamamlandı.",
+        serverTimeUnixMs: nowMs()
+      });
+    }
+    catch (xeta) {
+      console.error("[PIN_BERPA] Kod göndərmə xətası:", xeta);
+
+      send(ws, {
+        type: "account_pin_recovery_send_result",
+        success: false,
+        hasPin: true,
+        recoveryRequestId: "",
+        message: "PIN bərpa kodu hazırlanarkən server xətası baş verdi.",
+        serverTimeUnixMs: nowMs()
+      });
+    }
+
+    return true;
+  }
+
+  if (type === "account_pin_recovery_verify_request") {
+    try {
+      const netice = await pinBerpaKodunuYoxla(
+        playerId,
+        metnAl(msg.recoveryRequestId),
+        metnAl(msg.kod)
+      );
+
+      send(ws, {
+        type: "account_pin_recovery_verify_result",
+        success: netice && netice.success === true,
+        attemptsRemaining: Number(netice && netice.attemptsRemaining || 0),
+        expired: netice && netice.expired === true,
+        tooManyAttempts: netice && netice.tooManyAttempts === true,
+        resetToken: netice && netice.success === true
+          ? netice.resetToken || ""
+          : "",
+        expiresAtMs: Number(netice && netice.expiresAtMs || 0),
+        message: netice && netice.message
+          ? netice.message
+          : "PIN bərpa kodu yoxlanmadı.",
+        serverTimeUnixMs: nowMs()
+      });
+    }
+    catch (xeta) {
+      console.error("[PIN_BERPA] Kod yoxlama xətası:", xeta);
+
+      send(ws, {
+        type: "account_pin_recovery_verify_result",
+        success: false,
+        resetToken: "",
+        message: "PIN bərpa kodu yoxlanarkən server xətası baş verdi.",
+        serverTimeUnixMs: nowMs()
+      });
+    }
+
+    return true;
+  }
+
+  if (type === "account_pin_recovery_complete_request") {
+    try {
+      const netice = await pinBerpasiniTamamla(
+        playerId,
+        metnAl(msg.resetToken),
+        metnAl(msg.newPin),
+        metnAl(ws._accountSessionId)
+      );
+
+      if (netice && netice.success === true) {
+        await cihaziEtibarliEtPlayerIdIle(
+          playerId,
+          metnAl(msg.cihazId)
+        );
+      }
+
+      send(ws, {
+        type: "account_pin_recovery_complete_result",
+        success: netice && netice.success === true,
+        hasPin: netice && netice.hasPin === true,
+        expired: netice && netice.expired === true,
+        message: netice && netice.message
+          ? netice.message
+          : "PIN yenilənə bilmədi.",
+        serverTimeUnixMs: nowMs()
+      });
+    }
+    catch (xeta) {
+      console.error("[PIN_BERPA] Tamamlama xətası:", xeta);
+
+      send(ws, {
+        type: "account_pin_recovery_complete_result",
+        success: false,
+        hasPin: true,
+        message: "PIN yenilənərkən server xətası baş verdi.",
+        serverTimeUnixMs: nowMs()
+      });
+    }
+
+    return true;
+  }
 
   if (type === "account_pin_sensitive_authorize_request") {
     try {
