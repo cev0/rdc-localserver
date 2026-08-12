@@ -18,10 +18,22 @@ const {
   cihazPinSorqusuYarat
 } = require("./hesab_cihaz_pin_qoruma");
 
+const ELAVE_HESAB_MESAJLARI = new Set([
+  "account_info_request",
+  "account_new_game_request",
+  "account_provider_login_request"
+]);
+
 function metnAl(deyer, maksimum = 512) {
   return typeof deyer === "string"
     ? deyer.trim().slice(0, maksimum)
     : "";
+}
+
+function yeniOyunTesdiqiDuzgundur(deyer) {
+  return metnAl(deyer, 64)
+    .toUpperCase()
+    .replace(/İ/g, "I") === "YENI_OYUN";
 }
 
 function socketiBagla(ws, connections, playerId, sessiyaId = null) {
@@ -116,6 +128,29 @@ function cihazPinTelebiGonder(kontekst, challenge) {
   });
 }
 
+function pinGozlemeBloku(kontekst, type) {
+  const { ws, send, nowMs } = kontekst;
+
+  if (
+    !ELAVE_HESAB_MESAJLARI.has(type) ||
+    !ws ||
+    ws._authKind !== "pin_pending"
+  ) {
+    return false;
+  }
+
+  send(ws, {
+    type: "account_device_pin_required",
+    success: false,
+    pinRequired: true,
+    challengeId: ws._pendingPinChallengeId || "",
+    message: "Oyuna davam etmək üçün PIN təsdiqi tələb olunur.",
+    serverTimeUnixMs: nowMs()
+  });
+
+  return true;
+}
+
 async function hesabInfo(kontekst) {
   const { ws, send, nowMs } = kontekst;
   const playerId = metnAl(ws && ws._authedPlayerId, 128);
@@ -125,6 +160,16 @@ async function hesabInfo(kontekst) {
       type: "account_info_result",
       success: false,
       linked: false,
+      isBound: false,
+      playerId: null,
+      accountId: "",
+      primaryEmail: "",
+      secondaryEmail: "",
+      emailVerified: false,
+      hasPassword: false,
+      hasPin: false,
+      providers: [],
+      account: null,
       providerConfig: provayderKonfiqurasiyaStatusu(),
       message: "Hesab məlumatı üçün autentifikasiya tələb olunur.",
       serverTimeUnixMs: nowMs()
@@ -134,13 +179,27 @@ async function hesabInfo(kontekst) {
 
   try {
     const netice = await hesabMelumatiniPlayerIdIleAl(playerId);
+    const baglidir = netice && netice.linked === true;
+    const hesab = baglidir && netice.account
+      ? netice.account
+      : null;
 
     send(ws, {
       type: "account_info_result",
       success: netice && netice.success === true,
-      linked: netice && netice.linked === true,
+      linked: baglidir,
+      isBound: baglidir,
       playerId,
-      account: netice && netice.account || null,
+      accountId: hesab && hesab.accountId || "",
+      primaryEmail: hesab && hesab.primaryEmail || "",
+      secondaryEmail: hesab && hesab.secondaryEmail || "",
+      emailVerified: hesab && hesab.emailVerified === true,
+      hasPassword: hesab && hesab.hasPassword === true,
+      hasPin: hesab && hesab.hasPin === true,
+      providers: hesab && Array.isArray(hesab.providers)
+        ? hesab.providers
+        : [],
+      account: hesab,
       providerConfig: provayderKonfiqurasiyaStatusu(),
       message: netice && netice.message || "Hesab məlumatı alına bilmədi.",
       serverTimeUnixMs: nowMs()
@@ -148,11 +207,21 @@ async function hesabInfo(kontekst) {
   }
   catch (xeta) {
     console.error("[HESAB_INFO] Server xətası:", xeta);
+
     send(ws, {
       type: "account_info_result",
       success: false,
       linked: false,
+      isBound: false,
       playerId,
+      accountId: "",
+      primaryEmail: "",
+      secondaryEmail: "",
+      emailVerified: false,
+      hasPassword: false,
+      hasPin: false,
+      providers: [],
+      account: null,
       providerConfig: provayderKonfiqurasiyaStatusu(),
       message: "Hesab məlumatı oxunarkən server xətası baş verdi.",
       serverTimeUnixMs: nowMs()
@@ -163,7 +232,7 @@ async function hesabInfo(kontekst) {
 }
 
 async function yeniOyun(kontekst) {
-  const { ws, send, nowMs, connections } = kontekst;
+  const { msg, ws, send, nowMs, connections } = kontekst;
   const kohnePlayerId = metnAl(ws && ws._authedPlayerId, 128);
 
   if (!kohnePlayerId) {
@@ -171,6 +240,17 @@ async function yeniOyun(kontekst) {
       type: "account_new_game_result",
       success: false,
       message: "Yeni oyun başlatmaq üçün aktiv oyun sessiyası tələb olunur.",
+      serverTimeUnixMs: nowMs()
+    });
+    return true;
+  }
+
+  if (!yeniOyunTesdiqiDuzgundur(msg && msg.confirmation)) {
+    send(ws, {
+      type: "account_new_game_result",
+      success: false,
+      confirmationRequired: true,
+      message: "Yeni oyun yaratmaq üçün təhlükəsizlik təsdiqi tələb olunur.",
       serverTimeUnixMs: nowMs()
     });
     return true;
@@ -191,14 +271,20 @@ async function yeniOyun(kontekst) {
       playerId: yeniPlayerId,
       guest: true,
       clearStoredSession: true,
-      message: "Yeni oyun yaradıldı. Əvvəlki hesab və tərəqqi silinmədi.",
+      message: "Yeni oyun yaradıldı. Əvvəlki hesab və server tərəqqisi silinmədi.",
       serverTimeUnixMs: nowMs()
     });
 
     oyunStateGonder(kontekst, yeniPlayerId);
+
+    console.log("[YENI_OYUN] Yeni guest oyun yaradıldı:", {
+      previousPlayerId: kohnePlayerId,
+      newPlayerId: yeniPlayerId
+    });
   }
   catch (xeta) {
     console.error("[YENI_OYUN] Server xətası:", xeta);
+
     send(ws, {
       type: "account_new_game_result",
       success: false,
@@ -254,10 +340,6 @@ async function provayderLogin(kontekst) {
         serverTimeUnixMs: nowMs()
       });
       return true;
-    }
-
-    if (kohneSessiyaId) {
-      await sessiyaniIdIleLegvEt(kohneSessiyaId);
     }
 
     const hedefHesab = hazirliq.rawAccount;
@@ -317,6 +399,15 @@ async function provayderLogin(kontekst) {
       return true;
     }
 
+    if (kohneSessiyaId) {
+      try {
+        await sessiyaniIdIleLegvEt(kohneSessiyaId);
+      }
+      catch (xeta) {
+        console.warn("[PROVAYDER_LOGIN] Köhnə sessiya ləğv edilə bilmədi:", xeta.message);
+      }
+    }
+
     socketiBagla(ws, connections, playerId, sessiya.sessionId);
 
     send(ws, {
@@ -341,6 +432,7 @@ async function provayderLogin(kontekst) {
   }
   catch (xeta) {
     console.error("[PROVAYDER_LOGIN] Server xətası:", xeta);
+
     send(ws, {
       type: "account_provider_login_result",
       success: false,
@@ -356,9 +448,25 @@ async function provayderLogin(kontekst) {
 async function hesabElaveMesajiniEmalEt(kontekst) {
   const type = metnAl(kontekst && kontekst.type, 128);
 
-  if (type === "account_info_request") return await hesabInfo(kontekst);
-  if (type === "account_new_game_request") return await yeniOyun(kontekst);
-  if (type === "account_provider_login_request") return await provayderLogin(kontekst);
+  if (!ELAVE_HESAB_MESAJLARI.has(type)) {
+    return false;
+  }
+
+  if (pinGozlemeBloku(kontekst, type)) {
+    return true;
+  }
+
+  if (type === "account_info_request") {
+    return await hesabInfo(kontekst);
+  }
+
+  if (type === "account_new_game_request") {
+    return await yeniOyun(kontekst);
+  }
+
+  if (type === "account_provider_login_request") {
+    return await provayderLogin(kontekst);
+  }
 
   return false;
 }
