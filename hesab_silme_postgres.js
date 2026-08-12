@@ -4,17 +4,40 @@ const {
   proqramHovuzunuAl
 } = require("./verilenler_bazasi");
 
+const {
+  pinIcazesiniIstifadeEt
+} = require("./hesab_pin_icaze_postgres");
+
 function metnAl(deyer) {
   return typeof deyer === "string" ? deyer.trim() : "";
 }
 
-async function hesabiSil(playerId) {
+async function hesabiSil(
+  playerId,
+  pinAuthorizationToken
+) {
   const temizPlayerId = metnAl(playerId);
 
   if (!temizPlayerId) {
     return {
       success: false,
       message: "Oyunçu ID müəyyən edilməyib."
+    };
+  }
+
+  const pinIcazesi = await pinIcazesiniIstifadeEt(
+    temizPlayerId,
+    "account_delete",
+    metnAl(pinAuthorizationToken)
+  );
+
+  if (!pinIcazesi || pinIcazesi.success !== true) {
+    return {
+      success: false,
+      pinRequired: true,
+      message: pinIcazesi && pinIcazesi.message
+        ? pinIcazesi.message
+        : "Hesabı silmək üçün PIN təsdiqi tələb olunur."
     };
   }
 
@@ -94,7 +117,7 @@ async function hesabiSil(playerId) {
 
     await client.query("COMMIT");
 
-    console.log("[HESAB_SIL] Hesab silindi, gameplay playerId saxlanıldı:", {
+    console.log("[HESAB_SIL] Hesab PIN icazəsi ilə silindi, gameplay playerId saxlanıldı:", {
       accountId: hesabId,
       playerId: temizPlayerId
     });
