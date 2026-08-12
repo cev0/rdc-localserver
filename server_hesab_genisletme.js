@@ -9,6 +9,11 @@
 // ============================================================
 
 const hesabLoginModulu = require("./hesab_login_handler");
+
+const {
+  hesabProvayderIdareMesajiniEmalEt
+} = require("./hesab_provayder_idare_handler");
+
 const {
   hesabElaveMesajiniEmalEt
 } = require("./hesab_elave_handler");
@@ -23,7 +28,15 @@ if (typeof esasHesabLoginMesajiniEmalEt !== "function") {
 }
 
 hesabLoginModulu.hesabLoginMesajiniEmalEt = async function(kontekst) {
-  const elaveEmalOlundu = await hesabElaveMesajiniEmalEt(kontekst);
+  const provayderIdareEmalOlundu =
+    await hesabProvayderIdareMesajiniEmalEt(kontekst);
+
+  if (provayderIdareEmalOlundu) {
+    return true;
+  }
+
+  const elaveEmalOlundu =
+    await hesabElaveMesajiniEmalEt(kontekst);
 
   if (elaveEmalOlundu) {
     return true;
