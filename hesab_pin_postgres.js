@@ -6,8 +6,29 @@ const {
   proqramHovuzunuAl
 } = require("./verilenler_bazasi");
 
+const {
+  pinBerpaKodunuHazirla,
+  pinBerpaSorqusunuLegvEt,
+  pinBerpaKodunuYoxla,
+  pinBerpasiniTamamla
+} = require("./hesab_pin_berpa_postgres");
+
+const {
+  pinBerpaKoduEmailiGonder
+} = require("./hesab_pin_berpa_email_gonderici");
+
 const MAKSIMUM_CEHD = 5;
 const BLOK_MUDDETI_MS = 15 * 60 * 1000;
+
+const PIN_BERPA_PREFIX = "PIN_BERPA:";
+const PIN_BERPA_SEND_EMRI = "#PIN_BERPA_SEND";
+const PIN_BERPA_VERIFY_PREFIX = "#PIN_BERPA_VERIFY|";
+const PIN_BERPA_COMPLETE_PREFIX = "#PIN_BERPA_COMPLETE|";
+
+function metnAl(deyer, maksimum = 512) {
+  if (typeof deyer !== "string") return "";
+  return deyer.trim().slice(0, maksimum);
+}
 
 function pinDuzgundur(pin) {
   return /^\d{6}$/.test(String(pin || ""));
@@ -64,6 +85,255 @@ function blokQaligiMs(setr) {
 
   const blokVaxti = new Date(setr.pin_blok_vaxti).getTime();
   return Math.max(0, blokVaxti - Date.now());
+}
+
+function pinBerpaXususiMesaji(payload) {
+  const kodlanmis = Buffer
+    .from(JSON.stringify(payload || {}), "utf8")
+    .toString("base64url");
+
+  return PIN_BERPA_PREFIX + kodlanmis;
+}
+
+function pinBerpaXetaNeticesi(stage, message, elave = {}) {
+  return {
+    success: false,
+    hasPin: true,
+    message: pinBerpaXususiMesaji({
+      stage,
+      success: false,
+      hasPin: true,
+      message: message || "PIN bərpa əməliyyatı uğursuz oldu.",
+      ...elave
+    })
+  };
+}
+
+function pinBerpaEmridir(pin) {
+  const emr = metnAl(pin, 512);
+
+  return (
+    emr === PIN_BERPA_SEND_EMRI ||
+    emr.startsWith(PIN_BERPA_VERIFY_PREFIX) ||
+    emr.startsWith(PIN_BERPA_COMPLETE_PREFIX)
+  );
+}
+
+async function pinBerpaEmriniEmalEt(playerId, pin) {
+  const temizPlayerId = metnAl(playerId, 128);
+  const emr = metnAl(pin, 512);
+
+  if (!temizPlayerId) {
+    return pinBerpaXetaNeticesi(
+      "send",
+      "Oyunçu ID müəyyən edilməyib."
+    );
+  }
+
+  if (emr === PIN_BERPA_SEND_EMRI) {
+    let netice;
+
+    try {
+      netice = await pinBerpaKodunuHazirla(
+        temizPlayerId
+      );
+    }
+    catch (xeta) {
+      console.error("[CIHAZ_PIN_BERPA] Kod hazırlanmadı:", xeta);
+
+      return pinBerpaXetaNeticesi(
+        "send",
+        "PIN bərpa kodu hazırlanarkən server xətası baş verdi."
+      );
+    }
+
+    if (
+      netice &&
+      netice.success === true &&
+      netice.emailGonderilmeli === true &&
+      netice.email &&
+      netice.kod
+    ) {
+      const emailNeticesi =
+        await pinBerpaKoduEmailiGonder(
+          netice.email,
+          netice.kod
+        );
+
+      if (!emailNeticesi || emailNeticesi.success !== true) {
+        try {
+          await pinBerpaSorqusunuLegvEt(
+            netice.sorquId
+          );
+        }
+        catch {
+        }
+
+        return pinBerpaXetaNeticesi(
+          "send",
+          emailNeticesi && emailNeticesi.message
+            ? emailNeticesi.message
+            : "PIN bərpa kodu e-poçta göndərilə bilmədi.",
+          {
+            maskedEmail: netice.maskedEmail || ""
+          }
+        );
+      }
+    }
+
+    return {
+      success: false,
+      hasPin: netice && netice.hasPin === true,
+      message: pinBerpaXususiMesaji({
+        stage: "send",
+        success: netice && netice.success === true,
+        hasPin: netice && netice.hasPin === true,
+        cooldown: netice && netice.cooldown === true,
+        retryAfterSeconds: netice && netice.retryAfterMs
+          ? Math.max(1, Math.ceil(Number(netice.retryAfterMs) / 1000))
+          : 0,
+        recoveryRequestId: netice && netice.sorquId
+          ? netice.sorquId
+          : "",
+        maskedEmail: netice && netice.maskedEmail
+          ? netice.maskedEmail
+          : "",
+        expiresAtMs: Number(netice && netice.expiresAtMs || 0),
+        message: netice && netice.message
+          ? netice.message
+          : "PIN bərpa sorğusu tamamlandı."
+      })
+    };
+  }
+
+  if (emr.startsWith(PIN_BERPA_VERIFY_PREFIX)) {
+    const qalan = emr.slice(PIN_BERPA_VERIFY_PREFIX.length);
+    const hisseler = qalan.split("|");
+
+    if (hisseler.length !== 2) {
+      return pinBerpaXetaNeticesi(
+        "verify",
+        "PIN bərpa kodu sorğusu düzgün deyil."
+      );
+    }
+
+    const recoveryRequestId = metnAl(hisseler[0], 128);
+    const kod = metnAl(hisseler[1], 16);
+
+    let netice;
+
+    try {
+      netice = await pinBerpaKodunuYoxla(
+        temizPlayerId,
+        recoveryRequestId,
+        kod
+      );
+    }
+    catch (xeta) {
+      console.error("[CIHAZ_PIN_BERPA] Kod yoxlanmadı:", xeta);
+
+      return pinBerpaXetaNeticesi(
+        "verify",
+        "PIN bərpa kodu yoxlanarkən server xətası baş verdi."
+      );
+    }
+
+    return {
+      success: false,
+      hasPin: true,
+      message: pinBerpaXususiMesaji({
+        stage: "verify",
+        success: netice && netice.success === true,
+        attemptsRemaining: Number(netice && netice.attemptsRemaining || 0),
+        expired: netice && netice.expired === true,
+        tooManyAttempts: netice && netice.tooManyAttempts === true,
+        resetToken: netice && netice.success === true
+          ? netice.resetToken || ""
+          : "",
+        expiresAtMs: Number(netice && netice.expiresAtMs || 0),
+        message: netice && netice.message
+          ? netice.message
+          : "PIN bərpa kodu yoxlanmadı."
+      })
+    };
+  }
+
+  if (emr.startsWith(PIN_BERPA_COMPLETE_PREFIX)) {
+    const qalan = emr.slice(PIN_BERPA_COMPLETE_PREFIX.length);
+    const sonAyirici = qalan.lastIndexOf("|");
+
+    if (sonAyirici <= 0) {
+      return pinBerpaXetaNeticesi(
+        "complete",
+        "Yeni PIN sorğusu düzgün deyil."
+      );
+    }
+
+    const resetToken = metnAl(
+      qalan.slice(0, sonAyirici),
+      512
+    );
+
+    const yeniPin = metnAl(
+      qalan.slice(sonAyirici + 1),
+      16
+    );
+
+    let netice;
+
+    try {
+      netice = await pinBerpasiniTamamla(
+        temizPlayerId,
+        resetToken,
+        yeniPin,
+        ""
+      );
+    }
+    catch (xeta) {
+      console.error("[CIHAZ_PIN_BERPA] PIN yenilənmədi:", xeta);
+
+      return pinBerpaXetaNeticesi(
+        "complete",
+        "PIN yenilənərkən server xətası baş verdi."
+      );
+    }
+
+    if (!netice || netice.success !== true) {
+      return pinBerpaXetaNeticesi(
+        "complete",
+        netice && netice.message
+          ? netice.message
+          : "PIN yenilənə bilmədi.",
+        {
+          expired: netice && netice.expired === true
+        }
+      );
+    }
+
+    const hovuz = proqramHovuzunuAl();
+
+    await hovuz.query(
+      `
+      UPDATE hesab_sessiyalari
+      SET legv_vaxti = NOW()
+      WHERE hesab_id = $1
+        AND legv_vaxti IS NULL
+      `,
+      [netice.accountId]
+    );
+
+    return {
+      success: true,
+      hasPin: true,
+      attemptsRemaining: MAKSIMUM_CEHD,
+      message: "PIN e-poçt təsdiqi ilə yeniləndi."
+    };
+  }
+
+  return pinBerpaXetaNeticesi(
+    "send",
+    "PIN bərpa əmri tanınmadı."
+  );
 }
 
 async function pinStatusunuAl(playerId) {
@@ -203,6 +473,13 @@ async function pinYoxlamaDaxili(client, setr, pin) {
 
 async function pinYoxla(playerId, pin) {
   const temizPlayerId = String(playerId || "").trim();
+
+  if (pinBerpaEmridir(pin)) {
+    return await pinBerpaEmriniEmalEt(
+      temizPlayerId,
+      pin
+    );
+  }
 
   if (!temizPlayerId || !pinDuzgundur(pin)) {
     return {
