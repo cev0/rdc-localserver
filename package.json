@@ -85,6 +85,7 @@
     "db:sifre-reset-test": "node sifre_sifirlama_postgres_testi.js",
     "server:hesab-test": "node server_hesab_smoke_testi.js",
     "server:login-test": "node server_hesab_login_testi.js",
+    "server:sifre-reset-test": "node server_sifre_reset_smoke_testi.js",
     "start": "node server.js"
   },
   "repository": {
