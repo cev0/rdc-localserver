@@ -33,7 +33,7 @@ function tokenYarat() {
   return crypto.randomBytes(48).toString("base64url");
 }
 
-async function hesabSetriniPlayerIdIleAl(client, playerId) {
+async function hesabSetriniPlayerIdIleAl(client, playerId, kilidle = false) {
   const netice = await client.query(
     `
     SELECT
@@ -44,6 +44,7 @@ async function hesabSetriniPlayerIdIleAl(client, playerId) {
     FROM hesablar
     WHERE oyuncu_id = $1
     LIMIT 1
+    ${kilidle ? "FOR UPDATE" : ""}
     `,
     [playerId]
   );
@@ -73,6 +74,50 @@ async function pinIcazesiYarat(playerId, emeliyyatNovu, pin) {
     };
   }
 
+  const hovuz = proqramHovuzunuAl();
+
+  const ilkinNetice = await hovuz.query(
+    `
+    SELECT
+      hesab_id,
+      oyuncu_id,
+      pin_hash,
+      status
+    FROM hesablar
+    WHERE oyuncu_id = $1
+    LIMIT 1
+    `,
+    [temizPlayerId]
+  );
+
+  if (!ilkinNetice.rows || ilkinNetice.rows.length !== 1) {
+    return {
+      success: false,
+      message: "Hesab tapılmadı."
+    };
+  }
+
+  const ilkinHesab = ilkinNetice.rows[0];
+
+  if (ilkinHesab.status !== "aktiv") {
+    return {
+      success: false,
+      message: "Hesab aktiv deyil."
+    };
+  }
+
+  if (!ilkinHesab.pin_hash) {
+    return {
+      success: true,
+      hasPin: false,
+      pinRequired: false,
+      operation: temizEmeliyyat,
+      authorizationToken: "",
+      expiresAtMs: 0,
+      message: "Hesabda PIN aktiv deyil. Əlavə PIN təsdiqi tələb olunmur."
+    };
+  }
+
   const pinNeticesi = await pinYoxla(
     temizPlayerId,
     metnAl(pin, 16)
@@ -95,7 +140,6 @@ async function pinIcazesiYarat(playerId, emeliyyatNovu, pin) {
     };
   }
 
-  const hovuz = proqramHovuzunuAl();
   const client = await hovuz.connect();
 
   try {
@@ -103,7 +147,8 @@ async function pinIcazesiYarat(playerId, emeliyyatNovu, pin) {
 
     const hesab = await hesabSetriniPlayerIdIleAl(
       client,
-      temizPlayerId
+      temizPlayerId,
+      true
     );
 
     if (!hesab || hesab.status !== "aktiv") {
@@ -115,11 +160,15 @@ async function pinIcazesiYarat(playerId, emeliyyatNovu, pin) {
     }
 
     if (!hesab.pin_hash) {
-      await client.query("ROLLBACK");
+      await client.query("COMMIT");
       return {
-        success: false,
+        success: true,
         hasPin: false,
-        message: "Bu əməliyyat üçün əvvəlcə hesab PIN-i təyin edilməlidir."
+        pinRequired: false,
+        operation: temizEmeliyyat,
+        authorizationToken: "",
+        expiresAtMs: 0,
+        message: "Hesabda PIN aktiv deyil. Əlavə PIN təsdiqi tələb olunmur."
       };
     }
 
@@ -173,6 +222,8 @@ async function pinIcazesiYarat(playerId, emeliyyatNovu, pin) {
 
     return {
       success: true,
+      hasPin: true,
+      pinRequired: true,
       operation: temizEmeliyyat,
       authorizationToken: token,
       expiresAtMs: bitmeVaxtiMs,
@@ -199,8 +250,7 @@ async function pinIcazesiniIstifadeEt(
 
   if (
     !temizPlayerId ||
-    !ICAZELI_EMELIYYATLAR.has(temizEmeliyyat) ||
-    temizToken.length < 32
+    !ICAZELI_EMELIYYATLAR.has(temizEmeliyyat)
   ) {
     return {
       success: false,
@@ -214,42 +264,13 @@ async function pinIcazesiniIstifadeEt(
   try {
     await client.query("BEGIN");
 
-    const netice = await client.query(
-      `
-      SELECT
-        i.icaze_id,
-        i.hesab_id,
-        i.bitme_vaxti,
-        i.istifade_vaxti,
-        h.oyuncu_id,
-        h.status
-      FROM hesab_pin_icazeleri i
-      JOIN hesablar h
-        ON h.hesab_id = i.hesab_id
-      WHERE i.token_hash = $1
-        AND i.emeliyyat_novu = $2
-        AND h.oyuncu_id = $3
-      LIMIT 1
-      FOR UPDATE OF i
-      `,
-      [
-        tokenHashYarat(temizToken),
-        temizEmeliyyat,
-        temizPlayerId
-      ]
+    const hesab = await hesabSetriniPlayerIdIleAl(
+      client,
+      temizPlayerId,
+      true
     );
 
-    if (!netice.rows || netice.rows.length !== 1) {
-      await client.query("ROLLBACK");
-      return {
-        success: false,
-        message: "PIN icazəsi tapılmadı və ya bu hesaba aid deyil."
-      };
-    }
-
-    const setr = netice.rows[0];
-
-    if (setr.status !== "aktiv") {
+    if (!hesab || hesab.status !== "aktiv") {
       await client.query("ROLLBACK");
       return {
         success: false,
@@ -257,10 +278,68 @@ async function pinIcazesiniIstifadeEt(
       };
     }
 
+    if (!hesab.pin_hash) {
+      await client.query("COMMIT");
+      return {
+        success: true,
+        hasPin: false,
+        pinRequired: false,
+        accountId: hesab.hesab_id,
+        playerId: temizPlayerId,
+        operation: temizEmeliyyat,
+        message: "Hesabda PIN aktiv deyil. Əlavə PIN icazəsi tələb olunmur."
+      };
+    }
+
+    if (temizToken.length < 32) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        hasPin: true,
+        pinRequired: true,
+        message: "Bu əməliyyat üçün PIN təsdiqi tələb olunur."
+      };
+    }
+
+    const netice = await client.query(
+      `
+      SELECT
+        icaze_id,
+        hesab_id,
+        bitme_vaxti,
+        istifade_vaxti
+      FROM hesab_pin_icazeleri
+      WHERE token_hash = $1
+        AND emeliyyat_novu = $2
+        AND hesab_id = $3
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [
+        tokenHashYarat(temizToken),
+        temizEmeliyyat,
+        hesab.hesab_id
+      ]
+    );
+
+    if (!netice.rows || netice.rows.length !== 1) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        hasPin: true,
+        pinRequired: true,
+        message: "PIN icazəsi tapılmadı və ya bu hesaba aid deyil."
+      };
+    }
+
+    const setr = netice.rows[0];
+
     if (setr.istifade_vaxti) {
       await client.query("ROLLBACK");
       return {
         success: false,
+        hasPin: true,
+        pinRequired: true,
         message: "PIN icazəsi artıq istifadə olunub."
       };
     }
@@ -282,6 +361,8 @@ async function pinIcazesiniIstifadeEt(
 
       return {
         success: false,
+        hasPin: true,
+        pinRequired: true,
         expired: true,
         message: "PIN icazəsinin vaxtı bitib. PIN-i yenidən daxil edin."
       };
@@ -300,7 +381,9 @@ async function pinIcazesiniIstifadeEt(
 
     return {
       success: true,
-      accountId: setr.hesab_id,
+      hasPin: true,
+      pinRequired: true,
+      accountId: hesab.hesab_id,
       playerId: temizPlayerId,
       operation: temizEmeliyyat,
       message: "PIN icazəsi qəbul edildi."
