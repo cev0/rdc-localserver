@@ -37,6 +37,10 @@ const {
   hesabLoginMesajiniEmalEt
 } = require("./hesab_login_handler");
 
+const {
+  sifreSifirlamaMesajiniEmalEt
+} = require("./sifre_sifirlama_handler");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -6279,6 +6283,19 @@ wss.on("connection", (ws, req) => {
     });
 
   if (hesabLoginEmalOlundu) {
+    return;
+  }
+
+  const sifreSifirlamaEmalOlundu =
+    await sifreSifirlamaMesajiniEmalEt({
+      type,
+      msg,
+      ws,
+      send,
+      nowMs
+    });
+
+  if (sifreSifirlamaEmalOlundu) {
     return;
   }
 
