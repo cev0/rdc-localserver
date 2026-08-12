@@ -89,6 +89,7 @@
     "server:sifre-reset-test": "node server_sifre_reset_smoke_testi.js",
     "server:auth-qoruma-test": "node server_auth_qoruma_testi.js",
     "server:hesab-sil-test": "node server_hesab_silme_testi.js",
+    "server:hesab-genisletme-test": "node server_hesab_genisletme_testi.js",
     "hesab:yoxla": "node hesab_db_yoxla.js",
     "email:test": "node email_birbasa_testi.js",
     "start": "node server_hesab_genisletme.js"
