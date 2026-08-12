@@ -14,13 +14,22 @@ const {
   hesabiSil
 } = require("./hesab_silme_postgres");
 
+const {
+  hesabBerpaSorqusuHazirla,
+  hesabBerpaKodunuYenidenGonder,
+  hesabBerpaKodunuYoxlaVeSessiyaYarat
+} = require("./hesab_berpa_postgres");
+
 const AUTHSIZ_ICAZELI_MESAJ_TIPLERI = new Set([
   "hello",
   "ping",
   "auth",
   "account_password_reset_send_request",
   "account_password_reset_verify_request",
-  "account_password_reset_complete_request"
+  "account_password_reset_complete_request",
+  "account_recovery_send_request",
+  "account_recovery_resend_request",
+  "account_recovery_verify_request"
 ]);
 
 function metnAl(deyer) {
@@ -192,6 +201,182 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
     sendStateLocalMapToPlayer,
     sendWorldMapToPlayer
   } = kontekst;
+
+  if (type === "account_recovery_send_request") {
+    let netice;
+
+    try {
+      netice = await hesabBerpaSorqusuHazirla({
+        email: metnAl(msg.email),
+        oyuncuId: metnAl(msg.oyuncuId),
+        komandirAdi: metnAl(msg.komandirAdi),
+        elaveMelumat: metnAl(msg.elaveMelumat)
+      });
+    }
+    catch (xeta) {
+      console.error("[HESAB_BERPA] Sorğu xətası:", xeta);
+
+      send(ws, {
+        type: "account_recovery_send_result",
+        success: false,
+        message: "Hesab bərpa sorğusu zamanı server xətası baş verdi.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
+
+    send(ws, {
+      type: "account_recovery_send_result",
+      success: netice && netice.success === true,
+      berpaSorquId: netice && netice.berpaSorquId ? netice.berpaSorquId : "",
+      cooldown: netice && netice.cooldown === true,
+      retryAfterSeconds: netice && netice.retryAfterMs
+        ? Math.max(1, Math.ceil(Number(netice.retryAfterMs) / 1000))
+        : 0,
+      message: netice && netice.message
+        ? netice.message
+        : "Hesab bərpa sorğusu tamamlandı.",
+      serverTimeUnixMs: nowMs()
+    });
+
+    return true;
+  }
+
+  if (type === "account_recovery_resend_request") {
+    let netice;
+
+    try {
+      netice = await hesabBerpaKodunuYenidenGonder(
+        metnAl(msg.berpaSorquId)
+      );
+    }
+    catch (xeta) {
+      console.error("[HESAB_BERPA] Yenidən göndərmə xətası:", xeta);
+
+      send(ws, {
+        type: "account_recovery_resend_result",
+        success: false,
+        message: "Yeni təsdiq kodu göndərilərkən server xətası baş verdi.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
+
+    send(ws, {
+      type: "account_recovery_resend_result",
+      success: netice && netice.success === true,
+      berpaSorquId: netice && netice.berpaSorquId ? netice.berpaSorquId : metnAl(msg.berpaSorquId),
+      cooldown: netice && netice.cooldown === true,
+      retryAfterSeconds: netice && netice.retryAfterMs
+        ? Math.max(1, Math.ceil(Number(netice.retryAfterMs) / 1000))
+        : 0,
+      message: netice && netice.message
+        ? netice.message
+        : "Yeni təsdiq kodu sorğusu tamamlandı.",
+      serverTimeUnixMs: nowMs()
+    });
+
+    return true;
+  }
+
+  if (type === "account_recovery_verify_request") {
+    const cihazId = metnAl(msg.cihazId);
+    let netice;
+
+    try {
+      netice = await hesabBerpaKodunuYoxlaVeSessiyaYarat(
+        metnAl(msg.berpaSorquId),
+        metnAl(msg.kod),
+        cihazId
+      );
+    }
+    catch (xeta) {
+      console.error("[HESAB_BERPA] Kod yoxlama xətası:", xeta);
+
+      send(ws, {
+        type: "account_recovery_verify_result",
+        success: false,
+        message: "Hesab bərpa edilərkən server xətası baş verdi.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
+
+    if (!netice || netice.success !== true) {
+      send(ws, {
+        type: "account_recovery_verify_result",
+        success: false,
+        attemptsRemaining: Number(netice && netice.attemptsRemaining || 0),
+        expired: netice && netice.expired === true,
+        tooManyAttempts: netice && netice.tooManyAttempts === true,
+        message: netice && netice.message
+          ? netice.message
+          : "Hesab bərpa edilə bilmədi.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
+
+    const hesab = netice.account || {};
+    const sessiya = netice.session || {};
+    const playerId = metnAl(hesab.playerId);
+
+    if (!playerId) {
+      send(ws, {
+        type: "account_recovery_verify_result",
+        success: false,
+        message: "Bərpa olunan hesabın oyunçu ID-si tapılmadı.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
+
+    socketiOyuncuyaBagla(
+      ws,
+      playerId,
+      sessiya.sessionId,
+      connections
+    );
+
+    send(ws, {
+      type: "account_recovery_verify_result",
+      success: true,
+      playerId,
+      accountId: hesab.accountId || "",
+      primaryEmail: hesab.primaryEmail || "",
+      secondaryEmail: hesab.secondaryEmail || "",
+      emailVerified: hesab.emailVerified === true,
+      sessionId: sessiya.sessionId || "",
+      refreshToken: sessiya.refreshToken || "",
+      expiresAtMs: Number(sessiya.expiresAtMs || 0),
+      message: netice.message || "Hesab uğurla bərpa edildi.",
+      serverTimeUnixMs: nowMs()
+    });
+
+    oyunStateGonder(
+      ws,
+      playerId,
+      send,
+      nowMs,
+      getOrCreatePlayerState,
+      updateServerTime,
+      makeClientState,
+      sendStateLocalMapToPlayer,
+      sendWorldMapToPlayer
+    );
+
+    console.log("[HESAB_BERPA] Hesab uğurla bərpa edildi:", {
+      playerId,
+      accountId: hesab.accountId || ""
+    });
+
+    return true;
+  }
 
   if (type === "account_login_request") {
     const email = metnAl(msg.email);
@@ -482,8 +667,6 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
       return true;
     }
 
-    // Hesab credential-ları silindi, amma gameplay playerId saxlanılır.
-    // Socket həmin playerId ilə guest rejimində davam edir.
     ws._accountSessionId = null;
     ws._authKind = "guest";
     connections.set(playerId, ws);
