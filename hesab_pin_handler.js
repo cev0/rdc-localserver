@@ -7,6 +7,11 @@ const {
   pinYoxla
 } = require("./hesab_pin_postgres");
 
+const {
+  cihaziEtibarliEtPlayerIdIle,
+  cihazEtibarlariniLegvEtPlayerIdIle
+} = require("./hesab_cihaz_pin_qoruma");
+
 function metnAl(deyer) {
   return typeof deyer === "string" ? deyer.trim() : "";
 }
@@ -99,6 +104,14 @@ async function hesabPinMesajiniEmalEt(kontekst) {
         metnAl(msg.newPin)
       );
 
+      if (netice && netice.success === true) {
+        await cihazEtibarlariniLegvEtPlayerIdIle(playerId);
+        await cihaziEtibarliEtPlayerIdIle(
+          playerId,
+          metnAl(msg.cihazId)
+        );
+      }
+
       umumiNeticeGonder(
         send,
         ws,
@@ -128,6 +141,10 @@ async function hesabPinMesajiniEmalEt(kontekst) {
         playerId,
         metnAl(msg.currentPin)
       );
+
+      if (netice && netice.success === true) {
+        await cihazEtibarlariniLegvEtPlayerIdIle(playerId);
+      }
 
       umumiNeticeGonder(
         send,
