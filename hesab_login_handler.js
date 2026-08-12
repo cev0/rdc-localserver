@@ -1,7 +1,6 @@
 "use strict";
 
 const {
-  emailSifreIleDaxilOl,
   sessiyaniYenile,
   sessiyaniLegvEt
 } = require("./hesab_sessiya_postgres");
@@ -20,6 +19,18 @@ const {
   hesabBerpaKodunuYoxlaVeSessiyaYarat
 } = require("./hesab_berpa_postgres");
 
+const {
+  hesabPinMesajiniEmalEt
+} = require("./hesab_pin_handler");
+
+const {
+  hesabUcunPinTelebiLazimdir,
+  cihazPinSorqusuYarat,
+  emailSifreIleDaxilOlCihazQorumali,
+  refreshCihazQorumasiniYoxla,
+  cihazPinSorqusunuYoxlaVeSessiyaYarat
+} = require("./hesab_cihaz_pin_qoruma");
+
 const AUTHSIZ_ICAZELI_MESAJ_TIPLERI = new Set([
   "hello",
   "ping",
@@ -29,7 +40,10 @@ const AUTHSIZ_ICAZELI_MESAJ_TIPLERI = new Set([
   "account_password_reset_complete_request",
   "account_recovery_send_request",
   "account_recovery_resend_request",
-  "account_recovery_verify_request"
+  "account_recovery_verify_request",
+  "account_login_request",
+  "account_session_refresh_request",
+  "account_device_pin_verify_request"
 ]);
 
 function metnAl(deyer) {
@@ -57,7 +71,43 @@ function socketiOyuncuyaBagla(ws, playerId, sessiyaId, connections) {
   ws._authedPlayerId = playerId;
   ws._accountSessionId = sessiyaId || null;
   ws._authKind = sessiyaId ? "account" : "guest";
+  ws._pendingPinChallengeId = null;
   connections.set(playerId, ws);
+}
+
+function socketiPinGozlemeyeAl(ws, connections, challengeId) {
+  const kohnePlayerId = ws._authedPlayerId;
+
+  if (
+    kohnePlayerId &&
+    connections.get(kohnePlayerId) === ws
+  ) {
+    connections.delete(kohnePlayerId);
+  }
+
+  ws._authedPlayerId = null;
+  ws._accountSessionId = null;
+  ws._authKind = "pin_pending";
+  ws._pendingPinChallengeId = metnAl(challengeId);
+}
+
+function cihazPinTelebiGonder(send, ws, challenge, nowMs) {
+  send(ws, {
+    type: "account_device_pin_required",
+    success: false,
+    pinRequired: true,
+    challengeId: challenge && challenge.challengeId
+      ? challenge.challengeId
+      : "",
+    reason: challenge && challenge.reason
+      ? challenge.reason
+      : "login",
+    expiresAtMs: Number(challenge && challenge.expiresAtMs || 0),
+    message: challenge && challenge.message
+      ? challenge.message
+      : "Bu cihaz üçün PIN təsdiqi tələb olunur.",
+    serverTimeUnixMs: nowMs()
+  });
 }
 
 function oyunStateGonder(
@@ -202,6 +252,152 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
     sendWorldMapToPlayer
   } = kontekst;
 
+  if (type === "account_device_pin_verify_request") {
+    const challengeId = metnAl(msg.challengeId);
+
+    if (
+      !ws._pendingPinChallengeId ||
+      ws._pendingPinChallengeId !== challengeId
+    ) {
+      send(ws, {
+        type: "account_device_pin_verify_result",
+        success: false,
+        message: "Aktiv PIN təsdiq sorğusu tapılmadı.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
+
+    let netice;
+
+    try {
+      netice = await cihazPinSorqusunuYoxlaVeSessiyaYarat(
+        challengeId,
+        metnAl(msg.cihazId),
+        metnAl(msg.pin)
+      );
+    }
+    catch (xeta) {
+      console.error("[CIHAZ_PIN] PIN yoxlama xətası:", xeta);
+
+      send(ws, {
+        type: "account_device_pin_verify_result",
+        success: false,
+        message: "PIN yoxlanarkən server xətası baş verdi.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
+
+    if (!netice || netice.success !== true) {
+      if (netice && netice.expired === true) {
+        ws._pendingPinChallengeId = null;
+        ws._authKind = null;
+      }
+
+      send(ws, {
+        type: "account_device_pin_verify_result",
+        success: false,
+        challengeId,
+        locked: netice && netice.locked === true,
+        tooManyAttempts: netice && netice.tooManyAttempts === true,
+        expired: netice && netice.expired === true,
+        attemptsRemaining: Number(netice && netice.attemptsRemaining || 0),
+        retryAfterSeconds: netice && netice.retryAfterMs
+          ? Math.max(1, Math.ceil(Number(netice.retryAfterMs) / 1000))
+          : 0,
+        message: netice && netice.message
+          ? netice.message
+          : "PIN yanlışdır.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
+
+    const hesab = netice.account || {};
+    const sessiya = netice.session || {};
+    const playerId = metnAl(hesab.playerId);
+
+    if (!playerId) {
+      send(ws, {
+        type: "account_device_pin_verify_result",
+        success: false,
+        message: "Hesabın oyunçu ID-si tapılmadı.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
+
+    socketiOyuncuyaBagla(
+      ws,
+      playerId,
+      sessiya.sessionId,
+      connections
+    );
+
+    send(ws, {
+      type: "account_device_pin_verify_result",
+      success: true,
+      challengeId,
+      reason: netice.reason || "login",
+      playerId,
+      accountId: hesab.accountId || "",
+      primaryEmail: hesab.primaryEmail || "",
+      secondaryEmail: hesab.secondaryEmail || "",
+      emailVerified: hesab.emailVerified === true,
+      sessionId: sessiya.sessionId || "",
+      refreshToken: sessiya.refreshToken || "",
+      expiresAtMs: Number(sessiya.expiresAtMs || 0),
+      message: netice.message || "PIN təsdiqləndi.",
+      serverTimeUnixMs: nowMs()
+    });
+
+    oyunStateGonder(
+      ws,
+      playerId,
+      send,
+      nowMs,
+      getOrCreatePlayerState,
+      updateServerTime,
+      makeClientState,
+      sendStateLocalMapToPlayer,
+      sendWorldMapToPlayer
+    );
+
+    console.log("[CIHAZ_PIN] Yeni cihaz PIN ilə təsdiqləndi:", {
+      playerId,
+      reason: netice.reason || "login"
+    });
+
+    return true;
+  }
+
+  if (
+    ws._authKind === "pin_pending" &&
+    type !== "hello" &&
+    type !== "ping"
+  ) {
+    send(ws, {
+      type: "account_device_pin_required",
+      success: false,
+      pinRequired: true,
+      challengeId: ws._pendingPinChallengeId || "",
+      message: "Oyuna davam etmək üçün PIN təsdiqi tələb olunur.",
+      serverTimeUnixMs: nowMs()
+    });
+
+    return true;
+  }
+
+  const pinEmalOlundu = await hesabPinMesajiniEmalEt(kontekst);
+  if (pinEmalOlundu) {
+    return true;
+  }
+
   if (type === "account_recovery_send_request") {
     let netice;
 
@@ -336,6 +532,58 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
       return true;
     }
 
+    if (await hesabUcunPinTelebiLazimdir(hesab, cihazId)) {
+      try {
+        await sessiyaniLegvEt(sessiya.refreshToken || "");
+
+        const challenge = await cihazPinSorqusuYarat(
+          hesab,
+          cihazId,
+          "recovery"
+        );
+
+        if (!challenge || challenge.success !== true) {
+          send(ws, {
+            type: "account_recovery_verify_result",
+            success: false,
+            message: challenge && challenge.message
+              ? challenge.message
+              : "Cihaz PIN yoxlaması başlana bilmədi.",
+            serverTimeUnixMs: nowMs()
+          });
+
+          return true;
+        }
+
+        socketiPinGozlemeyeAl(
+          ws,
+          connections,
+          challenge.challengeId
+        );
+
+        cihazPinTelebiGonder(
+          send,
+          ws,
+          challenge,
+          nowMs
+        );
+
+        return true;
+      }
+      catch (xeta) {
+        console.error("[CIHAZ_PIN] Recovery cihaz yoxlaması xətası:", xeta);
+
+        send(ws, {
+          type: "account_recovery_verify_result",
+          success: false,
+          message: "Cihaz təhlükəsizlik yoxlaması zamanı server xətası baş verdi.",
+          serverTimeUnixMs: nowMs()
+        });
+
+        return true;
+      }
+    }
+
     socketiOyuncuyaBagla(
       ws,
       playerId,
@@ -386,7 +634,11 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
     let netice;
 
     try {
-      netice = await emailSifreIleDaxilOl(email, sifre, cihazId);
+      netice = await emailSifreIleDaxilOlCihazQorumali(
+        email,
+        sifre,
+        cihazId
+      );
     }
     catch (xeta) {
       console.error("[HESAB_LOGIN] Giriş xətası:", xeta);
@@ -410,6 +662,38 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
           : "Hesaba giriş mümkün olmadı.",
         serverTimeUnixMs: nowMs()
       });
+
+      return true;
+    }
+
+    if (netice.requiresPin === true) {
+      const challenge = netice.challenge;
+
+      if (!challenge || challenge.success !== true) {
+        send(ws, {
+          type: "account_login_result",
+          success: false,
+          message: challenge && challenge.message
+            ? challenge.message
+            : "Cihaz PIN yoxlaması başlana bilmədi.",
+          serverTimeUnixMs: nowMs()
+        });
+
+        return true;
+      }
+
+      socketiPinGozlemeyeAl(
+        ws,
+        connections,
+        challenge.challengeId
+      );
+
+      cihazPinTelebiGonder(
+        send,
+        ws,
+        challenge,
+        nowMs
+      );
 
       return true;
     }
@@ -475,6 +759,48 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
   if (type === "account_session_refresh_request") {
     const refreshToken = metnAl(msg.refreshToken);
     const cihazId = metnAl(msg.cihazId);
+
+    try {
+      const cihazQoruma = await refreshCihazQorumasiniYoxla(
+        refreshToken,
+        cihazId
+      );
+
+      if (
+        cihazQoruma &&
+        cihazQoruma.valid === true &&
+        cihazQoruma.requiresPin === true
+      ) {
+        const challenge = cihazQoruma.challenge;
+
+        socketiPinGozlemeyeAl(
+          ws,
+          connections,
+          challenge.challengeId
+        );
+
+        cihazPinTelebiGonder(
+          send,
+          ws,
+          challenge,
+          nowMs
+        );
+
+        return true;
+      }
+    }
+    catch (xeta) {
+      console.error("[CIHAZ_PIN] Refresh cihaz yoxlaması xətası:", xeta);
+
+      send(ws, {
+        type: "account_session_refresh_result",
+        success: false,
+        message: "Sessiya cihaz yoxlaması zamanı server xətası baş verdi.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
 
     let netice;
 
@@ -592,6 +918,7 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
     ws._authedPlayerId = null;
     ws._accountSessionId = null;
     ws._authKind = null;
+    ws._pendingPinChallengeId = null;
 
     send(ws, {
       type: "account_logout_result",
@@ -669,6 +996,7 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
 
     ws._accountSessionId = null;
     ws._authKind = "guest";
+    ws._pendingPinChallengeId = null;
     connections.set(playerId, ws);
 
     send(ws, {
