@@ -15,8 +15,21 @@ const {
     hesabPinMesajiniEmalEt
 } = require("./hesab_pin_handler");
 
+const {
+    pinQorumaliSifreDeyis
+} = require("./sifre_deyis_pin_postgres");
+
 function metnAl(deyer) {
     return typeof deyer === "string" ? deyer.trim() : "";
+}
+
+function aktivHesabSessiyasiVar(ws) {
+    return Boolean(
+        ws &&
+        ws._authedPlayerId &&
+        ws._authKind === "account" &&
+        ws._accountSessionId
+    );
 }
 
 async function sifreSifirlamaMesajiniEmalEt(kontekst) {
@@ -177,13 +190,39 @@ async function sifreSifirlamaMesajiniEmalEt(kontekst) {
                 ? msg.yeniSifre
                 : "";
 
+        const hesabDeyisRejimidir =
+            metnAl(msg.changeMode) ===
+            "authenticated_change";
+
         let netice;
 
         try {
-            netice = await yeniSifreTeyinEt(
-                resetToken,
-                yeniSifre
-            );
+            if (hesabDeyisRejimidir) {
+                if (!aktivHesabSessiyasiVar(ws)) {
+                    send(ws, {
+                        type: "account_password_reset_complete_result",
+                        success: false,
+                        pinRequired: true,
+                        message: "Şifrəni dəyişmək üçün aktiv hesab sessiyası və PIN təsdiqi tələb olunur.",
+                        serverTimeUnixMs: nowMs()
+                    });
+
+                    return true;
+                }
+
+                netice = await pinQorumaliSifreDeyis(
+                    metnAl(ws._authedPlayerId),
+                    resetToken,
+                    yeniSifre,
+                    metnAl(msg.pinAuthorizationToken)
+                );
+            }
+            else {
+                netice = await yeniSifreTeyinEt(
+                    resetToken,
+                    yeniSifre
+                );
+            }
         }
         catch (xeta) {
             console.error("[SIFRE_SIFIRLAMA] Yeni şifrə xətası:", xeta);
@@ -201,6 +240,7 @@ async function sifreSifirlamaMesajiniEmalEt(kontekst) {
         send(ws, {
             type: "account_password_reset_complete_result",
             success: netice && netice.success === true,
+            pinRequired: netice && netice.pinRequired === true,
             message:
                 netice && netice.message
                     ? netice.message
