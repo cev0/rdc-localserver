@@ -16,6 +16,10 @@ const {
   pinIcazesiYarat
 } = require("./hesab_pin_icaze_postgres");
 
+const {
+  hesabiSil
+} = require("./hesab_silme_postgres");
+
 function metnAl(deyer) {
   return typeof deyer === "string" ? deyer.trim() : "";
 }
@@ -27,6 +31,14 @@ function aktivHesabSessiyasiVar(ws) {
     ws._authKind === "account" &&
     ws._accountSessionId
   );
+}
+
+function silmeTesdiqiDuzgundur(deyer) {
+  const temiz = metnAl(deyer)
+    .toUpperCase()
+    .replace(/İ/g, "I");
+
+  return temiz === "SIL";
 }
 
 function umumiNeticeGonder(send, ws, type, netice, nowMs) {
@@ -53,7 +65,8 @@ async function hesabPinMesajiniEmalEt(kontekst) {
     msg,
     ws,
     send,
-    nowMs
+    nowMs,
+    connections
   } = kontekst;
 
   if (!String(type || "").startsWith("account_pin_")) {
@@ -117,6 +130,80 @@ async function hesabPinMesajiniEmalEt(kontekst) {
         serverTimeUnixMs: nowMs()
       });
     }
+
+    return true;
+  }
+
+  if (type === "account_pin_protected_delete_request") {
+    if (!silmeTesdiqiDuzgundur(msg.confirmation)) {
+      send(ws, {
+        type: "account_delete_result",
+        success: false,
+        playerId,
+        message: "Hesab silmə təsdiqi düzgün deyil.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
+
+    let netice;
+
+    try {
+      netice = await hesabiSil(
+        playerId,
+        metnAl(msg.pinAuthorizationToken)
+      );
+    }
+    catch (xeta) {
+      console.error("[HESAB_SIL_PIN] Server xətası:", xeta);
+
+      send(ws, {
+        type: "account_delete_result",
+        success: false,
+        playerId,
+        message: "Hesab silinərkən server xətası baş verdi.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
+
+    if (!netice || netice.success !== true) {
+      send(ws, {
+        type: "account_delete_result",
+        success: false,
+        playerId,
+        pinRequired: netice && netice.pinRequired === true,
+        message: netice && netice.message
+          ? netice.message
+          : "Hesab silinə bilmədi.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
+
+    ws._accountSessionId = null;
+    ws._authKind = "guest";
+    ws._pendingPinChallengeId = null;
+
+    if (connections) {
+      connections.set(playerId, ws);
+    }
+
+    send(ws, {
+      type: "account_delete_result",
+      success: true,
+      playerId,
+      message: netice.message || "Hesab uğurla silindi.",
+      serverTimeUnixMs: nowMs()
+    });
+
+    console.log(
+      "[HESAB_SIL_PIN] Hesab PIN icazəsi ilə silindi, socket guest rejiminə keçirildi:",
+      playerId
+    );
 
     return true;
   }
