@@ -10,6 +10,10 @@ const {
   hesabPlayerIdIleTap
 } = require("./hesab_yaddasi_postgres");
 
+const {
+  hesabiSil
+} = require("./hesab_silme_postgres");
+
 const AUTHSIZ_ICAZELI_MESAJ_TIPLERI = new Set([
   "hello",
   "ping",
@@ -21,6 +25,14 @@ const AUTHSIZ_ICAZELI_MESAJ_TIPLERI = new Set([
 
 function metnAl(deyer) {
   return typeof deyer === "string" ? deyer.trim() : "";
+}
+
+function silmeTesdiqiDuzgundur(deyer) {
+  const temiz = metnAl(deyer)
+    .toUpperCase()
+    .replace(/İ/g, "I");
+
+  return temiz === "SIL";
 }
 
 function socketiOyuncuyaBagla(ws, playerId, sessiyaId, connections) {
@@ -71,7 +83,6 @@ async function legacyAuthQorumasiniYoxla(type, msg, ws, send, nowMs) {
 
   const playerId = metnAl(msg && msg.playerId);
 
-  // playerId yoxdursa serverin mövcud guest yaratma davranışı işləsin.
   if (!playerId) {
     return false;
   }
@@ -79,8 +90,6 @@ async function legacyAuthQorumasiniYoxla(type, msg, ws, send, nowMs) {
   try {
     const hesab = await hesabPlayerIdIleTap(playerId);
 
-    // Bu playerId artıq hesaba bağlanıbsa sadəcə playerId bilməklə
-    // həmin oyunçuya giriş qəti şəkildə qadağandır.
     if (hesab) {
       send(ws, {
         type: "auth_account_required",
@@ -100,8 +109,6 @@ async function legacyAuthQorumasiniYoxla(type, msg, ws, send, nowMs) {
     }
   }
   catch (xeta) {
-    // DB yoxlaması uğursuzdursa fail-open ETMİRİK.
-    // Əks halda DB nasazlığı zamanı bağlı hesablar playerId ilə açıla bilər.
     console.error(
       "[AUTH_QORUMA] Legacy auth hesab yoxlaması uğursuz oldu:",
       xeta
@@ -117,7 +124,6 @@ async function legacyAuthQorumasiniYoxla(type, msg, ws, send, nowMs) {
     return true;
   }
 
-  // Hesaba bağlanmamış guest player üçün köhnə auth axını hələlik saxlanılır.
   return false;
 }
 
@@ -165,8 +171,6 @@ function socketKimlikQorumasiniYoxla(type, msg, ws, send, nowMs) {
     return true;
   }
 
-  // Köhnə handler-lərin bir hissəsi msg.playerId oxuyur.
-  // Hamısında serverin təsdiqlədiyi socket playerId istifadə olunsun.
   if (msg && typeof msg === "object") {
     msg.playerId = socketPlayerId;
   }
@@ -414,8 +418,89 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
     return true;
   }
 
-  // Bağlı hesab üçün köhnə playerId əsaslı auth-u server switch-inə
-  // çatmadan bloklayırıq.
+  if (type === "account_delete_request") {
+    const playerId = metnAl(ws._authedPlayerId);
+
+    if (
+      !playerId ||
+      ws._authKind !== "account" ||
+      !ws._accountSessionId
+    ) {
+      send(ws, {
+        type: "account_delete_result",
+        success: false,
+        playerId: playerId || "",
+        message: "Hesabı silmək üçün aktiv hesab sessiyası tələb olunur.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
+
+    if (!silmeTesdiqiDuzgundur(msg.confirmation)) {
+      send(ws, {
+        type: "account_delete_result",
+        success: false,
+        playerId,
+        message: "Hesab silmə təsdiqi düzgün deyil.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
+
+    let netice;
+
+    try {
+      netice = await hesabiSil(playerId);
+    }
+    catch (xeta) {
+      console.error("[HESAB_SIL] Server xətası:", xeta);
+
+      send(ws, {
+        type: "account_delete_result",
+        success: false,
+        playerId,
+        message: "Hesab silinərkən server xətası baş verdi.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
+
+    if (!netice || netice.success !== true) {
+      send(ws, {
+        type: "account_delete_result",
+        success: false,
+        playerId,
+        message: netice && netice.message
+          ? netice.message
+          : "Hesab silinə bilmədi.",
+        serverTimeUnixMs: nowMs()
+      });
+
+      return true;
+    }
+
+    // Hesab credential-ları silindi, amma gameplay playerId saxlanılır.
+    // Socket həmin playerId ilə guest rejimində davam edir.
+    ws._accountSessionId = null;
+    ws._authKind = "guest";
+    connections.set(playerId, ws);
+
+    send(ws, {
+      type: "account_delete_result",
+      success: true,
+      playerId,
+      message: netice.message || "Hesab uğurla silindi.",
+      serverTimeUnixMs: nowMs()
+    });
+
+    console.log("[HESAB_SIL] Socket guest rejiminə keçirildi:", playerId);
+
+    return true;
+  }
+
   const legacyAuthBloklandi = await legacyAuthQorumasiniYoxla(
     type,
     msg,
@@ -428,8 +513,6 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
     return true;
   }
 
-  // Qalan bütün gameplay/account sorğularında həqiqi kimlik yalnız
-  // ws._authedPlayerId-dir. Client-in göndərdiyi başqa playerId qəbul edilmir.
   const kimlikBloklandi = socketKimlikQorumasiniYoxla(
     type,
     msg,
