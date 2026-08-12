@@ -213,7 +213,32 @@ async function hesabUcunPinTelebiLazimdir(hesab, cihazId) {
     return false;
   }
 
-  if (!hesab.pinHash) {
+  let pinVar = Boolean(hesab.pinHash);
+
+  if (!Object.prototype.hasOwnProperty.call(hesab, "pinHash")) {
+    const hovuz = proqramHovuzunuAl();
+    const netice = await hovuz.query(
+      `
+      SELECT pin_hash, status
+      FROM hesablar
+      WHERE hesab_id = $1
+      LIMIT 1
+      `,
+      [hesab.accountId]
+    );
+
+    if (!netice.rows || netice.rows.length !== 1) {
+      return false;
+    }
+
+    if (netice.rows[0].status !== "aktiv") {
+      return false;
+    }
+
+    pinVar = Boolean(netice.rows[0].pin_hash);
+  }
+
+  if (!pinVar) {
     return false;
   }
 
