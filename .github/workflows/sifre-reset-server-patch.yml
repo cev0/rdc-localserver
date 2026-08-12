@@ -1,0 +1,70 @@
+name: Sifre Reset Server Patch
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/sifre-reset-server-patch.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  server-patch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repo-nu al
+        uses: actions/checkout@v4
+
+      - name: Sifre reset handler-i servere qos
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+
+          const serverPath = "server.js";
+          let server = fs.readFileSync(serverPath, "utf8");
+
+          if (!server.includes('require("./sifre_sifirlama_handler")')) {
+            const importRegex = /const\s*\{\s*hesabLoginMesajiniEmalEt\s*\}\s*=\s*require\("\.\/hesab_login_handler"\);/;
+            const match = server.match(importRegex);
+
+            if (!match) {
+              throw new Error("hesab_login_handler import marker-i tapilmadi");
+            }
+
+            const importCode = `${match[0]}\n\nconst {\n  sifreSifirlamaMesajiniEmalEt\n} = require("./sifre_sifirlama_handler");`;
+            server = server.replace(importRegex, importCode);
+          }
+
+          if (!server.includes("sifreSifirlamaEmalOlundu")) {
+            const markerRegex = /if\s*\(hesabLoginEmalOlundu\)\s*\{\s*return;\s*\}\s*switch\s*\(type\)\s*\{/;
+            const match = server.match(markerRegex);
+
+            if (!match) {
+              throw new Error("login-handler/switch marker-i tapilmadi");
+            }
+
+            const replacement = `if (hesabLoginEmalOlundu) {\n    return;\n  }\n\n  const sifreSifirlamaEmalOlundu =\n    await sifreSifirlamaMesajiniEmalEt({\n      type,\n      msg,\n      ws,\n      send,\n      nowMs\n    });\n\n  if (sifreSifirlamaEmalOlundu) {\n    return;\n  }\n\n  switch (type) {`;
+
+            server = server.replace(markerRegex, replacement);
+          }
+
+          fs.writeFileSync(serverPath, server, "utf8");
+          NODE
+
+      - name: Server sintaksisini yoxla
+        shell: bash
+        run: node --check server.js
+
+      - name: Deyisiklikleri commit et
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Integrate password reset WebSocket handler"
+          git push
