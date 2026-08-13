@@ -28,6 +28,12 @@ const {
   daimiVeziyyetiStateIleBirlesdir
 } = require("./missiya_postgres");
 
+const {
+  oyunStateIniBerpaEt,
+  oyunStateIniYaddaSaxla,
+  oyuncuStateBerpaOlunub
+} = require("./oyun_state_daimilik_korpu");
+
 const MISSIYA_MESAJLARI = new Set([
   "mission_list_request",
   "mission_info_request",
@@ -36,6 +42,28 @@ const MISSIYA_MESAJLARI = new Set([
   // Köhnə client compatibility mesajı.
   // Client state-i server state-inin üzərinə yaza bilməz.
   "save_state"
+]);
+
+const STATE_DEYISEN_MESAJLAR = new Set([
+  "research_start",
+  "technology_research_start",
+  "expand_area_request",
+  "expand_base",
+  "build_request",
+  "train_unit_request",
+  "upgrade_request",
+  "base_teleport_request",
+  "move_request",
+  "connect_road_request",
+  "start_construction_request"
+]);
+
+const BERPA_MESAJLARI = new Set([
+  "auth",
+  "account_login_request",
+  "account_session_refresh_request",
+  "account_provider_login_request",
+  "account_device_pin_verify_request"
 ]);
 
 function metnAl(deyer, maksimum = 128) {
@@ -70,7 +98,7 @@ function ugursuzCavab(kontekst, type, message, elave = {}) {
   });
 }
 
-function oyunStateGonder(kontekst, playerId, state) {
+function oyunStateGonder(kontekst, playerId, state, xeriteleriDeGonder = false) {
   if (
     typeof kontekst.makeClientState !== "function" ||
     typeof kontekst.send !== "function"
@@ -86,6 +114,16 @@ function oyunStateGonder(kontekst, playerId, state) {
       kontekst.makeClientState(state)
     )
   });
+
+  if (!xeriteleriDeGonder) return;
+
+  if (typeof kontekst.sendStateLocalMapToPlayer === "function") {
+    kontekst.sendStateLocalMapToPlayer(kontekst.ws, playerId);
+  }
+
+  if (typeof kontekst.sendWorldMapToPlayer === "function") {
+    kontekst.sendWorldMapToPlayer(kontekst.ws, playerId);
+  }
 }
 
 async function daimiMissiyaStateYukle(playerId, state) {
@@ -107,14 +145,138 @@ function bazaGirisiKecidiniTeminEt(state) {
   serverHadisesiniQeydEt(state, "baza_girisi_aktivlesdi", 1);
 }
 
+async function snapshotBerpasiniTeminEt(kontekst, playerId, stateGonderilsin = false) {
+  if (oyuncuStateBerpaOlunub(playerId)) {
+    return false;
+  }
+
+  const berpaOlundu = await oyunStateIniBerpaEt(kontekst, playerId);
+
+  if (berpaOlundu && stateGonderilsin) {
+    const state = kontekst.getOrCreatePlayerState(playerId);
+    oyunStateGonder(kontekst, playerId, state, true);
+  }
+
+  return berpaOlundu;
+}
+
+function authdanSonraBerpaniPlanla(kontekst) {
+  if (!BERPA_MESAJLARI.has(kontekst && kontekst.type)) {
+    return;
+  }
+
+  const cehdEt = async () => {
+    const playerId = autentifikasiyaOlunmusPlayerIdAl(
+      kontekst && kontekst.ws
+    );
+
+    if (!playerId || oyuncuStateBerpaOlunub(playerId)) {
+      return;
+    }
+
+    try {
+      await snapshotBerpasiniTeminEt(kontekst, playerId, true);
+    }
+    catch (xeta) {
+      console.error("[OYUN_STATE_BERPA] Xəta:", {
+        playerId,
+        message: xeta && xeta.message ? xeta.message : String(xeta)
+      });
+    }
+  };
+
+  // Legacy auth sinxron, hesab/Google login isə DB sorğulu ola bilər.
+  setImmediate(() => void cehdEt());
+  setTimeout(() => void cehdEt(), 350);
+  setTimeout(() => void cehdEt(), 1200);
+}
+
+function gameplaySnapshotiniPlanla(kontekst, playerId) {
+  const type = metnAl(kontekst && kontekst.type, 128);
+
+  if (!STATE_DEYISEN_MESAJLAR.has(type)) {
+    return;
+  }
+
+  if (
+    !kontekst ||
+    typeof kontekst.getOrCreatePlayerState !== "function"
+  ) {
+    return;
+  }
+
+  const evvelkiState = derinKopyala(
+    kontekst.getOrCreatePlayerState(playerId)
+  );
+
+  setImmediate(async () => {
+    try {
+      const sonState = kontekst.getOrCreatePlayerState(playerId);
+
+      if (JSON.stringify(evvelkiState) === JSON.stringify(sonState)) {
+        return;
+      }
+
+      await oyunStateIniYaddaSaxla(playerId, sonState);
+
+      console.log("[OYUN_STATE_SNAPSHOT] Gameplay dəyişiklik saxlanıldı:", {
+        playerId,
+        type
+      });
+    }
+    catch (xeta) {
+      console.error("[OYUN_STATE_SNAPSHOT] Gameplay snapshot xətası:", {
+        playerId,
+        type,
+        message: xeta && xeta.message ? xeta.message : String(xeta)
+      });
+    }
+  });
+}
+
 async function missiyaMesajiniEmalEt(kontekst) {
   const type = metnAl(kontekst && kontekst.type, 128);
+
+  // Auth/login başa çatandan sonra varsa PostgreSQL snapshot bərpa edilir.
+  authdanSonraBerpaniPlanla(kontekst);
 
   // Gameplay sorğularının nəticəsini yalnız server state-i dəyişəndən
   // sonra yoxlayan observer. Client missiya progressini birbaşa yaza bilmir.
   gameplayNeticesiniIzlemeyeHazirla(kontekst);
 
+  // Missiya mesajı deyilsə də bu wrapper bütün gameplay sorğularından keçir.
+  // İlk gameplay əməliyyatından əvvəl snapshot bərpasını məcburi tamamlayırıq.
   if (!MISSIYA_MESAJLARI.has(type)) {
+    const playerId = autentifikasiyaOlunmusPlayerIdAl(
+      kontekst && kontekst.ws
+    );
+
+    if (
+      playerId &&
+      typeof kontekst.getOrCreatePlayerState === "function"
+    ) {
+      try {
+        await snapshotBerpasiniTeminEt(kontekst, playerId, false);
+      }
+      catch (xeta) {
+        console.error("[OYUN_STATE_BERPA] Gameplay-dən əvvəl bərpa alınmadı:", {
+          playerId,
+          type,
+          message: xeta && xeta.message ? xeta.message : String(xeta)
+        });
+
+        ugursuzCavab(
+          kontekst,
+          "gameplay_temporarily_unavailable",
+          "Oyun vəziyyəti daimi yaddaşdan bərpa edilə bilmədi. Bir az sonra yenidən yoxlayın.",
+          { playerId }
+        );
+        return true;
+      }
+
+      gameplaySnapshotiniPlanla(kontekst, playerId);
+    }
+
     return false;
   }
 
@@ -136,6 +298,25 @@ async function missiyaMesajiniEmalEt(kontekst) {
       kontekst,
       neticeTipiniAl(type),
       "Server oyunçu state funksiyası əlçatan deyil."
+    );
+    return true;
+  }
+
+  try {
+    await snapshotBerpasiniTeminEt(kontekst, playerId, false);
+  }
+  catch (xeta) {
+    console.error("[OYUN_STATE_BERPA] Missiya əməliyyatından əvvəl bərpa alınmadı:", {
+      playerId,
+      type,
+      message: xeta && xeta.message ? xeta.message : String(xeta)
+    });
+
+    ugursuzCavab(
+      kontekst,
+      neticeTipiniAl(type),
+      "Oyun vəziyyəti daimi yaddaşdan bərpa edilə bilmədi. Bir az sonra yenidən yoxlayın.",
+      { playerId }
     );
     return true;
   }
@@ -292,6 +473,17 @@ async function missiyaMesajiniEmalEt(kontekst) {
 
     if (typeof kontekst.updateServerTime === "function") {
       kontekst.updateServerTime(state);
+    }
+
+    try {
+      await oyunStateIniYaddaSaxla(playerId, state);
+    }
+    catch (xeta) {
+      console.error("[OYUN_STATE_SNAPSHOT] Missiya reward snapshot xətası:", {
+        playerId,
+        missionId,
+        message: xeta && xeta.message ? xeta.message : String(xeta)
+      });
     }
   }
 
