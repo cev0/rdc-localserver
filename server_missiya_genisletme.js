@@ -1,9 +1,11 @@
 "use strict";
 
 // ============================================================
-// MISSİYA SERVER GENİŞLƏTMƏ GİRİŞ NÖQTƏSİ
+// MISSİYA + QƏHRƏMAN RECRUIT SERVER GİRİŞ NÖQTƏSİ
 // ------------------------------------------------------------
-// Mövcud hesab wrapper-ını dəyişmədən missiya mesajlarını
+// Mövcud hesab wrapper-ını dəyişmədən:
+// 1. missiya mesajlarını
+// 2. qəhrəman recruit mesajlarını
 // hesab/login handler zəncirinə əlavə edir.
 // ============================================================
 
@@ -12,6 +14,13 @@ const hesabLoginModulu = require("./hesab_login_handler");
 const {
   missiyaMesajiniEmalEt
 } = require("./missiya_handler");
+
+// Vacib: override recruit sistemindən əvvəl yüklənməlidir.
+require("./qehreman_recruit_qayda_override");
+
+const {
+  qehremanRecruitMesajiniEmalEt
+} = require("./qehreman_recruit_handler");
 
 const esasHesabLoginMesajiniEmalEt =
   hesabLoginModulu.hesabLoginMesajiniEmalEt;
@@ -27,6 +36,13 @@ hesabLoginModulu.hesabLoginMesajiniEmalEt = async function(kontekst) {
     await missiyaMesajiniEmalEt(kontekst);
 
   if (missiyaEmalOlundu) {
+    return true;
+  }
+
+  const recruitEmalOlundu =
+    await qehremanRecruitMesajiniEmalEt(kontekst);
+
+  if (recruitEmalOlundu) {
     return true;
   }
 
