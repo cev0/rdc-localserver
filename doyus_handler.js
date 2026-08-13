@@ -6,6 +6,10 @@ const {
   tutorialDoyusunuNeticelendir
 } = require("./doyus_sistemi");
 
+const {
+  tutorialDoyusMukafatiniAl
+} = require("./doyus_mukafat_sistemi");
+
 const { missiyaniTap } = require("./missiya_kataloqu");
 const { missiyaStatusunuAl } = require("./missiya_proqres");
 const { missiyaServerHadisesiniQeydEt } = require("./missiya_hadise_korpu");
@@ -18,7 +22,8 @@ const {
 const DOYUS_MESAJLARI = new Set([
   "battle_info_request",
   "battle_start_request",
-  "battle_resolve_request"
+  "battle_resolve_request",
+  "battle_reward_claim_request"
 ]);
 
 function metnAl(deyer, maksimum = 128) {
@@ -32,6 +37,7 @@ function kopyala(deyer) {
 function neticeTipiniAl(type) {
   if (type === "battle_start_request") return "battle_start_result";
   if (type === "battle_resolve_request") return "battle_resolve_result";
+  if (type === "battle_reward_claim_request") return "battle_reward_claim_result";
   return "battle_info_result";
 }
 
@@ -72,8 +78,11 @@ async function doyusMesajiniEmalEt(kontekst) {
     const state = kontekst.getOrCreatePlayerState(playerId);
     const m017 = missiyaniTap("M017");
     const m018 = missiyaniTap("M018");
+    const m019 = missiyaniTap("M019");
+
     const startMissionStatus = m017 ? missiyaStatusunuAl(state, m017) : "kilidli";
     const resolveMissionStatus = m018 ? missiyaStatusunuAl(state, m018) : "kilidli";
+    const rewardMissionStatus = m019 ? missiyaStatusunuAl(state, m019) : "kilidli";
 
     if (type === "battle_info_request") {
       gonder(kontekst, resultType, {
@@ -83,6 +92,8 @@ async function doyusMesajiniEmalEt(kontekst) {
         startMissionStatus,
         resolveMissionId: "M018",
         resolveMissionStatus,
+        rewardMissionId: "M019",
+        rewardMissionStatus,
         info: doyusMelumatiniHazirla(state, kontekst.nowMs())
       });
       return true;
@@ -110,14 +121,39 @@ async function doyusMesajiniEmalEt(kontekst) {
       return true;
     }
 
-    const evvelkiDoyus = kopyala(state.doyus || {});
-    const baslamaSorqusudur = type === "battle_start_request";
-    const netice = baslamaSorqusudur
-      ? tutorialDoyusunaBasla(state, kontekst.nowMs())
-      : tutorialDoyusunuNeticelendir(state, kontekst.nowMs());
+    if (type === "battle_reward_claim_request" && rewardMissionStatus === "kilidli") {
+      gonder(kontekst, resultType, {
+        success: false,
+        playerId,
+        missionId: "M019",
+        missionStatus: rewardMissionStatus,
+        message: "Döyüş təchizatı missiyası hələ aktiv deyil."
+      });
+      return true;
+    }
 
-    const missionId = baslamaSorqusudur ? "M017" : "M018";
-    const missionStatus = baslamaSorqusudur ? startMissionStatus : resolveMissionStatus;
+    const evvelkiDoyus = kopyala(state.doyus || {});
+    const evvelkiResurslar = kopyala(state.resources || {});
+
+    let netice;
+    let missionId;
+    let missionStatus;
+
+    if (type === "battle_start_request") {
+      netice = tutorialDoyusunaBasla(state, kontekst.nowMs());
+      missionId = "M017";
+      missionStatus = startMissionStatus;
+    }
+    else if (type === "battle_resolve_request") {
+      netice = tutorialDoyusunuNeticelendir(state, kontekst.nowMs());
+      missionId = "M018";
+      missionStatus = resolveMissionStatus;
+    }
+    else {
+      netice = tutorialDoyusMukafatiniAl(state);
+      missionId = "M019";
+      missionStatus = rewardMissionStatus;
+    }
 
     if (!netice.success) {
       gonder(kontekst, resultType, {
@@ -125,7 +161,8 @@ async function doyusMesajiniEmalEt(kontekst) {
         playerId,
         missionId,
         missionStatus,
-        ...netice
+        ...netice,
+        info: doyusMelumatiniHazirla(state, kontekst.nowMs())
       });
       return true;
     }
@@ -135,22 +172,28 @@ async function doyusMesajiniEmalEt(kontekst) {
     }
     catch (xeta) {
       state.doyus = evvelkiDoyus;
+      state.resources = evvelkiResurslar;
       throw xeta;
     }
 
-    if (baslamaSorqusudur && !missiyaHadisesiVar(state, "doyus_basladildi")) {
+    if (type === "battle_start_request" && !missiyaHadisesiVar(state, "doyus_basladildi")) {
       await missiyaServerHadisesiniQeydEt(playerId, state, "doyus_basladildi", 1);
     }
 
-    if (!baslamaSorqusudur && netice.victory === true && !missiyaHadisesiVar(state, "doyus_qazanildi")) {
+    if (type === "battle_resolve_request" && netice.victory === true && !missiyaHadisesiVar(state, "doyus_qazanildi")) {
       await missiyaServerHadisesiniQeydEt(playerId, state, "doyus_qazanildi", 1);
+    }
+
+    if (type === "battle_reward_claim_request" && !missiyaHadisesiVar(state, "doyus_mukafati_verildi")) {
+      await missiyaServerHadisesiniQeydEt(playerId, state, "doyus_mukafati_verildi", 1);
     }
 
     gonder(kontekst, resultType, {
       success: true,
       playerId,
       missionId,
-      ...netice
+      ...netice,
+      info: doyusMelumatiniHazirla(state, kontekst.nowMs())
     });
   }
   catch (xeta) {
