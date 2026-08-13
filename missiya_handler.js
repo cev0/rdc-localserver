@@ -19,6 +19,12 @@ const {
   gameplayNeticesiniIzlemeyeHazirla
 } = require("./missiya_gameplay_musahide");
 
+const {
+  missiyaDaimiVeziyyetiniAl,
+  missiyaMukafatiniAuditdeYaddaSaxla,
+  daimiVeziyyetiStateIleBirlesdir
+} = require("./missiya_postgres");
+
 const MISSIYA_MESAJLARI = new Set([
   "mission_list_request",
   "mission_info_request",
@@ -33,6 +39,10 @@ function metnAl(deyer, maksimum = 128) {
 
 function autentifikasiyaOlunmusPlayerIdAl(ws) {
   return metnAl(ws && ws._authedPlayerId, 128);
+}
+
+function derinKopyala(deyer) {
+  return JSON.parse(JSON.stringify(deyer));
 }
 
 function ugursuzCavab(kontekst, type, message, elave = {}) {
@@ -61,6 +71,11 @@ function oyunStateGonder(kontekst, playerId, state) {
       kontekst.makeClientState(state)
     )
   });
+}
+
+async function daimiMissiyaStateYukle(playerId, state) {
+  const daimiVeziyyet = await missiyaDaimiVeziyyetiniAl(playerId);
+  daimiVeziyyetiStateIleBirlesdir(state, daimiVeziyyet);
 }
 
 async function missiyaMesajiniEmalEt(kontekst) {
@@ -98,6 +113,24 @@ async function missiyaMesajiniEmalEt(kontekst) {
 
   const state = kontekst.getOrCreatePlayerState(playerId);
   missiyaStateTeminEt(state);
+
+  try {
+    await daimiMissiyaStateYukle(playerId, state);
+  }
+  catch (xeta) {
+    console.error("[MISSIYA_DB] Daimi state oxuna bilmədi:", {
+      playerId,
+      message: xeta && xeta.message ? xeta.message : String(xeta)
+    });
+
+    ugursuzCavab(
+      kontekst,
+      type.replace("_request", "_result"),
+      "Missiya məlumatı hazırda daimi yaddaşdan oxuna bilmir. Bir az sonra yenidən yoxlayın.",
+      { playerId }
+    );
+    return true;
+  }
 
   if (type === "mission_list_request") {
     const missiyalar = butunMissiyalariAl()
@@ -152,7 +185,55 @@ async function missiyaMesajiniEmalEt(kontekst) {
   }
 
   const missionId = metnAl(kontekst.msg && kontekst.msg.missionId, 64);
-  const netice = missiyaMukafatiniAl(state, missionId);
+
+  const evvelkiResurslar = derinKopyala(state.resources || {});
+  const evvelkiMissiyalar = derinKopyala(state.missions || {});
+
+  let netice = missiyaMukafatiniAl(state, missionId);
+
+  if (netice.success) {
+    try {
+      const auditNeticesi = await missiyaMukafatiniAuditdeYaddaSaxla(
+        playerId,
+        netice.missionId
+      );
+
+      if (auditNeticesi.artiqMovcuddur) {
+        state.resources = evvelkiResurslar;
+        state.missions = evvelkiMissiyalar;
+
+        await daimiMissiyaStateYukle(playerId, state);
+
+        netice = {
+          success: false,
+          alreadyClaimed: true,
+          locked: false,
+          missionId: netice.missionId,
+          message: "Missiya mükafatı artıq alınıb.",
+          rewards: []
+        };
+      }
+    }
+    catch (xeta) {
+      state.resources = evvelkiResurslar;
+      state.missions = evvelkiMissiyalar;
+
+      console.error("[MISSIYA_DB] Reward audit yazıla bilmədi:", {
+        playerId,
+        missionId,
+        message: xeta && xeta.message ? xeta.message : String(xeta)
+      });
+
+      netice = {
+        success: false,
+        alreadyClaimed: false,
+        locked: false,
+        missionId,
+        message: "Missiya mükafatı daimi yaddaşa yazıla bilmədi. Mükafat verilmədi.",
+        rewards: []
+      };
+    }
+  }
 
   if (netice.success && typeof kontekst.updateServerTime === "function") {
     kontekst.updateServerTime(state);
