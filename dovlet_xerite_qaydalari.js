@@ -4,35 +4,57 @@
 // DÖVLƏT / XƏRİTƏ ƏSAS QAYDALARI
 // ------------------------------------------------------------
 // Dövlət xəritəsi ortaq online multiplayer xəritədir.
-// outer / middle / inner_green oyunçu üçün unlock/progression deyil.
-// Bu zonalar yalnız xəritə obyektlərinin çətinlik/level bandını göstərir.
+// Xəritə rəng zonaları oyunçu üçün unlock/progression deyil.
+// Zonalar yalnız xəritədəki resurs və düşmən obyektlərinin
+// level diapazonunu müəyyən edir.
 // ============================================================
 
 const DOVLET_QAYDALARI = Object.freeze({
-  dovletMuddetGun: 30,
-  yeniDovletHerAyAcilir: true,
+  dovletMuddetGun: 60,
+  dovletMuddetAy: 2,
+  yeniDovletMuddetBitendeAcilir: true,
   dovletOyuncuSayinaGoreAcilmir: true,
   movcudOyuncuDovletindeQalir: true,
   yeniOyuncuCariAktivDovleteDusur: true,
   ortaqMultiplayerXeritesidir: true,
-  eyniDovletOyunculariEyniXeritededir: true
+  eyniDovletOyunculariEyniXeritededir: true,
+  hesablanmaMenbeyi: "play_market_release",
+  playMarketReleaseEnv: "PLAY_MARKET_RELEASE_TARIXI"
 });
 
 const XERITE_ZONALARI = Object.freeze({
   COL: Object.freeze({
     zoneId: "outer",
     displayName: "Çöl",
-    levelBand: 1
+    resursMinLevel: 3,
+    resursMaxLevel: 6,
+    dusmenMinLevel: 1,
+    dusmenMaxLevel: 5
   }),
   ACIQ_YASIL: Object.freeze({
     zoneId: "middle",
     displayName: "Açıq Yaşıl",
-    levelBand: 2
+    resursMinLevel: 5,
+    resursMaxLevel: 8,
+    dusmenMinLevel: 5,
+    dusmenMaxLevel: 8
   }),
   TUND_YASIL: Object.freeze({
     zoneId: "inner_green",
     displayName: "Tünd Yaşıl",
-    levelBand: 3
+    resursMinLevel: 8,
+    resursMaxLevel: 9,
+    dusmenMinLevel: 8,
+    dusmenMaxLevel: 10
+  }),
+  PREZIDENT_MERKEZI: Object.freeze({
+    zoneId: "president_center",
+    displayName: "Prezident Mərkəzi",
+    resursMinLevel: 10,
+    resursMaxLevel: 10,
+    dusmenMinLevel: 0,
+    dusmenMaxLevel: 0,
+    coxAzResurs: true
   })
 });
 
@@ -42,19 +64,26 @@ const XERITE_OBYEKT_NOVLERI = Object.freeze({
   DUSMEN_KESFIYYATCISI: "enemy_scout"
 });
 
-function zonaLevelBandiniAl(zoneId) {
+function zonaniTap(zoneId) {
   const acar = String(zoneId || "").trim().toLowerCase();
+  return Object.values(XERITE_ZONALARI).find(zona => zona.zoneId === acar) || null;
+}
 
-  for (const zona of Object.values(XERITE_ZONALARI)) {
-    if (zona.zoneId === acar) return zona.levelBand;
+function zonaSeviyeAraliginiAl(zoneId, obyektNovu) {
+  const zona = zonaniTap(zoneId);
+  if (!zona) return { minLevel: 0, maxLevel: 0 };
+
+  if (obyektNovu === XERITE_OBYEKT_NOVLERI.RESURS) {
+    return { minLevel: zona.resursMinLevel, maxLevel: zona.resursMaxLevel };
   }
 
-  return 0;
+  return { minLevel: zona.dusmenMinLevel, maxLevel: zona.dusmenMaxLevel };
 }
 
 module.exports = {
   DOVLET_QAYDALARI,
   XERITE_ZONALARI,
   XERITE_OBYEKT_NOVLERI,
-  zonaLevelBandiniAl
+  zonaniTap,
+  zonaSeviyeAraliginiAl
 };
