@@ -1,12 +1,13 @@
 "use strict";
 
 // ============================================================
-// MISSİYA + QƏHRƏMAN RECRUIT + EXP SERVER GİRİŞ NÖQTƏSİ
+// MISSİYA + QƏHRƏMAN RECRUIT + EXP + KƏŞFİYYAT SERVER GİRİŞ NÖQTƏSİ
 // ------------------------------------------------------------
 // Mövcud hesab wrapper-ını dəyişmədən:
 // 1. missiya mesajlarını
 // 2. qəhrəman recruit mesajlarını
-// 3. qəhrəman EXP item istifadəsini
+// 3. qəhrəman EXP / tutorial skill mesajlarını
+// 4. tutorial kəşfiyyat mesajlarını
 // hesab/login handler zəncirinə əlavə edir.
 // ============================================================
 
@@ -26,6 +27,10 @@ const {
 const {
   qehremanExpMesajiniEmalEt
 } = require("./qehreman_exp_handler");
+
+const {
+  kesfiyyatMesajiniEmalEt
+} = require("./kesfiyyat_handler");
 
 const esasHesabLoginMesajiniEmalEt =
   hesabLoginModulu.hesabLoginMesajiniEmalEt;
@@ -55,6 +60,13 @@ hesabLoginModulu.hesabLoginMesajiniEmalEt = async function(kontekst) {
     await qehremanExpMesajiniEmalEt(kontekst);
 
   if (expEmalOlundu) {
+    return true;
+  }
+
+  const kesfiyyatEmalOlundu =
+    await kesfiyyatMesajiniEmalEt(kontekst);
+
+  if (kesfiyyatEmalOlundu) {
     return true;
   }
 
