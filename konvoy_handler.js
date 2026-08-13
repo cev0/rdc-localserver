@@ -7,6 +7,11 @@ const {
 } = require("./konvoy_sistemi");
 
 const {
+  konvoyQosunMelumatiniHazirla,
+  konvoyQosunlariniTeyinEt
+} = require("./konvoy_qosun_sistemi");
+
+const {
   oyunStateIniBerpaEt,
   oyunStateIniYaddaSaxla,
   oyuncuStateBerpaOlunub
@@ -15,7 +20,8 @@ const {
 const KONVOY_MESAJLARI = new Set([
   "convoy_info_request",
   "convoy_hero_assign_request",
-  "convoy_hero_remove_request"
+  "convoy_hero_remove_request",
+  "convoy_troops_set_request"
 ]);
 
 function metnAl(deyer, maksimum = 128) {
@@ -32,6 +38,13 @@ function gonder(kontekst, type, melumat) {
   });
 }
 
+function neticeTipiniAl(type) {
+  if (type === "convoy_info_request") return "convoy_info_result";
+  if (type === "convoy_hero_assign_request") return "convoy_hero_assign_result";
+  if (type === "convoy_hero_remove_request") return "convoy_hero_remove_result";
+  return "convoy_troops_set_result";
+}
+
 async function konvoyMesajiniEmalEt(kontekst) {
   const type = metnAl(kontekst && kontekst.type, 128);
   if (!KONVOY_MESAJLARI.has(type)) return false;
@@ -41,11 +54,7 @@ async function konvoyMesajiniEmalEt(kontekst) {
     128
   );
 
-  const resultType = type === "convoy_info_request"
-    ? "convoy_info_result"
-    : type === "convoy_hero_assign_request"
-      ? "convoy_hero_assign_result"
-      : "convoy_hero_remove_result";
+  const resultType = neticeTipiniAl(type);
 
   if (!playerId) {
     gonder(kontekst, resultType, {
@@ -63,7 +72,13 @@ async function konvoyMesajiniEmalEt(kontekst) {
     const state = kontekst.getOrCreatePlayerState(playerId);
 
     if (type === "convoy_info_request") {
-      const info = konvoyMelumatiniHazirla(state);
+      const heroInfo = konvoyMelumatiniHazirla(state);
+      const troopInfo = konvoyQosunMelumatiniHazirla(state);
+      const info = {
+        ...heroInfo,
+        troopInfo
+      };
+
       gonder(kontekst, resultType, {
         success: true,
         playerId,
@@ -77,9 +92,18 @@ async function konvoyMesajiniEmalEt(kontekst) {
     const konvoyId = metnAl(kontekst.msg && kontekst.msg.konvoyId, 64);
     const heroId = metnAl(kontekst.msg && kontekst.msg.heroId, 128);
 
-    const netice = type === "convoy_hero_assign_request"
-      ? qehremaniKonvoyaYerlesdir(state, konvoyId, heroId)
-      : qehremaniKonvoydanCixar(state, konvoyId, heroId);
+    let netice;
+
+    if (type === "convoy_hero_assign_request") {
+      netice = qehremaniKonvoyaYerlesdir(state, konvoyId, heroId);
+    }
+    else if (type === "convoy_hero_remove_request") {
+      netice = qehremaniKonvoydanCixar(state, konvoyId, heroId);
+    }
+    else {
+      const troops = kontekst.msg && kontekst.msg.troops;
+      netice = konvoyQosunlariniTeyinEt(state, konvoyId, troops);
+    }
 
     if (!netice.success) {
       state.konvoylar = evvelkiKonvoylar;
