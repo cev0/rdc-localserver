@@ -1,7 +1,8 @@
 "use strict";
 
 const {
-  sorguEt
+  sorguEt,
+  proqramHovuzunuAl
 } = require("./verilenler_bazasi");
 
 const MISSIYA_MUKAFAT_HADISESI = "missiya_mukafat_alindi";
@@ -100,51 +101,78 @@ async function missiyaMukafatiniAuditdeYaddaSaxla(playerId, missionId) {
     throw new Error("Missiya mükafatı audit məlumatı natamamdır.");
   }
 
-  const movcud = await sorguEt(
-    `
-      SELECT id
-      FROM hesab_audit_jurnali
-      WHERE oyuncu_id = $1
-        AND hadise_novu = $2
-        AND LOWER(COALESCE(detallar->>'missionId', '')) = $3
-      LIMIT 1
-    `,
-    [oyuncuId, MISSIYA_MUKAFAT_HADISESI, missiyaId]
-  );
+  const client = await proqramHovuzunuAl().connect();
 
-  if (movcud.rows && movcud.rows.length > 0) {
+  try {
+    await client.query("BEGIN");
+
+    // Eyni oyunçu + missiya üçün paralel claim-ləri PostgreSQL səviyyəsində sırala.
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))",
+      [oyuncuId, missiyaId]
+    );
+
+    const movcud = await client.query(
+      `
+        SELECT id
+        FROM hesab_audit_jurnali
+        WHERE oyuncu_id = $1
+          AND hadise_novu = $2
+          AND LOWER(COALESCE(detallar->>'missionId', '')) = $3
+        LIMIT 1
+      `,
+      [oyuncuId, MISSIYA_MUKAFAT_HADISESI, missiyaId]
+    );
+
+    if (movcud.rows && movcud.rows.length > 0) {
+      await client.query("COMMIT");
+
+      return {
+        yazildi: false,
+        artiqMovcuddur: true
+      };
+    }
+
+    await client.query(
+      `
+        INSERT INTO hesab_audit_jurnali (
+          hesab_id,
+          oyuncu_id,
+          hadise_novu,
+          detallar
+        )
+        VALUES (
+          NULL,
+          $1,
+          $2,
+          $3::jsonb
+        )
+      `,
+      [
+        oyuncuId,
+        MISSIYA_MUKAFAT_HADISESI,
+        JSON.stringify({ missionId: missiyaId })
+      ]
+    );
+
+    await client.query("COMMIT");
+
     return {
-      yazildi: false,
-      artiqMovcuddur: true
+      yazildi: true,
+      artiqMovcuddur: false
     };
   }
+  catch (xeta) {
+    try {
+      await client.query("ROLLBACK");
+    }
+    catch {}
 
-  await sorguEt(
-    `
-      INSERT INTO hesab_audit_jurnali (
-        hesab_id,
-        oyuncu_id,
-        hadise_novu,
-        detallar
-      )
-      VALUES (
-        NULL,
-        $1,
-        $2,
-        $3::jsonb
-      )
-    `,
-    [
-      oyuncuId,
-      MISSIYA_MUKAFAT_HADISESI,
-      JSON.stringify({ missionId: missiyaId })
-    ]
-  );
-
-  return {
-    yazildi: true,
-    artiqMovcuddur: false
-  };
+    throw xeta;
+  }
+  finally {
+    client.release();
+  }
 }
 
 async function missiyaProqresHadisesiniAuditdeYaddaSaxla(
