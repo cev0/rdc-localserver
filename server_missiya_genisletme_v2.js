@@ -28,4 +28,7 @@ hesabLoginModulu.hesabLoginMesajiniEmalEt = async function(kontekst) {
   return await esasHesabLoginMesajiniEmalEt(kontekst);
 };
 
+const { dovletQaydalariniTetbiqEt } = require("./server_dovlet_patch");
+dovletQaydalariniTetbiqEt();
+
 require("./server_hesab_genisletme");
