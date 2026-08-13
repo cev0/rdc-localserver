@@ -188,8 +188,9 @@ const MISSIYA_KATALOQU = [
     chapterId: "F02",
     title: "Xüsusi Bacarıq",
     description: "Qəhrəmanın ilk bacarığını inkişaf etdir.",
-    type: "server_event_count",
-    eventId: "qehreman_bacarigi_artdi",
+    type: "hero_skill_level_at_least",
+    slotIndex: 1,
+    requiredSkillLevel: 2,
     requiredCount: 1,
     rewards: [
       { resourceId: "chips", amount: 75 }
