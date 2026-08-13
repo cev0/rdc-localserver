@@ -24,9 +24,12 @@ const {
 
 const {
   missiyaDaimiVeziyyetiniAl,
-  missiyaMukafatiniAuditdeYaddaSaxla,
   daimiVeziyyetiStateIleBirlesdir
 } = require("./missiya_postgres");
+
+const {
+  missiyaMukafatVeSnapshotiniAtomikYaz
+} = require("./missiya_mukafat_tranzaksiya");
 
 const {
   oyunStateIniBerpaEt,
@@ -424,13 +427,22 @@ async function missiyaMesajiniEmalEt(kontekst) {
   let netice = missiyaMukafatiniAl(state, missionId);
 
   if (netice.success) {
-    try {
-      const auditNeticesi = await missiyaMukafatiniAuditdeYaddaSaxla(
-        playerId,
-        netice.missionId
-      );
+    // Derived missiya state-i də eyni snapshot-a daxil olsun.
+    bazaGirisiKecidiniTeminEt(state);
 
-      if (auditNeticesi.artiqMovcuddur) {
+    if (typeof kontekst.updateServerTime === "function") {
+      kontekst.updateServerTime(state);
+    }
+
+    try {
+      const tranzaksiyaNeticesi =
+        await missiyaMukafatVeSnapshotiniAtomikYaz(
+          playerId,
+          netice.missionId,
+          state
+        );
+
+      if (tranzaksiyaNeticesi.artiqMovcuddur) {
         state.resources = evvelkiResurslar;
         state.missions = evvelkiMissiyalar;
 
@@ -451,7 +463,7 @@ async function missiyaMesajiniEmalEt(kontekst) {
       state.resources = evvelkiResurslar;
       state.missions = evvelkiMissiyalar;
 
-      console.error("[MISSIYA_DB] Reward audit yazıla bilmədi:", {
+      console.error("[MISSIYA_DB] Reward transaction yazıla bilmədi:", {
         playerId,
         missionId,
         message: xeta && xeta.message ? xeta.message : String(xeta)
@@ -462,28 +474,9 @@ async function missiyaMesajiniEmalEt(kontekst) {
         alreadyClaimed: false,
         locked: false,
         missionId,
-        message: "Missiya mükafatı daimi yaddaşa yazıla bilmədi. Mükafat verilmədi.",
+        message: "Missiya mükafatı daimi yaddaşa atomik yazıla bilmədi. Mükafat verilmədi.",
         rewards: []
       };
-    }
-  }
-
-  if (netice.success) {
-    bazaGirisiKecidiniTeminEt(state);
-
-    if (typeof kontekst.updateServerTime === "function") {
-      kontekst.updateServerTime(state);
-    }
-
-    try {
-      await oyunStateIniYaddaSaxla(playerId, state);
-    }
-    catch (xeta) {
-      console.error("[OYUN_STATE_SNAPSHOT] Missiya reward snapshot xətası:", {
-        playerId,
-        missionId,
-        message: xeta && xeta.message ? xeta.message : String(xeta)
-      });
     }
   }
 
