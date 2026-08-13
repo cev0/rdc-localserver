@@ -52,7 +52,7 @@ function dovletQaydalariniTetbiqEt() {
   netice = birDefeDeyisdir(
     kod,
     `    const ring = i < 10\n      ? { min: middleRadius + 20, max: outerRadius - 10, zone: \"outer\" }\n      : i < 15\n        ? { min: innerRadius + 20, max: middleRadius - 10, zone: \"middle\" }\n        : { min: 25, max: innerRadius - 15, zone: \"inner_green\" };`,
-    `    const ring = i < 10\n      ? { min: middleRadius + 20, max: outerRadius - 10, zone: \"outer\" }\n      : i < 15\n        ? { min: innerRadius + 20, max: middleRadius - 10, zone: \"middle\" }\n        : i < STATE_WORLD_OBJECT_CONFIG.resourceSitesPerState - 1\n          ? { min: 70, max: innerRadius - 15, zone: \"inner_green\" }\n          : { min: 25, max: Math.min(70, innerRadius - 20), zone: \"president_center\" };`,
+    `    const ring = i < 10\n      ? { min: middleRadius + 20, max: outerRadius - 10, zone: \"outer\", presidentCenter: false }\n      : i < 15\n        ? { min: innerRadius + 20, max: middleRadius - 10, zone: \"middle\", presidentCenter: false }\n        : i < STATE_WORLD_OBJECT_CONFIG.resourceSitesPerState - 1\n          ? { min: 70, max: innerRadius - 15, zone: \"inner_green\", presidentCenter: false }\n          : { min: 25, max: Math.min(70, innerRadius - 20), zone: \"inner_green\", presidentCenter: true };`,
     "Resurs zona paylanması"
   );
   kod = netice.kod;
@@ -61,7 +61,7 @@ function dovletQaydalariniTetbiqEt() {
   netice = birDefeDeyisdir(
     kod,
     `      resourceType: resourceTypes[i % resourceTypes.length],\n      levelBand: ring.zone === \"outer\" ? 1 : ring.zone === \"middle\" ? 2 : 3`,
-    `      resourceType: resourceTypes[i % resourceTypes.length],\n      levelBand: ring.zone === \"outer\" ? 1 : ring.zone === \"middle\" ? 2 : ring.zone === \"inner_green\" ? 3 : 4,\n      level: ring.zone === \"outer\"\n        ? xeriteLeveliSec(rng, 3, 6)\n        : ring.zone === \"middle\"\n          ? xeriteLeveliSec(rng, 5, 8)\n          : ring.zone === \"inner_green\"\n            ? xeriteLeveliSec(rng, 8, 9)\n            : 10,\n      presidentCenter: ring.zone === \"president_center\"`,
+    `      resourceType: resourceTypes[i % resourceTypes.length],\n      levelBand: ring.zone === \"outer\" ? 1 : ring.zone === \"middle\" ? 2 : 3,\n      level: ring.presidentCenter === true\n        ? 10\n        : ring.zone === \"outer\"\n          ? xeriteLeveliSec(rng, 3, 6)\n          : ring.zone === \"middle\"\n            ? xeriteLeveliSec(rng, 5, 8)\n            : xeriteLeveliSec(rng, 8, 9),\n      presidentCenter: ring.presidentCenter === true`,
     "Resurs level diapazonları"
   );
   kod = netice.kod;
