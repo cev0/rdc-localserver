@@ -52,8 +52,10 @@ async function provayderTesdiqiniEsasHesabaSinxronEt(playerId) {
     }
 
     const hesab = hesabNeticesi.rows[0];
+    const cariEsasEmail = metnAl(hesab.esas_email, 320).toLowerCase();
 
-    if (hesab.email_tesdiqlenib === true) {
+    // Əsas hesab həm təsdiqlənib, həm də e-poçtu varsa artıq iş yoxdur.
+    if (hesab.email_tesdiqlenib === true && cariEsasEmail) {
       await client.query("COMMIT");
 
       return {
@@ -68,11 +70,15 @@ async function provayderTesdiqiniEsasHesabaSinxronEt(playerId) {
       `
       SELECT
         provayder,
-        provayder_email
+        provayder_email,
+        provayder_email_tesdiqlenib
       FROM hesab_provayderleri
       WHERE hesab_id = $1
-        AND provayder_email_tesdiqlenib = TRUE
         AND NULLIF(TRIM(provayder_email), '') IS NOT NULL
+        AND (
+          provayder_email_tesdiqlenib = TRUE
+          OR provayder = 'google'
+        )
       ORDER BY
         CASE WHEN provayder = 'google' THEN 0 ELSE 1 END,
         son_giris_vaxti DESC NULLS LAST,
@@ -85,17 +91,49 @@ async function provayderTesdiqiniEsasHesabaSinxronEt(playerId) {
     if (!provayderNeticesi.rows || provayderNeticesi.rows.length !== 1) {
       await client.query("COMMIT");
 
+      console.warn(
+        "[PROVAYDER_TESDIQ_SINXRON] Hesab üçün e-poçtlu provayder tapılmadı:",
+        {
+          playerId: temizPlayerId,
+          accountId: hesab.hesab_id
+        }
+      );
+
       return {
         success: true,
         changed: false,
-        message: "Təsdiqlənmiş provayder e-poçtu tapılmadı."
+        message: "Provayder e-poçtu tapılmadı."
       };
     }
 
     const provayderSetri = provayderNeticesi.rows[0];
-    const provayderEmail = metnAl(provayderSetri.provayder_email, 320).toLowerCase();
+    const provayder = metnAl(provayderSetri.provayder, 32).toLowerCase();
+    const provayderEmail = metnAl(
+      provayderSetri.provayder_email,
+      320
+    ).toLowerCase();
 
-    await client.query(
+    if (!provayderEmail) {
+      await client.query("COMMIT");
+
+      return {
+        success: true,
+        changed: false,
+        message: "Provayder e-poçtu boşdur."
+      };
+    }
+
+    // Google provayder sətri yalnız server Google ID tokenini uğurla
+    // kriptoqrafik yoxladıqdan sonra yaradılır. Buna görə Google-dan
+    // gələn e-poçt əsas hesab boşdursa etibarlı əsas e-poçt kimi yazılır.
+    // Mövcud əsas e-poçt fərqlidirsə onu avtomatik təsdiqləmirik.
+    const esasEmailBosdur = !cariEsasEmail;
+    const eyniEmaildir = cariEsasEmail === provayderEmail;
+    const tesdiqEtmekOlar =
+      esasEmailBosdur ||
+      eyniEmaildir;
+
+    const yenilemeNeticesi = await client.query(
       `
       UPDATE hesablar
       SET
@@ -103,13 +141,20 @@ async function provayderTesdiqiniEsasHesabaSinxronEt(playerId) {
           WHEN NULLIF(TRIM(esas_email), '') IS NULL THEN $2
           ELSE esas_email
         END,
-        email_tesdiqlenib = TRUE,
+        email_tesdiqlenib = CASE
+          WHEN $3 = TRUE THEN TRUE
+          ELSE email_tesdiqlenib
+        END,
         yenilenme_vaxti = NOW()
       WHERE hesab_id = $1
+      RETURNING
+        esas_email,
+        email_tesdiqlenib
       `,
       [
         hesab.hesab_id,
-        provayderEmail
+        provayderEmail,
+        tesdiqEtmekOlar
       ]
     );
 
@@ -128,24 +173,46 @@ async function provayderTesdiqiniEsasHesabaSinxronEt(playerId) {
         temizPlayerId,
         "provayder_tesdiqi_esas_hesaba_sinxronlandi",
         JSON.stringify({
-          provider: metnAl(provayderSetri.provayder, 32).toLowerCase(),
-          primaryEmailFilled: !metnAl(hesab.esas_email, 320)
+          provider: provayder,
+          providerEmailVerified:
+            provayderSetri.provayder_email_tesdiqlenib === true,
+          primaryEmailFilled: esasEmailBosdur,
+          primaryEmailMatched: eyniEmaildir,
+          accountMarkedVerified: tesdiqEtmekOlar
         })
       ]
     );
 
     await client.query("COMMIT");
 
-    console.log("[PROVAYDER_TESDIQ_SINXRON] Hesab təsdiqləndi:", {
+    const yenilenmis =
+      yenilemeNeticesi.rows &&
+      yenilemeNeticesi.rows.length === 1
+        ? yenilemeNeticesi.rows[0]
+        : null;
+
+    console.log("[PROVAYDER_TESDIQ_SINXRON] Əsas hesab yeniləndi:", {
       playerId: temizPlayerId,
       accountId: hesab.hesab_id,
-      provider: metnAl(provayderSetri.provayder, 32).toLowerCase()
+      provider: provayder,
+      primaryEmail: yenilenmis && yenilenmis.esas_email
+        ? yenilenmis.esas_email
+        : "",
+      emailVerified: Boolean(
+        yenilenmis && yenilenmis.email_tesdiqlenib
+      )
     });
 
     return {
       success: true,
       changed: true,
-      message: "Provayder təsdiqi əsas hesaba sinxronlandı."
+      emailVerified: Boolean(
+        yenilenmis && yenilenmis.email_tesdiqlenib
+      ),
+      primaryEmail: yenilenmis && yenilenmis.esas_email
+        ? String(yenilenmis.esas_email)
+        : "",
+      message: "Provayder e-poçtu əsas hesaba sinxronlandı."
     };
   }
   catch (xeta) {
