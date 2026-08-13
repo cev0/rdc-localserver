@@ -15,6 +15,10 @@ const {
   missiyaMukafatiniAl
 } = require("./missiya_mukafat");
 
+const {
+  gameplayNeticesiniIzlemeyeHazirla
+} = require("./missiya_gameplay_musahide");
+
 const MISSIYA_MESAJLARI = new Set([
   "mission_list_request",
   "mission_info_request",
@@ -61,6 +65,10 @@ function oyunStateGonder(kontekst, playerId, state) {
 
 async function missiyaMesajiniEmalEt(kontekst) {
   const type = metnAl(kontekst && kontekst.type, 128);
+
+  // Gameplay sorğularının nəticəsini yalnız server state-i dəyişəndən
+  // sonra yoxlayan observer. Client missiya progressini birbaşa yaza bilmir.
+  gameplayNeticesiniIzlemeyeHazirla(kontekst);
 
   if (!MISSIYA_MESAJLARI.has(type)) {
     return false;
