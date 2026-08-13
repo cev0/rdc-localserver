@@ -3,8 +3,9 @@
 // ============================================================
 // DÖVLƏT / XƏRİTƏ ƏSAS QAYDALARI
 // ------------------------------------------------------------
-// Bu modul gameplay data qaydasını saxlayır.
-// Buradakı zonalar oyunçu üçün unlock/progression deyil.
+// Dövlət xəritəsi ortaq online multiplayer xəritədir.
+// outer / middle / inner_green oyunçu üçün unlock/progression deyil.
+// Bu zonalar yalnız xəritə obyektlərinin çətinlik/level bandını göstərir.
 // ============================================================
 
 const DOVLET_QAYDALARI = Object.freeze({
@@ -12,7 +13,9 @@ const DOVLET_QAYDALARI = Object.freeze({
   yeniDovletHerAyAcilir: true,
   dovletOyuncuSayinaGoreAcilmir: true,
   movcudOyuncuDovletindeQalir: true,
-  yeniOyuncuCariAktivDovleteDusur: true
+  yeniOyuncuCariAktivDovleteDusur: true,
+  ortaqMultiplayerXeritesidir: true,
+  eyniDovletOyunculariEyniXeritededir: true
 });
 
 const XERITE_ZONALARI = Object.freeze({
