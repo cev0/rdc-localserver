@@ -4,69 +4,58 @@ Bu sənəd mobil RTS layihəsində Qəhrəman Recruit sisteminin server-authorit
 
 ## Əsas prinsip
 
-Unity yalnız UI, animasiya və nəticənin göstərilməsinə cavabdehdir.
+Unity yalnız UI, animasiya və server nəticəsinin göstərilməsinə cavabdehdir.
 
 Client bunları müəyyən etmir:
 
-- düşən hero
+- düşən qəhrəman və ya EXP item
 - rarity
 - RNG
-- free draw qalıqları
+- günlük free qalıqları
 - ticket balansı
 - duplicate sayı
-- Hero EXP reward miqdarı
+- reward miqdarı
 
-Server `ws._authedPlayerId` əsasında oyunçunu müəyyən edir.
+Server oyunçunu `ws._authedPlayerId` əsasında müəyyən edir.
 
-## Unity ilə eyni Hero ID-lər
+## Rarity sırası
 
-| heroId | Görünən ad | Rarity kodu | Rarity |
-|---|---|---:|---|
-| `doyuscu` | Doyuscu | 0 | Green |
-| `war_master` | War Master | 1 | Blue |
-| `iron_maiden` | Iron Maiden | 2 | Purple |
-| `feroman` | Feroman | 3 | Orange |
-| `qiz` | Qiz | 3 | Orange |
-| `qiz2` | Qiz2 | 3 | Orange |
-
-Rarity enum Unity `HeroRarity` ilə eynidir:
+Unity `HeroRarity` ilə eynidir:
 
 - Green = 0
 - Blue = 1
 - Purple = 2
 - Orange = 3
 
-## Banner ID-lər
+Final recruit qəhrəman planı:
 
-- `banner_normal`
-- `banner_advanced`
-- `banner_super`
+- Göy: 15 qəhrəman
+- Bənövşəyi: 10 qəhrəman
+- Narıncı: 5 qəhrəman
 
-## V1 balans qərarı
+Hazırkı `doyuscu`, `war_master`, `iron_maiden`, `feroman`, `qiz`, `qiz2` yalnız test qəhrəmanlarıdır. Final hero sayı artanda server mexanikası dəyişməyəcək; yalnız kataloq və pool datası genişlənəcək.
 
-### Normal
+## Banner uyğunluğu
 
-- gündə 3 pulsuz single recruit
-- single ticket cost: 1 Normal Ticket
-- x10 cost: 10 Normal Ticket
-- x10 minimum rarity guarantee yoxdur
+Unity-də hazır texniki ID-lər saxlanılır:
 
-### Advanced
+- `banner_normal` = Göy Recruitment
+- `banner_advanced` = Bənövşəyi Recruitment
+- `banner_super` = Narıncı Recruitment
 
-- daily free yoxdur
-- single ticket cost: 1 Advanced Ticket
-- x10 cost: 10 Advanced Ticket
+Bu yanaşma mövcud UI/prefab inteqrasiyasını sındırmadan rarity əsaslı sistemi qurmağa imkan verir.
 
-### Super
+## Günlük pulsuz recruit
 
-- daily free yoxdur
-- single ticket cost: 1 Super Ticket
-- x10 cost: 10 Super Ticket
-- x10 nəticələrində ən az 1 Purple və ya Orange Hero zəmanəti
+Hər UTC gündə:
 
-## Daily reset
+- Göy recruit: 1 dəfə FREE
+- Bənövşəyi recruit: 1 dəfə FREE
+- Narıncı recruit: 1 dəfə FREE
 
-Free draw reset server UTC gününə görə aparılır.
+Cəmi: gündə 3 pulsuz recruit.
+
+Free istifadə olunmasa növbəti günə yığılmır. UTC gün dəyişəndə hər üç banner yenidən `1` free alır.
 
 `utcDateKey` formatı:
 
@@ -76,16 +65,20 @@ YYYYMMDD
 
 Client cihaz saatı authoritative deyil.
 
+## Ödənişli recruit
+
+Free bitdikdən sonra hazır V1 ticket sistemi qalır:
+
+- single = 1 uyğun ticket
+- x10 = 10 uyğun ticket
+
+Texniki ticket növləri mövcud uyğunluq üçün `normal`, `advanced`, `super` olaraq qalır. Unity UI-də bunlar sonradan Göy/Bənövşəyi/Narıncı vizualları ilə göstərilə bilər.
+
 ## İlk recruit zəmanəti
 
-Oyunçunun serverdə `totalDraws == 0` olduqda ilk real recruit nəticəsi Hero olmalıdır.
+Serverdə `totalDraws == 0` olduqda ilk real recruit nəticəsi Hero olmalıdır.
 
-Səbəb:
-
-- tutorial / campaign M011 ilk hero əldə etmə missiyasıdır
-- oyunçu ilk üç pulsuz draw-da yalnız EXP item alaraq campaign-də ilişməməlidir
-
-Bu zəmanət rarity zəmanəti deyil. Sadəcə nəticə növünün Hero olmasını təmin edir.
+Bu qayda M011 campaign missiyasının EXP nəticəsinə görə bloklanmamasını təmin edir.
 
 ## Mixed reward növləri
 
@@ -96,15 +89,15 @@ hero
 hero_exp_item
 ```
 
-Random medal reward V1-də aktiv deyil.
+Random medal reward hələ aktiv deyil.
 
 EXP item ID-lər:
 
-| rewardId | EXP / item |
-|---|---:|
-| `hero_exp_kicik` | 100 |
-| `hero_exp_orta` | 500 |
-| `hero_exp_boyuk` | 1000 |
+- `hero_exp_kicik` = 100 EXP
+- `hero_exp_orta` = 500 EXP
+- `hero_exp_boyuk` = 1000 EXP
+
+Hazır pool weight-ləri test balansıdır. Final 15/10/5 hero kataloqu hazırlananda ayrıca balans ediləcək.
 
 ## Duplicate qaydası
 
@@ -116,9 +109,7 @@ Eyni hero yenidən düşəndə:
 duplicateCopies += 1
 ```
 
-V1-də duplicate avtomatik medal reward vermir.
-
-Duplicate copy-lər gələcəkdə Hero skill slot 6 və 8 unlock üçün server tərəfindən istifadə ediləcək.
+V1-də duplicate avtomatik medal reward vermir. Duplicate copy-lər gələcəkdə skill slot 6 və 8 unlock üçün istifadə olunacaq.
 
 ## Server state
 
@@ -177,34 +168,16 @@ Recruit runtime:
 Request:
 
 ```json
-{
-  "type": "hero_recruit_info_request"
-}
+{ "type": "hero_recruit_info_request" }
 ```
 
 Result:
 
-```json
-{
-  "type": "hero_recruit_info_result",
-  "success": true,
-  "playerId": "...",
-  "utcDateKey": "20260813",
-  "tickets": {
-    "normal": 0,
-    "advanced": 0,
-    "super": 0
-  },
-  "banners": [],
-  "heroes": [],
-  "expItems": [],
-  "totalDraws": 0
-}
+```text
+hero_recruit_info_result
 ```
 
-### Single Recruit
-
-Request:
+### Single recruit
 
 ```json
 {
@@ -213,17 +186,15 @@ Request:
 }
 ```
 
-Client nəticə və rarity göndərmir.
-
-Result type:
+Result:
 
 ```text
 hero_recruit_single_result
 ```
 
-### X10 Recruit
+Server həmin banner üçün free qalıbsa əvvəl free istifadə edir. Free qalmayıbsa uyğun ticket qaydası tətbiq olunur.
 
-Request:
+### X10 recruit
 
 ```json
 {
@@ -232,57 +203,24 @@ Request:
 }
 ```
 
-Result type:
+Result:
 
 ```text
 hero_recruit_x10_result
 ```
 
-## Recruit result entry
-
-Hero nümunəsi:
-
-```json
-{
-  "rewardKind": "hero",
-  "rewardKindCode": 0,
-  "rewardId": "iron_maiden",
-  "rewardDisplayName": "Iron Maiden",
-  "rewardCount": 1,
-  "heroId": "iron_maiden",
-  "heroName": "Iron Maiden",
-  "rarity": 2,
-  "wasDuplicate": false,
-  "duplicateCopiesAfter": 0,
-  "expValuePerItem": 0
-}
-```
-
-EXP nümunəsi:
-
-```json
-{
-  "rewardKind": "hero_exp_item",
-  "rewardKindCode": 1,
-  "rewardId": "hero_exp_kicik",
-  "rewardDisplayName": "Kiçik Qəhrəman EXP",
-  "rewardCount": 1,
-  "expValuePerItem": 100
-}
-```
-
 ## Persistence
 
-Uğurlu recruit-dən sonra dəyişən state PostgreSQL gameplay snapshot-a yazılmalıdır.
+Uğurlu recruit-dən sonra dəyişən state PostgreSQL gameplay snapshot-a yazılır.
 
-DB yazısı uğursuz olarsa server RAM-da:
+DB yazısı uğursuz olarsa RAM-dakı:
 
-- ticket dəyişməsini
-- free draw istifadəsini
-- hero nəticəsini
-- EXP item nəticəsini
+- ticket dəyişməsi
+- free istifadə vəziyyəti
+- hero nəticəsi
+- EXP item nəticəsi
 
-geri qaytarmalı və client-ə uğursuz nəticə göndərməlidir.
+geri qaytarılır və client-ə uğursuz cavab göndərilir.
 
 ## Missiya inteqrasiyası
 
@@ -294,21 +232,19 @@ Server missiya progressi:
 state.heroes.length >= 1
 ```
 
-olduqda M011 tamamlanmış sayılır.
+olduqda M011 tamamlanır.
 
-M012 hero level state-dən hesablanacaq.
+M012 hero level state-dən hesablanacaq. M013 skill upgrade server əməliyyatı uğurlu olduqdan sonra server mission event-i ilə artırılacaq.
 
-M013 skill upgrade server əməliyyatı uğurlu olduqdan sonra `qehreman_bacarigi_artdi` server mission event-i yazacaq.
+## Cari status
 
-## Cari inteqrasiya statusu
-
-Server data/runtime/handler modulları hazırlanıb:
+Server modulları hazırdır və canlı entry-point-ə qoşulub:
 
 - `qehreman_kataloqu.js`
 - `qehreman_recruit_qaydalari.js`
+- `qehreman_recruit_qayda_override.js`
 - `qehreman_recruit_sistemi.js`
 - `qehreman_recruit_handler.js`
+- `server_missiya_genisletme.js`
 
-Lakin canlı server entry-point-ə Recruit handler qoşulması hazırda GitHub connector təhlükəsizlik yoxlaması tərəfindən bloklandığı üçün bu WS API hələ aktiv deyil.
-
-Mövcud işləyən Mission, Account, Google və gameplay server axını dəyişdirilməyib.
+Cari server qaydası: Göy/Bənövşəyi/Narıncı hərəsinə gündə 1 free recruit.
