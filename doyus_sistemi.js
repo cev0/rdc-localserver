@@ -5,6 +5,12 @@ const {
 } = require("./kesfiyyat_sistemi");
 
 const TUTORIAL_DOYUS_ID = "tutorial_doyus_001";
+const TUTORIAL_NETICE_GOZLEME_MS = 5 * 1000;
+const TUTORIAL_DUSMEN_GUCU = 5;
+const TUTORIAL_DOYUS_MUKAFATLARI = [
+  { resourceId: "food", amount: 200 },
+  { resourceId: "wood", amount: 200 }
+];
 
 function metnAl(deyer, maksimum = 128) {
   return typeof deyer === "string"
@@ -17,6 +23,25 @@ function musbetTamEded(deyer) {
   return Number.isFinite(say)
     ? Math.max(0, Math.trunc(say))
     : 0;
+}
+
+function mukafatSiyahisiniTemizle(siyahi) {
+  if (!Array.isArray(siyahi)) return [];
+
+  return siyahi
+    .map(mukafat => ({
+      resourceId: metnAl(
+        mukafat && mukafat.resourceId,
+        64
+      ).toLowerCase(),
+      amount: musbetTamEded(
+        mukafat && mukafat.amount
+      )
+    }))
+    .filter(mukafat =>
+      mukafat.resourceId &&
+      mukafat.amount > 0
+    );
 }
 
 function doyusStateTeminEt(state) {
@@ -74,6 +99,20 @@ function doyusStateTeminEt(state) {
     128
   ).toLowerCase();
 
+  tutorial.playerPower =
+    musbetTamEded(tutorial.playerPower);
+
+  tutorial.enemyPower =
+    musbetTamEded(tutorial.enemyPower);
+
+  tutorial.rewardClaimed =
+    tutorial.rewardClaimed === true;
+
+  tutorial.pendingRewards =
+    mukafatSiyahisiniTemizle(
+      tutorial.pendingRewards
+    );
+
   if (
     !tutorial.troopSnapshot ||
     typeof tutorial.troopSnapshot !== "object" ||
@@ -84,7 +123,10 @@ function doyusStateTeminEt(state) {
 
   const temizQosunlar = {};
 
-  for (const [unitId, rawCount] of Object.entries(tutorial.troopSnapshot)) {
+  for (
+    const [unitId, rawCount]
+    of Object.entries(tutorial.troopSnapshot)
+  ) {
     const id = metnAl(unitId, 128).toLowerCase();
     const say = musbetTamEded(rawCount);
 
@@ -167,7 +209,74 @@ function tutorialHedefiAskarlandi(state) {
   );
 }
 
-function doyusMelumatiniHazirla(state) {
+function birQosununGucunuAl(unitId) {
+  const id = metnAl(
+    unitId,
+    128
+  ).toLowerCase();
+
+  const netice = id.match(
+    /^(fighter|shooter|vehicle)_lv(\d+)$/
+  );
+
+  if (!netice) {
+    return 0;
+  }
+
+  const qosunNovu = netice[1];
+  const level = Math.max(
+    1,
+    Math.min(
+      10,
+      musbetTamEded(netice[2]) || 1
+    )
+  );
+
+  let esasGuc = 0;
+
+  switch (qosunNovu) {
+    case "fighter":
+      esasGuc = 5;
+      break;
+
+    case "shooter":
+      esasGuc = 6;
+      break;
+
+    case "vehicle":
+      esasGuc = 20;
+      break;
+
+    default:
+      esasGuc = 0;
+      break;
+  }
+
+  return esasGuc * level;
+}
+
+function qosunSnapshotGucunuHesabla(snapshot) {
+  if (!snapshot || typeof snapshot !== "object") {
+    return 0;
+  }
+
+  let umumiGuc = 0;
+
+  for (const [unitId, rawCount] of Object.entries(snapshot)) {
+    const say = musbetTamEded(rawCount);
+    if (say <= 0) continue;
+
+    umumiGuc +=
+      birQosununGucunuAl(unitId) * say;
+  }
+
+  return Math.max(0, Math.trunc(umumiGuc));
+}
+
+function doyusMelumatiniHazirla(
+  state,
+  nowMs = Date.now()
+) {
   const doyus = doyusStateTeminEt(state);
   const tutorial = doyus.tutorial;
 
@@ -181,6 +290,19 @@ function doyusMelumatiniHazirla(state) {
     0
   );
 
+  const indi =
+    musbetTamEded(nowMs) || Date.now();
+
+  const neticeHazirAtMs =
+    tutorial.status === "davam_edir"
+      ? tutorial.startedAtMs + TUTORIAL_NETICE_GOZLEME_MS
+      : 0;
+
+  const qalanNeticeMs =
+    tutorial.status === "davam_edir"
+      ? Math.max(0, neticeHazirAtMs - indi)
+      : 0;
+
   return {
     battleId: tutorial.battleId,
     targetId: tutorial.targetId,
@@ -193,6 +315,16 @@ function doyusMelumatiniHazirla(state) {
     },
     usedTroopCount: snapshotSay,
     availableTroopCount: cariQosun.totalTroops,
+    playerPower: tutorial.playerPower,
+    enemyPower: tutorial.enemyPower,
+    resultReadyAtMs: neticeHazirAtMs,
+    remainingResultMs: qalanNeticeMs,
+    readyToResolve:
+      tutorial.status === "davam_edir" &&
+      qalanNeticeMs <= 0,
+    pendingRewards:
+      tutorial.pendingRewards.map(x => ({ ...x })),
+    rewardClaimed: tutorial.rewardClaimed,
     targetDiscovered: tutorialHedefiAskarlandi(state),
     canStart:
       tutorial.status === "hazir" &&
@@ -213,7 +345,7 @@ function tutorialDoyusunaBasla(
     return {
       success: false,
       message: "Döyüş üçün düşmən mövqeyi əvvəlcə aşkar edilməlidir.",
-      info: doyusMelumatiniHazirla(state)
+      info: doyusMelumatiniHazirla(state, nowMs)
     };
   }
 
@@ -222,7 +354,7 @@ function tutorialDoyusunaBasla(
       success: true,
       alreadyStarted: true,
       message: "Tutorial döyüş artıq başladılıb.",
-      info: doyusMelumatiniHazirla(state)
+      info: doyusMelumatiniHazirla(state, nowMs)
     };
   }
 
@@ -232,7 +364,7 @@ function tutorialDoyusunaBasla(
     return {
       success: false,
       message: "Döyüşə göndərmək üçün hərbi vahid yoxdur.",
-      info: doyusMelumatiniHazirla(state)
+      info: doyusMelumatiniHazirla(state, nowMs)
     };
   }
 
@@ -242,7 +374,7 @@ function tutorialDoyusunaBasla(
     return {
       success: false,
       message: "Döyüş üçün komandir qəhrəman tələb olunur.",
-      info: doyusMelumatiniHazirla(state)
+      info: doyusMelumatiniHazirla(state, nowMs)
     };
   }
 
@@ -256,18 +388,108 @@ function tutorialDoyusunaBasla(
   tutorial.troopSnapshot = {
     ...qosun.troops
   };
+  tutorial.playerPower = 0;
+  tutorial.enemyPower = 0;
+  tutorial.pendingRewards = [];
+  tutorial.rewardClaimed = false;
 
   return {
     success: true,
     alreadyStarted: false,
     message: "İlk tutorial döyüş əməliyyatı başladı.",
-    info: doyusMelumatiniHazirla(state)
+    info: doyusMelumatiniHazirla(state, nowMs)
+  };
+}
+
+function tutorialDoyusunuNeticelendir(
+  state,
+  nowMs = Date.now()
+) {
+  const doyus = doyusStateTeminEt(state);
+  const tutorial = doyus.tutorial;
+  const indi =
+    musbetTamEded(nowMs) || Date.now();
+
+  if (tutorial.status === "qelebe") {
+    return {
+      success: true,
+      alreadyResolved: true,
+      victory: true,
+      message: "Tutorial döyüş artıq qələbə ilə tamamlanıb.",
+      info: doyusMelumatiniHazirla(state, indi)
+    };
+  }
+
+  if (tutorial.status === "meglub") {
+    return {
+      success: true,
+      alreadyResolved: true,
+      victory: false,
+      message: "Tutorial döyüş artıq tamamlanıb.",
+      info: doyusMelumatiniHazirla(state, indi)
+    };
+  }
+
+  if (tutorial.status !== "davam_edir") {
+    return {
+      success: false,
+      message: "Əvvəlcə tutorial döyüşü başlatmaq lazımdır.",
+      info: doyusMelumatiniHazirla(state, indi)
+    };
+  }
+
+  const neticeHazirAtMs =
+    tutorial.startedAtMs + TUTORIAL_NETICE_GOZLEME_MS;
+
+  if (indi < neticeHazirAtMs) {
+    return {
+      success: false,
+      message: "Döyüş nəticəsi hələ hazır deyil.",
+      info: doyusMelumatiniHazirla(state, indi)
+    };
+  }
+
+  const oyuncuGucu =
+    qosunSnapshotGucunuHesabla(
+      tutorial.troopSnapshot
+    );
+
+  const dusmenGucu =
+    TUTORIAL_DUSMEN_GUCU;
+
+  const qelebe =
+    oyuncuGucu >= dusmenGucu;
+
+  tutorial.playerPower = oyuncuGucu;
+  tutorial.enemyPower = dusmenGucu;
+  tutorial.completedAtMs = indi;
+  tutorial.status = qelebe
+    ? "qelebe"
+    : "meglub";
+
+  tutorial.pendingRewards = qelebe
+    ? TUTORIAL_DOYUS_MUKAFATLARI.map(x => ({ ...x }))
+    : [];
+
+  tutorial.rewardClaimed = false;
+
+  return {
+    success: true,
+    alreadyResolved: false,
+    victory: qelebe,
+    message: qelebe
+      ? "İlk PvE döyüşü qələbə ilə tamamlandı."
+      : "İlk PvE döyüşündə məğlubiyyət qeydə alındı.",
+    info: doyusMelumatiniHazirla(state, indi)
   };
 }
 
 module.exports = {
   TUTORIAL_DOYUS_ID,
+  TUTORIAL_NETICE_GOZLEME_MS,
+  TUTORIAL_DUSMEN_GUCU,
   doyusStateTeminEt,
   doyusMelumatiniHazirla,
-  tutorialDoyusunaBasla
+  tutorialDoyusunaBasla,
+  tutorialDoyusunuNeticelendir
 };
