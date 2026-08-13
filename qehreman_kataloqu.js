@@ -3,9 +3,8 @@
 // ============================================================
 // QƏHRƏMAN KATALOQU
 // ------------------------------------------------------------
-// Bu ID-lər Unity-dəki HeroDefinition asset-ləri ilə 1:1 eynidir.
-// Server yalnız gameplay identity/classification saxlayır.
-// Vizual, portret və lokalizasiya Unity asset-lərində qalır.
+// Hero ID-ləri Unity HeroDefinition asset-ləri ilə 1:1 eynidir.
+// Vizual məlumat Unity-də, server-authoritative gameplay təsnifatı burada qalır.
 // ============================================================
 
 const QEHRAMAN_NADIRLIK = Object.freeze({
@@ -15,11 +14,22 @@ const QEHRAMAN_NADIRLIK = Object.freeze({
   NARINCI: 3
 });
 
+// Qəhrəmanların əsas istifadə sahəsi.
+// - DOYUS: orduya/əməliyyata komandir kimi qoşulur.
+// - RESURS: bazadakı uyğun resurs binasına təyin olunur.
+// - TEXNOLOGIYA: texnologiya/institut tipli sistemlərə təyin olunur.
+const QEHRAMAN_ISTIFADE_SAHESI = Object.freeze({
+  DOYUS: "doyus",
+  RESURS: "resurs",
+  TEXNOLOGIYA: "texnologiya"
+});
+
 const QEHRAMANLAR = Object.freeze([
   Object.freeze({
     heroId: "doyuscu",
     displayName: "Doyuscu",
     rarity: QEHRAMAN_NADIRLIK.YASIL,
+    istifadeSahesi: QEHRAMAN_ISTIFADE_SAHESI.DOYUS,
     startingLevel: 1,
     maxLevel: 60,
     duplicateCopiesRequiredForSkill6: 1,
@@ -29,6 +39,7 @@ const QEHRAMANLAR = Object.freeze([
     heroId: "war_master",
     displayName: "War Master",
     rarity: QEHRAMAN_NADIRLIK.GOY,
+    istifadeSahesi: QEHRAMAN_ISTIFADE_SAHESI.DOYUS,
     startingLevel: 1,
     maxLevel: 60,
     duplicateCopiesRequiredForSkill6: 1,
@@ -38,6 +49,7 @@ const QEHRAMANLAR = Object.freeze([
     heroId: "iron_maiden",
     displayName: "Iron Maiden",
     rarity: QEHRAMAN_NADIRLIK.BENOVSEYI,
+    istifadeSahesi: QEHRAMAN_ISTIFADE_SAHESI.DOYUS,
     startingLevel: 1,
     maxLevel: 60,
     duplicateCopiesRequiredForSkill6: 1,
@@ -47,6 +59,7 @@ const QEHRAMANLAR = Object.freeze([
     heroId: "feroman",
     displayName: "Feroman",
     rarity: QEHRAMAN_NADIRLIK.NARINCI,
+    istifadeSahesi: QEHRAMAN_ISTIFADE_SAHESI.DOYUS,
     startingLevel: 1,
     maxLevel: 60,
     duplicateCopiesRequiredForSkill6: 1,
@@ -56,6 +69,7 @@ const QEHRAMANLAR = Object.freeze([
     heroId: "qiz",
     displayName: "Qiz",
     rarity: QEHRAMAN_NADIRLIK.NARINCI,
+    istifadeSahesi: QEHRAMAN_ISTIFADE_SAHESI.DOYUS,
     startingLevel: 1,
     maxLevel: 60,
     duplicateCopiesRequiredForSkill6: 1,
@@ -65,6 +79,7 @@ const QEHRAMANLAR = Object.freeze([
     heroId: "qiz2",
     displayName: "Qiz2",
     rarity: QEHRAMAN_NADIRLIK.NARINCI,
+    istifadeSahesi: QEHRAMAN_ISTIFADE_SAHESI.DOYUS,
     startingLevel: 1,
     maxLevel: 60,
     duplicateCopiesRequiredForSkill6: 1,
@@ -92,10 +107,19 @@ function butunQehremanlariAl() {
   return QEHRAMANLAR.map(qehreman => ({ ...qehreman }));
 }
 
+function istifadeSahesineGoreQehremanlariAl(istifadeSahesi) {
+  const acar = String(istifadeSahesi || "").trim().toLowerCase();
+  return QEHRAMANLAR
+    .filter(qehreman => qehreman.istifadeSahesi === acar)
+    .map(qehreman => ({ ...qehreman }));
+}
+
 module.exports = {
   QEHRAMAN_NADIRLIK,
+  QEHRAMAN_ISTIFADE_SAHESI,
   QEHRAMANLAR,
   qehremanIdNormallasdir,
   qehremaniTap,
-  butunQehremanlariAl
+  butunQehremanlariAl,
+  istifadeSahesineGoreQehremanlariAl
 };
