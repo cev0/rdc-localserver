@@ -1,7 +1,7 @@
 "use strict";
 
 // ============================================================
-// MISSİYA + QƏHRƏMAN + KƏŞFİYYAT + DÖYÜŞ SERVER GİRİŞ NÖQTƏSİ
+// MISSİYA + QƏHRƏMAN + KƏŞFİYYAT + DÖYÜŞ + XƏRİTƏ SERVER GİRİŞ NÖQTƏSİ
 // ------------------------------------------------------------
 // Mövcud hesab wrapper-ını dəyişmədən:
 // 1. missiya mesajlarını
@@ -9,7 +9,8 @@
 // 3. qəhrəman EXP / tutorial skill mesajlarını
 // 4. tutorial kəşfiyyat mesajlarını
 // 5. tutorial düşmən mövqeyi mesajlarını
-// 6. tutorial döyüş başlanğıcı mesajlarını
+// 6. tutorial döyüş mesajlarını
+// 7. xəritə zona progression mesajlarını
 // hesab/login handler zəncirinə əlavə edir.
 // ============================================================
 
@@ -41,6 +42,10 @@ const {
 const {
   doyusMesajiniEmalEt
 } = require("./doyus_handler");
+
+const {
+  xeriteZonaMesajiniEmalEt
+} = require("./xerite_zona_handler");
 
 const esasHesabLoginMesajiniEmalEt =
   hesabLoginModulu.hesabLoginMesajiniEmalEt;
@@ -91,6 +96,13 @@ hesabLoginModulu.hesabLoginMesajiniEmalEt = async function(kontekst) {
     await doyusMesajiniEmalEt(kontekst);
 
   if (doyusEmalOlundu) {
+    return true;
+  }
+
+  const xeriteZonaEmalOlundu =
+    await xeriteZonaMesajiniEmalEt(kontekst);
+
+  if (xeriteZonaEmalOlundu) {
     return true;
   }
 
