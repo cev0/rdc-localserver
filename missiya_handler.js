@@ -8,7 +8,10 @@ const {
 const {
   missiyaStateTeminEt,
   missiyaGorunusunuHazirla,
-  aktivMissiyaniTap
+  aktivMissiyaniTap,
+  mukafatAlinib,
+  serverHadiseSayiniAl,
+  serverHadisesiniQeydEt
 } = require("./missiya_proqres");
 
 const {
@@ -78,6 +81,20 @@ async function daimiMissiyaStateYukle(playerId, state) {
   daimiVeziyyetiStateIleBirlesdir(state, daimiVeziyyet);
 }
 
+function bazaGirisiKecidiniTeminEt(state) {
+  if (!mukafatAlinib(state, "M007")) {
+    return;
+  }
+
+  if (serverHadiseSayiniAl(state, "baza_girisi_aktivlesdi") > 0) {
+    return;
+  }
+
+  // M007 server claim-i giriş xəttinin hekayə üzrə aktivləşmə şərtidir.
+  // Bu dəyər derived state-dir: restartdan sonra M007 DB claimindən yenidən qurulur.
+  serverHadisesiniQeydEt(state, "baza_girisi_aktivlesdi", 1);
+}
+
 async function missiyaMesajiniEmalEt(kontekst) {
   const type = metnAl(kontekst && kontekst.type, 128);
 
@@ -116,6 +133,7 @@ async function missiyaMesajiniEmalEt(kontekst) {
 
   try {
     await daimiMissiyaStateYukle(playerId, state);
+    bazaGirisiKecidiniTeminEt(state);
   }
   catch (xeta) {
     console.error("[MISSIYA_DB] Daimi state oxuna bilmədi:", {
@@ -203,6 +221,7 @@ async function missiyaMesajiniEmalEt(kontekst) {
         state.missions = evvelkiMissiyalar;
 
         await daimiMissiyaStateYukle(playerId, state);
+        bazaGirisiKecidiniTeminEt(state);
 
         netice = {
           success: false,
@@ -235,8 +254,12 @@ async function missiyaMesajiniEmalEt(kontekst) {
     }
   }
 
-  if (netice.success && typeof kontekst.updateServerTime === "function") {
-    kontekst.updateServerTime(state);
+  if (netice.success) {
+    bazaGirisiKecidiniTeminEt(state);
+
+    if (typeof kontekst.updateServerTime === "function") {
+      kontekst.updateServerTime(state);
+    }
   }
 
   kontekst.send(kontekst.ws, {
