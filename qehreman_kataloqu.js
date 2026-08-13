@@ -14,10 +14,6 @@ const QEHRAMAN_NADIRLIK = Object.freeze({
   NARINCI: 3
 });
 
-// Qəhrəmanların əsas istifadə sahəsi.
-// - DOYUS: orduya/əməliyyata komandir kimi qoşulur.
-// - RESURS: bazadakı uyğun resurs binasına təyin olunur.
-// - TEXNOLOGIYA: texnologiya/institut tipli sistemlərə təyin olunur.
 const QEHRAMAN_ISTIFADE_SAHESI = Object.freeze({
   DOYUS: "doyus",
   RESURS: "resurs",
@@ -114,6 +110,12 @@ function istifadeSahesineGoreQehremanlariAl(istifadeSahesi) {
     .map(qehreman => ({ ...qehreman }));
 }
 
+function qehremanKonvoyaYerleseBiler(heroId) {
+  const qehreman = qehremaniTap(heroId);
+  return !!qehreman &&
+    qehreman.istifadeSahesi === QEHRAMAN_ISTIFADE_SAHESI.DOYUS;
+}
+
 module.exports = {
   QEHRAMAN_NADIRLIK,
   QEHRAMAN_ISTIFADE_SAHESI,
@@ -121,5 +123,6 @@ module.exports = {
   qehremanIdNormallasdir,
   qehremaniTap,
   butunQehremanlariAl,
-  istifadeSahesineGoreQehremanlariAl
+  istifadeSahesineGoreQehremanlariAl,
+  qehremanKonvoyaYerleseBiler
 };
