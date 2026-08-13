@@ -1,7 +1,6 @@
 "use strict";
 
 const { expItemIstifadeEt } = require("./qehreman_exp_sistemi");
-const { tutorialSkilliniArtir } = require("./qehreman_skill_sistemi");
 const {
   oyunStateIniBerpaEt,
   oyunStateIniYaddaSaxla,
@@ -12,8 +11,79 @@ function metnAl(deyer, maksimum = 128) {
   return typeof deyer === "string" ? deyer.trim().slice(0, maksimum) : "";
 }
 
+function tamEded(deyer) {
+  const say = Number(deyer);
+  return Number.isFinite(say) ? Math.max(0, Math.trunc(say)) : 0;
+}
+
 function kopyala(deyer) {
   return JSON.parse(JSON.stringify(deyer));
+}
+
+function qehremaniTap(state, heroId) {
+  const acar = metnAl(heroId, 128).toLowerCase();
+  if (!acar || !state || !Array.isArray(state.heroes)) return null;
+
+  return state.heroes.find(qehreman =>
+    qehreman && metnAl(qehreman.heroId, 128).toLowerCase() === acar
+  ) || null;
+}
+
+function tutorialSkilliniTeminEt(qehreman) {
+  if (!qehreman || typeof qehreman !== "object") return null;
+
+  if (!Array.isArray(qehreman.skills)) {
+    qehreman.skills = [];
+  }
+
+  let skill = qehreman.skills.find(x => x && tamEded(x.slotIndex) === 1);
+
+  if (!skill) {
+    skill = { slotIndex: 1, isUnlocked: true, skillLevel: 1 };
+    qehreman.skills.push(skill);
+  }
+
+  skill.slotIndex = 1;
+  skill.isUnlocked = true;
+  skill.skillLevel = Math.max(1, tamEded(skill.skillLevel) || 1);
+  return skill;
+}
+
+function tutorialSkilliniArtir(state, heroId) {
+  const qehreman = qehremaniTap(state, heroId);
+
+  if (!qehreman) {
+    return { success: false, message: "Qəhrəman oyunçuya məxsus deyil." };
+  }
+
+  const skill = tutorialSkilliniTeminEt(qehreman);
+  if (!skill) {
+    return { success: false, message: "Tutorial skill state yaradıla bilmədi." };
+  }
+
+  if (skill.skillLevel >= 2) {
+    return {
+      success: false,
+      message: "Tutorial skill upgrade artıq tamamlanıb.",
+      heroId: metnAl(qehreman.heroId, 128).toLowerCase(),
+      slotIndex: 1,
+      currentLevel: skill.skillLevel
+    };
+  }
+
+  const kohneSeviye = skill.skillLevel;
+  skill.skillLevel = 2;
+
+  return {
+    success: true,
+    message: "Qəhrəmanın ilk bacarığı inkişaf etdirildi.",
+    heroId: metnAl(qehreman.heroId, 128).toLowerCase(),
+    slotIndex: 1,
+    oldLevel: kohneSeviye,
+    newLevel: 2,
+    tutorialFreeUpgrade: true,
+    spentResources: []
+  };
 }
 
 async function qehremanExpMesajiniEmalEt(kontekst) {
@@ -49,7 +119,7 @@ async function qehremanExpMesajiniEmalEt(kontekst) {
     const heroId = metnAl(kontekst.msg && kontekst.msg.heroId, 128).toLowerCase();
 
     const netice = skillSorqusudur
-      ? tutorialSkilliniArtir(state, heroId, 1)
+      ? tutorialSkilliniArtir(state, heroId)
       : expItemIstifadeEt(
           state,
           heroId,
