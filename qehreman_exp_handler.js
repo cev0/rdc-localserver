@@ -1,6 +1,7 @@
 "use strict";
 
 const { expItemIstifadeEt } = require("./qehreman_exp_sistemi");
+const { missiyaServerHadisesiniQeydEt } = require("./missiya_hadise_korpu");
 const {
   oyunStateIniBerpaEt,
   oyunStateIniYaddaSaxla,
@@ -63,11 +64,15 @@ function tutorialSkilliniArtir(state, heroId) {
 
   if (skill.skillLevel >= 2) {
     return {
-      success: false,
+      success: true,
       message: "Tutorial skill upgrade artıq tamamlanıb.",
       heroId: metnAl(qehreman.heroId, 128).toLowerCase(),
       slotIndex: 1,
-      currentLevel: skill.skillLevel
+      oldLevel: skill.skillLevel,
+      newLevel: skill.skillLevel,
+      alreadyUpgraded: true,
+      tutorialFreeUpgrade: true,
+      spentResources: []
     };
   }
 
@@ -81,9 +86,17 @@ function tutorialSkilliniArtir(state, heroId) {
     slotIndex: 1,
     oldLevel: kohneSeviye,
     newLevel: 2,
+    alreadyUpgraded: false,
     tutorialFreeUpgrade: true,
     spentResources: []
   };
+}
+
+function skillMissiyaHadisesiVar(state) {
+  const say = state && state.missions && state.missions.eventCounters
+    ? Number(state.missions.eventCounters.qehreman_bacarigi_artdi)
+    : 0;
+  return Number.isFinite(say) && say > 0;
 }
 
 async function qehremanExpMesajiniEmalEt(kontekst) {
@@ -150,6 +163,15 @@ async function qehremanExpMesajiniEmalEt(kontekst) {
       state.heroes = kohneHeroes;
       state.heroRecruit = kohneRecruit;
       throw xeta;
+    }
+
+    if (skillSorqusudur && !skillMissiyaHadisesiVar(state)) {
+      await missiyaServerHadisesiniQeydEt(
+        playerId,
+        state,
+        "qehreman_bacarigi_artdi",
+        1
+      );
     }
 
     kontekst.send(kontekst.ws, {
