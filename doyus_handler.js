@@ -4,7 +4,7 @@ const {
   doyusMelumatiniHazirla,
   tutorialDoyusunaBasla,
   tutorialDoyusunuNeticelendir
-} = require("./doyus_sistemi");
+} = require("./konvoy_doyus_korpu");
 
 const {
   tutorialDoyusMukafatiniAl
