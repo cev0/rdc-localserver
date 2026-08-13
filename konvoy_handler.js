@@ -82,6 +82,7 @@ async function konvoyMesajiniEmalEt(kontekst) {
       : qehremaniKonvoydanCixar(state, konvoyId, heroId);
 
     if (!netice.success) {
+      state.konvoylar = evvelkiKonvoylar;
       gonder(kontekst, resultType, {
         success: false,
         playerId,
