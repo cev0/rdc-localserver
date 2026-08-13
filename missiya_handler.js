@@ -31,7 +31,11 @@ const {
 const MISSIYA_MESAJLARI = new Set([
   "mission_list_request",
   "mission_info_request",
-  "mission_reward_claim_request"
+  "mission_reward_claim_request",
+
+  // Köhnə client compatibility mesajı.
+  // Client state-i server state-inin üzərinə yaza bilməz.
+  "save_state"
 ]);
 
 function metnAl(deyer, maksimum = 128) {
@@ -46,6 +50,14 @@ function autentifikasiyaOlunmusPlayerIdAl(ws) {
 
 function derinKopyala(deyer) {
   return JSON.parse(JSON.stringify(deyer));
+}
+
+function neticeTipiniAl(type) {
+  if (type === "save_state") {
+    return "save_rejected";
+  }
+
+  return String(type || "").replace("_request", "_result");
 }
 
 function ugursuzCavab(kontekst, type, message, elave = {}) {
@@ -113,8 +125,8 @@ async function missiyaMesajiniEmalEt(kontekst) {
   if (!playerId) {
     ugursuzCavab(
       kontekst,
-      type.replace("_request", "_result"),
-      "Missiya əməliyyatı üçün oyunçu autentifikasiya olunmayıb."
+      neticeTipiniAl(type),
+      "Bu əməliyyat üçün oyunçu autentifikasiya olunmayıb."
     );
     return true;
   }
@@ -122,7 +134,7 @@ async function missiyaMesajiniEmalEt(kontekst) {
   if (typeof kontekst.getOrCreatePlayerState !== "function") {
     ugursuzCavab(
       kontekst,
-      type.replace("_request", "_result"),
+      neticeTipiniAl(type),
       "Server oyunçu state funksiyası əlçatan deyil."
     );
     return true;
@@ -130,6 +142,27 @@ async function missiyaMesajiniEmalEt(kontekst) {
 
   const state = kontekst.getOrCreatePlayerState(playerId);
   missiyaStateTeminEt(state);
+
+  // ==========================================================
+  // LEGACY SAVE_STATE QORUMASI
+  // ----------------------------------------------------------
+  // Cari Unity kodu save_state göndərmir. Köhnə client göndərsə belə
+  // payloadJson server state-inin üzərinə yazılmır.
+  // ==========================================================
+  if (type === "save_state") {
+    kontekst.send(kontekst.ws, {
+      type: "save_ok",
+      success: true,
+      playerId,
+      serverAuthoritative: true,
+      clientStateIgnored: true,
+      message: "Client state qəbul edilmədi; server state əsas həqiqət mənbəyidir.",
+      serverTimeUnixMs: kontekst.nowMs()
+    });
+
+    oyunStateGonder(kontekst, playerId, state);
+    return true;
+  }
 
   try {
     await daimiMissiyaStateYukle(playerId, state);
@@ -143,7 +176,7 @@ async function missiyaMesajiniEmalEt(kontekst) {
 
     ugursuzCavab(
       kontekst,
-      type.replace("_request", "_result"),
+      neticeTipiniAl(type),
       "Missiya məlumatı hazırda daimi yaddaşdan oxuna bilmir. Bir az sonra yenidən yoxlayın.",
       { playerId }
     );
