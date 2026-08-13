@@ -1,7 +1,7 @@
 "use strict";
 
 // ============================================================
-// MISSİYA + QƏHRƏMAN + KƏŞFİYYAT SERVER GİRİŞ NÖQTƏSİ
+// MISSİYA + QƏHRƏMAN + KƏŞFİYYAT + DÖYÜŞ SERVER GİRİŞ NÖQTƏSİ
 // ------------------------------------------------------------
 // Mövcud hesab wrapper-ını dəyişmədən:
 // 1. missiya mesajlarını
@@ -9,6 +9,7 @@
 // 3. qəhrəman EXP / tutorial skill mesajlarını
 // 4. tutorial kəşfiyyat mesajlarını
 // 5. tutorial düşmən mövqeyi mesajlarını
+// 6. tutorial döyüş başlanğıcı mesajlarını
 // hesab/login handler zəncirinə əlavə edir.
 // ============================================================
 
@@ -36,6 +37,10 @@ const {
 const {
   dusmenMovqeyiMesajiniEmalEt
 } = require("./dusmen_movqeyi_handler");
+
+const {
+  doyusMesajiniEmalEt
+} = require("./doyus_handler");
 
 const esasHesabLoginMesajiniEmalEt =
   hesabLoginModulu.hesabLoginMesajiniEmalEt;
@@ -79,6 +84,13 @@ hesabLoginModulu.hesabLoginMesajiniEmalEt = async function(kontekst) {
     await dusmenMovqeyiMesajiniEmalEt(kontekst);
 
   if (dusmenMovqeyiEmalOlundu) {
+    return true;
+  }
+
+  const doyusEmalOlundu =
+    await doyusMesajiniEmalEt(kontekst);
+
+  if (doyusEmalOlundu) {
     return true;
   }
 
