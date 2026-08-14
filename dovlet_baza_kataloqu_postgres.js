@@ -69,6 +69,8 @@ function tamamlanmisBinaSayiniAl(state) {
 
 function publicGucuAl(state) {
   const namizedler = [
+    state && state.gucMelumatlari && state.gucMelumatlari.umumiGuc,
+    state && state.oyuncuStatusu && state.oyuncuStatusu.oyuncuGucu,
     state && state.totalPower,
     state && state.power,
     state && state.stats && state.stats.totalPower,
@@ -86,6 +88,13 @@ function publicGucuAl(state) {
   return null;
 }
 
+function publicProfiliniAl(state) {
+  return {
+    commanderName: metnAl(state && state.oyuncuAdi, 64),
+    allianceName: metnAl(state && state.ittifaqAdi, 80)
+  };
+}
+
 function bazaElementiniHazirla(playerId, state, stateId) {
   if (!state || typeof state !== "object") return null;
   const wp = state.worldPlacement;
@@ -101,6 +110,7 @@ function bazaElementiniHazirla(playerId, state, stateId) {
   const dx = baseX - Number(XERITE.centerX);
   const dz = baseZ - Number(XERITE.centerZ);
   const distanceToCenter = Math.round(Math.sqrt((dx * dx) + (dz * dz)));
+  const profil = publicProfiliniAl(state);
 
   return {
     playerId: metnAl(playerId, 128),
@@ -113,7 +123,9 @@ function bazaElementiniHazirla(playerId, state, stateId) {
     distanceToCenter,
     hqLevel: binaLeveliniAl(state, "hq"),
     completedBuildingCount: tamamlanmisBinaSayiniAl(state),
-    publicPower: publicGucuAl(state)
+    publicPower: publicGucuAl(state),
+    commanderName: profil.commanderName,
+    allianceName: profil.allianceName
   };
 }
 
@@ -145,7 +157,7 @@ async function bazalariPostgresdenAl(sid) {
   }
 
   return {
-    version: 3,
+    version: 4,
     stateId: sid,
     count: bases.length,
     bases
