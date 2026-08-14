@@ -8,7 +8,6 @@ require("./qehreman_recruit_qayda_override");
 const { qehremanRecruitMesajiniEmalEt } = require("./qehreman_recruit_handler");
 const { qehremanExpMesajiniEmalEt } = require("./qehreman_exp_handler");
 const { qehremanTapshiriqMesajiniEmalEt } = require("./qehreman_tapshiriq_handler");
-const { konvoyTutumTexnologiyaMesajiniEmalEt } = require("./konvoy_tutum_texnologiya_handler");
 const { konvoyTexnologiyaMesajiniEmalEt } = require("./konvoy_texnologiya_handler");
 const { konvoyMesajiniEmalEt } = require("./konvoy_handler");
 const { konvoyEmeliyyatMesajiniEmalEt } = require("./konvoy_emeliyyat_handler");
@@ -34,7 +33,6 @@ hesabLoginModulu.hesabLoginMesajiniEmalEt = async function(kontekst) {
   if (await qehremanRecruitMesajiniEmalEt(kontekst)) return true;
   if (await qehremanExpMesajiniEmalEt(kontekst)) return true;
   if (await qehremanTapshiriqMesajiniEmalEt(kontekst)) return true;
-  if (await konvoyTutumTexnologiyaMesajiniEmalEt(kontekst)) return true;
   if (await konvoyTexnologiyaMesajiniEmalEt(kontekst)) return true;
   if (await konvoyMesajiniEmalEt(kontekst)) return true;
   if (await konvoyEmeliyyatMesajiniEmalEt(kontekst)) return true;
