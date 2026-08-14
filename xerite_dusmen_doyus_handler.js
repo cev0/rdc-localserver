@@ -5,6 +5,7 @@ const {
   doyusaBasla,
   doyusuNeticelendir
 } = require("./xerite_dusmen_doyus_sistemi");
+const { raportYarat } = require("./doyus_raport_sistemi");
 const {
   oyunStateIniBerpaEt,
   oyunStateIniYaddaSaxla,
@@ -68,7 +69,14 @@ async function xeriteDusmenDoyusMesajiniEmalEt(kontekst) {
 
     const evvelkiBattle = JSON.parse(JSON.stringify(state.worldEnemyBattle || {}));
     const evvelkiResources = JSON.parse(JSON.stringify(state.resources || {}));
+    const evvelkiRaportlar = JSON.parse(JSON.stringify(state.doyusRaportlari || null));
     const convoyId = metnAl(kontekst.msg && kontekst.msg.convoyId, 64);
+    const missionSnapshot =
+      evvelkiBattle &&
+      evvelkiBattle.activeByConvoy &&
+      evvelkiBattle.activeByConvoy[convoyId]
+        ? JSON.parse(JSON.stringify(evvelkiBattle.activeByConvoy[convoyId]))
+        : null;
 
     let result;
     if (type === "world_enemy_battle_start_request") {
@@ -92,6 +100,7 @@ async function xeriteDusmenDoyusMesajiniEmalEt(kontekst) {
     if (!result || result.success !== true) {
       state.worldEnemyBattle = evvelkiBattle;
       state.resources = evvelkiResources;
+      state.doyusRaportlari = evvelkiRaportlar;
       gonder(kontekst, resultType, {
         success: false,
         playerId,
@@ -101,12 +110,37 @@ async function xeriteDusmenDoyusMesajiniEmalEt(kontekst) {
       return true;
     }
 
+    let report = null;
+    if (type === "world_enemy_battle_resolve_request" && missionSnapshot) {
+      report = raportYarat(
+        state,
+        {
+          battleId: result.battleId || missionSnapshot.battleId,
+          stateId: missionSnapshot.stateId,
+          enemyId: result.enemyId || missionSnapshot.enemyId,
+          enemyType: result.enemyType || missionSnapshot.enemyType,
+          enemyLevel: result.enemyLevel || missionSnapshot.enemyLevel,
+          victory: result.victory === true,
+          invalidated: result.invalidated === true,
+          playerPower: result.playerPower || missionSnapshot.playerPower,
+          enemyPower: result.enemyPower || missionSnapshot.enemyPower,
+          heroIds: missionSnapshot.heroIds || [],
+          sentTroops: missionSnapshot.troopSnapshot || {},
+          reward: result.reward || {},
+          lootAlreadyApplied: result.victory === true,
+          completedAtMs: result.completedAtMs || nowMs
+        },
+        nowMs
+      );
+    }
+
     try {
       await oyunStateIniYaddaSaxla(playerId, state);
     }
     catch (xeta) {
       state.worldEnemyBattle = evvelkiBattle;
       state.resources = evvelkiResources;
+      state.doyusRaportlari = evvelkiRaportlar;
       throw xeta;
     }
 
@@ -114,8 +148,9 @@ async function xeriteDusmenDoyusMesajiniEmalEt(kontekst) {
       success: true,
       playerId,
       ...result,
+      report,
       info: doyusMelumatiniHazirla(state, nowMs),
-      payloadJson: JSON.stringify(result)
+      payloadJson: JSON.stringify({ ...result, report })
     });
   }
   catch (xeta) {

@@ -15,6 +15,7 @@ const { dovletXeriteKataloqMesajiniEmalEt } = require("./dovlet_xerite_kataloq_h
 const { xeriteResursToplamaMesajiniEmalEt } = require("./xerite_resurs_toplama_handler");
 const { xeriteDusmenMesajiniEmalEt } = require("./xerite_dusmen_handler");
 const { xeriteDusmenDoyusMesajiniEmalEt } = require("./xerite_dusmen_doyus_handler");
+const { doyusRaportMesajiniEmalEt } = require("./doyus_raport_handler");
 const { dovletLifecycleMesajiniEmalEt } = require("./dovlet_lifecycle_handler");
 const { kesfiyyatMesajiniEmalEt } = require("./kesfiyyat_handler");
 const { dusmenMovqeyiMesajiniEmalEt } = require("./dusmen_movqeyi_handler");
@@ -38,6 +39,7 @@ hesabLoginModulu.hesabLoginMesajiniEmalEt = async function(kontekst) {
   if (await xeriteResursToplamaMesajiniEmalEt(kontekst)) return true;
   if (await xeriteDusmenMesajiniEmalEt(kontekst)) return true;
   if (await xeriteDusmenDoyusMesajiniEmalEt(kontekst)) return true;
+  if (await doyusRaportMesajiniEmalEt(kontekst)) return true;
   if (await dovletLifecycleMesajiniEmalEt(kontekst)) return true;
   if (await kesfiyyatMesajiniEmalEt(kontekst)) return true;
   if (await dusmenMovqeyiMesajiniEmalEt(kontekst)) return true;
