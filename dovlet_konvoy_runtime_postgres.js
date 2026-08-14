@@ -6,6 +6,7 @@ const {
 } = require("./verilenler_bazasi");
 
 const HADISE_NOVU = "dovlet_konvoy_runtime_v1";
+const PVP_KAMP_STATUSU = "camping_at_abandoned_target";
 const yaddaKilidi = new Map();
 
 function tamEded(v) {
@@ -33,7 +34,7 @@ function stateAcar(stateId) {
 
 function bosRuntime(stateId) {
   return {
-    version: 1,
+    version: 2,
     stateId: Math.max(1, tamEded(stateId) || 1),
     items: {}
   };
@@ -49,7 +50,7 @@ function runtimeNeticesiniHazirla(stateId, netice) {
   if (!runtime.items || typeof runtime.items !== "object" || Array.isArray(runtime.items)) {
     runtime.items = {};
   }
-  runtime.version = 1;
+  runtime.version = 2;
   runtime.stateId = sid;
   return runtime;
 }
@@ -88,7 +89,7 @@ async function runtimeYazClient(client, stateId, runtime) {
   await client.query(
     `INSERT INTO hesab_audit_jurnali (hesab_id, oyuncu_id, hadise_novu, detallar)
      VALUES (NULL, $1, $2, $3::jsonb)`,
-    [acar, HADISE_NOVU, JSON.stringify({ version: 1, runtime: kopyala(runtime) })]
+    [acar, HADISE_NOVU, JSON.stringify({ version: 2, runtime: kopyala(runtime) })]
   );
 
   await client.query(
@@ -162,13 +163,24 @@ function publicSnapshotHazirla(stateId, playerId, operation, nowMs = Date.now())
   const convoyId = metnAl(op.convoyId, 64);
   if (!pid || !convoyId) return null;
 
+  const targetType = metnAl(op.targetType, 32);
+  const targetId = metnAl(op.targetId, 128);
+  const targetPlayerId = metnAl(
+    op.targetPlayerId ||
+    (op.targetSnapshot && op.targetSnapshot.targetPlayerId) ||
+    (targetType === "player_base" ? targetId : ""),
+    128
+  );
+  const status = metnAl(op.status, 32) || "marching";
+
   return {
     publicId: publicAcar(pid, convoyId),
     playerId: pid,
     convoyId,
     stateId: sid,
-    targetType: metnAl(op.targetType, 32),
-    targetId: metnAl(op.targetId, 128),
+    targetType,
+    targetId,
+    targetPlayerId,
     targetLevel: tamEded(op.targetLevel),
     zoneId: metnAl(op.zoneId, 64),
     fromX: reqemAl(op.fromX),
@@ -183,7 +195,14 @@ function publicSnapshotHazirla(stateId, playerId, operation, nowMs = Date.now())
     plannedActionEndsAtMs: tamEded(op.plannedActionEndsAtMs),
     plannedReturnEndsAtMs: tamEded(op.plannedReturnEndsAtMs),
     travelDurationMs: tamEded(op.travelDurationMs),
-    status: metnAl(op.status, 32) || "marching",
+    status,
+    abandonedTarget: status === PVP_KAMP_STATUSU || op.abandonedTarget === true,
+    campReason: metnAl(
+      op.campReason ||
+      (op.result && op.result.reason) ||
+      (status === PVP_KAMP_STATUSU ? "target_relocated" : ""),
+      64
+    ),
     reportId: metnAl(op.reportId, 220),
     updatedAtMs: tamEded(nowMs) || Date.now()
   };
@@ -248,13 +267,18 @@ function publicVeziyyetiHesabla(raw, nowMs = Date.now()) {
   const returnStart = actualReturnStart || plannedActionEnd;
   const returnEnd = actualReturnEnd || plannedReturnEnd;
 
-  let status = metnAl(item.status, 32) || "marching";
-  if (returnEnd > 0 && now >= returnEnd) status = "idle";
-  else if (arrival > 0 && now < arrival) status = "marching";
-  else if (plannedActionEnd > 0 && now < plannedActionEnd) {
-    status = metnAl(item.targetType, 32) === "resource" ? "gathering" : "battle";
+  const rawStatus = metnAl(item.status, 32) || "marching";
+  const campStatus = rawStatus === PVP_KAMP_STATUSU;
+  let status = rawStatus;
+
+  if (!campStatus) {
+    if (returnEnd > 0 && now >= returnEnd) status = "idle";
+    else if (arrival > 0 && now < arrival) status = "marching";
+    else if (plannedActionEnd > 0 && now < plannedActionEnd) {
+      status = metnAl(item.targetType, 32) === "resource" ? "gathering" : "battle";
+    }
+    else if (returnEnd > 0 && now < returnEnd) status = "returning";
   }
-  else if (returnEnd > 0 && now < returnEnd) status = "returning";
 
   let x = reqemAl(item.fromX);
   let z = reqemAl(item.fromZ);
@@ -278,6 +302,11 @@ function publicVeziyyetiHesabla(raw, nowMs = Date.now()) {
     progress01 = clamp01((now - baslama) / muddet);
     x = lerp(item.targetX, item.fromX, progress01);
     z = lerp(item.targetZ, item.fromZ, progress01);
+  }
+  else if (status === PVP_KAMP_STATUSU) {
+    x = reqemAl(item.targetX);
+    z = reqemAl(item.targetZ);
+    progress01 = 1;
   }
 
   return {
@@ -325,13 +354,14 @@ async function dovletAktivKonvoylariniAl(stateId, nowMs = Date.now()) {
   });
 
   return {
-    version: 1,
+    version: 2,
     stateId: sid,
     items
   };
 }
 
 module.exports = {
+  PVP_KAMP_STATUSU,
   runtimeOxu,
   runtimeEmeliyyati,
   publicSnapshotHazirla,
