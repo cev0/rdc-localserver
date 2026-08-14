@@ -101,6 +101,7 @@
     "state:fresh-base-test": "node dovlet_baza_birbasa_postgres_testi.js",
     "pvp:convoy-info-test": "node konvoy_pvp_info_qayda_override_testi.js",
     "pvp:start-service-test": "node pvp_baza_hucum_start_xidmeti_testi.js",
+    "state:state-lock-client-test": "node baza_yerdeyisme_dovlet_kilidi_client_testi.js",
     "start": "node server_missiya_genisletme.js"
   },
   "repository": {
