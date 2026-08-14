@@ -6,6 +6,9 @@ const {
   emeliyyatMelumatiniHazirla
 } = require("./konvoy_emeliyyat_sistemi");
 const {
+  oyuncuKonvoylariniSinxronEt
+} = require("./dovlet_konvoy_runtime_postgres");
+const {
   oyunStateIniBerpaEt,
   oyunStateIniYaddaSaxla,
   oyuncuStateBerpaOlunub
@@ -26,6 +29,30 @@ function gonder(k, type, data) {
     ...data,
     serverTimeUnixMs: k.nowMs()
   });
+}
+
+function dovletIdAl(state) {
+  return Math.max(
+    1,
+    Math.trunc(Number(state && state.worldPlacement && state.worldPlacement.stateId) || 1)
+  );
+}
+
+async function sharedKonvoylariSinxronEtTehlukesiz(state, playerId, nowMs) {
+  try {
+    const active = state && state.konvoyEmeliyyatlari && state.konvoyEmeliyyatlari.activeByConvoy;
+    await oyuncuKonvoylariniSinxronEt(
+      dovletIdAl(state),
+      playerId,
+      active && typeof active === "object" ? active : {},
+      nowMs
+    );
+    return true;
+  }
+  catch (xeta) {
+    console.error("[KONVOY_SHARED_RUNTIME_SYNC]", xeta);
+    return false;
+  }
 }
 
 function stateRollbackEt(state, evvelki) {
@@ -88,6 +115,8 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
         }
       }
 
+      await sharedKonvoylariSinxronEtTehlukesiz(state, playerId, nowMs);
+
       const info = emeliyyatMelumatiniHazirla(state, nowMs);
       gonder(kontekst, resultType, {
         success: true,
@@ -125,6 +154,8 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
       stateRollbackEt(state, evvelki);
       throw xeta;
     }
+
+    await sharedKonvoylariSinxronEtTehlukesiz(state, playerId, nowMs);
 
     const info = emeliyyatMelumatiniHazirla(state, nowMs);
     gonder(kontekst, resultType, {
