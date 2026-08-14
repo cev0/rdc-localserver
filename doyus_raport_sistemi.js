@@ -52,6 +52,12 @@ function legacyRaportuYenile(report) {
       : 0;
   }
 
+  if (!Number.isFinite(Number(report.resourceRewardAvailableAtMs))) {
+    report.resourceRewardAvailableAtMs = tamEded(
+      report.reward && report.reward.resourceRewardAvailableAtMs
+    );
+  }
+
   if (!Array.isArray(report.resourceRewardsClaimed)) {
     report.resourceRewardsClaimed = [];
   }
@@ -138,6 +144,9 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
   const lootAlreadyApplied = melumat && melumat.lootAlreadyApplied === true;
   const createdAtMs = tamEded(melumat && melumat.completedAtMs) || tamEded(nowMs) || Date.now();
   const hasResourceReward = rewardResurslariVar(reward);
+  const resourceRewardAvailableAtMs =
+    tamEded(melumat && melumat.resourceRewardAvailableAtMs) ||
+    tamEded(reward.resourceRewardAvailableAtMs);
 
   const raport = {
     reportVersion: 3,
@@ -200,6 +209,7 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
     heroExpDistributionPending: heroExp > 0,
     resourceRewardClaimed: lootAlreadyApplied,
     resourceRewardClaimPending: victory && !invalidated && hasResourceReward && !lootAlreadyApplied,
+    resourceRewardAvailableAtMs,
     resourceRewardClaimedAtMs: lootAlreadyApplied ? createdAtMs : 0,
     resourceRewardsClaimed: [],
     resourceRewardLastError: "",
@@ -256,6 +266,7 @@ function raportSiyahisiniHazirla(state) {
       reward: kopyala(x.reward) || {},
       resourceRewardClaimed: x.resourceRewardClaimed === true,
       resourceRewardClaimPending: x.resourceRewardClaimPending === true,
+      resourceRewardAvailableAtMs: tamEded(x.resourceRewardAvailableAtMs),
       resourceRewardClaimedAtMs: tamEded(x.resourceRewardClaimedAtMs),
       resourceRewardLastError: x.resourceRewardLastError || "",
       casualtySummary: kopyala(x.casualtySummary) || {},
