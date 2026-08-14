@@ -3,10 +3,17 @@
 const { expItemIstifadeEt } = require("./qehreman_exp_sistemi");
 const { missiyaServerHadisesiniQeydEt } = require("./missiya_hadise_korpu");
 const {
+  requestIdAl,
+  tekrarNeticesiniTap,
+  ugurluNeticeniQeydEt
+} = require("./server_sorqu_idempotentliyi");
+const {
   oyunStateIniBerpaEt,
   oyunStateIniYaddaSaxla,
   oyuncuStateBerpaOlunub
 } = require("./oyun_state_daimilik_korpu");
+
+const oyuncuKilidleri = new Map();
 
 function metnAl(deyer, maksimum = 128) {
   return typeof deyer === "string" ? deyer.trim().slice(0, maksimum) : "";
@@ -19,6 +26,27 @@ function tamEded(deyer) {
 
 function kopyala(deyer) {
   return JSON.parse(JSON.stringify(deyer));
+}
+
+async function oyuncuKilidiIleIcraEt(playerId, emeliyyat) {
+  const evvelki = oyuncuKilidleri.get(playerId) || Promise.resolve();
+  let kilidiAc;
+  const cari = new Promise(resolve => {
+    kilidiAc = resolve;
+  });
+
+  oyuncuKilidleri.set(playerId, cari);
+  await evvelki;
+
+  try {
+    return await emeliyyat();
+  }
+  finally {
+    kilidiAc();
+    if (oyuncuKilidleri.get(playerId) === cari) {
+      oyuncuKilidleri.delete(playerId);
+    }
+  }
 }
 
 function qehremaniTap(state, heroId) {
@@ -126,60 +154,126 @@ async function qehremanExpMesajiniEmalEt(kontekst) {
       await oyunStateIniBerpaEt(kontekst, playerId);
     }
 
-    const state = kontekst.getOrCreatePlayerState(playerId);
-    const kohneHeroes = kopyala(state.heroes || []);
-    const kohneRecruit = kopyala(state.heroRecruit || {});
-    const heroId = metnAl(kontekst.msg && kontekst.msg.heroId, 128).toLowerCase();
+    await oyuncuKilidiIleIcraEt(playerId, async () => {
+      const state = kontekst.getOrCreatePlayerState(playerId);
+      const heroId = metnAl(kontekst.msg && kontekst.msg.heroId, 128).toLowerCase();
+      const rewardId = metnAl(kontekst.msg && kontekst.msg.rewardId, 128).toLowerCase();
+      const count = Math.max(1, Math.trunc(Number(kontekst.msg && kontekst.msg.count) || 1));
+      const requestId = expSorqusudur
+        ? requestIdAl(kontekst.msg && kontekst.msg.requestId)
+        : "";
+      const requestPayload = expSorqusudur
+        ? { heroId, rewardId, count }
+        : null;
 
-    const netice = skillSorqusudur
-      ? tutorialSkilliniArtir(state, heroId)
-      : expItemIstifadeEt(
+      if (expSorqusudur) {
+        const tekrar = tekrarNeticesiniTap(
           state,
-          heroId,
-          metnAl(kontekst.msg && kontekst.msg.rewardId, 128).toLowerCase(),
-          Math.max(1, Math.trunc(Number(kontekst.msg && kontekst.msg.count) || 1)),
-          kontekst.nowMs()
+          "qehreman_exp_item_istifadesi",
+          requestId,
+          requestPayload
         );
 
-    if (!netice.success) {
+        if (tekrar.conflict) {
+          kontekst.send(kontekst.ws, {
+            type: resultType,
+            success: false,
+            playerId,
+            requestId,
+            idempotentReplay: false,
+            message: tekrar.message || "requestId ziddiyyəti yarandı.",
+            serverTimeUnixMs: kontekst.nowMs()
+          });
+          return;
+        }
+
+        if (tekrar.replay) {
+          const replayNetice = tekrar.result && typeof tekrar.result === "object"
+            ? tekrar.result
+            : {};
+          kontekst.send(kontekst.ws, {
+            type: resultType,
+            success: true,
+            playerId,
+            requestId,
+            idempotentReplay: true,
+            ...replayNetice,
+            serverTimeUnixMs: kontekst.nowMs()
+          });
+          return;
+        }
+      }
+
+      const kohneHeroes = kopyala(state.heroes || []);
+      const kohneRecruit = kopyala(state.heroRecruit || {});
+      const kohneIdempotentlik = kopyala(state.serverSorquIdempotentliyi || null);
+
+      const netice = skillSorqusudur
+        ? tutorialSkilliniArtir(state, heroId)
+        : expItemIstifadeEt(
+            state,
+            heroId,
+            rewardId,
+            count,
+            kontekst.nowMs()
+          );
+
+      if (!netice.success) {
+        kontekst.send(kontekst.ws, {
+          type: resultType,
+          success: false,
+          playerId,
+          requestId,
+          idempotentReplay: false,
+          message: netice.message,
+          serverTimeUnixMs: kontekst.nowMs()
+        });
+        return;
+      }
+
+      if (typeof kontekst.updateServerTime === "function") {
+        kontekst.updateServerTime(state);
+      }
+
+      if (expSorqusudur) {
+        ugurluNeticeniQeydEt(
+          state,
+          "qehreman_exp_item_istifadesi",
+          requestId,
+          requestPayload,
+          netice,
+          kontekst.nowMs()
+        );
+      }
+
+      try {
+        await oyunStateIniYaddaSaxla(playerId, state);
+      }
+      catch (xeta) {
+        state.heroes = kohneHeroes;
+        state.heroRecruit = kohneRecruit;
+        state.serverSorquIdempotentliyi = kohneIdempotentlik;
+        throw xeta;
+      }
+
+      if (skillSorqusudur && !skillMissiyaHadisesiVar(state)) {
+        await missiyaServerHadisesiniQeydEt(
+          playerId,
+          state,
+          "qehreman_bacarigi_artdi",
+          1
+        );
+      }
+
       kontekst.send(kontekst.ws, {
         type: resultType,
-        success: false,
+        success: true,
         playerId,
-        message: netice.message,
+        requestId,
+        idempotentReplay: false,
+        ...netice,
         serverTimeUnixMs: kontekst.nowMs()
       });
-      return true;
-    }
-
-    if (typeof kontekst.updateServerTime === "function") {
-      kontekst.updateServerTime(state);
-    }
-
-    try {
-      await oyunStateIniYaddaSaxla(playerId, state);
-    }
-    catch (xeta) {
-      state.heroes = kohneHeroes;
-      state.heroRecruit = kohneRecruit;
-      throw xeta;
-    }
-
-    if (skillSorqusudur && !skillMissiyaHadisesiVar(state)) {
-      await missiyaServerHadisesiniQeydEt(
-        playerId,
-        state,
-        "qehreman_bacarigi_artdi",
-        1
-      );
-    }
-
-    kontekst.send(kontekst.ws, {
-      type: resultType,
-      success: true,
-      playerId,
-      ...netice,
-      serverTimeUnixMs: kontekst.nowMs()
     });
   }
   catch (xeta) {
@@ -188,6 +282,8 @@ async function qehremanExpMesajiniEmalEt(kontekst) {
       type: resultType,
       success: false,
       playerId,
+      requestId: expSorqusudur ? requestIdAl(kontekst.msg && kontekst.msg.requestId) : "",
+      idempotentReplay: false,
       message: "Qəhrəman inkişaf əməliyyatı tamamlanmadı.",
       serverTimeUnixMs: kontekst.nowMs()
     });
