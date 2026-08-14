@@ -12,6 +12,10 @@ const {
 } = require("./konvoy_qosun_sistemi");
 
 const {
+  konvoyMesguldur
+} = require("./konvoy_mesgul_sistemi");
+
+const {
   oyunStateIniBerpaEt,
   oyunStateIniYaddaSaxla,
   oyuncuStateBerpaOlunub
@@ -91,6 +95,18 @@ async function konvoyMesajiniEmalEt(kontekst) {
     const evvelkiKonvoylar = JSON.parse(JSON.stringify(state.konvoylar || {}));
     const konvoyId = metnAl(kontekst.msg && kontekst.msg.konvoyId, 64);
     const heroId = metnAl(kontekst.msg && kontekst.msg.heroId, 128);
+
+    const mesgul = konvoyMesguldur(state, konvoyId, kontekst.nowMs());
+    if (mesgul.mesguldur) {
+      gonder(kontekst, resultType, {
+        success: false,
+        playerId,
+        message: mesgul.message,
+        busyReason: mesgul.sebeb,
+        mission: mesgul.mission
+      });
+      return true;
+    }
 
     let netice;
 
