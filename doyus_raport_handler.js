@@ -8,6 +8,10 @@ const {
   raportuSil
 } = require("./doyus_raport_sistemi");
 const {
+  raportResursMukafatiPreview,
+  raportResursMukafatiniAl
+} = require("./doyus_raport_mukafat_sistemi");
+const {
   oyunStateIniBerpaEt,
   oyunStateIniYaddaSaxla,
   oyuncuStateBerpaOlunub
@@ -16,6 +20,8 @@ const {
 const MESAJLAR = new Set([
   "battle_report_list_request",
   "battle_report_detail_request",
+  "battle_report_reward_preview_request",
+  "battle_report_claim_reward_request",
   "battle_report_mark_read_request",
   "battle_report_save_request",
   "battle_report_delete_request"
@@ -31,6 +37,10 @@ function gonder(k, type, data) {
     ...data,
     serverTimeUnixMs: k.nowMs()
   });
+}
+
+function kopyala(v) {
+  return v == null ? null : JSON.parse(JSON.stringify(v));
 }
 
 async function doyusRaportMesajiniEmalEt(kontekst) {
@@ -65,6 +75,7 @@ async function doyusRaportMesajiniEmalEt(kontekst) {
         playerId,
         items,
         unreadCount: items.filter(x => x && x.isRead !== true).length,
+        pendingRewardCount: items.filter(x => x && x.resourceRewardClaimPending === true).length,
         payloadJson: JSON.stringify(items)
       });
       return true;
@@ -84,10 +95,26 @@ async function doyusRaportMesajiniEmalEt(kontekst) {
       return true;
     }
 
-    const evvelki = JSON.parse(JSON.stringify(state.doyusRaportlari || null));
+    if (type === "battle_report_reward_preview_request") {
+      const preview = raportResursMukafatiPreview(state, reportId);
+      gonder(kontekst, resultType, {
+        success: preview && preview.success === true,
+        playerId,
+        preview,
+        message: preview && preview.message ? preview.message : "",
+        payloadJson: JSON.stringify(preview)
+      });
+      return true;
+    }
+
+    const evvelkiRaportlar = kopyala(state.doyusRaportlari || null);
+    const evvelkiResources = kopyala(state.resources || null);
     let result;
 
-    if (type === "battle_report_mark_read_request") {
+    if (type === "battle_report_claim_reward_request") {
+      result = raportResursMukafatiniAl(state, reportId, kontekst.nowMs());
+    }
+    else if (type === "battle_report_mark_read_request") {
       result = raportuOxunmusEt(state, reportId, kontekst.nowMs());
     }
     else if (type === "battle_report_save_request") {
@@ -103,10 +130,12 @@ async function doyusRaportMesajiniEmalEt(kontekst) {
     }
 
     if (!result || result.success !== true) {
-      state.doyusRaportlari = evvelki;
+      state.doyusRaportlari = evvelkiRaportlar;
+      state.resources = evvelkiResources;
       gonder(kontekst, resultType, {
         success: false,
         playerId,
+        ...((result && typeof result === "object") ? result : {}),
         message: result && result.message ? result.message : "Raport əməliyyatı tamamlanmadı."
       });
       return true;
@@ -116,15 +145,20 @@ async function doyusRaportMesajiniEmalEt(kontekst) {
       await oyunStateIniYaddaSaxla(playerId, state);
     }
     catch (xeta) {
-      state.doyusRaportlari = evvelki;
+      state.doyusRaportlari = evvelkiRaportlar;
+      state.resources = evvelkiResources;
       throw xeta;
     }
 
+    const items = raportSiyahisiniHazirla(state);
     gonder(kontekst, resultType, {
       success: true,
       playerId,
       ...result,
-      items: raportSiyahisiniHazirla(state),
+      report: raportDetaliHazirla(state, reportId),
+      items,
+      unreadCount: items.filter(x => x && x.isRead !== true).length,
+      pendingRewardCount: items.filter(x => x && x.resourceRewardClaimPending === true).length,
       payloadJson: JSON.stringify(result)
     });
   }
