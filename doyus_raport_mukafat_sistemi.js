@@ -16,6 +16,10 @@ function tamEded(v) {
   return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
 }
 
+function metnAl(v, max = 220) {
+  return typeof v === "string" ? v.trim().slice(0, max).toLowerCase() : "";
+}
+
 function kopyala(v) {
   return v == null ? null : JSON.parse(JSON.stringify(v));
 }
@@ -67,9 +71,38 @@ function resursTutumunuYoxla(state, resurslar) {
   return { success: hamisiYerlesir, items: details };
 }
 
-function vaxtMelumatiniAl(report, nowMs) {
+function aktivKonvoydanQayidisVaxtiniAl(state, reportId) {
+  const id = metnAl(reportId, 220);
+  const active = state &&
+    state.konvoyEmeliyyatlari &&
+    state.konvoyEmeliyyatlari.activeByConvoy &&
+    typeof state.konvoyEmeliyyatlari.activeByConvoy === "object"
+      ? state.konvoyEmeliyyatlari.activeByConvoy
+      : {};
+
+  for (const operation of Object.values(active)) {
+    if (!operation || metnAl(operation.reportId, 220) !== id) continue;
+    const returnEndsAtMs = tamEded(operation.returnEndsAtMs);
+    if (returnEndsAtMs > 0) return returnEndsAtMs;
+  }
+
+  return 0;
+}
+
+function vaxtMelumatiniAl(state, report, nowMs) {
   const now = tamEded(nowMs) || Date.now();
-  const availableAtMs = tamEded(report && report.resourceRewardAvailableAtMs);
+  let availableAtMs = tamEded(report && report.resourceRewardAvailableAtMs);
+
+  if (availableAtMs <= 0 && report) {
+    availableAtMs =
+      aktivKonvoydanQayidisVaxtiniAl(state, report.reportId) ||
+      tamEded(report.reward && report.reward.resourceRewardAvailableAtMs);
+
+    if (availableAtMs > 0) {
+      report.resourceRewardAvailableAtMs = availableAtMs;
+    }
+  }
+
   const ready = availableAtMs <= 0 || now >= availableAtMs;
   return {
     nowMs: now,
@@ -89,7 +122,7 @@ function raportResursMukafatiPreview(state, reportId, nowMs = Date.now()) {
   const alreadyClaimed = report.resourceRewardClaimed === true || report.lootAlreadyApplied === true;
   const eligible = report.victory === true && report.invalidated !== true && resurslar.length > 0;
   const capacity = resursTutumunuYoxla(state, resurslar);
-  const vaxt = vaxtMelumatiniAl(report, nowMs);
+  const vaxt = vaxtMelumatiniAl(state, report, nowMs);
 
   return {
     success: true,
@@ -148,7 +181,7 @@ function raportResursMukafatiniAl(state, reportId, nowMs = Date.now()) {
     };
   }
 
-  const vaxt = vaxtMelumatiniAl(report, nowMs);
+  const vaxt = vaxtMelumatiniAl(state, report, nowMs);
   if (!vaxt.ready) {
     report.resourceRewardClaimPending = true;
     report.resourceRewardLastError = "convoy_not_returned";
