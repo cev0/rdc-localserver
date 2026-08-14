@@ -1,6 +1,9 @@
 "use strict";
 
-const { sorguEt } = require("./verilenler_bazasi");
+const {
+  sorguEt,
+  proqramHovuzunuAl
+} = require("./verilenler_bazasi");
 
 const HADISE_NOVU = "dovlet_konvoy_runtime_v1";
 const yaddaKilidi = new Map();
@@ -36,18 +39,9 @@ function bosRuntime(stateId) {
   };
 }
 
-async function runtimeOxu(stateId) {
+function runtimeNeticesiniHazirla(stateId, netice) {
   const sid = Math.max(1, tamEded(stateId) || 1);
-  const netice = await sorguEt(
-    `SELECT detallar
-       FROM hesab_audit_jurnali
-      WHERE oyuncu_id = $1 AND hadise_novu = $2
-      ORDER BY id DESC
-      LIMIT 1`,
-    [stateAcar(sid), HADISE_NOVU]
-  );
-
-  const detallar = netice.rows && netice.rows[0] && netice.rows[0].detallar;
+  const detallar = netice && netice.rows && netice.rows[0] && netice.rows[0].detallar;
   const runtime = detallar && typeof detallar === "object" && detallar.runtime
     ? kopyala(detallar.runtime)
     : bosRuntime(sid);
@@ -60,15 +54,44 @@ async function runtimeOxu(stateId) {
   return runtime;
 }
 
-async function runtimeYazDaxili(stateId, runtime) {
+async function runtimeOxu(stateId) {
+  const sid = Math.max(1, tamEded(stateId) || 1);
+  const netice = await sorguEt(
+    `SELECT detallar
+       FROM hesab_audit_jurnali
+      WHERE oyuncu_id = $1 AND hadise_novu = $2
+      ORDER BY id DESC
+      LIMIT 1`,
+    [stateAcar(sid), HADISE_NOVU]
+  );
+
+  return runtimeNeticesiniHazirla(sid, netice);
+}
+
+async function runtimeOxuClient(client, stateId) {
+  const sid = Math.max(1, tamEded(stateId) || 1);
+  const netice = await client.query(
+    `SELECT detallar
+       FROM hesab_audit_jurnali
+      WHERE oyuncu_id = $1 AND hadise_novu = $2
+      ORDER BY id DESC
+      LIMIT 1`,
+    [stateAcar(sid), HADISE_NOVU]
+  );
+
+  return runtimeNeticesiniHazirla(sid, netice);
+}
+
+async function runtimeYazClient(client, stateId, runtime) {
   const acar = stateAcar(stateId);
-  await sorguEt(
+
+  await client.query(
     `INSERT INTO hesab_audit_jurnali (hesab_id, oyuncu_id, hadise_novu, detallar)
      VALUES (NULL, $1, $2, $3::jsonb)`,
     [acar, HADISE_NOVU, JSON.stringify({ version: 1, runtime: kopyala(runtime) })]
   );
 
-  await sorguEt(
+  await client.query(
     `DELETE FROM hesab_audit_jurnali
       WHERE id IN (
         SELECT id FROM hesab_audit_jurnali
@@ -79,6 +102,14 @@ async function runtimeYazDaxili(stateId, runtime) {
   );
 }
 
+async function postgresDovletKilidiniAl(client, stateId) {
+  const sid = Math.max(1, tamEded(stateId) || 1);
+  await client.query(
+    `SELECT pg_advisory_xact_lock(hashtext($1::text), $2::integer)`,
+    [HADISE_NOVU, sid]
+  );
+}
+
 async function runtimeEmeliyyati(stateId, emeliyyat) {
   const sid = Math.max(1, tamEded(stateId) || 1);
   const acar = stateAcar(sid);
@@ -86,10 +117,32 @@ async function runtimeEmeliyyati(stateId, emeliyyat) {
   let cavab;
 
   const yeni = onceki.then(async () => {
-    const runtime = await runtimeOxu(sid);
-    cavab = await emeliyyat(runtime);
-    if (cavab && cavab.deyisdi === true) {
-      await runtimeYazDaxili(sid, runtime);
+    const client = await proqramHovuzunuAl().connect();
+
+    try {
+      await client.query("BEGIN");
+      await postgresDovletKilidiniAl(client, sid);
+
+      const runtime = await runtimeOxuClient(client, sid);
+      cavab = await emeliyyat(runtime);
+
+      if (cavab && cavab.deyisdi === true) {
+        await runtimeYazClient(client, sid, runtime);
+      }
+
+      await client.query("COMMIT");
+    }
+    catch (xeta) {
+      try {
+        await client.query("ROLLBACK");
+      }
+      catch (_) {
+        // Əsas xəta saxlanılır.
+      }
+      throw xeta;
+    }
+    finally {
+      client.release();
     }
   });
 
