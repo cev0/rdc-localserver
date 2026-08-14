@@ -22,9 +22,12 @@ const {
 
 const {
   oyunStateIniBerpaEt,
-  oyunStateIniYaddaSaxla,
   oyuncuStateBerpaOlunub
 } = require("./oyun_state_daimilik_korpu");
+
+const {
+  oyuncuStateMutasiyasiniPostgresIleIcraEt
+} = require("./oyun_state_mutasiya_postgres");
 
 const KONVOY_MESAJLARI = new Set([
   "convoy_info_request",
@@ -54,6 +57,64 @@ function neticeTipiniAl(type) {
   if (type === "convoy_hero_remove_request") return "convoy_hero_remove_result";
   if (type === "convoy_formation_set_request") return "convoy_formation_set_result";
   return "convoy_troops_set_result";
+}
+
+function konvoyMutasiyasiniTetbiqEt(state, type, msg, nowMs = Date.now()) {
+  const konvoyId = metnAl(msg && msg.konvoyId, 64);
+  const heroId = metnAl(msg && msg.heroId, 128);
+
+  const mesgul = konvoyMesguldur(state, konvoyId, nowMs);
+  if (mesgul.mesguldur) {
+    return {
+      success: false,
+      deyisdi: false,
+      busyReason: mesgul.sebeb,
+      mission: mesgul.mission,
+      message: mesgul.message
+    };
+  }
+
+  let netice;
+
+  if (type === "convoy_hero_assign_request") {
+    netice = qehremaniKonvoyaYerlesdir(state, konvoyId, heroId);
+  }
+  else if (type === "convoy_hero_remove_request") {
+    netice = qehremaniKonvoydanCixar(state, konvoyId, heroId);
+  }
+  else if (type === "convoy_formation_set_request") {
+    const siralar = msg && msg.siralar;
+    netice = formasiyaTeyinEt(state, konvoyId, siralar);
+  }
+  else if (type === "convoy_troops_set_request") {
+    // Legacy Unity müqaviləsi hələlik saxlanılır. Yeni UI
+    // `convoy_formation_set_request` istifadə etməlidir.
+    const troops = msg && msg.troops;
+    netice = konvoyQosunlariniTeyinEt(state, konvoyId, troops);
+  }
+  else {
+    return {
+      success: false,
+      deyisdi: false,
+      message: "Naməlum konvoy mutation mesajı göndərilib."
+    };
+  }
+
+  if (!netice || netice.success !== true) {
+    return {
+      success: false,
+      deyisdi: false,
+      message: netice && netice.message
+        ? netice.message
+        : "Konvoy mutation-u tətbiq edilə bilmədi."
+    };
+  }
+
+  return {
+    success: true,
+    deyisdi: true,
+    netice
+  };
 }
 
 async function konvoyMesajiniEmalEt(kontekst) {
@@ -101,58 +162,37 @@ async function konvoyMesajiniEmalEt(kontekst) {
       return true;
     }
 
-    const evvelkiKonvoylar = JSON.parse(JSON.stringify(state.konvoylar || {}));
-    const konvoyId = metnAl(kontekst.msg && kontekst.msg.konvoyId, 64);
-    const heroId = metnAl(kontekst.msg && kontekst.msg.heroId, 128);
+    const mutasiyaNeticesi = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
+      playerId,
+      state,
+      async kilidliState => {
+        return konvoyMutasiyasiniTetbiqEt(
+          kilidliState,
+          type,
+          kontekst.msg,
+          kontekst.nowMs()
+        );
+      }
+    );
 
-    const mesgul = konvoyMesguldur(state, konvoyId, kontekst.nowMs());
-    if (mesgul.mesguldur) {
+    if (!mutasiyaNeticesi || mutasiyaNeticesi.success !== true) {
       gonder(kontekst, resultType, {
         success: false,
         playerId,
-        message: mesgul.message,
-        busyReason: mesgul.sebeb,
-        mission: mesgul.mission
+        message: mutasiyaNeticesi && mutasiyaNeticesi.message
+          ? mutasiyaNeticesi.message
+          : "Konvoy mutation-u tamamlanmadı.",
+        busyReason: mutasiyaNeticesi && mutasiyaNeticesi.busyReason
+          ? mutasiyaNeticesi.busyReason
+          : undefined,
+        mission: mutasiyaNeticesi && mutasiyaNeticesi.mission
+          ? mutasiyaNeticesi.mission
+          : undefined
       });
       return true;
     }
 
-    let netice;
-
-    if (type === "convoy_hero_assign_request") {
-      netice = qehremaniKonvoyaYerlesdir(state, konvoyId, heroId);
-    }
-    else if (type === "convoy_hero_remove_request") {
-      netice = qehremaniKonvoydanCixar(state, konvoyId, heroId);
-    }
-    else if (type === "convoy_formation_set_request") {
-      const siralar = kontekst.msg && kontekst.msg.siralar;
-      netice = formasiyaTeyinEt(state, konvoyId, siralar);
-    }
-    else {
-      // Legacy Unity müqaviləsi hələlik saxlanılır. Yeni UI
-      // `convoy_formation_set_request` istifadə etməlidir.
-      const troops = kontekst.msg && kontekst.msg.troops;
-      netice = konvoyQosunlariniTeyinEt(state, konvoyId, troops);
-    }
-
-    if (!netice.success) {
-      state.konvoylar = evvelkiKonvoylar;
-      gonder(kontekst, resultType, {
-        success: false,
-        playerId,
-        message: netice.message
-      });
-      return true;
-    }
-
-    try {
-      await oyunStateIniYaddaSaxla(playerId, state);
-    }
-    catch (xeta) {
-      state.konvoylar = evvelkiKonvoylar;
-      throw xeta;
-    }
+    const netice = mutasiyaNeticesi.netice || {};
 
     gonder(kontekst, resultType, {
       success: true,
@@ -175,5 +215,6 @@ async function konvoyMesajiniEmalEt(kontekst) {
 
 module.exports = {
   KONVOY_MESAJLARI,
+  konvoyMutasiyasiniTetbiqEt,
   konvoyMesajiniEmalEt
 };
