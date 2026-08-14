@@ -21,15 +21,39 @@ function snapshotUcunKopyala(state) {
   return JSON.parse(JSON.stringify(state));
 }
 
-async function oyunStateSnapshotiniYaz(playerId, state) {
+function snapshotNeticesindenStateAl(netice) {
+  if (!netice || !Array.isArray(netice.rows) || netice.rows.length === 0) {
+    return null;
+  }
+
+  const detallar = netice.rows[0] && netice.rows[0].detallar;
+
+  if (!detallar || typeof detallar !== "object") {
+    return null;
+  }
+
+  const state = detallar.state;
+
+  if (!state || typeof state !== "object" || Array.isArray(state)) {
+    return null;
+  }
+
+  return JSON.parse(JSON.stringify(state));
+}
+
+async function snapshotiYazSorquIle(sorquEt, playerId, state) {
   const oyuncuId = metnAl(playerId, 128);
   const snapshot = snapshotUcunKopyala(state);
+
+  if (typeof sorquEt !== "function") {
+    throw new Error("Oyun state snapshot sorğu funksiyası yoxdur.");
+  }
 
   if (!oyuncuId || !snapshot) {
     throw new Error("Oyun state snapshot məlumatı natamamdır.");
   }
 
-  await sorguEt(
+  await sorquEt(
     `
       INSERT INTO hesab_audit_jurnali (
         hesab_id,
@@ -56,7 +80,7 @@ async function oyunStateSnapshotiniYaz(playerId, state) {
 
   // Audit cədvəli lazımsız böyüməsin deyə hər oyunçu üçün
   // yalnız son bir neçə gameplay snapshot saxlanılır.
-  await sorguEt(
+  await sorquEt(
     `
       DELETE FROM hesab_audit_jurnali
       WHERE id IN (
@@ -78,14 +102,14 @@ async function oyunStateSnapshotiniYaz(playerId, state) {
   return true;
 }
 
-async function sonOyunStateSnapshotiniAl(playerId) {
+async function snapshotiOxuSorquIle(sorquEt, playerId) {
   const oyuncuId = metnAl(playerId, 128);
 
-  if (!oyuncuId) {
+  if (typeof sorquEt !== "function" || !oyuncuId) {
     return null;
   }
 
-  const netice = await sorguEt(
+  const netice = await sorquEt(
     `
       SELECT detallar
       FROM hesab_audit_jurnali
@@ -97,23 +121,45 @@ async function sonOyunStateSnapshotiniAl(playerId) {
     [oyuncuId, SNAPSHOT_HADISE_NOVU]
   );
 
-  if (!netice.rows || netice.rows.length === 0) {
+  return snapshotNeticesindenStateAl(netice);
+}
+
+async function oyunStateSnapshotiniYaz(playerId, state) {
+  return await snapshotiYazSorquIle(
+    async (sql, parametrler) => await sorguEt(sql, parametrler),
+    playerId,
+    state
+  );
+}
+
+async function oyunStateSnapshotiniYazClient(client, playerId, state) {
+  if (!client || typeof client.query !== "function") {
+    throw new Error("Oyun state snapshot üçün PostgreSQL client yoxdur.");
+  }
+
+  return await snapshotiYazSorquIle(
+    async (sql, parametrler) => await client.query(sql, parametrler),
+    playerId,
+    state
+  );
+}
+
+async function sonOyunStateSnapshotiniAl(playerId) {
+  return await snapshotiOxuSorquIle(
+    async (sql, parametrler) => await sorguEt(sql, parametrler),
+    playerId
+  );
+}
+
+async function sonOyunStateSnapshotiniAlClient(client, playerId) {
+  if (!client || typeof client.query !== "function") {
     return null;
   }
 
-  const detallar = netice.rows[0] && netice.rows[0].detallar;
-
-  if (!detallar || typeof detallar !== "object") {
-    return null;
-  }
-
-  const state = detallar.state;
-
-  if (!state || typeof state !== "object" || Array.isArray(state)) {
-    return null;
-  }
-
-  return JSON.parse(JSON.stringify(state));
+  return await snapshotiOxuSorquIle(
+    async (sql, parametrler) => await client.query(sql, parametrler),
+    playerId
+  );
 }
 
 function snapshotiCariStateIleBirlesdir(cariState, snapshot) {
@@ -154,7 +200,11 @@ function snapshotiCariStateIleBirlesdir(cariState, snapshot) {
 }
 
 module.exports = {
+  SNAPSHOT_HADISE_NOVU,
+  SAXLANILAN_SNAPSHOT_SAYI,
   oyunStateSnapshotiniYaz,
+  oyunStateSnapshotiniYazClient,
   sonOyunStateSnapshotiniAl,
+  sonOyunStateSnapshotiniAlClient,
   snapshotiCariStateIleBirlesdir
 };
