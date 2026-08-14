@@ -17,6 +17,29 @@ function tamEded(v) {
   const n = Number(v);
   return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
 }
+function seededRng(seed) {
+  let s = (Number(seed) || 1) >>> 0;
+  return function next() {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+function levelSec(rng, min, max) {
+  return min + Math.floor(rng() * ((max - min) + 1));
+}
+function resursLeveliniHesabla(stateId, hedefIndex) {
+  const rng = seededRng((Number(stateId) || 1) * 7919);
+  let level = 3;
+  for (let i = 1; i <= hedefIndex; i++) {
+    rng();
+    rng();
+    if (i === 18) level = 10;
+    else if (i <= 10) level = levelSec(rng, 3, 6);
+    else if (i <= 15) level = levelSec(rng, 5, 8);
+    else level = levelSec(rng, 8, 9);
+  }
+  return level;
+}
 
 function nodeMelumatiniAl(stateId, nodeId) {
   const sid = Math.max(1, tamEded(stateId) || 1);
@@ -27,23 +50,16 @@ function nodeMelumatiniAl(stateId, nodeId) {
   const index = Number(match[2]);
   if (!Number.isInteger(index) || index < 1 || index > RESURS_SAYI) return null;
 
-  let zoneId;
-  let level;
-  if (index <= 10) {
-    zoneId = "outer";
-    level = 3 + ((index - 1) % 4);
-  } else if (index <= 15) {
-    zoneId = "middle";
-    level = 5 + ((index - 11) % 4);
-  } else if (index < 18) {
-    zoneId = "inner_green";
-    level = 8 + ((index - 16) % 2);
-  } else {
-    zoneId = "president_center";
-    level = 10;
-  }
-
+  const zoneId = index <= 10
+    ? "outer"
+    : index <= 15
+      ? "middle"
+      : index < 18
+        ? "inner_green"
+        : "president_center";
+  const level = resursLeveliniHesabla(sid, index);
   const balans = resursLevelMelumatiniAl(level);
+
   return {
     nodeId: id,
     stateId: sid,
@@ -109,14 +125,15 @@ async function resursNodeSiyahisiniAl(stateId, nowMs = Date.now()) {
     const d = nodeMelumatiniAl(sid, `state_${sid}_resource_${i}`);
     const raw = runtime.nodes && runtime.nodes[d.nodeId];
     const node = nodeRuntimeYenile(raw ? { ...raw } : {}, d, nowMs);
+    const remainingAmount = Number.isFinite(Number(node.remainingAmount)) ? Number(node.remainingAmount) : d.amount;
     items.push({
       ...d,
-      remainingAmount: Number.isFinite(Number(node.remainingAmount)) ? Number(node.remainingAmount) : d.amount,
+      remainingAmount,
       occupiedByPlayerId: node.occupiedByPlayerId || "",
       occupiedByConvoyId: node.occupiedByConvoyId || "",
       occupiedUntilMs: tamEded(node.occupiedUntilMs),
       respawnAtMs: tamEded(node.respawnAtMs),
-      available: !node.occupiedByPlayerId && (Number(node.remainingAmount) || d.amount) > 0 && tamEded(node.respawnAtMs) === 0
+      available: !node.occupiedByPlayerId && remainingAmount > 0 && tamEded(node.respawnAtMs) === 0
     });
   }
 
