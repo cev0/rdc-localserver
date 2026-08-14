@@ -124,6 +124,14 @@ async function aktivOperationuDerhalQaytar(state, playerId, convoyId, operation,
     }
 
     if (operation.targetType === "enemy" && operation.reportId) {
+      const report = raportuTap(state, operation.reportId);
+      if (report) {
+        report.resourceRewardAvailableAtMs = tamEded(nowMs) || Date.now();
+        if (report.reward && typeof report.reward === "object") {
+          report.reward.resourceRewardAvailableAtMs = report.resourceRewardAvailableAtMs;
+        }
+      }
+
       battleRewardDelivery = raportResursMukafatiniAl(
         state,
         operation.reportId,
