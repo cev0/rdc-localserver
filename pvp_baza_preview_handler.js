@@ -16,6 +16,10 @@ function metnAl(v, max = 128) {
   return typeof v === "string" ? v.trim().slice(0, max).toLowerCase() : "";
 }
 
+function publicMetnAl(v, max = 128) {
+  return typeof v === "string" ? v.trim().slice(0, max) : "";
+}
+
 function tamEded(v) {
   const n = Number(v);
   return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
@@ -116,6 +120,8 @@ function targetPreviewHazirla(baza, requesterId) {
 
   return {
     playerId: targetPlayerId,
+    commanderName: publicMetnAl(baza && baza.commanderName, 64),
+    allianceName: publicMetnAl(baza && baza.allianceName, 80),
     stateId: Math.max(1, tamEded(baza && baza.stateId) || 1),
     x: Number(baza && baza.x) || 0,
     z: Number(baza && baza.z) || 0,
@@ -230,7 +236,7 @@ async function pvpBazaPreviewMesajiniEmalEt(kontekst) {
     });
 
     const preview = {
-      version: 2,
+      version: 3,
       pvpEnabled: false,
       canAttack: false,
       target,
