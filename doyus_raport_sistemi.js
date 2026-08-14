@@ -3,6 +3,8 @@
 const crypto = require("crypto");
 const { dusmenMovqeyiAl } = require("./xerite_movqe_sistemi");
 
+const SIRA_IDLERI = Object.freeze(["sira_1", "sira_2", "sira_3"]);
+
 function metnAl(v, max = 200) {
   return typeof v === "string" ? v.trim().slice(0, max).toLowerCase() : "";
 }
@@ -16,16 +18,48 @@ function kopyala(v) {
   return v == null ? null : JSON.parse(JSON.stringify(v));
 }
 
+function bosSira(siraId) {
+  return { siraId, unitId: "", count: 0 };
+}
+
+function siralariTemizle(rawSiralar) {
+  const map = new Map();
+
+  for (const raw of Array.isArray(rawSiralar) ? rawSiralar : []) {
+    const siraId = metnAl(raw && raw.siraId, 32);
+    if (!SIRA_IDLERI.includes(siraId) || map.has(siraId)) continue;
+
+    const unitId = metnAl(raw && raw.unitId, 128);
+    const count = tamEded(raw && raw.count);
+    map.set(
+      siraId,
+      unitId && count > 0
+        ? { siraId, unitId, count }
+        : bosSira(siraId)
+    );
+  }
+
+  return SIRA_IDLERI.map(id => map.get(id) || bosSira(id));
+}
+
+function sifirItkiSiralariniHazirla(sentRows) {
+  return siralariTemizle(sentRows).map(x => ({
+    siraId: x.siraId,
+    unitId: x.unitId,
+    count: 0
+  }));
+}
+
 function raportStateTeminEt(state) {
   if (!state || typeof state !== "object") {
     throw new Error("Döyüş raportu üçün oyunçu state-i yoxdur.");
   }
 
   if (!state.doyusRaportlari || typeof state.doyusRaportlari !== "object" || Array.isArray(state.doyusRaportlari)) {
-    state.doyusRaportlari = { version: 1, items: [] };
+    state.doyusRaportlari = { version: 2, items: [] };
   }
 
-  state.doyusRaportlari.version = 1;
+  state.doyusRaportlari.version = 2;
   if (!Array.isArray(state.doyusRaportlari.items)) state.doyusRaportlari.items = [];
   return state.doyusRaportlari;
 }
@@ -53,6 +87,9 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
   const enemyIndex = enemyIndexiniAl(enemyId);
   const movqe = enemyIndex > 0 ? dusmenMovqeyiAl(stateId, enemyIndex) : null;
   const sentTroops = kopyala(melumat && melumat.sentTroops) || {};
+  const sentRows = siralariTemizle(melumat && melumat.sentRows);
+  const lostRows = sifirItkiSiralariniHazirla(sentRows);
+  const returnedRows = kopyala(sentRows) || [];
   const reward = kopyala(melumat && melumat.reward) || {};
   const heroExp = tamEded(reward.heroExp);
   const victory = melumat && melumat.victory === true;
@@ -75,6 +112,9 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
     heroIds: Array.isArray(melumat && melumat.heroIds)
       ? melumat.heroIds.map(x => metnAl(x, 128)).filter(Boolean)
       : [],
+    sentRows,
+    lostRows,
+    returnedRows,
     sentTroops,
     lostTroops: {},
     returnedTroops: kopyala(sentTroops) || {},
@@ -92,8 +132,6 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
 
   raportlar.items.push(raport);
 
-  // Snapshot ölçüsünü nəzarətdə saxlayırıq. Saved raportlar qorunur,
-  // adi raportlardan isə ən yenilər saxlanılır.
   if (raportlar.items.length > 100) {
     const saved = raportlar.items.filter(x => x && x.isSaved === true);
     const adi = raportlar.items
