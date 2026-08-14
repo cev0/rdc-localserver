@@ -67,7 +67,19 @@ function resursTutumunuYoxla(state, resurslar) {
   return { success: hamisiYerlesir, items: details };
 }
 
-function raportResursMukafatiPreview(state, reportId) {
+function vaxtMelumatiniAl(report, nowMs) {
+  const now = tamEded(nowMs) || Date.now();
+  const availableAtMs = tamEded(report && report.resourceRewardAvailableAtMs);
+  const ready = availableAtMs <= 0 || now >= availableAtMs;
+  return {
+    nowMs: now,
+    availableAtMs,
+    ready,
+    remainingMs: ready ? 0 : Math.max(0, availableAtMs - now)
+  };
+}
+
+function raportResursMukafatiPreview(state, reportId, nowMs = Date.now()) {
   const report = raportuTap(state, reportId);
   if (!report) {
     return { success: false, message: "Döyüş raportu tapılmadı." };
@@ -77,6 +89,7 @@ function raportResursMukafatiPreview(state, reportId) {
   const alreadyClaimed = report.resourceRewardClaimed === true || report.lootAlreadyApplied === true;
   const eligible = report.victory === true && report.invalidated !== true && resurslar.length > 0;
   const capacity = resursTutumunuYoxla(state, resurslar);
+  const vaxt = vaxtMelumatiniAl(report, nowMs);
 
   return {
     success: true,
@@ -86,7 +99,10 @@ function raportResursMukafatiPreview(state, reportId) {
     pending: eligible && !alreadyClaimed,
     resources: resurslar,
     capacity,
-    canClaim: eligible && !alreadyClaimed && capacity.success,
+    rewardReadyAtBase: vaxt.ready,
+    resourceRewardAvailableAtMs: vaxt.availableAtMs,
+    remainingUntilReturnMs: vaxt.remainingMs,
+    canClaim: eligible && !alreadyClaimed && vaxt.ready && capacity.success,
     heroExp: tamEded(report.heroExp),
     heroExpDistributionPending: report.heroExpDistributionPending === true
   };
@@ -129,6 +145,22 @@ function raportResursMukafatiniAl(state, reportId, nowMs = Date.now()) {
       reportId: report.reportId,
       rewards: [],
       message: "Bu döyüşdə bazaya daşınacaq resurs mükafatı yoxdur."
+    };
+  }
+
+  const vaxt = vaxtMelumatiniAl(report, nowMs);
+  if (!vaxt.ready) {
+    report.resourceRewardClaimPending = true;
+    report.resourceRewardLastError = "convoy_not_returned";
+    return {
+      success: false,
+      alreadyClaimed: false,
+      pending: true,
+      reportId: report.reportId,
+      message: "Döyüş mükafatı konvoy bazaya qayıtdıqdan sonra alına bilər.",
+      resourceRewardAvailableAtMs: vaxt.availableAtMs,
+      remainingUntilReturnMs: vaxt.remainingMs,
+      rewards: resurslar
     };
   }
 
