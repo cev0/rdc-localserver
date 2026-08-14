@@ -12,6 +12,11 @@ const {
 } = require("./konvoy_qosun_sistemi");
 
 const {
+  formasiyaMelumatiniHazirla,
+  formasiyaTeyinEt
+} = require("./konvoy_formasiya_sistemi");
+
+const {
   konvoyMesguldur
 } = require("./konvoy_mesgul_sistemi");
 
@@ -25,7 +30,8 @@ const KONVOY_MESAJLARI = new Set([
   "convoy_info_request",
   "convoy_hero_assign_request",
   "convoy_hero_remove_request",
-  "convoy_troops_set_request"
+  "convoy_troops_set_request",
+  "convoy_formation_set_request"
 ]);
 
 function metnAl(deyer, maksimum = 128) {
@@ -46,6 +52,7 @@ function neticeTipiniAl(type) {
   if (type === "convoy_info_request") return "convoy_info_result";
   if (type === "convoy_hero_assign_request") return "convoy_hero_assign_result";
   if (type === "convoy_hero_remove_request") return "convoy_hero_remove_result";
+  if (type === "convoy_formation_set_request") return "convoy_formation_set_result";
   return "convoy_troops_set_result";
 }
 
@@ -78,9 +85,11 @@ async function konvoyMesajiniEmalEt(kontekst) {
     if (type === "convoy_info_request") {
       const heroInfo = konvoyMelumatiniHazirla(state);
       const troopInfo = konvoyQosunMelumatiniHazirla(state);
+      const formationInfo = formasiyaMelumatiniHazirla(state);
       const info = {
         ...heroInfo,
-        troopInfo
+        troopInfo,
+        formationInfo
       };
 
       gonder(kontekst, resultType, {
@@ -116,7 +125,13 @@ async function konvoyMesajiniEmalEt(kontekst) {
     else if (type === "convoy_hero_remove_request") {
       netice = qehremaniKonvoydanCixar(state, konvoyId, heroId);
     }
+    else if (type === "convoy_formation_set_request") {
+      const siralar = kontekst.msg && kontekst.msg.siralar;
+      netice = formasiyaTeyinEt(state, konvoyId, siralar);
+    }
     else {
+      // Legacy Unity müqaviləsi hələlik saxlanılır. Yeni UI
+      // `convoy_formation_set_request` istifadə etməlidir.
       const troops = kontekst.msg && kontekst.msg.troops;
       netice = konvoyQosunlariniTeyinEt(state, konvoyId, troops);
     }
