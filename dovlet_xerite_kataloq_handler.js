@@ -22,6 +22,10 @@ function metnAl(v, max = 128) {
   return typeof v === "string" ? v.trim().slice(0, max).toLowerCase() : "";
 }
 
+function publicMetnAl(v, max = 128) {
+  return typeof v === "string" ? v.trim().slice(0, max) : "";
+}
+
 function gonder(k, type, data) {
   k.send(k.ws, {
     type,
@@ -60,7 +64,8 @@ function publicBazaDetaliniHazirla(baza, requestingPlayerId) {
     publicPower: Number.isFinite(Number(baza && baza.publicPower))
       ? Math.max(0, Math.trunc(Number(baza.publicPower)))
       : null,
-    commanderName: null,
+    commanderName: publicMetnAl(baza && baza.commanderName, 64),
+    allianceName: publicMetnAl(baza && baza.allianceName, 80),
     allianceId: null,
     isSelf,
     pvp: {
@@ -198,7 +203,7 @@ async function dovletXeriteObyektleriSorqusunuEmalEt(kontekst) {
   }));
 
   const info = {
-    version: 4,
+    version: 5,
     stateId,
     map: {
       width: 1024,
