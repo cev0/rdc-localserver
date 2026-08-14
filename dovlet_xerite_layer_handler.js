@@ -5,7 +5,8 @@ const { dusmenSiyahisiniAl } = require("./xerite_dusmen_sistemi");
 const { resursMovqeyiAl, dusmenMovqeyiAl } = require("./xerite_movqe_sistemi");
 const {
   PVP_KAMP_STATUSU,
-  dovletAktivKonvoylariniAl
+  runtimeOxu,
+  publicVeziyyetiHesabla
 } = require("./dovlet_konvoy_runtime_postgres");
 const { dovletBazalariniAl } = require("./dovlet_baza_kataloqu_postgres");
 const {
@@ -160,9 +161,24 @@ async function statikLayeriGonder(kontekst, hazir) {
 async function dinamikLayeriGonder(kontekst, hazir) {
   const { playerId, stateId } = hazir;
   const nowMs = kontekst.nowMs();
-  const konvoyNeticesi = await dovletAktivKonvoylariniAl(stateId, nowMs);
-  const publicItems = publicKonvoylariHazirla(playerId, konvoyNeticesi.items);
 
+  // Bu endpoint tez-tez poll oluna bilər. Normal read zamanı advisory/write
+  // lock alınmır; yalnız shared runtime-ın son PostgreSQL snapshot-u oxunur və
+  // cari koordinat/status server vaxtından lokal olaraq hesablanır.
+  const runtime = await runtimeOxu(stateId);
+  const dinamikItems = [];
+
+  for (const raw of Object.values(runtime && runtime.items && typeof runtime.items === "object"
+    ? runtime.items
+    : {})) {
+    if (!raw || Math.max(1, tamEded(raw.stateId) || 1) !== stateId) continue;
+
+    const publicItem = publicVeziyyetiHesabla(raw, nowMs);
+    if (!publicItem || metnAl(publicItem.status, 64) === "idle") continue;
+    dinamikItems.push(publicItem);
+  }
+
+  const publicItems = publicKonvoylariHazirla(playerId, dinamikItems);
   const camps = publicItems
     .filter(item => metnAl(item && item.status, 64) === PVP_KAMP_STATUSU)
     .map(item => campHazirla(item, stateId));
@@ -171,9 +187,10 @@ async function dinamikLayeriGonder(kontekst, hazir) {
   );
 
   const info = {
-    version: 1,
+    version: 2,
     layer: "dynamic",
     stateId,
+    readOnlyRuntime: true,
     convoys,
     camps
   };
