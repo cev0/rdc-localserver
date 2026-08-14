@@ -6,6 +6,7 @@ const {
   doyusuNeticelendir
 } = require("./xerite_dusmen_doyus_sistemi");
 const { raportYarat } = require("./doyus_raport_sistemi");
+const { hereketMsPerXana } = require("./konvoy_emeliyyat_sistemi");
 const {
   oyunStateIniBerpaEt,
   oyunStateIniYaddaSaxla,
@@ -63,6 +64,15 @@ async function xeriteDusmenDoyusMesajiniEmalEt(kontekst) {
         playerId,
         info,
         payloadJson: JSON.stringify(info)
+      });
+      return true;
+    }
+
+    if (hereketMsPerXana() > 0) {
+      gonder(kontekst, resultType, {
+        success: false,
+        playerId,
+        message: "Birbaşa world battle start/resolve endpoint-i deaktivdir. convoy_operation_start_request istifadə olunmalıdır."
       });
       return true;
     }
