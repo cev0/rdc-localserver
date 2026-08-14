@@ -4,6 +4,7 @@ const { resursNodeSiyahisiniAl } = require("./xerite_resurs_toplama_sistemi");
 const { dusmenSiyahisiniAl } = require("./xerite_dusmen_sistemi");
 const { resursMovqeyiAl, dusmenMovqeyiAl } = require("./xerite_movqe_sistemi");
 const { dovletAktivKonvoylariniAl } = require("./dovlet_konvoy_runtime_postgres");
+const { dovletBazalariniAl } = require("./dovlet_baza_kataloqu_postgres");
 const {
   oyunStateIniBerpaEt,
   oyuncuStateBerpaOlunub
@@ -50,10 +51,11 @@ async function dovletXeriteKataloqMesajiniEmalEt(kontekst) {
     );
     const nowMs = kontekst.nowMs();
 
-    const [resursNeticesi, dusmenNeticesi, konvoyNeticesi] = await Promise.all([
+    const [resursNeticesi, dusmenNeticesi, konvoyNeticesi, bazaNeticesi] = await Promise.all([
       resursNodeSiyahisiniAl(stateId, nowMs),
       dusmenSiyahisiniAl(stateId, nowMs),
-      dovletAktivKonvoylariniAl(stateId, nowMs)
+      dovletAktivKonvoylariniAl(stateId, nowMs),
+      dovletBazalariniAl(stateId)
     ]);
 
     const resources = (resursNeticesi.items || []).map(item => {
@@ -84,8 +86,13 @@ async function dovletXeriteKataloqMesajiniEmalEt(kontekst) {
       isSelf: metnAl(item && item.playerId, 128) === playerId
     }));
 
+    const bases = (bazaNeticesi.bases || []).map(item => ({
+      ...item,
+      isSelf: metnAl(item && item.playerId, 128) === playerId
+    }));
+
     const info = {
-      version: 2,
+      version: 3,
       stateId,
       map: {
         width: 1024,
@@ -93,6 +100,7 @@ async function dovletXeriteKataloqMesajiniEmalEt(kontekst) {
         centerX: 512,
         centerZ: 512
       },
+      bases,
       resources,
       enemies,
       convoys
