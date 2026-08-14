@@ -7,6 +7,7 @@ const {
 } = require("./konvoy_qosun_sistemi");
 
 const DOYUS_NETICE_GOZLEME_MS = 5 * 1000;
+const FORMASIYA_SIRALARI = Object.freeze(["sira_1", "sira_2", "sira_3"]);
 
 function metnAl(v, max = 128) {
   return typeof v === "string" ? v.trim().slice(0, max).toLowerCase() : "";
@@ -47,6 +48,47 @@ function qosunGucunuHesabla(snapshot) {
     guc += birQosununGucunuAl(unitId) * say;
   }
   return Math.max(0, Math.trunc(guc));
+}
+
+function bosSira(siraId) {
+  return { siraId, unitId: "", count: 0 };
+}
+
+function formasiyaSnapshotiniAl(konvoy) {
+  const movcud =
+    konvoy &&
+    konvoy.formasiya &&
+    Array.isArray(konvoy.formasiya.siralar)
+      ? konvoy.formasiya.siralar
+      : [];
+
+  if (movcud.length > 0) {
+    const map = new Map();
+    for (const raw of movcud) {
+      const siraId = metnAl(raw && raw.siraId, 32);
+      if (!FORMASIYA_SIRALARI.includes(siraId) || map.has(siraId)) continue;
+      const unitId = metnAl(raw && raw.unitId, 128);
+      const count = tamEded(raw && raw.count);
+      map.set(siraId, unitId && count > 0
+        ? { siraId, unitId, count }
+        : bosSira(siraId));
+    }
+
+    return FORMASIYA_SIRALARI.map(id => map.get(id) || bosSira(id));
+  }
+
+  const entries = Object.entries((konvoy && konvoy.qosunlar) || {})
+    .map(([unitId, count]) => [metnAl(unitId, 128), tamEded(count)])
+    .filter(([unitId, count]) => !!unitId && count > 0)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .slice(0, FORMASIYA_SIRALARI.length);
+
+  return FORMASIYA_SIRALARI.map((siraId, index) => {
+    const entry = entries[index];
+    return entry
+      ? { siraId, unitId: entry[0], count: entry[1] }
+      : bosSira(siraId);
+  });
 }
 
 function stateTeminEt(state) {
@@ -140,6 +182,7 @@ function doyusaBasla(state, playerId, convoyId, enemyId, nowMs = Date.now()) {
     return { success: false, message: "Döyüş üçün konvoyda Döyüş qəhrəmanı olmalıdır." };
   }
 
+  const formationSnapshot = formasiyaSnapshotiniAl(konvoy);
   const stateId = dovletIdAl(state);
   const eid = metnAl(enemyId, 128);
   const match = eid.match(/^state_(\d+)_enemy_(\d+)$/);
@@ -162,6 +205,7 @@ function doyusaBasla(state, playerId, convoyId, enemyId, nowMs = Date.now()) {
     enemyLevel: descriptor.level,
     enemyPower: descriptor.power,
     troopSnapshot,
+    formationSnapshot,
     heroIds,
     playerPower: qosunGucunuHesabla(troopSnapshot),
     startedAtMs,
@@ -211,6 +255,7 @@ async function doyusuNeticelendir(state, playerId, convoyId, nowMs = Date.now())
         enemyId: mission.enemyId,
         victory: false,
         invalidated: true,
+        formationSnapshot: mission.formationSnapshot || [],
         message: sharedResult && sharedResult.message
           ? sharedResult.message
           : "Düşmən artıq başqa əməliyyatda məğlub edilib.",
@@ -250,6 +295,7 @@ async function doyusuNeticelendir(state, playerId, convoyId, nowMs = Date.now())
     enemyPower: mission.enemyPower,
     victory,
     invalidated: false,
+    formationSnapshot: mission.formationSnapshot || [],
     reward,
     completedAtMs: now,
     respawnAtMs: sharedResult ? tamEded(sharedResult.respawnAtMs) : 0
@@ -265,6 +311,7 @@ module.exports = {
   DOYUS_NETICE_GOZLEME_MS,
   birQosununGucunuAl,
   qosunGucunuHesabla,
+  formasiyaSnapshotiniAl,
   stateTeminEt,
   aktivDoyusTap,
   doyusMelumatiniHazirla,
