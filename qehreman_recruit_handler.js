@@ -5,7 +5,11 @@ const {
   recruitMelumatiniHazirla,
   recruitEt
 } = require("./qehreman_recruit_sistemi");
-
+const {
+  requestIdAl,
+  tekrarNeticesiniTap,
+  ugurluNeticeniQeydEt
+} = require("./server_sorqu_idempotentliyi");
 const {
   oyunStateIniBerpaEt,
   oyunStateIniYaddaSaxla,
@@ -66,13 +70,14 @@ async function oyuncuKilidiIleIcraEt(playerId, emeliyyat) {
   }
 }
 
-function ugursuzCavab(kontekst, type, playerId, message) {
+function ugursuzCavab(kontekst, type, playerId, message, elave = null) {
   kontekst.send(kontekst.ws, {
     type,
     success: false,
     playerId: playerId || null,
     message,
     entries: [],
+    ...((elave && typeof elave === "object") ? elave : {}),
     serverTimeUnixMs: kontekst.nowMs()
   });
 }
@@ -181,9 +186,6 @@ async function qehremanRecruitMesajiniEmalEt(kontekst) {
       const kilidliState = kontekst.getOrCreatePlayerState(playerId);
       qehremanRecruitStateTeminEt(kilidliState, kontekst.nowMs());
 
-      const evvelkiHeroes = derinKopyala(kilidliState.heroes || []);
-      const evvelkiRecruit = derinKopyala(kilidliState.heroRecruit || {});
-
       const bannerId = metnAl(
         kontekst.msg && kontekst.msg.bannerId,
         64
@@ -193,6 +195,61 @@ async function qehremanRecruitMesajiniEmalEt(kontekst) {
         type === "hero_recruit_single_request"
           ? 1
           : 10;
+
+      const requestId = requestIdAl(kontekst.msg && kontekst.msg.requestId);
+      const requestPayload = {
+        bannerId,
+        drawCount
+      };
+
+      const tekrar = tekrarNeticesiniTap(
+        kilidliState,
+        "qehreman_recruit",
+        requestId,
+        requestPayload
+      );
+
+      if (tekrar.conflict) {
+        ugursuzCavab(
+          kontekst,
+          resultType,
+          playerId,
+          tekrar.message || "requestId ziddiyyəti yarandı.",
+          {
+            requestId,
+            idempotentReplay: false
+          }
+        );
+        return;
+      }
+
+      if (tekrar.replay) {
+        const replayNetice = tekrar.result && typeof tekrar.result === "object"
+          ? tekrar.result
+          : {};
+
+        kontekst.send(kontekst.ws, {
+          type: resultType,
+          success: true,
+          playerId,
+          requestId,
+          idempotentReplay: true,
+          ...replayNetice,
+          payloadJson: JSON.stringify(replayNetice),
+          serverTimeUnixMs: kontekst.nowMs()
+        });
+
+        oyunStateGonder(
+          kontekst,
+          playerId,
+          kilidliState
+        );
+        return;
+      }
+
+      const evvelkiHeroes = derinKopyala(kilidliState.heroes || []);
+      const evvelkiRecruit = derinKopyala(kilidliState.heroRecruit || {});
+      const evvelkiIdempotentlik = derinKopyala(kilidliState.serverSorquIdempotentliyi || null);
 
       let netice;
 
@@ -223,7 +280,11 @@ async function qehremanRecruitMesajiniEmalEt(kontekst) {
           kontekst,
           resultType,
           playerId,
-          netice.message || "Recruit mümkün deyil."
+          netice.message || "Recruit mümkün deyil.",
+          {
+            requestId,
+            idempotentReplay: false
+          }
         );
         return;
       }
@@ -231,6 +292,25 @@ async function qehremanRecruitMesajiniEmalEt(kontekst) {
       if (typeof kontekst.updateServerTime === "function") {
         kontekst.updateServerTime(kilidliState);
       }
+
+      const cavabNeticesi = {
+        bannerId: netice.bannerId,
+        usedFreeDraw: netice.usedFreeDraw === true,
+        ticketCost: Number(netice.ticketCost) || 0,
+        drawCount: Number(netice.drawCount) || drawCount,
+        entries: Array.isArray(netice.entries) ? netice.entries : [],
+        recruitInfo: netice.recruitInfo,
+        message: netice.message || "Recruit uğurla tamamlandı."
+      };
+
+      ugurluNeticeniQeydEt(
+        kilidliState,
+        "qehreman_recruit",
+        requestId,
+        requestPayload,
+        cavabNeticesi,
+        kontekst.nowMs()
+      );
 
       try {
         await oyunStateIniYaddaSaxla(
@@ -241,6 +321,7 @@ async function qehremanRecruitMesajiniEmalEt(kontekst) {
       catch (xeta) {
         kilidliState.heroes = evvelkiHeroes;
         kilidliState.heroRecruit = evvelkiRecruit;
+        kilidliState.serverSorquIdempotentliyi = evvelkiIdempotentlik;
 
         console.error("[QEHRAMAN_RECRUIT] Snapshot yazma xətası:", {
           playerId,
@@ -252,7 +333,11 @@ async function qehremanRecruitMesajiniEmalEt(kontekst) {
           kontekst,
           resultType,
           playerId,
-          "Recruit nəticəsi daimi yaddaşa yazılmadı. Ticket və nəticə geri qaytarıldı."
+          "Recruit nəticəsi daimi yaddaşa yazılmadı. Ticket və nəticə geri qaytarıldı.",
+          {
+            requestId,
+            idempotentReplay: false
+          }
         );
         return;
       }
@@ -261,14 +346,10 @@ async function qehremanRecruitMesajiniEmalEt(kontekst) {
         type: resultType,
         success: true,
         playerId,
-        bannerId: netice.bannerId,
-        usedFreeDraw: netice.usedFreeDraw === true,
-        ticketCost: Number(netice.ticketCost) || 0,
-        drawCount: Number(netice.drawCount) || drawCount,
-        entries: Array.isArray(netice.entries) ? netice.entries : [],
-        recruitInfo: netice.recruitInfo,
-        payloadJson: JSON.stringify(netice),
-        message: netice.message || "Recruit uğurla tamamlandı.",
+        requestId,
+        idempotentReplay: false,
+        ...cavabNeticesi,
+        payloadJson: JSON.stringify(cavabNeticesi),
         serverTimeUnixMs: kontekst.nowMs()
       });
 
@@ -280,6 +361,7 @@ async function qehremanRecruitMesajiniEmalEt(kontekst) {
 
       console.log("[QEHRAMAN_RECRUIT] Uğurlu:", {
         playerId,
+        requestId: requestId || null,
         bannerId: netice.bannerId,
         drawCount: netice.drawCount,
         usedFreeDraw: netice.usedFreeDraw === true,
