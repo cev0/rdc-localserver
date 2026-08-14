@@ -136,8 +136,12 @@ function publicSnapshotHazirla(stateId, playerId, operation, nowMs = Date.now())
   };
 }
 
-function stabilJson(v) {
-  return JSON.stringify(v || null);
+function muqayiseUcunJson(v) {
+  const clone = kopyala(v) || {};
+  for (const item of Object.values(clone)) {
+    if (item && typeof item === "object") delete item.updatedAtMs;
+  }
+  return JSON.stringify(clone);
 }
 
 async function oyuncuKonvoylariniSinxronEt(stateId, playerId, activeOperations, nowMs = Date.now()) {
@@ -158,7 +162,7 @@ async function oyuncuKonvoylariniSinxronEt(stateId, playerId, activeOperations, 
     const yeni = {};
     for (const item of snapshots) yeni[item.publicId] = item;
 
-    if (stabilJson(evvelki) === stabilJson(yeni)) {
+    if (muqayiseUcunJson(evvelki) === muqayiseUcunJson(yeni)) {
       return { deyisdi: false, success: true, count: snapshots.length };
     }
 
