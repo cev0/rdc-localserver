@@ -149,6 +149,14 @@ async function oyuncuStateMutasiyasiniPostgresIleIcraEt(
       );
     }
 
+    // DB commit-dən sonra RAM merge-in uğursuz olduğunu demək təhlükəlidir:
+    // həmin anda transaction artıq geri qaytarıla bilməz. Ona görə uyğunluq
+    // əvvəl clone üzərində yoxlanılır; problem varsa transaction rollback olur.
+    const ramYoxlamaState = kopyala(cariState);
+    if (!snapshotiCariStateIleBirlesdir(ramYoxlamaState, isState)) {
+      throw new Error("Commit-dən əvvəl canlı oyunçu state uyğunluğu təsdiqlənmədi.");
+    }
+
     await client.query("COMMIT");
     commitOlundu = true;
   }
@@ -177,7 +185,11 @@ async function oyuncuStateMutasiyasiniPostgresIleIcraEt(
     );
 
     if (!birlesdi) {
-      throw new Error("Commit-dən sonra canlı oyunçu state-i sinxron edilə bilmədi.");
+      // Bu hal yalnız commit-dən sonra eyni RAM state başqa kod tərəfindən
+      // gözlənilmədən dəyişdirilərsə mümkündür. DB artıq authoritative qalır.
+      console.error("[OYUN_STATE_MUTASIYA_RAM_SYNC] Commit uğurludur, RAM merge alınmadı.", {
+        playerId: oyuncuId
+      });
     }
   }
 
