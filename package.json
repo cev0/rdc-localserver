@@ -98,6 +98,7 @@
     "pvp:hucum-contract-test": "node pvp_hucum_emeliyyat_sistemi_testi.js",
     "state:pg-mutation-test": "node oyun_state_mutasiya_postgres_testi.js",
     "pvp:runtime-status-test": "node dovlet_konvoy_runtime_pvp_status_testi.js",
+    "state:fresh-base-test": "node dovlet_baza_birbasa_postgres_testi.js",
     "start": "node server_missiya_genisletme.js"
   },
   "repository": {
