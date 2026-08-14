@@ -3,7 +3,11 @@
 const {
   KONVOY_TEXNOLOGIYA_BALANSI
 } = require("./konvoy_qaydalari");
-
+const {
+  requestIdAl,
+  tekrarNeticesiniTap,
+  ugurluNeticeniQeydEt
+} = require("./server_sorqu_idempotentliyi");
 const {
   oyunStateIniBerpaEt,
   oyunStateIniYaddaSaxla,
@@ -12,11 +16,37 @@ const {
 
 const BALANSLAR = Object.values(KONVOY_TEXNOLOGIYA_BALANSI);
 const BALANS_XERITESI = new Map(BALANSLAR.map(x => [x.techId, x]));
+const oyuncuKilidleri = new Map();
 
 function metnAl(deyer, maksimum = 128) {
   return typeof deyer === "string"
     ? deyer.trim().slice(0, maksimum).toLowerCase()
     : "";
+}
+
+function kopyala(v) {
+  return v == null ? null : JSON.parse(JSON.stringify(v));
+}
+
+async function oyuncuKilidiIleIcraEt(playerId, emeliyyat) {
+  const evvelki = oyuncuKilidleri.get(playerId) || Promise.resolve();
+  let kilidiAc;
+  const cari = new Promise(resolve => {
+    kilidiAc = resolve;
+  });
+
+  oyuncuKilidleri.set(playerId, cari);
+  await evvelki;
+
+  try {
+    return await emeliyyat();
+  }
+  finally {
+    kilidiAc();
+    if (oyuncuKilidleri.get(playerId) === cari) {
+      oyuncuKilidleri.delete(playerId);
+    }
+  }
 }
 
 function binaLeveliniAl(state, buildingId, yolTelebi = false) {
@@ -141,6 +171,20 @@ function researchBaslat(state, balans, nowMs) {
   };
 }
 
+function ugursuzStartCavabi(kontekst, playerId, techId, requestId, message, info = null) {
+  kontekst.send(kontekst.ws, {
+    type: "technology_research_result",
+    success: false,
+    playerId,
+    techId,
+    requestId,
+    idempotentReplay: false,
+    message,
+    info,
+    serverTimeUnixMs: kontekst.nowMs()
+  });
+}
+
 async function konvoyTexnologiyaMesajiniEmalEt(kontekst) {
   const type = metnAl(kontekst && kontekst.type, 128);
   const techId = metnAl(kontekst && kontekst.msg && kontekst.msg.techId, 128);
@@ -180,40 +224,106 @@ async function konvoyTexnologiyaMesajiniEmalEt(kontekst) {
       return true;
     }
 
-    const balans = BALANS_XERITESI.get(techId);
-    const evvelkiResources = JSON.parse(JSON.stringify(state.resources || {}));
-    const evvelkiTechnology = JSON.parse(JSON.stringify(state.technology || {}));
-    const netice = researchBaslat(state, balans, kontekst.nowMs());
+    await oyuncuKilidiIleIcraEt(playerId, async () => {
+      const kilidliState = kontekst.getOrCreatePlayerState(playerId);
+      const balans = BALANS_XERITESI.get(techId);
+      const requestId = requestIdAl(kontekst.msg && kontekst.msg.requestId);
+      const requestPayload = { techId };
 
-    if (!netice.ok) {
+      const tekrar = tekrarNeticesiniTap(
+        kilidliState,
+        "konvoy_texnologiya_arasdirma_baslat",
+        requestId,
+        requestPayload
+      );
+
+      if (tekrar.conflict) {
+        ugursuzStartCavabi(
+          kontekst,
+          playerId,
+          techId,
+          requestId,
+          tekrar.message || "requestId ziddiyyəti yarandı."
+        );
+        return;
+      }
+
+      if (tekrar.replay) {
+        const replay = tekrar.result && typeof tekrar.result === "object"
+          ? tekrar.result
+          : {};
+        kontekst.send(kontekst.ws, {
+          type: "technology_research_started",
+          success: true,
+          playerId,
+          techId,
+          requestId,
+          idempotentReplay: true,
+          research: replay.research || null,
+          info: replay.info || null,
+          payloadJson: JSON.stringify(replay.research || null),
+          serverTimeUnixMs: kontekst.nowMs()
+        });
+        return;
+      }
+
+      const evvelki = kopyala({
+        resources: kilidliState.resources || {},
+        technology: kilidliState.technology || {},
+        serverSorquIdempotentliyi: kilidliState.serverSorquIdempotentliyi || null
+      });
+
+      const nowMs = kontekst.nowMs();
+      const netice = researchBaslat(kilidliState, balans, nowMs);
+
+      if (!netice.ok) {
+        ugursuzStartCavabi(
+          kontekst,
+          playerId,
+          techId,
+          requestId,
+          netice.message,
+          netice.info
+        );
+        return;
+      }
+
+      const cavab = {
+        research: kopyala(netice.research),
+        info: kopyala(netice.info)
+      };
+
+      ugurluNeticeniQeydEt(
+        kilidliState,
+        "konvoy_texnologiya_arasdirma_baslat",
+        requestId,
+        requestPayload,
+        cavab,
+        nowMs
+      );
+
+      try {
+        await oyunStateIniYaddaSaxla(playerId, kilidliState);
+      }
+      catch (xeta) {
+        kilidliState.resources = evvelki.resources;
+        kilidliState.technology = evvelki.technology;
+        kilidliState.serverSorquIdempotentliyi = evvelki.serverSorquIdempotentliyi;
+        throw xeta;
+      }
+
       kontekst.send(kontekst.ws, {
-        type: "technology_research_result",
-        success: false,
+        type: "technology_research_started",
+        success: true,
         playerId,
         techId,
-        message: netice.message,
-        info: netice.info,
+        requestId,
+        idempotentReplay: false,
+        research: cavab.research,
+        info: cavab.info,
+        payloadJson: JSON.stringify(cavab.research),
         serverTimeUnixMs: kontekst.nowMs()
       });
-      return true;
-    }
-
-    try {
-      await oyunStateIniYaddaSaxla(playerId, state);
-    }
-    catch (xeta) {
-      state.resources = evvelkiResources;
-      state.technology = evvelkiTechnology;
-      throw xeta;
-    }
-
-    kontekst.send(kontekst.ws, {
-      type: "technology_research_started",
-      success: true,
-      playerId,
-      techId,
-      payloadJson: JSON.stringify(netice.research),
-      serverTimeUnixMs: kontekst.nowMs()
     });
   }
   catch (xeta) {
@@ -222,6 +332,9 @@ async function konvoyTexnologiyaMesajiniEmalEt(kontekst) {
       type: infoIsteyi ? "convoy_technology_info_result" : "technology_research_result",
       success: false,
       playerId,
+      techId,
+      requestId: requestIdAl(kontekst.msg && kontekst.msg.requestId),
+      idempotentReplay: false,
       message: "Konvoy texnologiyası əməliyyatı tamamlanmadı.",
       serverTimeUnixMs: kontekst.nowMs()
     });
