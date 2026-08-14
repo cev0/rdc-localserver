@@ -2,9 +2,9 @@
 
 const { konvoyStateTeminEt } = require("./konvoy_sistemi");
 const {
-  KONVOY_TUTUM_TEXNOLOGIYA_ID,
-  tutumLevelMelumatiniAl
-} = require("./konvoy_tutum_qaydalari");
+  legacyTutumLeveliniAl,
+  konvoyTutumHesabiniAl
+} = require("./konvoy_tutum_formulu");
 
 function metnAl(deyer, maksimum = 128) {
   return typeof deyer === "string"
@@ -20,16 +20,11 @@ function musbetTamEded(deyer) {
 }
 
 function konvoyTutumLeveliniAl(state) {
-  const levels = state && state.technology && state.technology.levels;
-  const raw = levels && typeof levels === "object"
-    ? levels[KONVOY_TUTUM_TEXNOLOGIYA_ID]
-    : 0;
-
-  return Math.max(0, Math.min(4, musbetTamEded(raw)));
+  return legacyTutumLeveliniAl(state);
 }
 
-function konvoyTutumunuAl(state) {
-  return tutumLevelMelumatiniAl(konvoyTutumLeveliniAl(state)).capacity;
+function konvoyTutumunuAl(state, konvoyId = "konvoy_1") {
+  return konvoyTutumHesabiniAl(state, konvoyId).yekunTutum;
 }
 
 function qosunObyektiniTemizle(raw) {
@@ -86,19 +81,24 @@ function konvoyQosunMelumatiniHazirla(state) {
   const konvoylar = konvoyQosunStateTeminEt(state);
   const ordu = orduQosunlariniAl(state);
   const tutumLevel = konvoyTutumLeveliniAl(state);
-  const tutum = konvoyTutumunuAl(state);
+  const birinciTutumHesabi = konvoyTutumHesabiniAl(state, "konvoy_1");
 
   return {
     tutumLevel,
-    tutum,
+    tutum: birinciTutumHesabi.yekunTutum,
+    tutumHesabi: birinciTutumHesabi,
     ordu,
-    items: konvoylar.items.map(konvoy => ({
-      konvoyId: konvoy.konvoyId,
-      aciqdir: konvoy.aciqdir === true,
-      tutum: konvoy.aciqdir === true ? tutum : 0,
-      istifadeOlunanTutum: qosunSayiniHesabla(konvoy.qosunlar),
-      qosunlar: { ...konvoy.qosunlar }
-    }))
+    items: konvoylar.items.map(konvoy => {
+      const tutumHesabi = konvoyTutumHesabiniAl(state, konvoy.konvoyId);
+      return {
+        konvoyId: konvoy.konvoyId,
+        aciqdir: konvoy.aciqdir === true,
+        tutum: konvoy.aciqdir === true ? tutumHesabi.yekunTutum : 0,
+        tutumHesabi,
+        istifadeOlunanTutum: qosunSayiniHesabla(konvoy.qosunlar),
+        qosunlar: { ...konvoy.qosunlar }
+      };
+    })
   };
 }
 
@@ -113,12 +113,14 @@ function konvoyQosunlariniTeyinEt(state, konvoyId, rawQosunlar) {
 
   const istenilen = qosunObyektiniTemizle(rawQosunlar);
   const istenilenCem = qosunSayiniHesabla(istenilen);
-  const tutum = konvoyTutumunuAl(state);
+  const tutumHesabi = konvoyTutumHesabiniAl(state, id);
+  const tutum = tutumHesabi.yekunTutum;
 
   if (istenilenCem > tutum) {
     return {
       success: false,
-      message: `Konvoy tutumu keçildi. Maksimum ${tutum} birlik yerləşdirilə bilər.`
+      message: `Konvoy tutumu keçildi. Maksimum ${tutum} birlik yerləşdirilə bilər.`,
+      tutumHesabi
     };
   }
 
@@ -144,6 +146,7 @@ function konvoyQosunlariniTeyinEt(state, konvoyId, rawQosunlar) {
     success: true,
     konvoyId: id,
     tutum,
+    tutumHesabi,
     istifadeOlunanTutum: istenilenCem,
     qosunlar: { ...istenilen },
     info: konvoyQosunMelumatiniHazirla(state)
