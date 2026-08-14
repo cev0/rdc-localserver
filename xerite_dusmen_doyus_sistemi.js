@@ -113,6 +113,37 @@ function aktivDoyusTap(state, convoyId) {
   return battle.activeByConvoy[metnAl(convoyId, 64)] || null;
 }
 
+function doyusuLegvEt(state, convoyId, nowMs = Date.now()) {
+  const battle = stateTeminEt(state);
+  const id = metnAl(convoyId, 64);
+  const mission = battle.activeByConvoy[id];
+
+  if (!mission) {
+    return {
+      success: true,
+      alreadyInactive: true,
+      convoyId: id,
+      rewardCreated: false,
+      casualtyApplied: false
+    };
+  }
+
+  delete battle.activeByConvoy[id];
+
+  return {
+    success: true,
+    alreadyInactive: false,
+    convoyId: id,
+    battleId: metnAl(mission.battleId, 220),
+    enemyId: metnAl(mission.enemyId, 128),
+    cancelledAtMs: tamEded(nowMs) || Date.now(),
+    rewardCreated: false,
+    casualtyApplied: false,
+    enemyDefeated: false,
+    mission: JSON.parse(JSON.stringify(mission))
+  };
+}
+
 function doyusMelumatiniHazirla(state, nowMs = Date.now()) {
   const battle = stateTeminEt(state);
   const now = tamEded(nowMs) || Date.now();
@@ -280,6 +311,7 @@ module.exports = {
   formasiyaSnapshotiniAl,
   stateTeminEt,
   aktivDoyusTap,
+  doyusuLegvEt,
   doyusMelumatiniHazirla,
   doyusaBasla,
   doyusuNeticelendir
