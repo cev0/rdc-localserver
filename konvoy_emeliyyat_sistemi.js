@@ -248,6 +248,9 @@ async function emeliyyatlariYenile(state, playerId, nowMs = Date.now()) {
         if (result && result.success === true) {
           operation.status = STATUS.TOPLAMA;
           operation.actionEndsAtMs = tamEded(result.mission && result.mission.endsAtMs);
+          operation.gatherRewardId = result.mission
+            ? `${metnAl(result.mission.nodeId, 128)}:${tamEded(result.mission.startedAtMs)}`
+            : "";
         }
         else {
           operation.failureReason = result && result.message ? result.message : "Resurs toplama başlaya bilmədi.";
@@ -276,7 +279,10 @@ async function emeliyyatlariYenile(state, playerId, nowMs = Date.now()) {
         ? completed.find(x => x && metnAl(x.convoyId, 64) === metnAl(convoyId, 64)) || null
         : null;
 
-      operation.gatherRewardId = reward ? metnAl(reward.rewardId, 220) : "";
+      if (!operation.gatherRewardId && reward) {
+        operation.gatherRewardId = metnAl(reward.rewardId, 220);
+      }
+
       geriQayitmagaBasla(operation, gatherFinishedAt, {
         success: true,
         type: "gather",
