@@ -28,6 +28,17 @@ function gonder(k, type, data) {
   });
 }
 
+function stateRollbackEt(state, evvelki) {
+  state.konvoyEmeliyyatlari = evvelki.konvoyEmeliyyatlari;
+  state.xeriteToplama = evvelki.xeriteToplama;
+  state.worldEnemyBattle = evvelki.worldEnemyBattle;
+  state.doyusRaportlari = evvelki.doyusRaportlari;
+  state.resources = evvelki.resources;
+  state.army = evvelki.army;
+  state.konvoylar = evvelki.konvoylar;
+  state.xestexana = evvelki.xestexana;
+}
+
 async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
   const type = metnAl(kontekst && kontekst.type, 128);
   if (!MESAJLAR.has(type)) return false;
@@ -58,7 +69,10 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
       xeriteToplama: state.xeriteToplama || null,
       worldEnemyBattle: state.worldEnemyBattle || null,
       doyusRaportlari: state.doyusRaportlari || null,
-      resources: state.resources || null
+      resources: state.resources || null,
+      army: state.army || null,
+      konvoylar: state.konvoylar || null,
+      xestexana: state.xestexana || null
     }));
 
     const yenileme = await emeliyyatlariYenile(state, playerId, nowMs);
@@ -69,11 +83,7 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
           await oyunStateIniYaddaSaxla(playerId, state);
         }
         catch (xeta) {
-          state.konvoyEmeliyyatlari = evvelki.konvoyEmeliyyatlari;
-          state.xeriteToplama = evvelki.xeriteToplama;
-          state.worldEnemyBattle = evvelki.worldEnemyBattle;
-          state.doyusRaportlari = evvelki.doyusRaportlari;
-          state.resources = evvelki.resources;
+          stateRollbackEt(state, evvelki);
           throw xeta;
         }
       }
@@ -112,11 +122,7 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
       await oyunStateIniYaddaSaxla(playerId, state);
     }
     catch (xeta) {
-      state.konvoyEmeliyyatlari = evvelki.konvoyEmeliyyatlari;
-      state.xeriteToplama = evvelki.xeriteToplama;
-      state.worldEnemyBattle = evvelki.worldEnemyBattle;
-      state.doyusRaportlari = evvelki.doyusRaportlari;
-      state.resources = evvelki.resources;
+      stateRollbackEt(state, evvelki);
       throw xeta;
     }
 
