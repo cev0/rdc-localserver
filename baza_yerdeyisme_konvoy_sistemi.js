@@ -24,12 +24,6 @@ const {
 const {
   oyuncuKonvoylariniSinxronEt
 } = require("./dovlet_konvoy_runtime_postgres");
-const {
-  dovletBazaKeshiniTemizle
-} = require("./dovlet_baza_kataloqu_postgres");
-const {
-  oyunStateIniYaddaSaxla
-} = require("./oyun_state_daimilik_korpu");
 
 function metnAl(v, max = 220) {
   return typeof v === "string" ? v.trim().slice(0, max).toLowerCase() : "";
@@ -247,12 +241,6 @@ async function bazaYerdeyismeKonvoylariniGeriCagir(
     stateTeminEt(state).activeByConvoy,
     now
   );
-
-  // Teleport + recall yekun state-i PostgreSQL-ə ayrıca yazılır. Bu, legacy
-  // gameplay observer-in async snapshot-ı recall tamamlanmadan yazsa belə son
-  // həqiqət mənbəyinin tam state olmasını təmin edir.
-  await oyunStateIniYaddaSaxla(pid, state);
-  dovletBazaKeshiniTemizle(stateId);
 
   return {
     success: true,
