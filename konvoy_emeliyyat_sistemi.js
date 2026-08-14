@@ -20,6 +20,7 @@ const {
   raportYarat,
   raportuTap
 } = require("./doyus_raport_sistemi");
+const { raportResursMukafatiniAl } = require("./doyus_raport_mukafat_sistemi");
 const { itkiPlaniniHazirla } = require("./doyus_itki_sistemi");
 const {
   serverItkiPlaniniTetbiqEt,
@@ -319,7 +320,7 @@ async function emeliyyatlariYenile(state, playerId, nowMs = Date.now()) {
           sentTroops: missionSnapshot.troopSnapshot || {},
           sentFormation: missionSnapshot.formationSnapshot || [],
           reward: result.reward || {},
-          lootAlreadyApplied: result.victory === true,
+          lootAlreadyApplied: false,
           completedAtMs: result.completedAtMs || battleFinishedAt
         }, battleFinishedAt);
 
@@ -367,6 +368,7 @@ async function emeliyyatlariYenile(state, playerId, nowMs = Date.now()) {
       const returnFinishedAt = tamEded(operation.returnEndsAtMs) || now;
       let recovery = null;
       let gatherDelivery = null;
+      let battleRewardDelivery = null;
 
       if (Array.isArray(operation.lightWoundedFormation) && operation.lightWoundedFormation.length > 0) {
         const report = operation.reportId ? raportuTap(state, operation.reportId) : null;
@@ -384,11 +386,20 @@ async function emeliyyatlariYenile(state, playerId, nowMs = Date.now()) {
         gatherDelivery = toplamaMukafatiniBazayaCatdir(state, operation);
       }
 
+      if (operation.targetType === "enemy" && operation.reportId) {
+        battleRewardDelivery = raportResursMukafatiniAl(
+          state,
+          operation.reportId,
+          returnFinishedAt
+        );
+      }
+
       const historyItem = {
         ...operation,
         status: STATUS.BOS,
         lightWoundedRecovery: recovery,
         gatherDelivery,
+        battleRewardDelivery,
         finishedAtMs: returnFinishedAt
       };
       emeliyyatlar.history.push(historyItem);

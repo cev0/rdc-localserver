@@ -3,6 +3,15 @@
 const crypto = require("crypto");
 const { dusmenMovqeyiAl } = require("./xerite_movqe_sistemi");
 
+const RESURS_MUKAFAT_IDLERI = Object.freeze([
+  "food",
+  "water",
+  "wood",
+  "iron",
+  "fuel",
+  "money"
+]);
+
 function metnAl(v, max = 200) {
   return typeof v === "string" ? v.trim().slice(0, max).toLowerCase() : "";
 }
@@ -16,15 +25,66 @@ function kopyala(v) {
   return v == null ? null : JSON.parse(JSON.stringify(v));
 }
 
+function rewardResurslariVar(reward) {
+  if (!reward || typeof reward !== "object") return false;
+  return RESURS_MUKAFAT_IDLERI.some(id => tamEded(reward[id]) > 0);
+}
+
+function legacyRaportuYenile(report) {
+  if (!report || typeof report !== "object") return report;
+
+  const legacyClaimed = report.lootAlreadyApplied === true;
+  if (typeof report.resourceRewardClaimed !== "boolean") {
+    report.resourceRewardClaimed = legacyClaimed;
+  }
+
+  if (typeof report.resourceRewardClaimPending !== "boolean") {
+    report.resourceRewardClaimPending =
+      report.victory === true &&
+      report.invalidated !== true &&
+      rewardResurslariVar(report.reward) &&
+      report.resourceRewardClaimed !== true;
+  }
+
+  if (!Number.isFinite(Number(report.resourceRewardClaimedAtMs))) {
+    report.resourceRewardClaimedAtMs = report.resourceRewardClaimed === true
+      ? tamEded(report.createdAtMs)
+      : 0;
+  }
+
+  if (!Number.isFinite(Number(report.resourceRewardAvailableAtMs))) {
+    report.resourceRewardAvailableAtMs = tamEded(
+      report.reward && report.reward.resourceRewardAvailableAtMs
+    );
+  }
+
+  if (!Array.isArray(report.resourceRewardsClaimed)) {
+    report.resourceRewardsClaimed = [];
+  }
+
+  if (typeof report.resourceRewardLastError !== "string") {
+    report.resourceRewardLastError = "";
+  }
+
+  if (report.resourceRewardClaimed === true) {
+    report.resourceRewardClaimPending = false;
+    report.lootAlreadyApplied = true;
+  }
+
+  report.reportVersion = Math.max(3, tamEded(report.reportVersion) || 1);
+  return report;
+}
+
 function raportStateTeminEt(state) {
   if (!state || typeof state !== "object") {
     throw new Error("Döyüş raportu üçün oyunçu state-i yoxdur.");
   }
   if (!state.doyusRaportlari || typeof state.doyusRaportlari !== "object" || Array.isArray(state.doyusRaportlari)) {
-    state.doyusRaportlari = { version: 2, items: [] };
+    state.doyusRaportlari = { version: 3, items: [] };
   }
-  state.doyusRaportlari.version = 2;
+  state.doyusRaportlari.version = 3;
   if (!Array.isArray(state.doyusRaportlari.items)) state.doyusRaportlari.items = [];
+  state.doyusRaportlari.items.forEach(legacyRaportuYenile);
   return state.doyusRaportlari;
 }
 
@@ -68,7 +128,7 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
   const battleId = metnAl(melumat && melumat.battleId, 220);
   if (battleId) {
     const movcud = raportlar.items.find(x => x && metnAl(x.battleId, 220) === battleId);
-    if (movcud) return movcud;
+    if (movcud) return legacyRaportuYenile(movcud);
   }
 
   const stateId = Math.max(1, tamEded(melumat && melumat.stateId) || 1);
@@ -80,9 +140,16 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
   const reward = kopyala(melumat && melumat.reward) || {};
   const heroExp = tamEded(reward.heroExp);
   const victory = melumat && melumat.victory === true;
+  const invalidated = melumat && melumat.invalidated === true;
+  const lootAlreadyApplied = melumat && melumat.lootAlreadyApplied === true;
+  const createdAtMs = tamEded(melumat && melumat.completedAtMs) || tamEded(nowMs) || Date.now();
+  const hasResourceReward = rewardResurslariVar(reward);
+  const resourceRewardAvailableAtMs =
+    tamEded(melumat && melumat.resourceRewardAvailableAtMs) ||
+    tamEded(reward.resourceRewardAvailableAtMs);
 
   const raport = {
-    reportVersion: 2,
+    reportVersion: 3,
     reportId: raportIdYarat(nowMs),
     battleId: battleId || "",
     category: "battle",
@@ -95,7 +162,7 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
     enemyLevel: tamEded(melumat && melumat.enemyLevel),
     result: victory ? "win" : "loss",
     victory,
-    invalidated: melumat && melumat.invalidated === true,
+    invalidated,
     playerPower: tamEded(melumat && melumat.playerPower),
     enemyPower: tamEded(melumat && melumat.enemyPower),
     powerBreakdown: {
@@ -140,8 +207,14 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
     reward,
     heroExp,
     heroExpDistributionPending: heroExp > 0,
-    lootAlreadyApplied: melumat && melumat.lootAlreadyApplied === true,
-    createdAtMs: tamEded(melumat && melumat.completedAtMs) || tamEded(nowMs) || Date.now(),
+    resourceRewardClaimed: lootAlreadyApplied,
+    resourceRewardClaimPending: victory && !invalidated && hasResourceReward && !lootAlreadyApplied,
+    resourceRewardAvailableAtMs,
+    resourceRewardClaimedAtMs: lootAlreadyApplied ? createdAtMs : 0,
+    resourceRewardsClaimed: [],
+    resourceRewardLastError: "",
+    lootAlreadyApplied,
+    createdAtMs,
     isRead: false,
     isSaved: false,
     readAtMs: 0,
@@ -163,7 +236,8 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
 
 function raportuTap(state, reportId) {
   const id = metnAl(reportId, 220);
-  return raportStateTeminEt(state).items.find(x => x && metnAl(x.reportId, 220) === id) || null;
+  const report = raportStateTeminEt(state).items.find(x => x && metnAl(x.reportId, 220) === id) || null;
+  return legacyRaportuYenile(report);
 }
 
 function raportSiyahisiniHazirla(state) {
@@ -188,7 +262,13 @@ function raportSiyahisiniHazirla(state) {
       isRead: x.isRead === true,
       isSaved: x.isSaved === true,
       heroExp: tamEded(x.heroExp),
+      heroExpDistributionPending: x.heroExpDistributionPending === true,
       reward: kopyala(x.reward) || {},
+      resourceRewardClaimed: x.resourceRewardClaimed === true,
+      resourceRewardClaimPending: x.resourceRewardClaimPending === true,
+      resourceRewardAvailableAtMs: tamEded(x.resourceRewardAvailableAtMs),
+      resourceRewardClaimedAtMs: tamEded(x.resourceRewardClaimedAtMs),
+      resourceRewardLastError: x.resourceRewardLastError || "",
       casualtySummary: kopyala(x.casualtySummary) || {},
       lossCalculationPending: x.lossCalculationPending === true,
       hospitalResolutionPending: x.hospitalResolutionPending === true,
@@ -222,6 +302,15 @@ function raportuSil(state, reportId) {
   const raportlar = raportStateTeminEt(state);
   const index = raportlar.items.findIndex(x => x && metnAl(x.reportId, 220) === id);
   if (index < 0) return { success: false, message: "Döyüş raportu tapılmadı." };
+
+  const report = legacyRaportuYenile(raportlar.items[index]);
+  if (report && report.resourceRewardClaimPending === true) {
+    return {
+      success: false,
+      message: "Alınmamış döyüş resurs mükafatı olan raport silinə bilməz."
+    };
+  }
+
   const [silinen] = raportlar.items.splice(index, 1);
   return { success: true, reportId: id, deleted: kopyala(silinen) };
 }
