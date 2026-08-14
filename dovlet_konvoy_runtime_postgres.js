@@ -7,6 +7,8 @@ const {
 
 const HADISE_NOVU = "dovlet_konvoy_runtime_v1";
 const PVP_KAMP_STATUSU = "camping_at_abandoned_target";
+const PVP_YOLDA_STATUSU = "marching_to_player_base";
+const PVP_DOYUSE_HAZIR_STATUSU = "ready_for_pvp_battle";
 const yaddaKilidi = new Map();
 
 function tamEded(v) {
@@ -303,7 +305,14 @@ function publicVeziyyetiHesabla(raw, nowMs = Date.now()) {
     x = lerp(item.targetX, item.fromX, progress01);
     z = lerp(item.targetZ, item.fromZ, progress01);
   }
-  else if (status === PVP_KAMP_STATUSU) {
+  else if (
+    status === PVP_KAMP_STATUSU ||
+    status === PVP_YOLDA_STATUSU ||
+    status === PVP_DOYUSE_HAZIR_STATUSU
+  ) {
+    // PvP yürüşü çatdıqdan sonra resolver hələ işləməyibsə raw status
+    // `marching_to_player_base` olaraq qala bilər. Bu halda konvoy artıq
+    // hədəf koordinatındadır və xəritədə başlanğıc bazaya geri sıçramamalıdır.
     x = reqemAl(item.targetX);
     z = reqemAl(item.targetZ);
     progress01 = 1;
@@ -362,6 +371,8 @@ async function dovletAktivKonvoylariniAl(stateId, nowMs = Date.now()) {
 
 module.exports = {
   PVP_KAMP_STATUSU,
+  PVP_YOLDA_STATUSU,
+  PVP_DOYUSE_HAZIR_STATUSU,
   runtimeOxu,
   runtimeEmeliyyati,
   publicSnapshotHazirla,
