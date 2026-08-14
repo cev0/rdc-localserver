@@ -131,6 +131,9 @@ hesabLoginModulu.hesabLoginMesajiniEmalEt = async function(kontekst) {
 const { dovletQaydalariniTetbiqEt } = require("./server_dovlet_patch");
 dovletQaydalariniTetbiqEt();
 
+const { clientStateQaydalariniTetbiqEt } = require("./server_client_state_patch");
+clientStateQaydalariniTetbiqEt();
+
 require("./server_hesab_genisletme");
 
 module.exports = {
