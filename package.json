@@ -104,6 +104,7 @@
     "state:state-lock-client-test": "node baza_yerdeyisme_dovlet_kilidi_client_testi.js",
     "pvp:arrival-service-test": "node pvp_baza_hucum_catma_xidmeti_testi.js",
     "konvoy:pg-mutation-test": "node konvoy_pg_mutasiya_testi.js",
+    "xestexana:pg-mutation-test": "node xestexana_pg_mutasiya_testi.js",
     "start": "node server_missiya_genisletme.js"
   },
   "repository": {
