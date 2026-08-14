@@ -4,6 +4,10 @@ const { dovletBazasiniAl } = require("./dovlet_baza_kataloqu_postgres");
 const { konvoyMelumatiniHazirla } = require("./konvoy_sistemi");
 const { formasiyaMelumatiniHazirla } = require("./konvoy_formasiya_sistemi");
 const {
+  pvpYerdeyismeQaydasiniHazirla,
+  pvpBazaHedefSnapshotiniHazirla
+} = require("./pvp_baza_hedef_qaydasi");
+const {
   oyunStateIniBerpaEt,
   oyuncuStateBerpaOlunub
 } = require("./oyun_state_daimilik_korpu");
@@ -190,6 +194,10 @@ async function pvpBazaPreviewMesajiniEmalEt(kontekst) {
     }
 
     const target = targetPreviewHazirla(baza, playerId);
+    const targetSnapshotNeticesi = pvpBazaHedefSnapshotiniHazirla(
+      baza,
+      kontekst.nowMs()
+    );
     const convoys = konvoyPreviewlariniHazirla(state);
     const selectedConvoy = selectedConvoyId
       ? convoys.find(x => x.convoyId === selectedConvoyId) || null
@@ -222,10 +230,14 @@ async function pvpBazaPreviewMesajiniEmalEt(kontekst) {
     });
 
     const preview = {
-      version: 1,
+      version: 2,
       pvpEnabled: false,
       canAttack: false,
       target,
+      targetSnapshotPreview: targetSnapshotNeticesi.success === true
+        ? targetSnapshotNeticesi.snapshot
+        : null,
+      relocationRule: pvpYerdeyismeQaydasiniHazirla(),
       selectedConvoyId,
       selectedConvoy,
       convoys,
