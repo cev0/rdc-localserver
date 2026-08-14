@@ -3,7 +3,10 @@
 const { resursNodeSiyahisiniAl } = require("./xerite_resurs_toplama_sistemi");
 const { dusmenSiyahisiniAl } = require("./xerite_dusmen_sistemi");
 const { resursMovqeyiAl, dusmenMovqeyiAl } = require("./xerite_movqe_sistemi");
-const { dovletAktivKonvoylariniAl } = require("./dovlet_konvoy_runtime_postgres");
+const {
+  PVP_KAMP_STATUSU,
+  dovletAktivKonvoylariniAl
+} = require("./dovlet_konvoy_runtime_postgres");
 const {
   dovletBazalariniAl,
   dovletBazasiniAl
@@ -192,10 +195,34 @@ async function dovletXeriteObyektleriSorqusunuEmalEt(kontekst) {
     };
   });
 
-  const convoys = (konvoyNeticesi.items || []).map(item => ({
+  const publicKonvoylar = (konvoyNeticesi.items || []).map(item => ({
     ...item,
     isSelf: metnAl(item && item.playerId, 128) === playerId
   }));
+
+  const camps = publicKonvoylar
+    .filter(item => metnAl(item && item.status, 64) === PVP_KAMP_STATUSU)
+    .map(item => ({
+      objectType: "pvp_camp",
+      campId: metnAl(item && item.publicId, 220),
+      playerId: metnAl(item && item.playerId, 128),
+      convoyId: metnAl(item && item.convoyId, 64),
+      targetPlayerId: metnAl(item && item.targetPlayerId, 128),
+      stateId: Math.max(1, Math.trunc(Number(item && item.stateId) || stateId)),
+      x: Number(item && item.x) || Number(item && item.targetX) || 0,
+      z: Number(item && item.z) || Number(item && item.targetZ) || 0,
+      status: PVP_KAMP_STATUSU,
+      reason: metnAl(item && item.campReason, 64) || "target_relocated",
+      originalTargetX: Number(item && item.targetX) || 0,
+      originalTargetZ: Number(item && item.targetZ) || 0,
+      isSelf: item && item.isSelf === true,
+      campDurationConfigured: false,
+      campReturnRuleConfigured: false
+    }));
+
+  const convoys = publicKonvoylar.filter(
+    item => metnAl(item && item.status, 64) !== PVP_KAMP_STATUSU
+  );
 
   const bases = (bazaNeticesi.bases || []).map(item => ({
     ...item,
@@ -203,7 +230,7 @@ async function dovletXeriteObyektleriSorqusunuEmalEt(kontekst) {
   }));
 
   const info = {
-    version: 5,
+    version: 6,
     stateId,
     map: {
       width: 1024,
@@ -214,7 +241,8 @@ async function dovletXeriteObyektleriSorqusunuEmalEt(kontekst) {
     bases,
     resources,
     enemies,
-    convoys
+    convoys,
+    camps
   };
 
   gonder(kontekst, "state_map_objects_result", {
