@@ -12,9 +12,11 @@ const {
 } = require("./server_sorqu_idempotentliyi");
 const {
   oyunStateIniBerpaEt,
-  oyunStateIniYaddaSaxla,
   oyuncuStateBerpaOlunub
 } = require("./oyun_state_daimilik_korpu");
+const {
+  oyuncuStateMutasiyasiniPostgresIleIcraEt
+} = require("./oyun_state_mutasiya_postgres");
 
 const MESAJLAR = new Set([
   "xestexana_info_request",
@@ -81,6 +83,107 @@ function birlikPayloadiniHazirla(rawBirlikler) {
     });
 }
 
+function xestexanaMutationYedeyiniAl(state) {
+  return kopyala({
+    xestexana: state.xestexana || null,
+    resources: state.resources || null,
+    army: state.army || null,
+    serverSorquIdempotentliyi: state.serverSorquIdempotentliyi || null
+  });
+}
+
+function xestexanaMutationRollbackEt(state, evvelki) {
+  state.xestexana = kopyala(evvelki && evvelki.xestexana);
+  state.resources = kopyala(evvelki && evvelki.resources);
+  state.army = kopyala(evvelki && evvelki.army);
+  state.serverSorquIdempotentliyi = kopyala(
+    evvelki && evvelki.serverSorquIdempotentliyi
+  );
+}
+
+function xestexanaSagaltmaMutasiyasiniTetbiqEt(
+  state,
+  rawBirlikler,
+  rawRequestId,
+  nowMs = Date.now()
+) {
+  const birlikler = Array.isArray(rawBirlikler)
+    ? rawBirlikler
+    : [];
+  const requestId = requestIdAl(rawRequestId);
+  const requestPayload = {
+    birlikler: birlikPayloadiniHazirla(birlikler)
+  };
+
+  const tekrar = tekrarNeticesiniTap(
+    state,
+    "xestexana_sagaltma",
+    requestId,
+    requestPayload
+  );
+
+  if (tekrar.conflict) {
+    return {
+      success: false,
+      deyisdi: false,
+      requestId,
+      idempotentReplay: false,
+      message: tekrar.message || "requestId ziddiyyəti yarandı."
+    };
+  }
+
+  if (tekrar.replay) {
+    const replayResult = tekrar.result && typeof tekrar.result === "object"
+      ? kopyala(tekrar.result)
+      : {};
+
+    return {
+      success: true,
+      deyisdi: false,
+      requestId,
+      idempotentReplay: true,
+      result: replayResult
+    };
+  }
+
+  const evvelki = xestexanaMutationYedeyiniAl(state);
+  const result = yaralilariSagalt(state, birlikler, nowMs);
+
+  if (!result || result.success !== true) {
+    xestexanaMutationRollbackEt(state, evvelki);
+
+    return {
+      success: false,
+      deyisdi: false,
+      requestId,
+      idempotentReplay: false,
+      message: result && result.message
+        ? result.message
+        : "Sağaltma mümkün deyil.",
+      preview: result && result.preview
+        ? kopyala(result.preview)
+        : undefined
+    };
+  }
+
+  ugurluNeticeniQeydEt(
+    state,
+    "xestexana_sagaltma",
+    requestId,
+    requestPayload,
+    result,
+    nowMs
+  );
+
+  return {
+    success: true,
+    deyisdi: true,
+    requestId,
+    idempotentReplay: false,
+    result: kopyala(result)
+  };
+}
+
 async function xestexanaMesajiniEmalEt(kontekst) {
   const type = metnAl(kontekst && kontekst.type, 128);
   if (!MESAJLAR.has(type)) return false;
@@ -133,96 +236,47 @@ async function xestexanaMesajiniEmalEt(kontekst) {
     }
 
     await oyuncuKilidiIleIcraEt(playerId, async () => {
-      const kilidliState = kontekst.getOrCreatePlayerState(playerId);
-      const requestId = requestIdAl(kontekst.msg && kontekst.msg.requestId);
-      const requestPayload = {
-        birlikler: birlikPayloadiniHazirla(birlikler)
-      };
-
-      const tekrar = tekrarNeticesiniTap(
-        kilidliState,
-        "xestexana_sagaltma",
-        requestId,
-        requestPayload
+      const canliState = kontekst.getOrCreatePlayerState(playerId);
+      const mutasiyaNeticesi = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
+        playerId,
+        canliState,
+        async kilidliState => {
+          return xestexanaSagaltmaMutasiyasiniTetbiqEt(
+            kilidliState,
+            birlikler,
+            kontekst.msg && kontekst.msg.requestId,
+            kontekst.nowMs()
+          );
+        }
       );
 
-      if (tekrar.conflict) {
+      if (!mutasiyaNeticesi || mutasiyaNeticesi.success !== true) {
         gonder(kontekst, resultType, {
           success: false,
           playerId,
-          requestId,
+          requestId: mutasiyaNeticesi && mutasiyaNeticesi.requestId
+            ? mutasiyaNeticesi.requestId
+            : requestIdAl(kontekst.msg && kontekst.msg.requestId),
           idempotentReplay: false,
-          message: tekrar.message || "requestId ziddiyyəti yarandı."
+          message: mutasiyaNeticesi && mutasiyaNeticesi.message
+            ? mutasiyaNeticesi.message
+            : "Sağaltma mümkün deyil.",
+          preview: mutasiyaNeticesi && mutasiyaNeticesi.preview
+            ? mutasiyaNeticesi.preview
+            : undefined
         });
         return;
       }
 
-      if (tekrar.replay) {
-        const replayResult = tekrar.result && typeof tekrar.result === "object"
-          ? tekrar.result
-          : {};
-        gonder(kontekst, resultType, {
-          success: true,
-          playerId,
-          requestId,
-          idempotentReplay: true,
-          ...replayResult,
-          payloadJson: JSON.stringify(replayResult)
-        });
-        return;
-      }
-
-      const evvelki = kopyala({
-        xestexana: kilidliState.xestexana || null,
-        resources: kilidliState.resources || null,
-        army: kilidliState.army || null,
-        serverSorquIdempotentliyi: kilidliState.serverSorquIdempotentliyi || null
-      });
-
-      const nowMs = kontekst.nowMs();
-      const result = yaralilariSagalt(kilidliState, birlikler, nowMs);
-
-      if (!result || result.success !== true) {
-        kilidliState.xestexana = evvelki.xestexana;
-        kilidliState.resources = evvelki.resources;
-        kilidliState.army = evvelki.army;
-        kilidliState.serverSorquIdempotentliyi = evvelki.serverSorquIdempotentliyi;
-        gonder(kontekst, resultType, {
-          success: false,
-          playerId,
-          requestId,
-          idempotentReplay: false,
-          message: result && result.message ? result.message : "Sağaltma mümkün deyil.",
-          preview: result && result.preview ? result.preview : undefined
-        });
-        return;
-      }
-
-      ugurluNeticeniQeydEt(
-        kilidliState,
-        "xestexana_sagaltma",
-        requestId,
-        requestPayload,
-        result,
-        nowMs
-      );
-
-      try {
-        await oyunStateIniYaddaSaxla(playerId, kilidliState);
-      }
-      catch (xeta) {
-        kilidliState.xestexana = evvelki.xestexana;
-        kilidliState.resources = evvelki.resources;
-        kilidliState.army = evvelki.army;
-        kilidliState.serverSorquIdempotentliyi = evvelki.serverSorquIdempotentliyi;
-        throw xeta;
-      }
+      const result = mutasiyaNeticesi.result && typeof mutasiyaNeticesi.result === "object"
+        ? mutasiyaNeticesi.result
+        : {};
 
       gonder(kontekst, resultType, {
         success: true,
         playerId,
-        requestId,
-        idempotentReplay: false,
+        requestId: mutasiyaNeticesi.requestId,
+        idempotentReplay: mutasiyaNeticesi.idempotentReplay === true,
         ...result,
         payloadJson: JSON.stringify(result)
       });
@@ -244,5 +298,7 @@ async function xestexanaMesajiniEmalEt(kontekst) {
 
 module.exports = {
   MESAJLAR,
+  birlikPayloadiniHazirla,
+  xestexanaSagaltmaMutasiyasiniTetbiqEt,
   xestexanaMesajiniEmalEt
 };
