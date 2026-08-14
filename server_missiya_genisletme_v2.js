@@ -11,6 +11,7 @@ const { konvoyTutumTexnologiyaMesajiniEmalEt } = require("./konvoy_tutum_texnolo
 const { konvoyTexnologiyaMesajiniEmalEt } = require("./konvoy_texnologiya_handler");
 const { konvoyMesajiniEmalEt } = require("./konvoy_handler");
 const { xeriteResursToplamaMesajiniEmalEt } = require("./xerite_resurs_toplama_handler");
+const { xeriteDusmenMesajiniEmalEt } = require("./xerite_dusmen_handler");
 const { kesfiyyatMesajiniEmalEt } = require("./kesfiyyat_handler");
 const { dusmenMovqeyiMesajiniEmalEt } = require("./dusmen_movqeyi_handler");
 const { doyusMesajiniEmalEt } = require("./doyus_handler");
@@ -29,6 +30,7 @@ hesabLoginModulu.hesabLoginMesajiniEmalEt = async function(kontekst) {
   if (await konvoyTexnologiyaMesajiniEmalEt(kontekst)) return true;
   if (await konvoyMesajiniEmalEt(kontekst)) return true;
   if (await xeriteResursToplamaMesajiniEmalEt(kontekst)) return true;
+  if (await xeriteDusmenMesajiniEmalEt(kontekst)) return true;
   if (await kesfiyyatMesajiniEmalEt(kontekst)) return true;
   if (await dusmenMovqeyiMesajiniEmalEt(kontekst)) return true;
   if (await doyusMesajiniEmalEt(kontekst)) return true;
