@@ -3,10 +3,12 @@
 const {
   nodeMelumatiniAl,
   toplamaniBaslat,
-  bitmisToplamalariPendingEt
+  bitmisToplamalariPendingEt,
+  pendingMukafatiAl
 } = require("./xerite_resurs_toplama_sistemi");
 const { dusmenDescriptor } = require("./xerite_dusmen_sistemi");
 const {
+  DOYUS_NETICE_GOZLEME_MS,
   doyusaBasla,
   doyusuNeticelendir
 } = require("./xerite_dusmen_doyus_sistemi");
@@ -45,9 +47,9 @@ function tamEded(v) {
 
 function stateTeminEt(state) {
   if (!state.konvoyEmeliyyatlari || typeof state.konvoyEmeliyyatlari !== "object" || Array.isArray(state.konvoyEmeliyyatlari)) {
-    state.konvoyEmeliyyatlari = { version: 2, activeByConvoy: {}, history: [] };
+    state.konvoyEmeliyyatlari = { version: 3, activeByConvoy: {}, history: [] };
   }
-  state.konvoyEmeliyyatlari.version = 2;
+  state.konvoyEmeliyyatlari.version = 3;
   if (!state.konvoyEmeliyyatlari.activeByConvoy || typeof state.konvoyEmeliyyatlari.activeByConvoy !== "object") {
     state.konvoyEmeliyyatlari.activeByConvoy = {};
   }
@@ -108,6 +110,7 @@ function hedefMelumatiniAl(state, targetType, targetId) {
       z: movqe ? movqe.z : 0,
       zoneId: movqe ? movqe.zoneId : descriptor.zoneId,
       level: descriptor.level,
+      actionDurationMs: Math.max(1, tamEded(descriptor.gatherSeconds) * 1000),
       descriptor
     };
   }
@@ -127,6 +130,7 @@ function hedefMelumatiniAl(state, targetType, targetId) {
       z: movqe ? movqe.z : 0,
       zoneId: movqe ? movqe.zoneId : descriptor.zoneId,
       level: descriptor.level,
+      actionDurationMs: Math.max(1, tamEded(DOYUS_NETICE_GOZLEME_MS) || 5000),
       descriptor
     };
   }
@@ -158,6 +162,9 @@ function emeliyyatiBaslat(state, playerId, convoyId, targetType, targetId, nowMs
   const baza = bazaMovqeyiAl(state);
   const travelDurationMs = hereketMuddetiniHesabla(baza.x, baza.z, hedef.x, hedef.z);
   const start = tamEded(nowMs) || Date.now();
+  const arrivalAtMs = start + travelDurationMs;
+  const plannedActionEndsAtMs = arrivalAtMs + tamEded(hedef.actionDurationMs);
+  const plannedReturnEndsAtMs = plannedActionEndsAtMs + travelDurationMs;
 
   const operation = {
     operationId: `${id}:${start}:${metnAl(playerId, 128)}`,
@@ -173,15 +180,19 @@ function emeliyyatiBaslat(state, playerId, convoyId, targetType, targetId, nowMs
     zoneId: hedef.zoneId,
     targetLevel: hedef.level,
     startedAtMs: start,
-    arrivalAtMs: start + travelDurationMs,
+    arrivalAtMs,
     actionEndsAtMs: 0,
     returnStartedAtMs: 0,
     returnEndsAtMs: 0,
     travelDurationMs,
+    plannedActionDurationMs: tamEded(hedef.actionDurationMs),
+    plannedActionEndsAtMs,
+    plannedReturnEndsAtMs,
     movementMsPerMapUnit: hereket.msPerMapUnit,
     movementSource: hereket.source,
     status: STATUS.YOLDA,
     reportId: "",
+    gatherRewardId: "",
     lightWoundedFormation: [],
     result: null,
     failureReason: ""
@@ -191,11 +202,30 @@ function emeliyyatiBaslat(state, playerId, convoyId, targetType, targetId, nowMs
   return { success: true, operation: { ...operation } };
 }
 
-function geriQayitmagaBasla(operation, nowMs, result) {
+function geriQayitmagaBasla(operation, baslamaMs, result) {
   operation.status = STATUS.GERI;
   operation.result = result || null;
-  operation.returnStartedAtMs = tamEded(nowMs) || Date.now();
+  operation.returnStartedAtMs = tamEded(baslamaMs) || Date.now();
   operation.returnEndsAtMs = operation.returnStartedAtMs + tamEded(operation.travelDurationMs);
+}
+
+function toplamaMukafatiniBazayaCatdir(state, operation) {
+  const rewardId = metnAl(operation && operation.gatherRewardId, 220);
+  if (!rewardId) return null;
+
+  const result = pendingMukafatiAl(state, rewardId);
+  const delivery = {
+    success: result && result.success === true,
+    rewardId,
+    message: result && result.message ? result.message : "",
+    reward: result && result.reward ? { ...result.reward } : null,
+    newAmount: result ? result.newAmount : undefined,
+    deliveryPending: !(result && result.success === true)
+  };
+
+  if (!operation.result || typeof operation.result !== "object") operation.result = {};
+  operation.result.delivery = delivery;
+  return delivery;
 }
 
 async function emeliyyatlariYenile(state, playerId, nowMs = Date.now()) {
@@ -211,53 +241,60 @@ async function emeliyyatlariYenile(state, playerId, nowMs = Date.now()) {
     }
 
     if (operation.status === STATUS.YOLDA && now >= tamEded(operation.arrivalAtMs)) {
+      const arrivalTime = tamEded(operation.arrivalAtMs) || now;
+
       if (operation.targetType === "resource") {
-        const result = await toplamaniBaslat(state, playerId, convoyId, operation.targetId, now);
+        const result = await toplamaniBaslat(state, playerId, convoyId, operation.targetId, arrivalTime);
         if (result && result.success === true) {
           operation.status = STATUS.TOPLAMA;
           operation.actionEndsAtMs = tamEded(result.mission && result.mission.endsAtMs);
         }
         else {
           operation.failureReason = result && result.message ? result.message : "Resurs toplama başlaya bilmədi.";
-          geriQayitmagaBasla(operation, now, { success: false, message: operation.failureReason });
+          geriQayitmagaBasla(operation, arrivalTime, { success: false, message: operation.failureReason });
         }
         changed = true;
       }
       else if (operation.targetType === "enemy") {
-        const result = doyusaBasla(state, playerId, convoyId, operation.targetId, now);
+        const result = doyusaBasla(state, playerId, convoyId, operation.targetId, arrivalTime);
         if (result && result.success === true) {
           operation.status = STATUS.DOYUS;
           operation.actionEndsAtMs = tamEded(result.mission && result.mission.resolveAtMs);
         }
         else {
           operation.failureReason = result && result.message ? result.message : "Döyüş başlaya bilmədi.";
-          geriQayitmagaBasla(operation, now, { success: false, message: operation.failureReason });
+          geriQayitmagaBasla(operation, arrivalTime, { success: false, message: operation.failureReason });
         }
         changed = true;
       }
     }
 
     if (operation.status === STATUS.TOPLAMA && now >= tamEded(operation.actionEndsAtMs)) {
-      const completed = bitmisToplamalariPendingEt(state, now);
+      const gatherFinishedAt = tamEded(operation.actionEndsAtMs) || now;
+      const completed = bitmisToplamalariPendingEt(state, gatherFinishedAt);
       const reward = Array.isArray(completed)
         ? completed.find(x => x && metnAl(x.convoyId, 64) === metnAl(convoyId, 64)) || null
         : null;
-      geriQayitmagaBasla(operation, now, {
+
+      operation.gatherRewardId = reward ? metnAl(reward.rewardId, 220) : "";
+      geriQayitmagaBasla(operation, gatherFinishedAt, {
         success: true,
         type: "gather",
-        rewardId: reward ? reward.rewardId : "",
-        reward
+        rewardId: operation.gatherRewardId,
+        reward,
+        deliveryPending: !!operation.gatherRewardId
       });
       changed = true;
     }
 
     if (operation.status === STATUS.DOYUS && now >= tamEded(operation.actionEndsAtMs)) {
+      const battleFinishedAt = tamEded(operation.actionEndsAtMs) || now;
       const battleState = state && state.worldEnemyBattle && state.worldEnemyBattle.activeByConvoy;
       const missionSnapshot = battleState && battleState[convoyId]
         ? JSON.parse(JSON.stringify(battleState[convoyId]))
         : null;
 
-      const result = await doyusuNeticelendir(state, playerId, convoyId, now);
+      const result = await doyusuNeticelendir(state, playerId, convoyId, battleFinishedAt);
       let report = null;
       let casualty = null;
 
@@ -277,8 +314,8 @@ async function emeliyyatlariYenile(state, playerId, nowMs = Date.now()) {
           sentFormation: missionSnapshot.formationSnapshot || [],
           reward: result.reward || {},
           lootAlreadyApplied: result.victory === true,
-          completedAtMs: result.completedAtMs || now
-        }, now);
+          completedAtMs: result.completedAtMs || battleFinishedAt
+        }, battleFinishedAt);
 
         operation.reportId = report && report.reportId ? report.reportId : "";
 
@@ -306,7 +343,7 @@ async function emeliyyatlariYenile(state, playerId, nowMs = Date.now()) {
         }
       }
 
-      geriQayitmagaBasla(operation, now, {
+      geriQayitmagaBasla(operation, battleFinishedAt, {
         ...(result || { success: false, message: "Döyüş nəticəsi alınmadı." }),
         reportId: operation.reportId,
         casualtySummary: casualty ? {
@@ -321,7 +358,10 @@ async function emeliyyatlariYenile(state, playerId, nowMs = Date.now()) {
     }
 
     if (operation.status === STATUS.GERI && now >= tamEded(operation.returnEndsAtMs)) {
+      const returnFinishedAt = tamEded(operation.returnEndsAtMs) || now;
       let recovery = null;
+      let gatherDelivery = null;
+
       if (Array.isArray(operation.lightWoundedFormation) && operation.lightWoundedFormation.length > 0) {
         const report = operation.reportId ? raportuTap(state, operation.reportId) : null;
         recovery = yungulYaralilariBerpaEt(
@@ -329,16 +369,21 @@ async function emeliyyatlariYenile(state, playerId, nowMs = Date.now()) {
           convoyId,
           operation.lightWoundedFormation,
           report,
-          now
+          returnFinishedAt
         );
         operation.lightWoundedFormation = [];
+      }
+
+      if (operation.targetType === "resource" && operation.gatherRewardId) {
+        gatherDelivery = toplamaMukafatiniBazayaCatdir(state, operation);
       }
 
       const historyItem = {
         ...operation,
         status: STATUS.BOS,
         lightWoundedRecovery: recovery,
-        finishedAtMs: now
+        gatherDelivery,
+        finishedAtMs: returnFinishedAt
       };
       emeliyyatlar.history.push(historyItem);
       emeliyyatlar.history = emeliyyatlar.history.slice(-30);
@@ -356,7 +401,7 @@ function emeliyyatMelumatiniHazirla(state, nowMs = Date.now()) {
   const hereket = hereketKonfiqiniAl();
 
   return {
-    version: 2,
+    version: 3,
     movementConfigured: true,
     movementMsPerMapUnit: hereket.msPerMapUnit,
     movementSource: hereket.source,
