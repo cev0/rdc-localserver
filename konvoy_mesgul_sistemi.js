@@ -30,6 +30,23 @@ function aktivToplamaTap(state, konvoyId, nowMs = Date.now()) {
   return mission;
 }
 
+function aktivXeriteDoyusuTap(state, konvoyId) {
+  const id = metnAl(konvoyId, 64);
+  const activeByConvoy =
+    state &&
+    state.worldEnemyBattle &&
+    state.worldEnemyBattle.activeByConvoy;
+
+  if (!id || !activeByConvoy || typeof activeByConvoy !== "object") {
+    return null;
+  }
+
+  const mission = activeByConvoy[id];
+  return mission && typeof mission === "object"
+    ? mission
+    : null;
+}
+
 function konvoyMesguldur(state, konvoyId, nowMs = Date.now()) {
   const toplama = aktivToplamaTap(state, konvoyId, nowMs);
 
@@ -39,6 +56,16 @@ function konvoyMesguldur(state, konvoyId, nowMs = Date.now()) {
       sebeb: "resource_gathering",
       message: "Konvoy xəritədə resurs topladığı üçün tərkibi dəyişdirilə bilməz.",
       mission: { ...toplama }
+    };
+  }
+
+  const xeriteDoyusu = aktivXeriteDoyusuTap(state, konvoyId);
+  if (xeriteDoyusu) {
+    return {
+      mesguldur: true,
+      sebeb: "world_enemy_battle",
+      message: "Konvoy xəritədə düşmən döyüşündə olduğu üçün tərkibi dəyişdirilə bilməz.",
+      mission: { ...xeriteDoyusu }
     };
   }
 
@@ -69,5 +96,6 @@ function konvoyMesguldur(state, konvoyId, nowMs = Date.now()) {
 
 module.exports = {
   aktivToplamaTap,
+  aktivXeriteDoyusuTap,
   konvoyMesguldur
 };
