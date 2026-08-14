@@ -260,6 +260,7 @@ async function emeliyyatlariYenile(state, playerId, nowMs = Date.now()) {
           enemyPower: result.enemyPower || missionSnapshot.enemyPower,
           heroIds: missionSnapshot.heroIds || [],
           sentTroops: missionSnapshot.troopSnapshot || {},
+          sentFormation: missionSnapshot.formationSnapshot || [],
           reward: result.reward || {},
           lootAlreadyApplied: result.victory === true,
           completedAtMs: result.completedAtMs || now

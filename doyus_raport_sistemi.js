@@ -39,6 +39,16 @@ function enemyIndexiniAl(enemyId) {
   return match ? Math.max(0, tamEded(match[2])) : 0;
 }
 
+function formasiyaKopyala(raw) {
+  return Array.isArray(raw)
+    ? raw.map(x => ({
+        siraId: metnAl(x && x.siraId, 32),
+        unitId: metnAl(x && x.unitId, 128),
+        count: tamEded(x && x.count)
+      }))
+    : [];
+}
+
 function raportYarat(state, melumat, nowMs = Date.now()) {
   const raportlar = raportStateTeminEt(state);
   const battleId = metnAl(melumat && melumat.battleId, 220);
@@ -53,6 +63,7 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
   const enemyIndex = enemyIndexiniAl(enemyId);
   const movqe = enemyIndex > 0 ? dusmenMovqeyiAl(stateId, enemyIndex) : null;
   const sentTroops = kopyala(melumat && melumat.sentTroops) || {};
+  const sentFormation = formasiyaKopyala(melumat && melumat.sentFormation);
   const reward = kopyala(melumat && melumat.reward) || {};
   const heroExp = tamEded(reward.heroExp);
   const victory = melumat && melumat.victory === true;
@@ -76,9 +87,17 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
       ? melumat.heroIds.map(x => metnAl(x, 128)).filter(Boolean)
       : [],
     sentTroops,
+    sentFormation,
     lostTroops: {},
+    woundedTroops: {},
+    deadTroops: {},
     returnedTroops: kopyala(sentTroops) || {},
+    lostFormation: [],
+    woundedFormation: [],
+    deadFormation: [],
+    returnedFormation: formasiyaKopyala(sentFormation),
     lossCalculationPending: true,
+    hospitalResolutionPending: true,
     reward,
     heroExp,
     heroExpDistributionPending: heroExp > 0,
@@ -92,8 +111,6 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
 
   raportlar.items.push(raport);
 
-  // Snapshot ölçüsünü nəzarətdə saxlayırıq. Saved raportlar qorunur,
-  // adi raportlardan isə ən yenilər saxlanılır.
   if (raportlar.items.length > 100) {
     const saved = raportlar.items.filter(x => x && x.isSaved === true);
     const adi = raportlar.items
@@ -132,7 +149,9 @@ function raportSiyahisiniHazirla(state) {
       isRead: x.isRead === true,
       isSaved: x.isSaved === true,
       heroExp: tamEded(x.heroExp),
-      reward: kopyala(x.reward) || {}
+      reward: kopyala(x.reward) || {},
+      lossCalculationPending: x.lossCalculationPending === true,
+      hospitalResolutionPending: x.hospitalResolutionPending === true
     }));
 }
 
