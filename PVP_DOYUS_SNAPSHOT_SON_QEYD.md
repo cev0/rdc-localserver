@@ -1,1 +1,0 @@
-Bu branch-də production runtime davranışı dəyişdirilmir. Yeni snapshot modulu hələ `server_missiya_genisletme_v2.js` zəncirinə qoşulmayıb. Bu məqsədlidir: real PvP resolver və iki oyunçu üçün atomik PostgreSQL mutation qoruması tamamlanana qədər PvP deaktiv qalır.
