@@ -6,6 +6,23 @@ function metnAl(deyer, maksimum = 128) {
     : "";
 }
 
+function aktivEmeliyyatTap(state, konvoyId) {
+  const id = metnAl(konvoyId, 64);
+  const activeByConvoy =
+    state &&
+    state.konvoyEmeliyyatlari &&
+    state.konvoyEmeliyyatlari.activeByConvoy;
+
+  if (!id || !activeByConvoy || typeof activeByConvoy !== "object") {
+    return null;
+  }
+
+  const operation = activeByConvoy[id];
+  if (!operation || typeof operation !== "object") return null;
+  if (!operation.status || operation.status === "idle") return null;
+  return operation;
+}
+
 function aktivToplamaTap(state, konvoyId, nowMs = Date.now()) {
   const id = metnAl(konvoyId, 64);
   const activeByConvoy =
@@ -48,6 +65,17 @@ function aktivXeriteDoyusuTap(state, konvoyId) {
 }
 
 function konvoyMesguldur(state, konvoyId, nowMs = Date.now()) {
+  const operation = aktivEmeliyyatTap(state, konvoyId);
+
+  if (operation) {
+    return {
+      mesguldur: true,
+      sebeb: operation.status || "operation",
+      message: "Konvoy xəritə əməliyyatında olduğu üçün tərkibi dəyişdirilə bilməz.",
+      mission: { ...operation }
+    };
+  }
+
   const toplama = aktivToplamaTap(state, konvoyId, nowMs);
 
   if (toplama) {
@@ -95,6 +123,7 @@ function konvoyMesguldur(state, konvoyId, nowMs = Date.now()) {
 }
 
 module.exports = {
+  aktivEmeliyyatTap,
   aktivToplamaTap,
   aktivXeriteDoyusuTap,
   konvoyMesguldur
