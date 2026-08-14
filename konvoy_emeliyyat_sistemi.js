@@ -24,6 +24,8 @@ const {
   yungulYaralilariBerpaEt
 } = require("./doyus_xestexana_korpu");
 
+const DEFAULT_KONVOY_HEREKET_MS_XANA = 1000;
+
 const STATUS = Object.freeze({
   BOS: "idle",
   YOLDA: "marching",
@@ -53,9 +55,18 @@ function stateTeminEt(state) {
   return state.konvoyEmeliyyatlari;
 }
 
+function hereketKonfiqiniAl() {
+  const envRaw = Number(process.env.KONVOY_HEREKET_MS_XANA);
+  const envConfigured = Number.isFinite(envRaw) && envRaw > 0;
+  return {
+    msPerMapUnit: envConfigured ? Math.trunc(envRaw) : DEFAULT_KONVOY_HEREKET_MS_XANA,
+    source: envConfigured ? "env" : "server_default",
+    envConfigured
+  };
+}
+
 function hereketMsPerXana() {
-  const n = Number(process.env.KONVOY_HEREKET_MS_XANA);
-  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : 0;
+  return hereketKonfiqiniAl().msPerMapUnit;
 }
 
 function mesafeHesabla(ax, az, bx, bz) {
@@ -66,7 +77,6 @@ function mesafeHesabla(ax, az, bx, bz) {
 
 function hereketMuddetiniHesabla(ax, az, bx, bz) {
   const msPerXana = hereketMsPerXana();
-  if (msPerXana <= 0) return 0;
   return Math.max(1, Math.ceil(mesafeHesabla(ax, az, bx, bz) * msPerXana));
 }
 
@@ -141,18 +151,10 @@ function emeliyyatiBaslat(state, playerId, convoyId, targetType, targetId, nowMs
   if (emeliyyatlar.activeByConvoy[id]) return { success: false, message: "Konvoy artıq əməliyyatdadır." };
   if (legacyMesgulluqVar(state, id)) return { success: false, message: "Konvoy artıq xəritə tapşırığındadır." };
 
-  const msPerXana = hereketMsPerXana();
-  if (msPerXana <= 0) {
-    return {
-      success: false,
-      message: "Konvoy hərəkət balansı hələ serverdə konfiqurasiya edilməyib.",
-      movementConfigured: false
-    };
-  }
-
   const hedef = hedefMelumatiniAl(state, targetType, targetId);
   if (!hedef) return { success: false, message: "Konvoy hədəfi tapılmadı." };
 
+  const hereket = hereketKonfiqiniAl();
   const baza = bazaMovqeyiAl(state);
   const travelDurationMs = hereketMuddetiniHesabla(baza.x, baza.z, hedef.x, hedef.z);
   const start = tamEded(nowMs) || Date.now();
@@ -176,6 +178,8 @@ function emeliyyatiBaslat(state, playerId, convoyId, targetType, targetId, nowMs
     returnStartedAtMs: 0,
     returnEndsAtMs: 0,
     travelDurationMs,
+    movementMsPerMapUnit: hereket.msPerMapUnit,
+    movementSource: hereket.source,
     status: STATUS.YOLDA,
     reportId: "",
     lightWoundedFormation: [],
@@ -349,11 +353,14 @@ async function emeliyyatlariYenile(state, playerId, nowMs = Date.now()) {
 function emeliyyatMelumatiniHazirla(state, nowMs = Date.now()) {
   const emeliyyatlar = stateTeminEt(state);
   const now = tamEded(nowMs) || Date.now();
+  const hereket = hereketKonfiqiniAl();
 
   return {
     version: 2,
-    movementConfigured: hereketMsPerXana() > 0,
-    movementMsPerMapUnit: hereketMsPerXana(),
+    movementConfigured: true,
+    movementMsPerMapUnit: hereket.msPerMapUnit,
+    movementSource: hereket.source,
+    movementEnvConfigured: hereket.envConfigured,
     active: Object.values(emeliyyatlar.activeByConvoy).map(x => ({
       ...x,
       remainingMs: x.status === STATUS.YOLDA
@@ -367,8 +374,10 @@ function emeliyyatMelumatiniHazirla(state, nowMs = Date.now()) {
 }
 
 module.exports = {
+  DEFAULT_KONVOY_HEREKET_MS_XANA,
   STATUS,
   stateTeminEt,
+  hereketKonfiqiniAl,
   hereketMsPerXana,
   hereketMuddetiniHesabla,
   emeliyyatiBaslat,
