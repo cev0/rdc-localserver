@@ -73,11 +73,13 @@ function stateTeminEt(state) {
     Array.isArray(state.worldEnemyBattle)
   ) {
     state.worldEnemyBattle = {
-      version: 1,
+      version: 2,
       activeByConvoy: {},
       lastResults: []
     };
   }
+
+  state.worldEnemyBattle.version = 2;
 
   if (
     !state.worldEnemyBattle.activeByConvoy ||
@@ -208,7 +210,7 @@ async function doyusuNeticelendir(state, playerId, convoyId, nowMs = Date.now())
 
   const victory = tamEded(mission.playerPower) >= tamEded(mission.enemyPower);
   let sharedResult = null;
-  let reward = { money: 0, heroExp: 0 };
+  let reward = { money: 0, heroExp: 0, deliveryPending: false };
 
   if (victory) {
     sharedResult = await dusmeniMeglubEtServer(
@@ -237,21 +239,14 @@ async function doyusuNeticelendir(state, playerId, convoyId, nowMs = Date.now())
       return { success: true, ...result };
     }
 
+    const money = tamEded(sharedResult.reward && sharedResult.reward.money);
+    const heroExp = tamEded(sharedResult.reward && sharedResult.reward.heroExp);
     reward = {
-      money: tamEded(sharedResult.reward && sharedResult.reward.money),
-      heroExp: tamEded(sharedResult.reward && sharedResult.reward.heroExp)
+      money,
+      heroExp,
+      deliveryPending: money > 0,
+      heroExpDistributionPending: heroExp > 0
     };
-
-    if (!state.resources || typeof state.resources !== "object") {
-      state.resources = {};
-    }
-
-    const currentMoney = Math.max(0, Number(state.resources.money) || 0);
-    const capRaw = Number(state.resourceCaps && state.resourceCaps.money);
-    const moneyCap = Number.isFinite(capRaw) ? Math.max(0, capRaw) : Number.POSITIVE_INFINITY;
-    const moneyAdded = Math.max(0, Math.min(reward.money, moneyCap - currentMoney));
-    state.resources.money = currentMoney + moneyAdded;
-    reward.moneyAdded = moneyAdded;
   }
 
   delete battle.activeByConvoy[id];
