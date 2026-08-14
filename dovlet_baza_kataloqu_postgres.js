@@ -4,6 +4,9 @@ const { sorguEt } = require("./verilenler_bazasi");
 const { XERITE } = require("./xerite_movqe_sistemi");
 
 const SNAPSHOT_HADISE_NOVU = "oyun_state_snapshot_v1";
+const BAZA_KESHI_MS = 3000;
+const bazaKeshi = new Map();
+const aktivSorqular = new Map();
 
 function metnAl(v, max = 128) {
   return typeof v === "string" ? v.trim().slice(0, max) : "";
@@ -17,6 +20,10 @@ function tamEded(v) {
 function reqemAl(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+function kopyala(v) {
+  return v == null ? null : JSON.parse(JSON.stringify(v));
 }
 
 function zonaAl(x, z) {
@@ -57,9 +64,7 @@ function bazaElementiniHazirla(playerId, state, stateId) {
   };
 }
 
-async function dovletBazalariniAl(stateId) {
-  const sid = Math.max(1, tamEded(stateId) || 1);
-
+async function bazalariPostgresdenAl(sid) {
   const netice = await sorguEt(
     `
       WITH son_snapshot AS (
@@ -68,11 +73,11 @@ async function dovletBazalariniAl(stateId) {
           detallar
         FROM hesab_audit_jurnali
         WHERE hadise_novu = $1
+          AND detallar #>> '{state,worldPlacement,stateId}' = $2
         ORDER BY oyuncu_id, id DESC
       )
       SELECT oyuncu_id, detallar
       FROM son_snapshot
-      WHERE detallar #>> '{state,worldPlacement,stateId}' = $2
       ORDER BY oyuncu_id ASC
     `,
     [SNAPSHOT_HADISE_NOVU, String(sid)]
@@ -87,13 +92,58 @@ async function dovletBazalariniAl(stateId) {
   }
 
   return {
-    version: 1,
+    version: 2,
     stateId: sid,
     count: bases.length,
     bases
   };
 }
 
+async function dovletBazalariniAl(stateId, nowMs = Date.now()) {
+  const sid = Math.max(1, tamEded(stateId) || 1);
+  const now = tamEded(nowMs) || Date.now();
+  const cached = bazaKeshi.get(sid);
+
+  if (cached && cached.expiresAtMs > now && cached.value) {
+    return kopyala(cached.value);
+  }
+
+  const movcudSorqu = aktivSorqular.get(sid);
+  if (movcudSorqu) {
+    return kopyala(await movcudSorqu);
+  }
+
+  const promise = (async () => {
+    const value = await bazalariPostgresdenAl(sid);
+    bazaKeshi.set(sid, {
+      expiresAtMs: Date.now() + BAZA_KESHI_MS,
+      value: kopyala(value)
+    });
+    return value;
+  })();
+
+  aktivSorqular.set(sid, promise);
+
+  try {
+    return kopyala(await promise);
+  }
+  finally {
+    if (aktivSorqular.get(sid) === promise) {
+      aktivSorqular.delete(sid);
+    }
+  }
+}
+
+function dovletBazaKeshiniTemizle(stateId = null) {
+  if (stateId == null) {
+    bazaKeshi.clear();
+    return;
+  }
+  bazaKeshi.delete(Math.max(1, tamEded(stateId) || 1));
+}
+
 module.exports = {
-  dovletBazalariniAl
+  BAZA_KESHI_MS,
+  dovletBazalariniAl,
+  dovletBazaKeshiniTemizle
 };
