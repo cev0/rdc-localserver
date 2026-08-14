@@ -7,6 +7,7 @@ const {
   pendingMukafatiAl,
   toplamaMelumatiniHazirla
 } = require("./xerite_resurs_toplama_sistemi");
+const { hereketMsPerXana } = require("./konvoy_emeliyyat_sistemi");
 const {
   oyunStateIniBerpaEt,
   oyunStateIniYaddaSaxla,
@@ -25,6 +26,12 @@ function metnAl(v, max = 128) {
 }
 function gonder(k, type, data) {
   k.send(k.ws, { type, ...data, serverTimeUnixMs: k.nowMs() });
+}
+
+function aktivKonvoyEmeliyyati(state, convoyId) {
+  const id = metnAl(convoyId, 64);
+  const active = state && state.konvoyEmeliyyatlari && state.konvoyEmeliyyatlari.activeByConvoy;
+  return id && active && typeof active === "object" && active[id] ? active[id] : null;
 }
 
 async function xeriteResursToplamaMesajiniEmalEt(kontekst) {
@@ -61,6 +68,15 @@ async function xeriteResursToplamaMesajiniEmalEt(kontekst) {
     }
 
     if (type === "convoy_gather_start_request") {
+      if (hereketMsPerXana() > 0) {
+        gonder(kontekst, resultType, {
+          success: false,
+          playerId,
+          message: "Birbaşa toplama start endpoint-i deaktivdir. convoy_operation_start_request istifadə olunmalıdır."
+        });
+        return true;
+      }
+
       const result = await toplamaniBaslat(
         state,
         playerId,
@@ -80,6 +96,25 @@ async function xeriteResursToplamaMesajiniEmalEt(kontekst) {
     }
 
     const rewardId = metnAl(kontekst.msg && kontekst.msg.rewardId, 200);
+
+    if (hereketMsPerXana() > 0) {
+      const pending = state && state.xeriteToplama && Array.isArray(state.xeriteToplama.pendingRewards)
+        ? state.xeriteToplama.pendingRewards.find(x => x && metnAl(x.rewardId, 200) === rewardId)
+        : null;
+      const operation = pending ? aktivKonvoyEmeliyyati(state, pending.convoyId) : null;
+
+      if (operation && operation.status && operation.status !== "idle") {
+        gonder(kontekst, resultType, {
+          success: false,
+          playerId,
+          message: "Toplama mükafatı konvoy bazaya qayıtdıqdan sonra götürülə bilər.",
+          convoyStatus: operation.status,
+          returnEndsAtMs: Number(operation.returnEndsAtMs) || 0
+        });
+        return true;
+      }
+    }
+
     const result = pendingMukafatiAl(state, rewardId);
     if (result.success === true) await oyunStateIniYaddaSaxla(playerId, state);
     gonder(kontekst, resultType, {
