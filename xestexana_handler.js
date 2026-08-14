@@ -6,6 +6,11 @@ const {
   yaralilariSagalt
 } = require("./xestexana_sistemi");
 const {
+  requestIdAl,
+  tekrarNeticesiniTap,
+  ugurluNeticeniQeydEt
+} = require("./server_sorqu_idempotentliyi");
+const {
   oyunStateIniBerpaEt,
   oyunStateIniYaddaSaxla,
   oyuncuStateBerpaOlunub
@@ -17,8 +22,19 @@ const MESAJLAR = new Set([
   "xestexana_sagaltma_request"
 ]);
 
+const oyuncuKilidleri = new Map();
+
 function metnAl(v, max = 128) {
   return typeof v === "string" ? v.trim().slice(0, max).toLowerCase() : "";
+}
+
+function tamEded(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
+}
+
+function kopyala(v) {
+  return v == null ? null : JSON.parse(JSON.stringify(v));
 }
 
 function gonder(k, type, data) {
@@ -27,6 +43,42 @@ function gonder(k, type, data) {
     ...data,
     serverTimeUnixMs: k.nowMs()
   });
+}
+
+async function oyuncuKilidiIleIcraEt(playerId, emeliyyat) {
+  const evvelki = oyuncuKilidleri.get(playerId) || Promise.resolve();
+  let kilidiAc;
+  const cari = new Promise(resolve => {
+    kilidiAc = resolve;
+  });
+
+  oyuncuKilidleri.set(playerId, cari);
+  await evvelki;
+
+  try {
+    return await emeliyyat();
+  }
+  finally {
+    kilidiAc();
+    if (oyuncuKilidleri.get(playerId) === cari) {
+      oyuncuKilidleri.delete(playerId);
+    }
+  }
+}
+
+function birlikPayloadiniHazirla(rawBirlikler) {
+  return (Array.isArray(rawBirlikler) ? rawBirlikler : [])
+    .map(x => ({
+      siraId: metnAl(x && x.siraId, 32),
+      unitId: metnAl(x && x.unitId, 128),
+      count: tamEded(x && x.count)
+    }))
+    .filter(x => x.unitId && x.count > 0)
+    .sort((a, b) => {
+      const ka = `${a.unitId}|${a.siraId}|${a.count}`;
+      const kb = `${b.unitId}|${b.siraId}|${b.count}`;
+      return ka.localeCompare(kb);
+    });
 }
 
 async function xestexanaMesajiniEmalEt(kontekst) {
@@ -80,42 +132,100 @@ async function xestexanaMesajiniEmalEt(kontekst) {
       return true;
     }
 
-    const evvelki = JSON.parse(JSON.stringify({
-      xestexana: state.xestexana || null,
-      resources: state.resources || null,
-      army: state.army || null
-    }));
+    await oyuncuKilidiIleIcraEt(playerId, async () => {
+      const kilidliState = kontekst.getOrCreatePlayerState(playerId);
+      const requestId = requestIdAl(kontekst.msg && kontekst.msg.requestId);
+      const requestPayload = {
+        birlikler: birlikPayloadiniHazirla(birlikler)
+      };
 
-    const result = yaralilariSagalt(state, birlikler, kontekst.nowMs());
+      const tekrar = tekrarNeticesiniTap(
+        kilidliState,
+        "xestexana_sagaltma",
+        requestId,
+        requestPayload
+      );
 
-    if (!result || result.success !== true) {
-      state.xestexana = evvelki.xestexana;
-      state.resources = evvelki.resources;
-      state.army = evvelki.army;
-      gonder(kontekst, resultType, {
-        success: false,
-        playerId,
-        message: result && result.message ? result.message : "Sağaltma mümkün deyil.",
-        preview: result && result.preview ? result.preview : undefined
+      if (tekrar.conflict) {
+        gonder(kontekst, resultType, {
+          success: false,
+          playerId,
+          requestId,
+          idempotentReplay: false,
+          message: tekrar.message || "requestId ziddiyyəti yarandı."
+        });
+        return;
+      }
+
+      if (tekrar.replay) {
+        const replayResult = tekrar.result && typeof tekrar.result === "object"
+          ? tekrar.result
+          : {};
+        gonder(kontekst, resultType, {
+          success: true,
+          playerId,
+          requestId,
+          idempotentReplay: true,
+          ...replayResult,
+          payloadJson: JSON.stringify(replayResult)
+        });
+        return;
+      }
+
+      const evvelki = kopyala({
+        xestexana: kilidliState.xestexana || null,
+        resources: kilidliState.resources || null,
+        army: kilidliState.army || null,
+        serverSorquIdempotentliyi: kilidliState.serverSorquIdempotentliyi || null
       });
-      return true;
-    }
 
-    try {
-      await oyunStateIniYaddaSaxla(playerId, state);
-    }
-    catch (xeta) {
-      state.xestexana = evvelki.xestexana;
-      state.resources = evvelki.resources;
-      state.army = evvelki.army;
-      throw xeta;
-    }
+      const nowMs = kontekst.nowMs();
+      const result = yaralilariSagalt(kilidliState, birlikler, nowMs);
 
-    gonder(kontekst, resultType, {
-      success: true,
-      playerId,
-      ...result,
-      payloadJson: JSON.stringify(result)
+      if (!result || result.success !== true) {
+        kilidliState.xestexana = evvelki.xestexana;
+        kilidliState.resources = evvelki.resources;
+        kilidliState.army = evvelki.army;
+        kilidliState.serverSorquIdempotentliyi = evvelki.serverSorquIdempotentliyi;
+        gonder(kontekst, resultType, {
+          success: false,
+          playerId,
+          requestId,
+          idempotentReplay: false,
+          message: result && result.message ? result.message : "Sağaltma mümkün deyil.",
+          preview: result && result.preview ? result.preview : undefined
+        });
+        return;
+      }
+
+      ugurluNeticeniQeydEt(
+        kilidliState,
+        "xestexana_sagaltma",
+        requestId,
+        requestPayload,
+        result,
+        nowMs
+      );
+
+      try {
+        await oyunStateIniYaddaSaxla(playerId, kilidliState);
+      }
+      catch (xeta) {
+        kilidliState.xestexana = evvelki.xestexana;
+        kilidliState.resources = evvelki.resources;
+        kilidliState.army = evvelki.army;
+        kilidliState.serverSorquIdempotentliyi = evvelki.serverSorquIdempotentliyi;
+        throw xeta;
+      }
+
+      gonder(kontekst, resultType, {
+        success: true,
+        playerId,
+        requestId,
+        idempotentReplay: false,
+        ...result,
+        payloadJson: JSON.stringify(result)
+      });
     });
   }
   catch (xeta) {
@@ -123,6 +233,8 @@ async function xestexanaMesajiniEmalEt(kontekst) {
     gonder(kontekst, resultType, {
       success: false,
       playerId,
+      requestId: requestIdAl(kontekst.msg && kontekst.msg.requestId),
+      idempotentReplay: false,
       message: "Xəstəxana əməliyyatı tamamlanmadı."
     });
   }
