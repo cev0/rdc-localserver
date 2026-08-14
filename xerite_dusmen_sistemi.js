@@ -82,6 +82,31 @@ async function dusmenSiyahisiniAl(stateId, nowMs = Date.now()) {
   return { stateId: sid, items };
 }
 
+async function dusmenMelumatiniAl(stateId, enemyId, nowMs = Date.now()) {
+  const sid = Math.max(1, tamEded(stateId) || 1);
+  const id = metnAl(enemyId, 128);
+  const match = id.match(/^state_(\d+)_enemy_(\d+)$/);
+  if (!match || Number(match[1]) !== sid) return null;
+
+  const descriptor = dusmenDescriptor(sid, Number(match[2]));
+  if (!descriptor) return null;
+
+  const runtime = await runtimeOxu(sid);
+  const r = runtimeYenile(
+    runtime.enemies && runtime.enemies[descriptor.enemyId],
+    descriptor,
+    nowMs
+  );
+
+  return {
+    ...descriptor,
+    status: r.status,
+    available: r.status === "available",
+    respawnAtMs: tamEded(r.respawnAtMs),
+    defeatedAtMs: tamEded(r.defeatedAtMs)
+  };
+}
+
 async function dusmeniMeglubEtServer(stateId, enemyId, playerId, nowMs = Date.now()) {
   const sid = Math.max(1, tamEded(stateId) || 1);
   const id = metnAl(enemyId, 128);
@@ -119,5 +144,6 @@ async function dusmeniMeglubEtServer(stateId, enemyId, playerId, nowMs = Date.no
 module.exports = {
   dusmenDescriptor,
   dusmenSiyahisiniAl,
+  dusmenMelumatiniAl,
   dusmeniMeglubEtServer
 };
