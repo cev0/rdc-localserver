@@ -96,6 +96,7 @@
     "email:test": "node email_birbasa_testi.js",
     "pvp:snapshot-test": "node pvp_doyus_snapshot_sistemi_testi.js",
     "pvp:hucum-contract-test": "node pvp_hucum_emeliyyat_sistemi_testi.js",
+    "state:pg-mutation-test": "node oyun_state_mutasiya_postgres_testi.js",
     "start": "node server_missiya_genisletme.js"
   },
   "repository": {
