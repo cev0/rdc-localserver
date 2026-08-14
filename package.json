@@ -94,6 +94,7 @@
     "hesab:provayder-status": "node hesab_provayder_statusu.js",
     "hesab:yoxla": "node hesab_db_yoxla.js",
     "email:test": "node email_birbasa_testi.js",
+    "pvp:snapshot-test": "node pvp_doyus_snapshot_sistemi_testi.js",
     "start": "node server_missiya_genisletme.js"
   },
   "repository": {
