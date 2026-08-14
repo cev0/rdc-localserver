@@ -1,7 +1,6 @@
 "use strict";
 
 const {
-  KONVOY_TUTUM_TEXNOLOGIYA_ID,
   tutumLevelMelumatiniAl
 } = require("./konvoy_tutum_qaydalari");
 
@@ -38,16 +37,15 @@ function cedvelEnv(ad) {
   }
 }
 
-function legacyTutumLeveliniAl(state) {
-  const levels = state && state.technology && state.technology.levels;
-  const raw = levels && typeof levels === "object"
-    ? levels[KONVOY_TUTUM_TEXNOLOGIYA_ID]
-    : 0;
-  return Math.max(0, Math.min(4, tamEded(raw)));
+function legacyTutumLeveliniAl() {
+  // Köhnə 5K -> 20K tutum texnologiyası artıq gameplay mənbəyi deyil.
+  // Yeni bina + Hero level + Skill 1 + Skill 6 formulu tam konfiqurasiya
+  // olunana qədər yalnız Lv0 test fallback saxlanılır.
+  return 0;
 }
 
-function legacyTutumuAl(state) {
-  return tutumLevelMelumatiniAl(legacyTutumLeveliniAl(state)).capacity;
+function legacyTutumuAl() {
+  return tutumLevelMelumatiniAl(0).capacity;
 }
 
 function heroTap(state, heroId) {
@@ -112,7 +110,7 @@ function yeniFormulaKonfiqi() {
 
 function konvoyTutumHesabiniAl(state, konvoyId) {
   const cfg = yeniFormulaKonfiqi();
-  const legacyTutum = legacyTutumuAl(state);
+  const fallbackTutum = legacyTutumuAl();
   const konvoy = konvoyuTap(state, konvoyId);
   const bina = completedBinaLeveliniAl(state, cfg.binaIdleri);
 
@@ -170,9 +168,10 @@ function konvoyTutumHesabiniAl(state, konvoyId) {
     qehremanLevelBonusu,
     skill1Bonusu,
     skill6Bonusu,
-    yekunTutum: yeniFormulaAktivdir ? yeniYekun : legacyTutum,
-    legacyFallbackTutum: legacyTutum,
-    legacyFallbackLevel: legacyTutumLeveliniAl(state),
+    yekunTutum: yeniFormulaAktivdir ? yeniYekun : fallbackTutum,
+    legacyFallbackTutum: fallbackTutum,
+    legacyFallbackLevel: 0,
+    legacyCapacityTechnologyDisabled: true,
     qehremanlar
   };
 }
