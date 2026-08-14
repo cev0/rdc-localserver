@@ -164,6 +164,67 @@ async function bazalariPostgresdenAl(sid) {
   };
 }
 
+async function birBazaSnapshotiniSorquIleAl(sorquEt, stateId, targetPlayerId) {
+  const sid = Math.max(1, tamEded(stateId) || 1);
+  const target = metnAl(targetPlayerId, 128).toLowerCase();
+
+  if (typeof sorquEt !== "function" || !target) {
+    return null;
+  }
+
+  // State filtri qəsdən SQL daxilində edilmir. Əvvəl oyunçunun həqiqi ən son
+  // snapshot-u alınır, SONRA onun hələ tələb olunan Dövlətdə olub-olmadığı
+  // yoxlanılır. Beləliklə oyunçu başqa Dövlətə keçibsə köhnə State snapshot-u
+  // səhvən cari baza kimi qaytarılmır.
+  const netice = await sorquEt(
+    `
+      SELECT oyuncu_id, detallar
+      FROM hesab_audit_jurnali
+      WHERE oyuncu_id = $1
+        AND hadise_novu = $2
+      ORDER BY id DESC
+      LIMIT 1
+    `,
+    [target, SNAPSHOT_HADISE_NOVU]
+  );
+
+  const row = netice && Array.isArray(netice.rows)
+    ? netice.rows[0]
+    : null;
+
+  if (!row) return null;
+
+  const detallar = row.detallar;
+  const state = detallar && typeof detallar === "object"
+    ? detallar.state
+    : null;
+  const item = bazaElementiniHazirla(row.oyuncu_id, state, sid);
+
+  return item && item.playerId
+    ? item
+    : null;
+}
+
+async function dovletBazasiniBirbasaAl(stateId, targetPlayerId) {
+  return await birBazaSnapshotiniSorquIleAl(
+    async (sql, parametrler) => await sorguEt(sql, parametrler),
+    stateId,
+    targetPlayerId
+  );
+}
+
+async function dovletBazasiniBirbasaAlClient(client, stateId, targetPlayerId) {
+  if (!client || typeof client.query !== "function") {
+    return null;
+  }
+
+  return await birBazaSnapshotiniSorquIleAl(
+    async (sql, parametrler) => await client.query(sql, parametrler),
+    stateId,
+    targetPlayerId
+  );
+}
+
 async function dovletBazalariniAl(stateId, nowMs = Date.now()) {
   const sid = Math.max(1, tamEded(stateId) || 1);
   const now = tamEded(nowMs) || Date.now();
@@ -222,5 +283,7 @@ module.exports = {
   BAZA_KESHI_MS,
   dovletBazalariniAl,
   dovletBazasiniAl,
+  dovletBazasiniBirbasaAl,
+  dovletBazasiniBirbasaAlClient,
   dovletBazaKeshiniTemizle
 };
