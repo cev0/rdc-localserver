@@ -20,12 +20,10 @@ function raportStateTeminEt(state) {
   if (!state || typeof state !== "object") {
     throw new Error("Döyüş raportu üçün oyunçu state-i yoxdur.");
   }
-
   if (!state.doyusRaportlari || typeof state.doyusRaportlari !== "object" || Array.isArray(state.doyusRaportlari)) {
-    state.doyusRaportlari = { version: 1, items: [] };
+    state.doyusRaportlari = { version: 2, items: [] };
   }
-
-  state.doyusRaportlari.version = 1;
+  state.doyusRaportlari.version = 2;
   if (!Array.isArray(state.doyusRaportlari.items)) state.doyusRaportlari.items = [];
   return state.doyusRaportlari;
 }
@@ -49,10 +47,25 @@ function formasiyaKopyala(raw) {
     : [];
 }
 
+function boshCasualtySummary(sentFormation) {
+  const sent = formasiyaKopyala(sentFormation).reduce((cem, x) => cem + x.count, 0);
+  return {
+    sent,
+    totalLoss: 0,
+    directDead: 0,
+    hospitalOverflowDead: 0,
+    deadTotal: 0,
+    heavyWounded: 0,
+    lightWounded: 0,
+    survived: sent,
+    lightWoundedPendingReturn: 0,
+    finalActiveAfterReturn: sent
+  };
+}
+
 function raportYarat(state, melumat, nowMs = Date.now()) {
   const raportlar = raportStateTeminEt(state);
   const battleId = metnAl(melumat && melumat.battleId, 220);
-
   if (battleId) {
     const movcud = raportlar.items.find(x => x && metnAl(x.battleId, 220) === battleId);
     if (movcud) return movcud;
@@ -69,9 +82,11 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
   const victory = melumat && melumat.victory === true;
 
   const raport = {
+    reportVersion: 2,
     reportId: raportIdYarat(nowMs),
     battleId: battleId || "",
     category: "battle",
+    battleType: "pve",
     stateId,
     x: movqe ? tamEded(movqe.x) : 0,
     z: movqe ? tamEded(movqe.z) : 0,
@@ -83,21 +98,45 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
     invalidated: melumat && melumat.invalidated === true,
     playerPower: tamEded(melumat && melumat.playerPower),
     enemyPower: tamEded(melumat && melumat.enemyPower),
+    powerBreakdown: {
+      troopPower: tamEded(melumat && melumat.playerPower),
+      heroPower: 0,
+      skillPower: 0,
+      totalPower: tamEded(melumat && melumat.playerPower),
+      heroPowerPending: true,
+      skillPowerPending: true
+    },
     heroIds: Array.isArray(melumat && melumat.heroIds)
       ? melumat.heroIds.map(x => metnAl(x, 128)).filter(Boolean)
       : [],
     sentTroops,
     sentFormation,
+    casualtyVersion: 2,
+    casualtyPlan: null,
+    casualtySummary: boshCasualtySummary(sentFormation),
     lostTroops: {},
     woundedTroops: {},
+    heavyWoundedTroops: {},
+    lightWoundedTroops: {},
+    directDeadTroops: {},
+    hospitalOverflowDeadTroops: {},
     deadTroops: {},
+    survivedTroops: kopyala(sentTroops) || {},
     returnedTroops: kopyala(sentTroops) || {},
     lostFormation: [],
     woundedFormation: [],
+    heavyWoundedFormation: [],
+    lightWoundedFormation: [],
+    directDeadFormation: [],
+    hospitalOverflowDeadFormation: [],
     deadFormation: [],
+    survivedFormation: formasiyaKopyala(sentFormation),
     returnedFormation: formasiyaKopyala(sentFormation),
+    hospital: null,
     lossCalculationPending: true,
     hospitalResolutionPending: true,
+    lightWoundedRecoveryPending: false,
+    lightWoundedRecoveredAtMs: 0,
     reward,
     heroExp,
     heroExpDistributionPending: heroExp > 0,
@@ -110,7 +149,6 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
   };
 
   raportlar.items.push(raport);
-
   if (raportlar.items.length > 100) {
     const saved = raportlar.items.filter(x => x && x.isSaved === true);
     const adi = raportlar.items
@@ -120,14 +158,12 @@ function raportYarat(state, melumat, nowMs = Date.now()) {
     raportlar.items = [...saved, ...adi]
       .sort((a, b) => tamEded(a.createdAtMs) - tamEded(b.createdAtMs));
   }
-
   return raport;
 }
 
 function raportuTap(state, reportId) {
   const id = metnAl(reportId, 220);
-  const raportlar = raportStateTeminEt(state);
-  return raportlar.items.find(x => x && metnAl(x.reportId, 220) === id) || null;
+  return raportStateTeminEt(state).items.find(x => x && metnAl(x.reportId, 220) === id) || null;
 }
 
 function raportSiyahisiniHazirla(state) {
@@ -137,6 +173,7 @@ function raportSiyahisiniHazirla(state) {
     .map(x => ({
       reportId: x.reportId,
       category: x.category,
+      battleType: x.battleType || "pve",
       stateId: x.stateId,
       x: x.x,
       z: x.z,
@@ -145,13 +182,17 @@ function raportSiyahisiniHazirla(state) {
       enemyLevel: x.enemyLevel,
       result: x.result,
       victory: x.victory === true,
+      playerPower: tamEded(x.playerPower),
+      enemyPower: tamEded(x.enemyPower),
       createdAtMs: x.createdAtMs,
       isRead: x.isRead === true,
       isSaved: x.isSaved === true,
       heroExp: tamEded(x.heroExp),
       reward: kopyala(x.reward) || {},
+      casualtySummary: kopyala(x.casualtySummary) || {},
       lossCalculationPending: x.lossCalculationPending === true,
-      hospitalResolutionPending: x.hospitalResolutionPending === true
+      hospitalResolutionPending: x.hospitalResolutionPending === true,
+      lightWoundedRecoveryPending: x.lightWoundedRecoveryPending === true
     }));
 }
 

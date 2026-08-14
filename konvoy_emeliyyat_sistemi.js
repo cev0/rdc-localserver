@@ -5,9 +5,7 @@ const {
   toplamaniBaslat,
   bitmisToplamalariPendingEt
 } = require("./xerite_resurs_toplama_sistemi");
-const {
-  dusmenDescriptor
-} = require("./xerite_dusmen_sistemi");
+const { dusmenDescriptor } = require("./xerite_dusmen_sistemi");
 const {
   doyusaBasla,
   doyusuNeticelendir
@@ -16,7 +14,15 @@ const {
   resursMovqeyiAl,
   dusmenMovqeyiAl
 } = require("./xerite_movqe_sistemi");
-const { raportYarat } = require("./doyus_raport_sistemi");
+const {
+  raportYarat,
+  raportuTap
+} = require("./doyus_raport_sistemi");
+const { itkiPlaniniHazirla } = require("./doyus_itki_sistemi");
+const {
+  serverItkiPlaniniTetbiqEt,
+  yungulYaralilariBerpaEt
+} = require("./doyus_xestexana_korpu");
 
 const STATUS = Object.freeze({
   BOS: "idle",
@@ -37,8 +43,9 @@ function tamEded(v) {
 
 function stateTeminEt(state) {
   if (!state.konvoyEmeliyyatlari || typeof state.konvoyEmeliyyatlari !== "object" || Array.isArray(state.konvoyEmeliyyatlari)) {
-    state.konvoyEmeliyyatlari = { version: 1, activeByConvoy: {}, history: [] };
+    state.konvoyEmeliyyatlari = { version: 2, activeByConvoy: {}, history: [] };
   }
+  state.konvoyEmeliyyatlari.version = 2;
   if (!state.konvoyEmeliyyatlari.activeByConvoy || typeof state.konvoyEmeliyyatlari.activeByConvoy !== "object") {
     state.konvoyEmeliyyatlari.activeByConvoy = {};
   }
@@ -170,6 +177,8 @@ function emeliyyatiBaslat(state, playerId, convoyId, targetType, targetId, nowMs
     returnEndsAtMs: 0,
     travelDurationMs,
     status: STATUS.YOLDA,
+    reportId: "",
+    lightWoundedFormation: [],
     result: null,
     failureReason: ""
   };
@@ -246,6 +255,7 @@ async function emeliyyatlariYenile(state, playerId, nowMs = Date.now()) {
 
       const result = await doyusuNeticelendir(state, playerId, convoyId, now);
       let report = null;
+      let casualty = null;
 
       if (result && result.success === true && missionSnapshot) {
         report = raportYarat(state, {
@@ -265,19 +275,65 @@ async function emeliyyatlariYenile(state, playerId, nowMs = Date.now()) {
           lootAlreadyApplied: result.victory === true,
           completedAtMs: result.completedAtMs || now
         }, now);
+
+        operation.reportId = report && report.reportId ? report.reportId : "";
+
+        if (result.invalidated !== true) {
+          const casualtyPlan = itkiPlaniniHazirla(
+            missionSnapshot.formationSnapshot || [],
+            result.playerPower || missionSnapshot.playerPower,
+            result.enemyPower || missionSnapshot.enemyPower,
+            result.victory === true
+          );
+
+          casualty = serverItkiPlaniniTetbiqEt(
+            state,
+            convoyId,
+            missionSnapshot.formationSnapshot || [],
+            casualtyPlan,
+            report
+          );
+
+          if (!casualty || casualty.success !== true) {
+            throw new Error(casualty && casualty.message ? casualty.message : "Döyüş itkisi tətbiq edilə bilmədi.");
+          }
+
+          operation.lightWoundedFormation = casualty.lightWoundedFormation.map(x => ({ ...x }));
+        }
       }
 
       geriQayitmagaBasla(operation, now, {
         ...(result || { success: false, message: "Döyüş nəticəsi alınmadı." }),
-        report
+        reportId: operation.reportId,
+        casualtySummary: casualty ? {
+          sentCount: casualty.sentCount,
+          totalLoss: casualty.totalLoss,
+          heavyWounded: casualty.heavyWoundedFormation.reduce((c, x) => c + tamEded(x.count), 0),
+          lightWounded: casualty.lightWoundedFormation.reduce((c, x) => c + tamEded(x.count), 0),
+          dead: casualty.deadFormation.reduce((c, x) => c + tamEded(x.count), 0)
+        } : null
       });
       changed = true;
     }
 
     if (operation.status === STATUS.GERI && now >= tamEded(operation.returnEndsAtMs)) {
+      let recovery = null;
+      if (Array.isArray(operation.lightWoundedFormation) && operation.lightWoundedFormation.length > 0) {
+        const report = operation.reportId ? raportuTap(state, operation.reportId) : null;
+        recovery = yungulYaralilariBerpaEt(
+          state,
+          convoyId,
+          operation.lightWoundedFormation,
+          report,
+          now
+        );
+        operation.lightWoundedFormation = [];
+      }
+
       const historyItem = {
         ...operation,
         status: STATUS.BOS,
+        lightWoundedRecovery: recovery,
         finishedAtMs: now
       };
       emeliyyatlar.history.push(historyItem);
@@ -295,7 +351,7 @@ function emeliyyatMelumatiniHazirla(state, nowMs = Date.now()) {
   const now = tamEded(nowMs) || Date.now();
 
   return {
-    version: 1,
+    version: 2,
     movementConfigured: hereketMsPerXana() > 0,
     movementMsPerMapUnit: hereketMsPerXana(),
     active: Object.values(emeliyyatlar.activeByConvoy).map(x => ({
