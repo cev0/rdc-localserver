@@ -120,6 +120,37 @@ function stateHazirla() {
   );
 })();
 
+(function failedMutationRollbackTesti() {
+  const state = stateHazirla();
+  const evvelki = JSON.parse(JSON.stringify(state));
+
+  assert.strictEqual(
+    Object.prototype.hasOwnProperty.call(state, "konvoylar"),
+    false
+  );
+
+  const netice = konvoyMutasiyasiniTetbiqEt(
+    state,
+    "convoy_troops_set_request",
+    {
+      konvoyId: "konvoy_1",
+      troops: {
+        fighter_lv1: 999999
+      }
+    },
+    1000
+  );
+
+  assert.strictEqual(netice.success, false);
+  assert.strictEqual(netice.deyisdi, false);
+  assert.deepStrictEqual(state, evvelki);
+  assert.strictEqual(
+    Object.prototype.hasOwnProperty.call(state, "konvoylar"),
+    false,
+    "Uğursuz mutation default konvoy state-ni RAM-da saxlamamalıdır."
+  );
+})();
+
 (function busyKonvoyTesti() {
   const state = stateHazirla();
   state.konvoyEmeliyyatlari = {
