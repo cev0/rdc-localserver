@@ -5,6 +5,7 @@ const {
   konvoyQosunStateTeminEt,
   qosunSayiniHesabla
 } = require("./konvoy_qosun_sistemi");
+const { formasiyaStateTeminEt } = require("./konvoy_formasiya_sistemi");
 
 const DOYUS_NETICE_GOZLEME_MS = 5 * 1000;
 
@@ -47,6 +48,18 @@ function qosunGucunuHesabla(snapshot) {
     guc += birQosununGucunuAl(unitId) * say;
   }
   return Math.max(0, Math.trunc(guc));
+}
+
+function formasiyaSnapshotiniAl(konvoy) {
+  if (!konvoy || typeof konvoy !== "object") return [];
+  const formasiya = formasiyaStateTeminEt(konvoy);
+  return Array.isArray(formasiya && formasiya.siralar)
+    ? formasiya.siralar.map(x => ({
+        siraId: metnAl(x && x.siraId, 32),
+        unitId: metnAl(x && x.unitId, 128),
+        count: tamEded(x && x.count)
+      }))
+    : [];
 }
 
 function stateTeminEt(state) {
@@ -153,6 +166,7 @@ function doyusaBasla(state, playerId, convoyId, enemyId, nowMs = Date.now()) {
   }
 
   const startedAtMs = tamEded(nowMs) || Date.now();
+  const formationSnapshot = formasiyaSnapshotiniAl(konvoy);
   const mission = {
     battleId: `${eid}:${startedAtMs}:${metnAl(playerId, 128)}`,
     convoyId: id,
@@ -162,6 +176,7 @@ function doyusaBasla(state, playerId, convoyId, enemyId, nowMs = Date.now()) {
     enemyLevel: descriptor.level,
     enemyPower: descriptor.power,
     troopSnapshot,
+    formationSnapshot,
     heroIds,
     playerPower: qosunGucunuHesabla(troopSnapshot),
     startedAtMs,
@@ -209,6 +224,7 @@ async function doyusuNeticelendir(state, playerId, convoyId, nowMs = Date.now())
         battleId: mission.battleId,
         convoyId: id,
         enemyId: mission.enemyId,
+        formationSnapshot: Array.isArray(mission.formationSnapshot) ? mission.formationSnapshot.map(x => ({ ...x })) : [],
         victory: false,
         invalidated: true,
         message: sharedResult && sharedResult.message
@@ -248,6 +264,7 @@ async function doyusuNeticelendir(state, playerId, convoyId, nowMs = Date.now())
     enemyLevel: mission.enemyLevel,
     playerPower: mission.playerPower,
     enemyPower: mission.enemyPower,
+    formationSnapshot: Array.isArray(mission.formationSnapshot) ? mission.formationSnapshot.map(x => ({ ...x })) : [],
     victory,
     invalidated: false,
     reward,
@@ -265,6 +282,7 @@ module.exports = {
   DOYUS_NETICE_GOZLEME_MS,
   birQosununGucunuAl,
   qosunGucunuHesabla,
+  formasiyaSnapshotiniAl,
   stateTeminEt,
   aktivDoyusTap,
   doyusMelumatiniHazirla,
