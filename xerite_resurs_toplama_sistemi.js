@@ -190,6 +190,62 @@ async function toplamaniBaslat(state, playerId, konvoyId, nodeId, nowMs = Date.n
   return { success: true, mission: { ...mission } };
 }
 
+async function toplamaniLegvEt(state, playerId, konvoyId, nowMs = Date.now()) {
+  const toplama = toplamaStateTeminEt(state);
+  const id = metnAl(konvoyId, 64);
+  const mission = toplama.activeByConvoy[id];
+
+  if (!mission) {
+    return {
+      success: true,
+      alreadyInactive: true,
+      convoyId: id,
+      rewardCreated: false
+    };
+  }
+
+  const sid = Math.max(1, tamEded(mission.stateId) || dovletIdAl(state));
+  const descriptor = nodeMelumatiniAl(sid, mission.nodeId);
+  let nodeReleased = false;
+
+  if (descriptor) {
+    const release = await runtimeEmeliyyati(sid, async runtime => {
+      if (!runtime.nodes || typeof runtime.nodes !== "object") runtime.nodes = {};
+      const raw = runtime.nodes[descriptor.nodeId];
+      if (!raw || typeof raw !== "object") {
+        return { deyisdi: false, success: true, released: false };
+      }
+
+      const ownerMatches =
+        metnAl(raw.occupiedByPlayerId, 128) === metnAl(playerId, 128) &&
+        metnAl(raw.occupiedByConvoyId, 64) === id;
+
+      if (!ownerMatches) {
+        return { deyisdi: false, success: true, released: false };
+      }
+
+      raw.occupiedByPlayerId = "";
+      raw.occupiedByConvoyId = "";
+      raw.occupiedUntilMs = 0;
+      return { deyisdi: true, success: true, released: true };
+    });
+
+    nodeReleased = !!(release && release.released === true);
+  }
+
+  delete toplama.activeByConvoy[id];
+
+  return {
+    success: true,
+    alreadyInactive: false,
+    convoyId: id,
+    nodeId: metnAl(mission.nodeId, 128),
+    nodeReleased,
+    rewardCreated: false,
+    cancelledAtMs: tamEded(nowMs) || Date.now()
+  };
+}
+
 function bitmisToplamalariPendingEt(state, nowMs = Date.now()) {
   const toplama = toplamaStateTeminEt(state);
   const completed = [];
@@ -246,6 +302,7 @@ module.exports = {
   nodeMelumatiniAl,
   resursNodeSiyahisiniAl,
   toplamaniBaslat,
+  toplamaniLegvEt,
   bitmisToplamalariPendingEt,
   pendingMukafatiAl,
   toplamaMelumatiniHazirla
