@@ -218,34 +218,155 @@ function muqayiseUcunJson(v) {
   return JSON.stringify(clone);
 }
 
-async function oyuncuKonvoylariniSinxronEt(stateId, playerId, activeOperations, nowMs = Date.now()) {
+function oyuncuSnapshotlariniRuntimeaTetbiqEt(runtime, playerId, snapshots) {
+  const pid = metnAl(playerId, 128);
+  if (!runtime || typeof runtime !== "object" || !pid) {
+    return {
+      deyisdi: false,
+      success: false,
+      message: "Shared convoy runtime məlumatı natamamdır."
+    };
+  }
+
+  if (!runtime.items || typeof runtime.items !== "object" || Array.isArray(runtime.items)) {
+    runtime.items = {};
+  }
+
+  const evvelki = {};
+  for (const [key, item] of Object.entries(runtime.items)) {
+    if (item && metnAl(item.playerId, 128) === pid) {
+      evvelki[key] = item;
+    }
+  }
+
+  const yeni = {};
+  for (const item of Array.isArray(snapshots) ? snapshots : []) {
+    if (!item || metnAl(item.playerId, 128) !== pid || !metnAl(item.publicId, 220)) {
+      continue;
+    }
+    yeni[item.publicId] = item;
+  }
+
+  if (muqayiseUcunJson(evvelki) === muqayiseUcunJson(yeni)) {
+    return {
+      deyisdi: false,
+      success: true,
+      count: Object.keys(yeni).length
+    };
+  }
+
+  for (const [key, item] of Object.entries(runtime.items)) {
+    if (item && metnAl(item.playerId, 128) === pid) {
+      delete runtime.items[key];
+    }
+  }
+
+  for (const item of Object.values(yeni)) {
+    runtime.items[item.publicId] = item;
+  }
+
+  return {
+    deyisdi: true,
+    success: true,
+    count: Object.keys(yeni).length
+  };
+}
+
+function oyuncuPublicSnapshotlariniHazirla(stateId, playerId, activeOperations, nowMs = Date.now()) {
   const sid = Math.max(1, tamEded(stateId) || 1);
   const pid = metnAl(playerId, 128);
-  if (!pid) return { success: false, message: "Shared convoy runtime üçün playerId yoxdur." };
 
-  const snapshots = Object.values(activeOperations && typeof activeOperations === "object" ? activeOperations : {})
+  if (!pid) {
+    return {
+      success: false,
+      stateId: sid,
+      playerId: "",
+      snapshots: [],
+      message: "Shared convoy runtime üçün playerId yoxdur."
+    };
+  }
+
+  const snapshots = Object.values(
+    activeOperations && typeof activeOperations === "object"
+      ? activeOperations
+      : {}
+  )
     .map(op => publicSnapshotHazirla(sid, pid, op, nowMs))
     .filter(Boolean);
 
-  return runtimeEmeliyyati(sid, async runtime => {
-    const evvelki = {};
-    for (const [key, item] of Object.entries(runtime.items || {})) {
-      if (item && metnAl(item.playerId, 128) === pid) evvelki[key] = item;
-    }
+  return {
+    success: true,
+    stateId: sid,
+    playerId: pid,
+    snapshots
+  };
+}
 
-    const yeni = {};
-    for (const item of snapshots) yeni[item.publicId] = item;
+async function oyuncuKonvoylariniSinxronEtClient(
+  client,
+  stateId,
+  playerId,
+  activeOperations,
+  nowMs = Date.now()
+) {
+  if (!client || typeof client.query !== "function") {
+    throw new Error("Shared convoy runtime sync üçün PostgreSQL client yoxdur.");
+  }
 
-    if (muqayiseUcunJson(evvelki) === muqayiseUcunJson(yeni)) {
-      return { deyisdi: false, success: true, count: snapshots.length };
-    }
+  const hazir = oyuncuPublicSnapshotlariniHazirla(
+    stateId,
+    playerId,
+    activeOperations,
+    nowMs
+  );
 
-    for (const [key, item] of Object.entries(runtime.items || {})) {
-      if (item && metnAl(item.playerId, 128) === pid) delete runtime.items[key];
-    }
-    for (const item of snapshots) runtime.items[item.publicId] = item;
+  if (!hazir.success) {
+    return {
+      success: false,
+      deyisdi: false,
+      count: 0,
+      message: hazir.message
+    };
+  }
 
-    return { deyisdi: true, success: true, count: snapshots.length };
+  await postgresDovletKilidiniAl(client, hazir.stateId);
+  const runtime = await runtimeOxuClient(client, hazir.stateId);
+  const netice = oyuncuSnapshotlariniRuntimeaTetbiqEt(
+    runtime,
+    hazir.playerId,
+    hazir.snapshots
+  );
+
+  if (netice && netice.deyisdi === true) {
+    await runtimeYazClient(client, hazir.stateId, runtime);
+  }
+
+  return netice;
+}
+
+async function oyuncuKonvoylariniSinxronEt(stateId, playerId, activeOperations, nowMs = Date.now()) {
+  const hazir = oyuncuPublicSnapshotlariniHazirla(
+    stateId,
+    playerId,
+    activeOperations,
+    nowMs
+  );
+
+  if (!hazir.success) {
+    return {
+      success: false,
+      deyisdi: false,
+      count: 0,
+      message: hazir.message
+    };
+  }
+
+  return runtimeEmeliyyati(hazir.stateId, async runtime => {
+    return oyuncuSnapshotlariniRuntimeaTetbiqEt(
+      runtime,
+      hazir.playerId,
+      hazir.snapshots
+    );
   });
 }
 
@@ -377,6 +498,9 @@ module.exports = {
   runtimeEmeliyyati,
   publicSnapshotHazirla,
   publicVeziyyetiHesabla,
+  oyuncuPublicSnapshotlariniHazirla,
+  oyuncuSnapshotlariniRuntimeaTetbiqEt,
+  oyuncuKonvoylariniSinxronEtClient,
   oyuncuKonvoylariniSinxronEt,
   dovletAktivKonvoylariniAl
 };
