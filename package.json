@@ -48,7 +48,7 @@
     "negotiator": "^1.0.0",
     "object-assign": "^4.1.1",
     "object-inspect": "^1.13.4",
-    "on-finished": "^2.4.1",
+    "on-finished": "^1.1.1",
     "once": "^1.4.0",
     "parseurl": "^1.3.3",
     "path-to-regexp": "^8.3.0",
@@ -97,6 +97,7 @@
     "pvp:snapshot-test": "node pvp_doyus_snapshot_sistemi_testi.js",
     "pvp:hucum-contract-test": "node pvp_hucum_emeliyyat_sistemi_testi.js",
     "state:pg-mutation-test": "node oyun_state_mutasiya_postgres_testi.js",
+    "pvp:runtime-status-test": "node dovlet_konvoy_runtime_pvp_status_testi.js",
     "start": "node server_missiya_genisletme.js"
   },
   "repository": {
