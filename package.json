@@ -58,7 +58,7 @@
     "range-parser": "^1.2.1",
     "raw-body": "^3.0.2",
     "router": "^2.2.0",
-    "safer-buffer": "^2.1.2",
+    "safer-buffer": "^1.1.2",
     "send": "^1.2.1",
     "serve-static": "^2.2.1",
     "setprototypeof": "^1.2.0",
@@ -99,6 +99,7 @@
     "state:pg-mutation-test": "node oyun_state_mutasiya_postgres_testi.js",
     "pvp:runtime-status-test": "node dovlet_konvoy_runtime_pvp_status_testi.js",
     "state:fresh-base-test": "node dovlet_baza_birbasa_postgres_testi.js",
+    "pvp:convoy-info-test": "node konvoy_pvp_info_qayda_override_testi.js",
     "start": "node server_missiya_genisletme.js"
   },
   "repository": {
