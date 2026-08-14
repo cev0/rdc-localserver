@@ -43,6 +43,12 @@ function metnAl(deyer, maksimum = 128) {
     : "";
 }
 
+function kopyala(deyer) {
+  return deyer == null
+    ? null
+    : JSON.parse(JSON.stringify(deyer));
+}
+
 function gonder(kontekst, type, melumat) {
   kontekst.send(kontekst.ws, {
     type,
@@ -57,6 +63,23 @@ function neticeTipiniAl(type) {
   if (type === "convoy_hero_remove_request") return "convoy_hero_remove_result";
   if (type === "convoy_formation_set_request") return "convoy_formation_set_result";
   return "convoy_troops_set_result";
+}
+
+function konvoyStateYedeyiniAl(state) {
+  const varIdi = Object.prototype.hasOwnProperty.call(state, "konvoylar");
+  return {
+    varIdi,
+    deyer: varIdi ? kopyala(state.konvoylar) : undefined
+  };
+}
+
+function konvoyStateRollbackEt(state, yedek) {
+  if (yedek && yedek.varIdi) {
+    state.konvoylar = kopyala(yedek.deyer);
+  }
+  else {
+    delete state.konvoylar;
+  }
 }
 
 function konvoyMutasiyasiniTetbiqEt(state, type, msg, nowMs = Date.now()) {
@@ -74,6 +97,7 @@ function konvoyMutasiyasiniTetbiqEt(state, type, msg, nowMs = Date.now()) {
     };
   }
 
+  const konvoyYedeyi = konvoyStateYedeyiniAl(state);
   let netice;
 
   if (type === "convoy_hero_assign_request") {
@@ -101,6 +125,8 @@ function konvoyMutasiyasiniTetbiqEt(state, type, msg, nowMs = Date.now()) {
   }
 
   if (!netice || netice.success !== true) {
+    konvoyStateRollbackEt(state, konvoyYedeyi);
+
     return {
       success: false,
       deyisdi: false,
