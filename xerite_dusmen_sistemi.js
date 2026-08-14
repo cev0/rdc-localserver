@@ -3,7 +3,7 @@
 const { levelMelumatiniAl, zoneLevelAraligi } = require("./xerite_dusmen_qaydalari");
 const { runtimeOxu, runtimeEmeliyyati } = require("./xerite_dusmen_runtime_postgres");
 
-const DUSMEN_SAYI = 18;
+const DUSMEN_SAYI = 17;
 
 function tamEded(v) {
   const n = Number(v);
@@ -30,14 +30,12 @@ function dusmenDescriptor(stateId, index) {
     ? "outer"
     : index <= 15
       ? "middle"
-      : index < 18
-        ? "inner_green"
-        : "president_center";
+      : "inner_green";
 
   const araliq = zoneLevelAraligi(zoneId);
   const rng = seededRng(sid * 104729 + index * 8191);
   const level = araliq.min + Math.floor(rng() * ((araliq.max - araliq.min) + 1));
-  const enemyType = index % 3 === 0 ? "small_camp" : "scout";
+  const enemyType = index % 3 === 0 ? "small_enemy" : "enemy_scout";
   const balans = levelMelumatiniAl(level, enemyType);
 
   return {

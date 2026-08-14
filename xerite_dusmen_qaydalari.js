@@ -15,23 +15,24 @@ const LEVEL_BALANSI = Object.freeze({
 
 function levelMelumatiniAl(level, enemyType) {
   const lv = Math.min(10, Math.max(1, Math.trunc(Number(level) || 1)));
-  const tip = enemyType === "small_camp" ? "small_camp" : "scout";
+  const tip = enemyType === "small_enemy" ? "small_enemy" : "enemy_scout";
   const b = LEVEL_BALANSI[lv];
   return {
     level: lv,
     enemyType: tip,
-    power: tip === "small_camp" ? b.campPower : b.scoutPower,
+    power: tip === "small_enemy" ? b.campPower : b.scoutPower,
     reward: {
-      money: tip === "small_camp" ? Math.round(b.rewardMoney * 1.5) : b.rewardMoney,
-      heroExp: tip === "small_camp" ? Math.round(b.rewardExp * 1.5) : b.rewardExp
+      money: tip === "small_enemy" ? Math.round(b.rewardMoney * 1.5) : b.rewardMoney,
+      heroExp: tip === "small_enemy" ? Math.round(b.rewardExp * 1.5) : b.rewardExp
     },
-    respawnSeconds: tip === "small_camp" ? 6 * 60 * 60 : 3 * 60 * 60
+    respawnSeconds: tip === "small_enemy" ? 6 * 60 * 60 : 3 * 60 * 60
   };
 }
 
 function zoneLevelAraligi(zoneId) {
   if (zoneId === "middle") return { min: 5, max: 8 };
-  if (zoneId === "inner_green" || zoneId === "president_center") return { min: 8, max: 10 };
+  if (zoneId === "inner_green") return { min: 8, max: 10 };
+  if (zoneId === "president_center") return { min: 0, max: 0 };
   return { min: 1, max: 5 };
 }
 
