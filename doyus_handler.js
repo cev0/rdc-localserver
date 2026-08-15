@@ -15,9 +15,11 @@ const { missiyaStatusunuAl } = require("./missiya_proqres");
 const { missiyaServerHadisesiniQeydEt } = require("./missiya_hadise_korpu");
 const {
   oyunStateIniBerpaEt,
-  oyunStateIniYaddaSaxla,
   oyuncuStateBerpaOlunub
 } = require("./oyun_state_daimilik_korpu");
+const {
+  oyuncuStateMutasiyasiniPostgresIleIcraEt
+} = require("./oyun_state_mutasiya_postgres");
 
 const DOYUS_MESAJLARI = new Set([
   "battle_info_request",
@@ -31,6 +33,8 @@ function metnAl(deyer, maksimum = 128) {
 }
 
 function kopyala(deyer) {
+  if (deyer === undefined) return undefined;
+  if (deyer === null) return null;
   return JSON.parse(JSON.stringify(deyer));
 }
 
@@ -53,6 +57,98 @@ function missiyaHadisesiVar(state, hadiseId) {
   const counters = state && state.missions && state.missions.eventCounters;
   const say = counters ? Number(counters[hadiseId]) : 0;
   return Number.isFinite(say) && say > 0;
+}
+
+function saheniYedekle(state, acar) {
+  return {
+    varIdi: Object.prototype.hasOwnProperty.call(state, acar),
+    deyer: kopyala(state[acar])
+  };
+}
+
+function saheniBerpaEt(state, acar, yedek) {
+  if (yedek && yedek.varIdi) state[acar] = kopyala(yedek.deyer);
+  else delete state[acar];
+}
+
+function tutorialDoyusYedeyiniAl(state) {
+  return {
+    doyus: saheniYedekle(state, "doyus"),
+    resources: saheniYedekle(state, "resources")
+  };
+}
+
+function tutorialDoyusYedeyiniBerpaEt(state, yedek) {
+  if (!state || !yedek) return;
+  saheniBerpaEt(state, "doyus", yedek.doyus);
+  saheniBerpaEt(state, "resources", yedek.resources);
+}
+
+function tutorialDoyusImzasi(state) {
+  return JSON.stringify({
+    doyus: state && state.doyus,
+    resources: state && state.resources
+  });
+}
+
+function doyusReadStateKopyasi(state) {
+  return kopyala(state) || {};
+}
+
+function tutorialDoyusMutasiyasiniTetbiqEt(
+  state,
+  type,
+  nowMs = Date.now()
+) {
+  const yedek = tutorialDoyusYedeyiniAl(state);
+  const evvelkiImza = tutorialDoyusImzasi(state);
+  let netice;
+
+  try {
+    if (type === "battle_start_request") {
+      netice = tutorialDoyusunaBasla(state, nowMs);
+    }
+    else if (type === "battle_resolve_request") {
+      netice = tutorialDoyusunuNeticelendir(state, nowMs);
+    }
+    else if (type === "battle_reward_claim_request") {
+      netice = tutorialDoyusMukafatiniAl(state);
+    }
+    else {
+      return {
+        success: false,
+        deyisdi: false,
+        message: "Naməlum tutorial döyüş mutation sorğusu."
+      };
+    }
+  }
+  catch (xeta) {
+    tutorialDoyusYedeyiniBerpaEt(state, yedek);
+    return {
+      success: false,
+      deyisdi: false,
+      message: "Döyüş nəticəsi hesablana bilmədi.",
+      daxiliXeta: xeta && xeta.message ? xeta.message : String(xeta)
+    };
+  }
+
+  if (!netice || netice.success !== true) {
+    tutorialDoyusYedeyiniBerpaEt(state, yedek);
+    return {
+      success: false,
+      deyisdi: false,
+      netice: netice && typeof netice === "object" ? kopyala(netice) : null,
+      message: netice && netice.message
+        ? netice.message
+        : "Döyüş əməliyyatı mümkün deyil."
+    };
+  }
+
+  return {
+    success: true,
+    deyisdi: evvelkiImza !== tutorialDoyusImzasi(state),
+    netice: kopyala(netice)
+  };
 }
 
 async function doyusMesajiniEmalEt(kontekst) {
@@ -94,7 +190,10 @@ async function doyusMesajiniEmalEt(kontekst) {
         resolveMissionStatus,
         rewardMissionId: "M019",
         rewardMissionStatus,
-        info: doyusMelumatiniHazirla(state, kontekst.nowMs())
+        info: doyusMelumatiniHazirla(
+          doyusReadStateKopyasi(state),
+          kontekst.nowMs()
+        )
       });
       return true;
     }
@@ -132,49 +231,64 @@ async function doyusMesajiniEmalEt(kontekst) {
       return true;
     }
 
-    const evvelkiDoyus = kopyala(state.doyus || {});
-    const evvelkiResurslar = kopyala(state.resources || {});
-
-    let netice;
     let missionId;
     let missionStatus;
 
     if (type === "battle_start_request") {
-      netice = tutorialDoyusunaBasla(state, kontekst.nowMs());
       missionId = "M017";
       missionStatus = startMissionStatus;
     }
     else if (type === "battle_resolve_request") {
-      netice = tutorialDoyusunuNeticelendir(state, kontekst.nowMs());
       missionId = "M018";
       missionStatus = resolveMissionStatus;
     }
     else {
-      netice = tutorialDoyusMukafatiniAl(state);
       missionId = "M019";
       missionStatus = rewardMissionStatus;
     }
 
-    if (!netice.success) {
+    const mutasiyaNeticesi = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
+      playerId,
+      state,
+      async kilidliState => {
+        return tutorialDoyusMutasiyasiniTetbiqEt(
+          kilidliState,
+          type,
+          kontekst.nowMs()
+        );
+      }
+    );
+
+    if (mutasiyaNeticesi && mutasiyaNeticesi.daxiliXeta) {
+      console.error("[DOYUS] Mutation hesablanma xətası:", {
+        playerId,
+        message: mutasiyaNeticesi.daxiliXeta
+      });
+    }
+
+    if (!mutasiyaNeticesi || mutasiyaNeticesi.success !== true) {
+      const netice = mutasiyaNeticesi && mutasiyaNeticesi.netice
+        ? mutasiyaNeticesi.netice
+        : {};
+
       gonder(kontekst, resultType, {
         success: false,
         playerId,
         missionId,
         missionStatus,
         ...netice,
-        info: doyusMelumatiniHazirla(state, kontekst.nowMs())
+        message: mutasiyaNeticesi && mutasiyaNeticesi.message
+          ? mutasiyaNeticesi.message
+          : (netice.message || "Döyüş əməliyyatı mümkün deyil."),
+        info: doyusMelumatiniHazirla(
+          doyusReadStateKopyasi(state),
+          kontekst.nowMs()
+        )
       });
       return true;
     }
 
-    try {
-      await oyunStateIniYaddaSaxla(playerId, state);
-    }
-    catch (xeta) {
-      state.doyus = evvelkiDoyus;
-      state.resources = evvelkiResurslar;
-      throw xeta;
-    }
+    const netice = mutasiyaNeticesi.netice || {};
 
     if (type === "battle_start_request" && !missiyaHadisesiVar(state, "doyus_basladildi")) {
       await missiyaServerHadisesiniQeydEt(playerId, state, "doyus_basladildi", 1);
@@ -193,7 +307,10 @@ async function doyusMesajiniEmalEt(kontekst) {
       playerId,
       missionId,
       ...netice,
-      info: doyusMelumatiniHazirla(state, kontekst.nowMs())
+      info: doyusMelumatiniHazirla(
+        doyusReadStateKopyasi(state),
+        kontekst.nowMs()
+      )
     });
   }
   catch (xeta) {
@@ -210,5 +327,6 @@ async function doyusMesajiniEmalEt(kontekst) {
 
 module.exports = {
   DOYUS_MESAJLARI,
+  tutorialDoyusMutasiyasiniTetbiqEt,
   doyusMesajiniEmalEt
 };
