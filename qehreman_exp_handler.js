@@ -9,9 +9,11 @@ const {
 } = require("./server_sorqu_idempotentliyi");
 const {
   oyunStateIniBerpaEt,
-  oyunStateIniYaddaSaxla,
   oyuncuStateBerpaOlunub
 } = require("./oyun_state_daimilik_korpu");
+const {
+  oyuncuStateMutasiyasiniPostgresIleIcraEt
+} = require("./oyun_state_mutasiya_postgres");
 
 const oyuncuKilidleri = new Map();
 
@@ -25,6 +27,8 @@ function tamEded(deyer) {
 }
 
 function kopyala(deyer) {
+  if (deyer === undefined) return undefined;
+  if (deyer === null) return null;
   return JSON.parse(JSON.stringify(deyer));
 }
 
@@ -127,6 +131,176 @@ function skillMissiyaHadisesiVar(state) {
   return Number.isFinite(say) && say > 0;
 }
 
+function progressYedeyiniAl(state) {
+  return {
+    heroesVarIdi: Object.prototype.hasOwnProperty.call(state, "heroes"),
+    heroes: kopyala(state.heroes),
+    heroRecruitVarIdi: Object.prototype.hasOwnProperty.call(state, "heroRecruit"),
+    heroRecruit: kopyala(state.heroRecruit),
+    idempotentlikVarIdi: Object.prototype.hasOwnProperty.call(
+      state,
+      "serverSorquIdempotentliyi"
+    ),
+    serverSorquIdempotentliyi: kopyala(state.serverSorquIdempotentliyi),
+    serverTimeVarIdi: Object.prototype.hasOwnProperty.call(state, "serverTimeUnixMs"),
+    serverTimeUnixMs: state.serverTimeUnixMs
+  };
+}
+
+function progressYedeyiniBerpaEt(state, yedek) {
+  if (!state || !yedek) return;
+
+  if (yedek.heroesVarIdi) state.heroes = kopyala(yedek.heroes);
+  else delete state.heroes;
+
+  if (yedek.heroRecruitVarIdi) state.heroRecruit = kopyala(yedek.heroRecruit);
+  else delete state.heroRecruit;
+
+  if (yedek.idempotentlikVarIdi) {
+    state.serverSorquIdempotentliyi = kopyala(yedek.serverSorquIdempotentliyi);
+  }
+  else {
+    delete state.serverSorquIdempotentliyi;
+  }
+
+  if (yedek.serverTimeVarIdi) state.serverTimeUnixMs = yedek.serverTimeUnixMs;
+  else delete state.serverTimeUnixMs;
+}
+
+function qehremanProgressMutasiyasiniTetbiqEt(
+  state,
+  type,
+  msg,
+  nowMs = Date.now(),
+  asililiqlar = null
+) {
+  const expSorqusudur = type === "hero_exp_item_use_request";
+  const skillSorqusudur = type === "hero_tutorial_skill_upgrade_request";
+
+  if (!expSorqusudur && !skillSorqusudur) {
+    return {
+      success: false,
+      deyisdi: false,
+      message: "Naməlum qəhrəman inkişaf sorğusu."
+    };
+  }
+
+  const heroId = metnAl(msg && msg.heroId, 128).toLowerCase();
+  const rewardId = metnAl(msg && msg.rewardId, 128).toLowerCase();
+  const count = Math.max(1, Math.trunc(Number(msg && msg.count) || 1));
+  const requestId = expSorqusudur
+    ? requestIdAl(msg && msg.requestId)
+    : "";
+  const requestPayload = expSorqusudur
+    ? { heroId, rewardId, count }
+    : null;
+
+  if (expSorqusudur) {
+    const tekrar = tekrarNeticesiniTap(
+      state,
+      "qehreman_exp_item_istifadesi",
+      requestId,
+      requestPayload
+    );
+
+    if (tekrar.conflict) {
+      return {
+        success: false,
+        deyisdi: false,
+        requestId,
+        idempotentReplay: false,
+        message: tekrar.message || "requestId ziddiyyəti yarandı."
+      };
+    }
+
+    if (tekrar.replay) {
+      const replayNetice = tekrar.result && typeof tekrar.result === "object"
+        ? kopyala(tekrar.result)
+        : {};
+
+      return {
+        success: true,
+        deyisdi: false,
+        requestId,
+        idempotentReplay: true,
+        netice: replayNetice,
+        missionHadisesiLazimdir: false
+      };
+    }
+  }
+
+  const yedek = progressYedeyiniAl(state);
+  const expIcraEt = asililiqlar && typeof asililiqlar.expItemIstifadeEt === "function"
+    ? asililiqlar.expItemIstifadeEt
+    : expItemIstifadeEt;
+  const skillIcraEt = asililiqlar && typeof asililiqlar.tutorialSkilliniArtir === "function"
+    ? asililiqlar.tutorialSkilliniArtir
+    : tutorialSkilliniArtir;
+
+  let netice;
+  try {
+    netice = skillSorqusudur
+      ? skillIcraEt(state, heroId)
+      : expIcraEt(state, heroId, rewardId, count, nowMs);
+  }
+  catch (xeta) {
+    progressYedeyiniBerpaEt(state, yedek);
+    return {
+      success: false,
+      deyisdi: false,
+      requestId,
+      idempotentReplay: false,
+      message: "Qəhrəman inkişaf nəticəsi hesablana bilmədi.",
+      daxiliXeta: xeta && xeta.message ? xeta.message : String(xeta)
+    };
+  }
+
+  if (!netice || netice.success !== true) {
+    progressYedeyiniBerpaEt(state, yedek);
+    return {
+      success: false,
+      deyisdi: false,
+      requestId,
+      idempotentReplay: false,
+      message: netice && netice.message
+        ? netice.message
+        : "Qəhrəman inkişaf əməliyyatı mümkün deyil."
+    };
+  }
+
+  const serverVaxtiniYenile = asililiqlar && typeof asililiqlar.updateServerTime === "function"
+    ? asililiqlar.updateServerTime
+    : null;
+
+  if (serverVaxtiniYenile) {
+    serverVaxtiniYenile(state);
+  }
+  else {
+    state.serverTimeUnixMs = Number(nowMs) || Date.now();
+  }
+
+  if (expSorqusudur) {
+    ugurluNeticeniQeydEt(
+      state,
+      "qehreman_exp_item_istifadesi",
+      requestId,
+      requestPayload,
+      netice,
+      nowMs
+    );
+  }
+
+  return {
+    success: true,
+    deyisdi: true,
+    requestId,
+    idempotentReplay: false,
+    netice: kopyala(netice),
+    missionHadisesiLazimdir:
+      skillSorqusudur && !skillMissiyaHadisesiVar(state)
+  };
+}
+
 async function qehremanExpMesajiniEmalEt(kontekst) {
   const type = kontekst && kontekst.type;
   const expSorqusudur = type === "hero_exp_item_use_request";
@@ -155,111 +329,60 @@ async function qehremanExpMesajiniEmalEt(kontekst) {
     }
 
     await oyuncuKilidiIleIcraEt(playerId, async () => {
-      const state = kontekst.getOrCreatePlayerState(playerId);
-      const heroId = metnAl(kontekst.msg && kontekst.msg.heroId, 128).toLowerCase();
-      const rewardId = metnAl(kontekst.msg && kontekst.msg.rewardId, 128).toLowerCase();
-      const count = Math.max(1, Math.trunc(Number(kontekst.msg && kontekst.msg.count) || 1));
-      const requestId = expSorqusudur
-        ? requestIdAl(kontekst.msg && kontekst.msg.requestId)
-        : "";
-      const requestPayload = expSorqusudur
-        ? { heroId, rewardId, count }
-        : null;
+      const canliState = kontekst.getOrCreatePlayerState(playerId);
+      const now = kontekst.nowMs();
 
-      if (expSorqusudur) {
-        const tekrar = tekrarNeticesiniTap(
-          state,
-          "qehreman_exp_item_istifadesi",
-          requestId,
-          requestPayload
-        );
-
-        if (tekrar.conflict) {
-          kontekst.send(kontekst.ws, {
-            type: resultType,
-            success: false,
-            playerId,
-            requestId,
-            idempotentReplay: false,
-            message: tekrar.message || "requestId ziddiyyəti yarandı.",
-            serverTimeUnixMs: kontekst.nowMs()
-          });
-          return;
-        }
-
-        if (tekrar.replay) {
-          const replayNetice = tekrar.result && typeof tekrar.result === "object"
-            ? tekrar.result
-            : {};
-          kontekst.send(kontekst.ws, {
-            type: resultType,
-            success: true,
-            playerId,
-            requestId,
-            idempotentReplay: true,
-            ...replayNetice,
-            serverTimeUnixMs: kontekst.nowMs()
-          });
-          return;
-        }
-      }
-
-      const kohneHeroes = kopyala(state.heroes || []);
-      const kohneRecruit = kopyala(state.heroRecruit || {});
-      const kohneIdempotentlik = kopyala(state.serverSorquIdempotentliyi || null);
-
-      const netice = skillSorqusudur
-        ? tutorialSkilliniArtir(state, heroId)
-        : expItemIstifadeEt(
-            state,
-            heroId,
-            rewardId,
-            count,
-            kontekst.nowMs()
+      const mutasiyaNeticesi = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
+        playerId,
+        canliState,
+        async kilidliState => {
+          return qehremanProgressMutasiyasiniTetbiqEt(
+            kilidliState,
+            type,
+            kontekst.msg,
+            now,
+            {
+              updateServerTime: typeof kontekst.updateServerTime === "function"
+                ? kontekst.updateServerTime
+                : null
+            }
           );
+        }
+      );
 
-      if (!netice.success) {
+      if (!mutasiyaNeticesi || mutasiyaNeticesi.success !== true) {
+        if (mutasiyaNeticesi && mutasiyaNeticesi.daxiliXeta) {
+          console.error("[QEHRAMAN_PROGRESS] Hesablama xətası:", {
+            playerId,
+            message: mutasiyaNeticesi.daxiliXeta
+          });
+        }
+
         kontekst.send(kontekst.ws, {
           type: resultType,
           success: false,
           playerId,
-          requestId,
+          requestId: mutasiyaNeticesi && mutasiyaNeticesi.requestId
+            ? mutasiyaNeticesi.requestId
+            : (expSorqusudur
+                ? requestIdAl(kontekst.msg && kontekst.msg.requestId)
+                : ""),
           idempotentReplay: false,
-          message: netice.message,
+          message: mutasiyaNeticesi && mutasiyaNeticesi.message
+            ? mutasiyaNeticesi.message
+            : "Qəhrəman inkişaf əməliyyatı mümkün deyil.",
           serverTimeUnixMs: kontekst.nowMs()
         });
         return;
       }
 
-      if (typeof kontekst.updateServerTime === "function") {
-        kontekst.updateServerTime(state);
-      }
-
-      if (expSorqusudur) {
-        ugurluNeticeniQeydEt(
-          state,
-          "qehreman_exp_item_istifadesi",
-          requestId,
-          requestPayload,
-          netice,
-          kontekst.nowMs()
-        );
-      }
-
-      try {
-        await oyunStateIniYaddaSaxla(playerId, state);
-      }
-      catch (xeta) {
-        state.heroes = kohneHeroes;
-        state.heroRecruit = kohneRecruit;
-        state.serverSorquIdempotentliyi = kohneIdempotentlik;
-        throw xeta;
-      }
-
-      if (skillSorqusudur && !skillMissiyaHadisesiVar(state)) {
+      if (
+        mutasiyaNeticesi.missionHadisesiLazimdir === true &&
+        !skillMissiyaHadisesiVar(canliState)
+      ) {
         await missiyaServerHadisesiniQeydEt(
           playerId,
-          state,
+          canliState,
           "qehreman_bacarigi_artdi",
           1
         );
@@ -269,9 +392,9 @@ async function qehremanExpMesajiniEmalEt(kontekst) {
         type: resultType,
         success: true,
         playerId,
-        requestId,
-        idempotentReplay: false,
-        ...netice,
+        requestId: mutasiyaNeticesi.requestId || "",
+        idempotentReplay: mutasiyaNeticesi.idempotentReplay === true,
+        ...(mutasiyaNeticesi.netice || {}),
         serverTimeUnixMs: kontekst.nowMs()
       });
     });
@@ -292,4 +415,7 @@ async function qehremanExpMesajiniEmalEt(kontekst) {
   return true;
 }
 
-module.exports = { qehremanExpMesajiniEmalEt };
+module.exports = {
+  qehremanProgressMutasiyasiniTetbiqEt,
+  qehremanExpMesajiniEmalEt
+};
