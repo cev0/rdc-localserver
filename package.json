@@ -108,6 +108,7 @@
     "konvoy:runtime-client-sync-test": "node dovlet_konvoy_runtime_client_sync_testi.js",
     "konvoy:operation-pg-mutation-test": "node konvoy_emeliyyat_pg_mutasiya_testi.js",
     "qosun:telim-pg-test": "node qosun_telimi_pg_mutasiya_testi.js",
+    "state:multi-player-lock-test": "node oyun_state_cox_oyuncu_kilidi_testi.js",
     "start": "node server_missiya_genisletme.js"
   },
   "repository": {
