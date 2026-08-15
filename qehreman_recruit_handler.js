@@ -33,9 +33,9 @@ function metnAl(deyer, maksimum = 128) {
 }
 
 function derinKopyala(deyer) {
-  return deyer == null
-    ? null
-    : JSON.parse(JSON.stringify(deyer));
+  if (deyer === undefined) return undefined;
+  if (deyer === null) return null;
+  return JSON.parse(JSON.stringify(deyer));
 }
 
 function sabitJson(deyer) {
