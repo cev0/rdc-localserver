@@ -81,7 +81,14 @@ function kesfiyyatReadStateKopyasi(state) {
 
 function m015StatusunuAl(state) {
   const m015 = missiyaniTap("M015");
-  return m015 ? missiyaStatusunuAl(state, m015) : "kilidli";
+  if (!m015) return "kilidli";
+
+  // missiyaStatusunuAl() daxilində missiya state normalizasiyası var.
+  // Status yoxlaması authoritative player state-i dəyişməsin deyə clone istifadə olunur.
+  return missiyaStatusunuAl(
+    kesfiyyatReadStateKopyasi(state),
+    m015
+  );
 }
 
 function kesfiyyatMutasiyasiniTetbiqEt(
