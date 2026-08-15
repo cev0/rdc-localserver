@@ -110,6 +110,7 @@
     "qosun:telim-pg-test": "node qosun_telimi_pg_mutasiya_testi.js",
     "state:multi-player-lock-test": "node oyun_state_cox_oyuncu_kilidi_testi.js",
     "state:two-player-transaction-test": "node iki_oyuncu_state_mutasiya_postgres_testi.js",
+    "qehreman:recruit-pg-test": "node qehreman_recruit_pg_mutasiya_testi.js",
     "start": "node server_missiya_genisletme.js"
   },
   "repository": {
