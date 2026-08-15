@@ -113,6 +113,7 @@
     "qehreman:recruit-pg-test": "node qehreman_recruit_pg_mutasiya_testi.js",
     "qehreman:exp-pg-test": "node qehreman_exp_pg_mutasiya_testi.js",
     "qehreman:assignment-pg-test": "node qehreman_tapshiriq_pg_mutasiya_testi.js",
+    "xerite:toplama-pg-test": "node xerite_resurs_toplama_pg_mutasiya_testi.js",
     "start": "node server_missiya_genisletme.js"
   },
   "repository": {
