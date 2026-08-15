@@ -6,7 +6,7 @@ const {
   emeliyyatMelumatiniHazirla
 } = require("./konvoy_emeliyyat_sistemi");
 const {
-  oyuncuKonvoylariniSinxronEt
+  oyuncuKonvoylariniSinxronEtClient
 } = require("./dovlet_konvoy_runtime_postgres");
 const {
   requestIdAl,
@@ -15,9 +15,11 @@ const {
 } = require("./server_sorqu_idempotentliyi");
 const {
   oyunStateIniBerpaEt,
-  oyunStateIniYaddaSaxla,
   oyuncuStateBerpaOlunub
 } = require("./oyun_state_daimilik_korpu");
+const {
+  oyuncuStateMutasiyasiniPostgresIleIcraEt
+} = require("./oyun_state_mutasiya_postgres");
 
 const MESAJLAR = new Set([
   "convoy_operation_info_request",
@@ -70,21 +72,39 @@ function dovletIdAl(state) {
   );
 }
 
-async function sharedKonvoylariSinxronEtTehlukesiz(state, playerId, nowMs) {
-  try {
-    const active = state && state.konvoyEmeliyyatlari && state.konvoyEmeliyyatlari.activeByConvoy;
-    await oyuncuKonvoylariniSinxronEt(
-      dovletIdAl(state),
-      playerId,
-      active && typeof active === "object" ? active : {},
-      nowMs
+function aktivEmeliyyatlariAl(state) {
+  const active = state &&
+    state.konvoyEmeliyyatlari &&
+    state.konvoyEmeliyyatlari.activeByConvoy;
+
+  return active && typeof active === "object" && !Array.isArray(active)
+    ? active
+    : {};
+}
+
+async function sharedKonvoylariTransactiondaSinxronEt(
+  client,
+  state,
+  playerId,
+  nowMs
+) {
+  const netice = await oyuncuKonvoylariniSinxronEtClient(
+    client,
+    dovletIdAl(state),
+    playerId,
+    aktivEmeliyyatlariAl(state),
+    nowMs
+  );
+
+  if (!netice || netice.success !== true) {
+    throw new Error(
+      netice && netice.message
+        ? netice.message
+        : "Shared convoy runtime transaction daxilində sinxron edilə bilmədi."
     );
-    return true;
   }
-  catch (xeta) {
-    console.error("[KONVOY_SHARED_RUNTIME_SYNC]", xeta);
-    return false;
-  }
+
+  return netice;
 }
 
 function stateYedeyiniAl(state) {
@@ -102,25 +122,17 @@ function stateYedeyiniAl(state) {
 }
 
 function stateRollbackEt(state, evvelki) {
-  state.konvoyEmeliyyatlari = evvelki.konvoyEmeliyyatlari;
-  state.xeriteToplama = evvelki.xeriteToplama;
-  state.worldEnemyBattle = evvelki.worldEnemyBattle;
-  state.doyusRaportlari = evvelki.doyusRaportlari;
-  state.resources = evvelki.resources;
-  state.army = evvelki.army;
-  state.konvoylar = evvelki.konvoylar;
-  state.xestexana = evvelki.xestexana;
-  state.serverSorquIdempotentliyi = evvelki.serverSorquIdempotentliyi;
-}
-
-async function stateYaddaSaxlaVeYaRollbackEt(playerId, state, evvelki) {
-  try {
-    await oyunStateIniYaddaSaxla(playerId, state);
-  }
-  catch (xeta) {
-    stateRollbackEt(state, evvelki);
-    throw xeta;
-  }
+  state.konvoyEmeliyyatlari = kopyala(evvelki && evvelki.konvoyEmeliyyatlari);
+  state.xeriteToplama = kopyala(evvelki && evvelki.xeriteToplama);
+  state.worldEnemyBattle = kopyala(evvelki && evvelki.worldEnemyBattle);
+  state.doyusRaportlari = kopyala(evvelki && evvelki.doyusRaportlari);
+  state.resources = kopyala(evvelki && evvelki.resources);
+  state.army = kopyala(evvelki && evvelki.army);
+  state.konvoylar = kopyala(evvelki && evvelki.konvoylar);
+  state.xestexana = kopyala(evvelki && evvelki.xestexana);
+  state.serverSorquIdempotentliyi = kopyala(
+    evvelki && evvelki.serverSorquIdempotentliyi
+  );
 }
 
 function startPayloadiniAl(msg) {
@@ -128,6 +140,161 @@ function startPayloadiniAl(msg) {
     convoyId: metnAl(msg && msg.convoyId, 64),
     targetType: metnAl(msg && msg.targetType, 32),
     targetId: metnAl(msg && msg.targetId, 128)
+  };
+}
+
+async function konvoyEmeliyyatMutasiyasiniTetbiqEt(
+  state,
+  playerId,
+  type,
+  msg,
+  nowMs,
+  client
+) {
+  const yenileme = await emeliyyatlariYenile(state, playerId, nowMs);
+  const yenilemeDeyisdi = !!(yenileme && yenileme.changed === true);
+
+  if (type === "convoy_operation_info_request") {
+    await sharedKonvoylariTransactiondaSinxronEt(
+      client,
+      state,
+      playerId,
+      nowMs
+    );
+
+    const info = emeliyyatMelumatiniHazirla(state, nowMs);
+    return {
+      success: true,
+      deyisdi: yenilemeDeyisdi,
+      info,
+      payloadJson: JSON.stringify(info)
+    };
+  }
+
+  const requestId = requestIdAl(msg && msg.requestId);
+  const requestPayload = startPayloadiniAl(msg);
+  const tekrar = tekrarNeticesiniTap(
+    state,
+    "konvoy_emeliyyat_baslat",
+    requestId,
+    requestPayload
+  );
+
+  if (tekrar.conflict) {
+    if (yenilemeDeyisdi) {
+      await sharedKonvoylariTransactiondaSinxronEt(
+        client,
+        state,
+        playerId,
+        nowMs
+      );
+    }
+
+    return {
+      success: false,
+      deyisdi: yenilemeDeyisdi,
+      requestId,
+      idempotentReplay: false,
+      message: tekrar.message || "requestId ziddiyyəti yarandı.",
+      info: emeliyyatMelumatiniHazirla(state, nowMs)
+    };
+  }
+
+  if (tekrar.replay) {
+    await sharedKonvoylariTransactiondaSinxronEt(
+      client,
+      state,
+      playerId,
+      nowMs
+    );
+
+    const replay = tekrar.result && typeof tekrar.result === "object"
+      ? kopyala(tekrar.result)
+      : {};
+
+    return {
+      success: true,
+      deyisdi: yenilemeDeyisdi,
+      requestId,
+      idempotentReplay: true,
+      operation: replay.operation || null,
+      info: replay.info || emeliyyatMelumatiniHazirla(state, nowMs),
+      payloadJson: JSON.stringify(replay)
+    };
+  }
+
+  // `emeliyyatiBaslat()` stateTeminEt() vasitəsilə validation-dan əvvəl
+  // default konvoy əməliyyat state-i yarada bilər. Uğursuz start cəhdi
+  // time-based `emeliyyatlariYenile()` nəticələrini silməməlidir, ona görə
+  // backup məhz yeniləmədən və idempotency yoxlamasından SONRA götürülür.
+  const startdanEvvel = stateYedeyiniAl(state);
+
+  const result = emeliyyatiBaslat(
+    state,
+    playerId,
+    requestPayload.convoyId,
+    requestPayload.targetType,
+    requestPayload.targetId,
+    nowMs
+  );
+
+  if (!result || result.success !== true) {
+    stateRollbackEt(state, startdanEvvel);
+
+    if (yenilemeDeyisdi) {
+      await sharedKonvoylariTransactiondaSinxronEt(
+        client,
+        state,
+        playerId,
+        nowMs
+      );
+    }
+
+    return {
+      success: false,
+      deyisdi: yenilemeDeyisdi,
+      requestId,
+      idempotentReplay: false,
+      message: result && result.message
+        ? result.message
+        : "Konvoy əməliyyatı başlaya bilmədi.",
+      movementConfigured: result && result.movementConfigured === false
+        ? false
+        : undefined,
+      info: emeliyyatMelumatiniHazirla(state, nowMs)
+    };
+  }
+
+  const info = emeliyyatMelumatiniHazirla(state, nowMs);
+  const cavab = {
+    operation: kopyala(result.operation),
+    info: kopyala(info)
+  };
+
+  ugurluNeticeniQeydEt(
+    state,
+    "konvoy_emeliyyat_baslat",
+    requestId,
+    requestPayload,
+    cavab,
+    nowMs
+  );
+
+  await sharedKonvoylariTransactiondaSinxronEt(
+    client,
+    state,
+    playerId,
+    nowMs
+  );
+
+  return {
+    success: true,
+    deyisdi: true,
+    requestId,
+    idempotentReplay: false,
+    operation: cavab.operation,
+    info: cavab.info,
+    payloadJson: JSON.stringify(cavab)
   };
 }
 
@@ -155,122 +322,72 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
     }
 
     await oyuncuKilidiIleIcraEt(playerId, async () => {
-      const state = kontekst.getOrCreatePlayerState(playerId);
+      const canliState = kontekst.getOrCreatePlayerState(playerId);
       const nowMs = kontekst.nowMs();
-      const evvelki = stateYedeyiniAl(state);
-      const yenileme = await emeliyyatlariYenile(state, playerId, nowMs);
+
+      const netice = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
+        playerId,
+        canliState,
+        async (kilidliState, transaction) => {
+          return konvoyEmeliyyatMutasiyasiniTetbiqEt(
+            kilidliState,
+            playerId,
+            type,
+            kontekst.msg,
+            nowMs,
+            transaction && transaction.client
+          );
+        }
+      );
 
       if (type === "convoy_operation_info_request") {
-        if (yenileme.changed) {
-          await stateYaddaSaxlaVeYaRollbackEt(playerId, state, evvelki);
-        }
+        const info = netice && netice.info
+          ? netice.info
+          : emeliyyatMelumatiniHazirla(canliState, nowMs);
 
-        await sharedKonvoylariSinxronEtTehlukesiz(state, playerId, nowMs);
-        const info = emeliyyatMelumatiniHazirla(state, nowMs);
         gonder(kontekst, resultType, {
           success: true,
           playerId,
           info,
-          payloadJson: JSON.stringify(info)
+          payloadJson: netice && netice.payloadJson
+            ? netice.payloadJson
+            : JSON.stringify(info)
         });
         return;
       }
 
-      const requestId = requestIdAl(kontekst.msg && kontekst.msg.requestId);
-      const requestPayload = startPayloadiniAl(kontekst.msg);
-      const tekrar = tekrarNeticesiniTap(
-        state,
-        "konvoy_emeliyyat_baslat",
-        requestId,
-        requestPayload
-      );
-
-      if (tekrar.conflict) {
-        if (yenileme.changed) {
-          await stateYaddaSaxlaVeYaRollbackEt(playerId, state, evvelki);
-        }
+      if (!netice || netice.success !== true) {
         gonder(kontekst, resultType, {
           success: false,
           playerId,
-          requestId,
+          requestId: netice && netice.requestId
+            ? netice.requestId
+            : requestIdAl(kontekst.msg && kontekst.msg.requestId),
           idempotentReplay: false,
-          message: tekrar.message || "requestId ziddiyyəti yarandı.",
-          info: emeliyyatMelumatiniHazirla(state, nowMs)
+          message: netice && netice.message
+            ? netice.message
+            : "Konvoy əməliyyatı başlaya bilmədi.",
+          movementConfigured: netice && netice.movementConfigured === false
+            ? false
+            : undefined,
+          info: netice && netice.info
+            ? netice.info
+            : emeliyyatMelumatiniHazirla(canliState, nowMs)
         });
         return;
       }
-
-      if (tekrar.replay) {
-        if (yenileme.changed) {
-          await stateYaddaSaxlaVeYaRollbackEt(playerId, state, evvelki);
-        }
-        await sharedKonvoylariSinxronEtTehlukesiz(state, playerId, nowMs);
-        const replay = tekrar.result && typeof tekrar.result === "object"
-          ? tekrar.result
-          : {};
-        gonder(kontekst, resultType, {
-          success: true,
-          playerId,
-          requestId,
-          idempotentReplay: true,
-          operation: replay.operation || null,
-          info: replay.info || emeliyyatMelumatiniHazirla(state, nowMs),
-          payloadJson: JSON.stringify(replay)
-        });
-        return;
-      }
-
-      const result = emeliyyatiBaslat(
-        state,
-        playerId,
-        requestPayload.convoyId,
-        requestPayload.targetType,
-        requestPayload.targetId,
-        nowMs
-      );
-
-      if (!result || result.success !== true) {
-        if (yenileme.changed) {
-          await stateYaddaSaxlaVeYaRollbackEt(playerId, state, evvelki);
-        }
-        gonder(kontekst, resultType, {
-          success: false,
-          playerId,
-          requestId,
-          idempotentReplay: false,
-          message: result && result.message ? result.message : "Konvoy əməliyyatı başlaya bilmədi.",
-          movementConfigured: result && result.movementConfigured === false ? false : undefined,
-          info: emeliyyatMelumatiniHazirla(state, nowMs)
-        });
-        return;
-      }
-
-      const info = emeliyyatMelumatiniHazirla(state, nowMs);
-      const cavab = {
-        operation: kopyala(result.operation),
-        info: kopyala(info)
-      };
-
-      ugurluNeticeniQeydEt(
-        state,
-        "konvoy_emeliyyat_baslat",
-        requestId,
-        requestPayload,
-        cavab,
-        nowMs
-      );
-
-      await stateYaddaSaxlaVeYaRollbackEt(playerId, state, evvelki);
-      await sharedKonvoylariSinxronEtTehlukesiz(state, playerId, nowMs);
 
       gonder(kontekst, resultType, {
         success: true,
         playerId,
-        requestId,
-        idempotentReplay: false,
-        operation: cavab.operation,
-        info: cavab.info,
-        payloadJson: JSON.stringify(cavab)
+        requestId: netice.requestId || "",
+        idempotentReplay: netice.idempotentReplay === true,
+        operation: netice.operation || null,
+        info: netice.info || emeliyyatMelumatiniHazirla(canliState, nowMs),
+        payloadJson: netice.payloadJson || JSON.stringify({
+          operation: netice.operation || null,
+          info: netice.info || emeliyyatMelumatiniHazirla(canliState, nowMs)
+        })
       });
     });
   }
@@ -290,5 +407,7 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
 
 module.exports = {
   MESAJLAR,
+  startPayloadiniAl,
+  konvoyEmeliyyatMutasiyasiniTetbiqEt,
   konvoyEmeliyyatMesajiniEmalEt
 };
