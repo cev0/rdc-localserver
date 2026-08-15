@@ -13,9 +13,11 @@ const {
 } = require("./doyus_raport_mukafat_sistemi");
 const {
   oyunStateIniBerpaEt,
-  oyunStateIniYaddaSaxla,
   oyuncuStateBerpaOlunub
 } = require("./oyun_state_daimilik_korpu");
+const {
+  oyuncuStateMutasiyasiniPostgresIleIcraEt
+} = require("./oyun_state_mutasiya_postgres");
 
 const MESAJLAR = new Set([
   "battle_report_list_request",
@@ -40,7 +42,131 @@ function gonder(k, type, data) {
 }
 
 function kopyala(v) {
-  return v == null ? null : JSON.parse(JSON.stringify(v));
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  return JSON.parse(JSON.stringify(v));
+}
+
+function saheniYedekle(state, acar) {
+  return {
+    varIdi: Object.prototype.hasOwnProperty.call(state, acar),
+    deyer: kopyala(state[acar])
+  };
+}
+
+function saheniBerpaEt(state, acar, yedek) {
+  if (yedek && yedek.varIdi) {
+    state[acar] = kopyala(yedek.deyer);
+  }
+  else {
+    delete state[acar];
+  }
+}
+
+function raportMutasiyaYedeyiniAl(state) {
+  return {
+    doyusRaportlari: saheniYedekle(state, "doyusRaportlari"),
+    resources: saheniYedekle(state, "resources")
+  };
+}
+
+function raportMutasiyaYedeyiniBerpaEt(state, yedek) {
+  if (!state || !yedek) return;
+  saheniBerpaEt(state, "doyusRaportlari", yedek.doyusRaportlari);
+  saheniBerpaEt(state, "resources", yedek.resources);
+}
+
+function raportMutasiyaImzasi(state) {
+  return JSON.stringify({
+    doyusRaportlari: state && state.doyusRaportlari,
+    resources: state && state.resources
+  });
+}
+
+function readStateKopyasi(state) {
+  return kopyala(state) || {};
+}
+
+function raportReadNeticesiniHazirla(state, reportId) {
+  const readState = readStateKopyasi(state);
+  const items = raportSiyahisiniHazirla(readState);
+
+  return {
+    items,
+    report: reportId ? raportDetaliHazirla(readState, reportId) : null,
+    unreadCount: items.filter(x => x && x.isRead !== true).length,
+    pendingRewardCount: items.filter(
+      x => x && x.resourceRewardClaimPending === true
+    ).length
+  };
+}
+
+function doyusRaportMutasiyasiniTetbiqEt(
+  state,
+  type,
+  msg,
+  nowMs = Date.now()
+) {
+  const reportId = metnAl(msg && msg.reportId, 220);
+  const yedek = raportMutasiyaYedeyiniAl(state);
+  const evvelkiImza = raportMutasiyaImzasi(state);
+  let result;
+
+  try {
+    if (type === "battle_report_claim_reward_request") {
+      result = raportResursMukafatiniAl(state, reportId, nowMs);
+    }
+    else if (type === "battle_report_mark_read_request") {
+      result = raportuOxunmusEt(state, reportId, nowMs);
+    }
+    else if (type === "battle_report_save_request") {
+      result = raportuSaxla(
+        state,
+        reportId,
+        msg && msg.isSaved === true,
+        nowMs
+      );
+    }
+    else if (type === "battle_report_delete_request") {
+      result = raportuSil(state, reportId);
+    }
+    else {
+      return {
+        success: false,
+        deyisdi: false,
+        message: "Naməlum döyüş raportu mutation sorğusu."
+      };
+    }
+  }
+  catch (xeta) {
+    raportMutasiyaYedeyiniBerpaEt(state, yedek);
+    return {
+      success: false,
+      deyisdi: false,
+      message: "Raport əməliyyatı hesablana bilmədi.",
+      daxiliXeta: xeta && xeta.message ? xeta.message : String(xeta)
+    };
+  }
+
+  if (!result || result.success !== true) {
+    raportMutasiyaYedeyiniBerpaEt(state, yedek);
+    return {
+      success: false,
+      deyisdi: false,
+      result: result && typeof result === "object" ? kopyala(result) : null,
+      message: result && result.message
+        ? result.message
+        : "Raport əməliyyatı tamamlanmadı."
+    };
+  }
+
+  const deyisdi = evvelkiImza !== raportMutasiyaImzasi(state);
+
+  return {
+    success: true,
+    deyisdi,
+    result: kopyala(result)
+  };
 }
 
 async function doyusRaportMesajiniEmalEt(kontekst) {
@@ -68,15 +194,17 @@ async function doyusRaportMesajiniEmalEt(kontekst) {
 
     const state = kontekst.getOrCreatePlayerState(playerId);
 
+    // Read sorğuları legacy raport normalizasiyasına görə state-i dəyişə bilər.
+    // Ona görə bütün read-lər clone üzərində hesablanır və authoritative RAM-a toxunmur.
     if (type === "battle_report_list_request") {
-      const items = raportSiyahisiniHazirla(state);
+      const read = raportReadNeticesiniHazirla(state, "");
       gonder(kontekst, resultType, {
         success: true,
         playerId,
-        items,
-        unreadCount: items.filter(x => x && x.isRead !== true).length,
-        pendingRewardCount: items.filter(x => x && x.resourceRewardClaimPending === true).length,
-        payloadJson: JSON.stringify(items)
+        items: read.items,
+        unreadCount: read.unreadCount,
+        pendingRewardCount: read.pendingRewardCount,
+        payloadJson: JSON.stringify(read.items)
       });
       return true;
     }
@@ -84,7 +212,7 @@ async function doyusRaportMesajiniEmalEt(kontekst) {
     const reportId = metnAl(kontekst.msg && kontekst.msg.reportId, 220);
 
     if (type === "battle_report_detail_request") {
-      const report = raportDetaliHazirla(state, reportId);
+      const report = raportDetaliHazirla(readStateKopyasi(state), reportId);
       gonder(kontekst, resultType, {
         success: !!report,
         playerId,
@@ -96,7 +224,11 @@ async function doyusRaportMesajiniEmalEt(kontekst) {
     }
 
     if (type === "battle_report_reward_preview_request") {
-      const preview = raportResursMukafatiPreview(state, reportId);
+      const preview = raportResursMukafatiPreview(
+        readStateKopyasi(state),
+        reportId,
+        kontekst.nowMs()
+      );
       gonder(kontekst, resultType, {
         success: preview && preview.success === true,
         playerId,
@@ -107,58 +239,53 @@ async function doyusRaportMesajiniEmalEt(kontekst) {
       return true;
     }
 
-    const evvelkiRaportlar = kopyala(state.doyusRaportlari || null);
-    const evvelkiResources = kopyala(state.resources || null);
-    let result;
+    const mutasiyaNeticesi = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
+      playerId,
+      state,
+      async kilidliState => {
+        return doyusRaportMutasiyasiniTetbiqEt(
+          kilidliState,
+          type,
+          kontekst.msg,
+          kontekst.nowMs()
+        );
+      }
+    );
 
-    if (type === "battle_report_claim_reward_request") {
-      result = raportResursMukafatiniAl(state, reportId, kontekst.nowMs());
-    }
-    else if (type === "battle_report_mark_read_request") {
-      result = raportuOxunmusEt(state, reportId, kontekst.nowMs());
-    }
-    else if (type === "battle_report_save_request") {
-      result = raportuSaxla(
-        state,
-        reportId,
-        kontekst.msg && kontekst.msg.isSaved === true,
-        kontekst.nowMs()
-      );
-    }
-    else {
-      result = raportuSil(state, reportId);
+    if (mutasiyaNeticesi && mutasiyaNeticesi.daxiliXeta) {
+      console.error("[DOYUS_RAPORT] Mutation hesablanma xətası:", {
+        playerId,
+        message: mutasiyaNeticesi.daxiliXeta
+      });
     }
 
-    if (!result || result.success !== true) {
-      state.doyusRaportlari = evvelkiRaportlar;
-      state.resources = evvelkiResources;
+    if (!mutasiyaNeticesi || mutasiyaNeticesi.success !== true) {
+      const result = mutasiyaNeticesi && mutasiyaNeticesi.result
+        ? mutasiyaNeticesi.result
+        : {};
+
       gonder(kontekst, resultType, {
         success: false,
         playerId,
-        ...((result && typeof result === "object") ? result : {}),
-        message: result && result.message ? result.message : "Raport əməliyyatı tamamlanmadı."
+        ...result,
+        message: mutasiyaNeticesi && mutasiyaNeticesi.message
+          ? mutasiyaNeticesi.message
+          : (result.message || "Raport əməliyyatı tamamlanmadı.")
       });
       return true;
     }
 
-    try {
-      await oyunStateIniYaddaSaxla(playerId, state);
-    }
-    catch (xeta) {
-      state.doyusRaportlari = evvelkiRaportlar;
-      state.resources = evvelkiResources;
-      throw xeta;
-    }
+    const result = mutasiyaNeticesi.result || {};
+    const read = raportReadNeticesiniHazirla(state, reportId);
 
-    const items = raportSiyahisiniHazirla(state);
     gonder(kontekst, resultType, {
       success: true,
       playerId,
       ...result,
-      report: raportDetaliHazirla(state, reportId),
-      items,
-      unreadCount: items.filter(x => x && x.isRead !== true).length,
-      pendingRewardCount: items.filter(x => x && x.resourceRewardClaimPending === true).length,
+      report: read.report,
+      items: read.items,
+      unreadCount: read.unreadCount,
+      pendingRewardCount: read.pendingRewardCount,
       payloadJson: JSON.stringify(result)
     });
   }
@@ -176,5 +303,6 @@ async function doyusRaportMesajiniEmalEt(kontekst) {
 
 module.exports = {
   MESAJLAR,
+  doyusRaportMutasiyasiniTetbiqEt,
   doyusRaportMesajiniEmalEt
 };
