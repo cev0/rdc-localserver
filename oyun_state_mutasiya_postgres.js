@@ -80,6 +80,41 @@ async function postgresOyuncuKilidiniAl(client, playerId) {
   );
 }
 
+function oyuncuIdleriniKilidSirasiIleHazirla(rawPlayerIds) {
+  const idler = Array.isArray(rawPlayerIds)
+    ? rawPlayerIds
+        .map(x => metnAl(x, 128))
+        .filter(Boolean)
+    : [];
+
+  return Array.from(new Set(idler)).sort((a, b) => {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+  });
+}
+
+async function postgresOyuncuKilidleriniSiraliAl(client, rawPlayerIds) {
+  if (!client || typeof client.query !== "function") {
+    throw new Error("PostgreSQL çox-oyunçu mutation kilidi üçün client yoxdur.");
+  }
+
+  const playerIds = oyuncuIdleriniKilidSirasiIleHazirla(rawPlayerIds);
+
+  if (playerIds.length === 0) {
+    throw new Error("PostgreSQL çox-oyunçu mutation kilidi üçün playerId yoxdur.");
+  }
+
+  // Bütün multi-player transaction-lar eyni leksik sıra ilə kilid almalıdır.
+  // A→B və B→A paralel PvP əməliyyatlarında qarşılıqlı lock gözləməsini
+  // (deadlock) bu deterministik sıra aradan qaldırır.
+  for (const playerId of playerIds) {
+    await postgresOyuncuKilidiniAl(client, playerId);
+  }
+
+  return playerIds;
+}
+
 async function oyuncuStateMutasiyasiniPostgresIleIcraEt(
   playerId,
   cariState,
@@ -200,5 +235,7 @@ module.exports = {
   OYUNCU_STATE_KILID_ADI,
   catismayanDefaultlariElaveEt,
   postgresOyuncuKilidiniAl,
+  oyuncuIdleriniKilidSirasiIleHazirla,
+  postgresOyuncuKilidleriniSiraliAl,
   oyuncuStateMutasiyasiniPostgresIleIcraEt
 };
