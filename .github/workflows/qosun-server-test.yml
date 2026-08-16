@@ -10,6 +10,7 @@ on:
       - server-staged-combat-resolver-v1
       - server-combat-damage-exchange-v1
       - server-casualty-exchange-integration-v1
+      - server-troop-lifecycle-accounting-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -24,6 +25,9 @@ on:
       - 'doyus_itki_stat_v2_testi.js'
       - 'doyus_merheleli_resolver.js'
       - 'doyus_merheleli_resolver_testi.js'
+      - 'doyus_xestexana_korpu.js'
+      - 'doyus_qosun_lifecycle_testi.js'
+      - 'xestexana_sistemi.js'
       - 'doyus_sistemi.js'
       - 'doyus_qosun_stat_inteqrasiya_testi.js'
       - 'xerite_dusmen_doyus_sistemi.js'
@@ -64,3 +68,6 @@ jobs:
 
       - name: Merheleli doyus ve qarsi zerbe testleri
         run: node doyus_merheleli_resolver_testi.js
+
+      - name: Doyus qosun lifecycle accounting testleri
+        run: node doyus_qosun_lifecycle_testi.js
