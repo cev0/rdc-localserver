@@ -138,36 +138,34 @@ function pvpResursTalaniTetbiqEt(attackerState, defenderState, convoyId, nowMs =
 
   const sagQalanQosunSayi = sagQalanQosunSayiniAl(konvoy);
   const tutumHesabi = konvoyTutumHesabiniAl(attackerState, convoyId);
-  const daşımaTutumu = sagQalanQosunSayi > 0 ? tamEded(tutumHesabi && tutumHesabi.yekunTutum) : 0;
+  const dasimaTutumu = sagQalanQosunSayi > 0 ? tamEded(tutumHesabi && tutumHesabi.yekunTutum) : 0;
   const ids = lootableResourceIds();
   const protection = qorumaCedveliniAl(defenderState);
 
-  if (!defenderState.resources || typeof defenderState.resources !== "object") {
-    defenderState.resources = {};
-  }
+  if (!defenderState.resources || typeof defenderState.resources !== "object") defenderState.resources = {};
+  if (!attackerState.resources || typeof attackerState.resources !== "object") attackerState.resources = {};
 
   const before = {};
+  const attackerBefore = {};
   const protectedByResource = {};
   const unprotectedByResource = {};
   for (const id of ids) {
     const amount = tamEded(defenderState.resources[id]);
     const protectedAmount = Math.min(amount, tamEded(protection.byResource[id]));
     before[id] = amount;
+    attackerBefore[id] = tamEded(attackerState.resources[id]);
     protectedByResource[id] = protectedAmount;
     unprotectedByResource[id] = Math.max(0, amount - protectedAmount);
   }
 
-  const stolenByResource = tutumaGoreResursBol(
-    unprotectedByResource,
-    daşımaTutumu,
-    ids
-  );
+  const stolenByResource = tutumaGoreResursBol(unprotectedByResource, dasimaTutumu, ids);
 
   let stolenTotal = 0;
   for (const id of ids) {
     const stolen = tamEded(stolenByResource[id]);
     if (stolen <= 0) continue;
     defenderState.resources[id] = Math.max(0, tamEded(defenderState.resources[id]) - stolen);
+    attackerState.resources[id] = tamEded(attackerState.resources[id]) + stolen;
     stolenTotal += stolen;
   }
 
@@ -176,9 +174,13 @@ function pvpResursTalaniTetbiqEt(attackerState, defenderState, convoyId, nowMs =
     : null;
 
   if (operation && typeof operation === "object") {
+    // UI/raport üçün konvoyun götürdüyü yük ayrıca saxlanılır. Resursun ownership-i
+    // isə iki oyunçulu PostgreSQL transaction daxilində dərhal hücumçuya keçirilir;
+    // buna görə sonradan geri dönüşdə ikinci dəfə resource credit edilməməlidir.
     operation.carriedResources = kopyala(stolenByResource);
-    operation.plunderCapacity = daşımaTutumu;
+    operation.plunderCapacity = dasimaTutumu;
     operation.plunderAssignedAtMs = tamEded(nowMs) || Date.now();
+    operation.resourcesCreditedAtSettlement = true;
   }
 
   return {
@@ -187,23 +189,36 @@ function pvpResursTalaniTetbiqEt(attackerState, defenderState, convoyId, nowMs =
     policyId: "pvp_resource_plunder_v1",
     convoyId: metnAl(convoyId, 64),
     survivingTroopCount: sagQalanQosunSayi,
-    carryingCapacity: daşımaTutumu,
+    carryingCapacity: dasimaTutumu,
     capacityFormula: kopyala(tutumHesabi),
     protectionConfigured: protection.configured,
     lootableResourceIds: ids,
     defenderBefore: before,
+    attackerBefore,
     protectedByResource,
     unprotectedByResource,
     stolenByResource,
     stolenTotal,
-    attackerOwnership: "convoy_transit",
-    defenderAfter: Object.fromEntries(ids.map(id => [id, tamEded(defenderState.resources[id])]))
+    attackerOwnership: "account_resources_atomic",
+    resourcesCreditedAtSettlement: true,
+    defenderAfter: Object.fromEntries(ids.map(id => [id, tamEded(defenderState.resources[id])])),
+    attackerAfter: Object.fromEntries(ids.map(id => [id, tamEded(attackerState.resources[id])]))
   };
 }
 
-function pvpDaşınanResurslariBazayaTeslimEt(state, operation) {
+function pvpDasinanResurslariBazayaTeslimEt(state, operation) {
   if (!state || !operation || typeof operation !== "object") {
     return { success: false, deyisdi: false, message: "PvP daşınan resurs teslimi üçün məlumat yoxdur." };
+  }
+
+  if (operation.resourcesCreditedAtSettlement === true) {
+    return {
+      success: true,
+      deyisdi: false,
+      alreadyCredited: true,
+      deliveredTotal: Object.values(operation.carriedResources || {}).reduce((c, x) => c + tamEded(x), 0),
+      deliveredByResource: kopyala(operation.carriedResources || {})
+    };
   }
 
   const carried = operation.carriedResources;
@@ -243,5 +258,5 @@ module.exports = {
   sagQalanQosunSayiniAl,
   tutumaGoreResursBol,
   pvpResursTalaniTetbiqEt,
-  pvpDaşınanResurslariBazayaTeslimEt
+  pvpDasinanResurslariBazayaTeslimEt
 };
