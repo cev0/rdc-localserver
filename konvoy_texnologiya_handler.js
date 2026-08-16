@@ -4,6 +4,9 @@ const {
   KONVOY_TEXNOLOGIYA_BALANSI
 } = require("./konvoy_qaydalari");
 const {
+  texnologiyaInkIsafModifikatorunuHesabla
+} = require("./texnologiya_inkisaf_korpu");
+const {
   requestIdAl,
   tekrarNeticesiniTap,
   ugurluNeticeniQeydEt
@@ -153,7 +156,11 @@ function researchBaslat(state, balans, nowMs) {
   }
 
   const baslangic = Number(nowMs) || Date.now();
-  const durationMs = balans.researchTimeSeconds * 1000;
+  const modifier = texnologiyaInkIsafModifikatorunuHesabla(
+    state,
+    balans.researchTimeSeconds
+  );
+  const durationMs = modifier.effektivMuddetSaniye * 1000;
 
   state.technology.currentResearch = {
     techId: balans.techId,
@@ -161,12 +168,21 @@ function researchBaslat(state, balans, nowMs) {
     startedAtMs: baslangic,
     durationMs,
     endsAtMs: baslangic + durationMs,
-    instituteInstanceId: null
+    instituteInstanceId: modifier.instituteInstanceId,
+    baseDurationSeconds: modifier.esasMuddetSaniye,
+    researchSpeedPercent: modifier.tedqiqatSuretiFaiz
   };
 
   return {
     ok: true,
     research: { ...state.technology.currentResearch },
+    developmentModifier: {
+      instituteInstanceId: modifier.instituteInstanceId,
+      researchSpeedPercent: modifier.tedqiqatSuretiFaiz,
+      baseDurationSeconds: modifier.esasMuddetSaniye,
+      effectiveDurationSeconds: modifier.effektivMuddetSaniye,
+      effects: Array.isArray(modifier.effects) ? modifier.effects.map(x => ({ ...x })) : []
+    },
     info: melumatiHazirla(state, balans)
   };
 }
@@ -290,6 +306,7 @@ async function konvoyTexnologiyaMesajiniEmalEt(kontekst) {
 
       const cavab = {
         research: kopyala(netice.research),
+        developmentModifier: kopyala(netice.developmentModifier),
         info: kopyala(netice.info)
       };
 
@@ -320,6 +337,7 @@ async function konvoyTexnologiyaMesajiniEmalEt(kontekst) {
         requestId,
         idempotentReplay: false,
         research: cavab.research,
+        developmentModifier: cavab.developmentModifier,
         info: cavab.info,
         payloadJson: JSON.stringify(cavab.research),
         serverTimeUnixMs: kontekst.nowMs()
@@ -344,5 +362,6 @@ async function konvoyTexnologiyaMesajiniEmalEt(kontekst) {
 }
 
 module.exports = {
+  researchBaslat,
   konvoyTexnologiyaMesajiniEmalEt
 };
