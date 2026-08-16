@@ -19,7 +19,7 @@ const storageDef = defs.find(def => {
 
 assert(storageDef, "building_definitions.json daxilində real storage binası tapılmalıdır");
 const levelInfo = storageDef.levels.find(x => Number(x && x.storageCapacityBonus) > 0);
-assert(levelInfo, "storage binasının müsbət tutumlu level-i olmalıdır");
+assert(levelInfo, "storage binasının müsbət qoruma tutumlu level-i olmalıdır");
 
 const state = {
   buildings: [{
@@ -32,30 +32,41 @@ const state = {
 
 const basis = anbarTutumBazisiniHesabla(state);
 const resourceId = String(storageDef.storageResource).trim().toLowerCase();
-const capacity = Math.trunc(Number(levelInfo.storageCapacityBonus));
-assert.strictEqual(basis.byResource[resourceId], capacity);
+const protectedAmount = Math.trunc(Number(levelInfo.storageCapacityBonus));
+assert.strictEqual(basis.version, 2);
+assert.strictEqual(basis.byResource[resourceId], protectedAmount);
 
-const oldPercent = process.env.PVP_STORAGE_PROTECTION_PERCENT;
 const oldJson = process.env.PVP_RESOURCE_PROTECTION_JSON;
 try {
-  delete process.env.PVP_STORAGE_PROTECTION_PERCENT;
-  let protection = anbarPvpQorumasiniHesabla(state);
-  assert.strictEqual(protection.enabled, false, "balans faizi verilməyibsə gizli protection aktivləşməməlidir");
-  assert.strictEqual(protection.byResource[resourceId], 0);
-
-  process.env.PVP_STORAGE_PROTECTION_PERCENT = "25";
-  protection = anbarPvpQorumasiniHesabla(state);
+  const protection = anbarPvpQorumasiniHesabla(state);
   assert.strictEqual(protection.enabled, true);
-  assert.strictEqual(protection.byResource[resourceId], Math.floor(capacity * 0.25));
+  assert.strictEqual(protection.policyId, "fixed_protected_amount_by_storage_level_v2");
+  assert.strictEqual(protection.byResource[resourceId], protectedAmount,
+    "Anbar level-i faizsiz konkret qorunan miqdar verməlidir");
 
-  process.env.PVP_RESOURCE_PROTECTION_JSON = JSON.stringify({ [resourceId]: capacity });
+  const ikiAnbarState = {
+    buildings: [
+      { buildingId: storageDef.id, level: levelInfo.level, isCompleted: true, isPlaced: true },
+      { buildingId: storageDef.id, level: levelInfo.level, isCompleted: true, isPlaced: true }
+    ]
+  };
+  const ikiAnbar = anbarPvpQorumasiniHesabla(ikiAnbarState);
+  assert.strictEqual(ikiAnbar.byResource[resourceId], protectedAmount * 2,
+    "Birdən çox uyğun Anbarın qoruma tutumu toplanmalıdır");
+
+  const tikilmekdeOlan = anbarPvpQorumasiniHesabla({
+    buildings: [{ buildingId: storageDef.id, level: levelInfo.level, isCompleted: false, isPlaced: true }]
+  });
+  assert.strictEqual(tikilmekdeOlan.byResource[resourceId] || 0, 0,
+    "Tamamlanmamış bina PvP qoruması verməməlidir");
+
+  process.env.PVP_RESOURCE_PROTECTION_JSON = JSON.stringify({ [resourceId]: protectedAmount + 123 });
   const merged = qorumaCedveliniAl(state);
-  assert.strictEqual(merged.byResource[resourceId], capacity, "manual/server qoruması building qorumasından aşağı salınmamalıdır");
+  assert.strictEqual(merged.byResource[resourceId], protectedAmount + 123,
+    "explicit server qoruması Anbar qorumasından yüksəkdirsə aşağı salınmamalıdır");
   assert.strictEqual(merged.mergePolicy, "max_per_resource");
 }
 finally {
-  if (oldPercent == null) delete process.env.PVP_STORAGE_PROTECTION_PERCENT;
-  else process.env.PVP_STORAGE_PROTECTION_PERCENT = oldPercent;
   if (oldJson == null) delete process.env.PVP_RESOURCE_PROTECTION_JSON;
   else process.env.PVP_RESOURCE_PROTECTION_JSON = oldJson;
 }
