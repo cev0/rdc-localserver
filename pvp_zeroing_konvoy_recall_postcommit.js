@@ -28,6 +28,15 @@ async function pvpZeroingKonvoyRecalliniPostCommitIcraEt(
   const recallFn = secimler && typeof secimler.recallFn === "function"
     ? secimler.recallFn
     : bazaYerdeyismeKonvoylariniGeriCagir;
+  const snapshotAl = secimler && typeof secimler.snapshotAl === "function"
+    ? secimler.snapshotAl
+    : sonOyunStateSnapshotiniAlClient;
+  const snapshotYaz = secimler && typeof secimler.snapshotYaz === "function"
+    ? secimler.snapshotYaz
+    : oyunStateSnapshotiniYazClient;
+  const lockFn = secimler && typeof secimler.lockFn === "function"
+    ? secimler.lockFn
+    : postgresOyuncuKilidiniAl;
 
   if (!hovuz || typeof hovuz.connect !== "function") {
     throw new Error("PvP zeroing convoy recall üçün PostgreSQL hovuzu yoxdur.");
@@ -37,9 +46,9 @@ async function pvpZeroingKonvoyRecalliniPostCommitIcraEt(
   let netice = null;
   try {
     await client.query("BEGIN");
-    await postgresOyuncuKilidiniAl(client, playerId);
+    await lockFn(client, playerId);
 
-    const snapshot = await sonOyunStateSnapshotiniAlClient(client, playerId);
+    const snapshot = await snapshotAl(client, playerId);
     if (!snapshot || typeof snapshot !== "object") {
       throw new Error("PvP zeroing convoy recall üçün defender snapshot tapılmadı.");
     }
@@ -65,7 +74,7 @@ async function pvpZeroingKonvoyRecalliniPostCommitIcraEt(
     isState.pvpCity.lastConvoyRecallAtMs = Number(nowMs) || Date.now();
     isState.pvpCity.lastConvoyRecallCount = Number(recall.recalledCount) || 0;
 
-    await oyunStateSnapshotiniYazClient(client, playerId, isState);
+    await snapshotYaz(client, playerId, isState);
     await client.query("COMMIT");
 
     netice = {
