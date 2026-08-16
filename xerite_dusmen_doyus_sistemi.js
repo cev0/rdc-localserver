@@ -11,6 +11,7 @@ const {
   qosunGucunuHesabla,
   qosunDoyusStatlariniHesabla
 } = require("./qosun_doyus_stat_sistemi");
+const { merheleliDoyusuHesabla } = require("./doyus_merheleli_resolver");
 
 const DOYUS_NETICE_GOZLEME_MS = 5 * 1000;
 
@@ -23,16 +24,8 @@ function tamEded(v) {
   return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
 }
 
-function musbetEded(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? Math.max(0, n) : 0;
-}
-
 function dovletIdAl(state) {
-  return Math.max(
-    1,
-    tamEded(state && state.worldPlacement && state.worldPlacement.stateId) || 1
-  );
+  return Math.max(1, tamEded(state && state.worldPlacement && state.worldPlacement.stateId) || 1);
 }
 
 function formasiyaSnapshotiniAl(konvoy) {
@@ -48,36 +41,15 @@ function formasiyaSnapshotiniAl(konvoy) {
 }
 
 function stateTeminEt(state) {
-  if (!state || typeof state !== "object") {
-    throw new Error("Düşmən döyüşü üçün oyunçu state-i yoxdur.");
+  if (!state || typeof state !== "object") throw new Error("Düşmən döyüşü üçün oyunçu state-i yoxdur.");
+  if (!state.worldEnemyBattle || typeof state.worldEnemyBattle !== "object" || Array.isArray(state.worldEnemyBattle)) {
+    state.worldEnemyBattle = { version: 4, activeByConvoy: {}, lastResults: [] };
   }
-
-  if (
-    !state.worldEnemyBattle ||
-    typeof state.worldEnemyBattle !== "object" ||
-    Array.isArray(state.worldEnemyBattle)
-  ) {
-    state.worldEnemyBattle = {
-      version: 3,
-      activeByConvoy: {},
-      lastResults: []
-    };
-  }
-
-  state.worldEnemyBattle.version = 3;
-
-  if (
-    !state.worldEnemyBattle.activeByConvoy ||
-    typeof state.worldEnemyBattle.activeByConvoy !== "object" ||
-    Array.isArray(state.worldEnemyBattle.activeByConvoy)
-  ) {
+  state.worldEnemyBattle.version = 4;
+  if (!state.worldEnemyBattle.activeByConvoy || typeof state.worldEnemyBattle.activeByConvoy !== "object" || Array.isArray(state.worldEnemyBattle.activeByConvoy)) {
     state.worldEnemyBattle.activeByConvoy = {};
   }
-
-  if (!Array.isArray(state.worldEnemyBattle.lastResults)) {
-    state.worldEnemyBattle.lastResults = [];
-  }
-
+  if (!Array.isArray(state.worldEnemyBattle.lastResults)) state.worldEnemyBattle.lastResults = [];
   return state.worldEnemyBattle;
 }
 
@@ -102,19 +74,10 @@ function doyusuLegvEt(state, convoyId, nowMs = Date.now()) {
   const battle = stateTeminEt(state);
   const id = metnAl(convoyId, 64);
   const mission = battle.activeByConvoy[id];
-
   if (!mission) {
-    return {
-      success: true,
-      alreadyInactive: true,
-      convoyId: id,
-      rewardCreated: false,
-      casualtyApplied: false
-    };
+    return { success: true, alreadyInactive: true, convoyId: id, rewardCreated: false, casualtyApplied: false };
   }
-
   delete battle.activeByConvoy[id];
-
   return {
     success: true,
     alreadyInactive: false,
@@ -132,7 +95,6 @@ function doyusuLegvEt(state, convoyId, nowMs = Date.now()) {
 function doyusMelumatiniHazirla(state, nowMs = Date.now()) {
   const battle = stateTeminEt(state);
   const now = tamEded(nowMs) || Date.now();
-
   return {
     active: Object.values(battle.activeByConvoy).map(x => ({
       ...x,
@@ -147,54 +109,33 @@ function doyusaBasla(state, playerId, convoyId, enemyId, nowMs = Date.now()) {
   const battle = stateTeminEt(state);
   const id = metnAl(convoyId, 64);
   const konvoy = konvoyuTap(state, id);
-
-  if (!konvoy) {
-    return { success: false, message: "Konvoy açıq deyil." };
-  }
-
-  if (battle.activeByConvoy[id]) {
-    return { success: false, message: "Bu konvoy artıq düşmən döyüşündədir." };
-  }
+  if (!konvoy) return { success: false, message: "Konvoy açıq deyil." };
+  if (battle.activeByConvoy[id]) return { success: false, message: "Bu konvoy artıq düşmən döyüşündədir." };
 
   const toplama = state && state.xeriteToplama && state.xeriteToplama.activeByConvoy;
-  if (toplama && toplama[id]) {
-    return { success: false, message: "Konvoy resurs toplama tapşırığındadır." };
-  }
+  if (toplama && toplama[id]) return { success: false, message: "Konvoy resurs toplama tapşırığındadır." };
 
   const troopSnapshot = { ...(konvoy.qosunlar || {}) };
-  if (qosunSayiniHesabla(troopSnapshot) <= 0) {
-    return { success: false, message: "Döyüş üçün konvoyda qoşun olmalıdır." };
-  }
+  if (qosunSayiniHesabla(troopSnapshot) <= 0) return { success: false, message: "Döyüş üçün konvoyda qoşun olmalıdır." };
 
   const troopStats = qosunDoyusStatlariniHesabla(troopSnapshot);
   if (troopStats.totalTroops <= 0 || troopStats.totalBattlePower <= 0) {
     return { success: false, message: "Konvoyda server kataloqunda tanınan döyüş qoşunu yoxdur." };
   }
-
   if (troopStats.unknownUnitIds.length > 0) {
-    return {
-      success: false,
-      message: "Konvoyda server kataloqunda olmayan qoşun ID-si aşkarlandı.",
-      unknownUnitIds: troopStats.unknownUnitIds
-    };
+    return { success: false, message: "Konvoyda server kataloqunda olmayan qoşun ID-si aşkarlandı.", unknownUnitIds: troopStats.unknownUnitIds };
   }
 
   const heroIds = heroIdleriAl(konvoy);
-  if (heroIds.length <= 0) {
-    return { success: false, message: "Döyüş üçün konvoyda Döyüş qəhrəmanı olmalıdır." };
-  }
+  if (heroIds.length <= 0) return { success: false, message: "Döyüş üçün konvoyda Döyüş qəhrəmanı olmalıdır." };
 
   const stateId = dovletIdAl(state);
   const eid = metnAl(enemyId, 128);
   const match = eid.match(/^state_(\d+)_enemy_(\d+)$/);
-  if (!match || Number(match[1]) !== stateId) {
-    return { success: false, message: "Düşmən bu Dövlətə aid deyil." };
-  }
+  if (!match || Number(match[1]) !== stateId) return { success: false, message: "Düşmən bu Dövlətə aid deyil." };
 
   const descriptor = dusmenDescriptor(stateId, Number(match[2]));
-  if (!descriptor) {
-    return { success: false, message: "Düşmən tapılmadı." };
-  }
+  if (!descriptor) return { success: false, message: "Düşmən tapılmadı." };
 
   const startedAtMs = tamEded(nowMs) || Date.now();
   const formationSnapshot = formasiyaSnapshotiniAl(konvoy);
@@ -220,6 +161,7 @@ function doyusaBasla(state, playerId, convoyId, enemyId, nowMs = Date.now()) {
       perUnit: troopStats.perUnit.map(x => ({ ...x }))
     },
     combatStatSource: "qosun_kataloqu_v1",
+    combatResolverId: "staged_front_to_back_power_v1",
     startedAtMs,
     resolveAtMs: startedAtMs + DOYUS_NETICE_GOZLEME_MS,
     status: "active"
@@ -233,32 +175,24 @@ async function doyusuNeticelendir(state, playerId, convoyId, nowMs = Date.now())
   const battle = stateTeminEt(state);
   const id = metnAl(convoyId, 64);
   const mission = battle.activeByConvoy[id];
-
-  if (!mission) {
-    return { success: false, message: "Aktiv düşmən döyüşü tapılmadı." };
-  }
+  if (!mission) return { success: false, message: "Aktiv düşmən döyüşü tapılmadı." };
 
   const now = tamEded(nowMs) || Date.now();
   if (now < tamEded(mission.resolveAtMs)) {
-    return {
-      success: false,
-      message: "Döyüş nəticəsi hələ hazır deyil.",
-      remainingMs: Math.max(0, tamEded(mission.resolveAtMs) - now)
-    };
+    return { success: false, message: "Döyüş nəticəsi hələ hazır deyil.", remainingMs: Math.max(0, tamEded(mission.resolveAtMs) - now) };
   }
 
-  const victory = musbetEded(mission.playerPower) >= musbetEded(mission.enemyPower);
+  const combatResolution = merheleliDoyusuHesabla(
+    mission.formationSnapshot || [],
+    mission.enemyPower,
+    mission.playerPower
+  );
+  const victory = combatResolution.victory === true;
   let sharedResult = null;
   let reward = { money: 0, heroExp: 0, deliveryPending: false };
 
   if (victory) {
-    sharedResult = await dusmeniMeglubEtServer(
-      mission.stateId,
-      mission.enemyId,
-      playerId,
-      now
-    );
-
+    sharedResult = await dusmeniMeglubEtServer(mission.stateId, mission.enemyId, playerId, now);
     if (!sharedResult || sharedResult.success !== true) {
       delete battle.activeByConvoy[id];
       const result = {
@@ -269,12 +203,11 @@ async function doyusuNeticelendir(state, playerId, convoyId, nowMs = Date.now())
         enemyPower: mission.enemyPower,
         troopStats: mission.troopStats || null,
         combatStatSource: mission.combatStatSource || "legacy",
+        combatResolution,
         formationSnapshot: Array.isArray(mission.formationSnapshot) ? mission.formationSnapshot.map(x => ({ ...x })) : [],
         victory: false,
         invalidated: true,
-        message: sharedResult && sharedResult.message
-          ? sharedResult.message
-          : "Düşmən artıq başqa əməliyyatda məğlub edilib.",
+        message: sharedResult && sharedResult.message ? sharedResult.message : "Düşmən artıq başqa əməliyyatda məğlub edilib.",
         completedAtMs: now
       };
       battle.lastResults.push(result);
@@ -284,16 +217,10 @@ async function doyusuNeticelendir(state, playerId, convoyId, nowMs = Date.now())
 
     const money = tamEded(sharedResult.reward && sharedResult.reward.money);
     const heroExp = tamEded(sharedResult.reward && sharedResult.reward.heroExp);
-    reward = {
-      money,
-      heroExp,
-      deliveryPending: money > 0,
-      heroExpDistributionPending: heroExp > 0
-    };
+    reward = { money, heroExp, deliveryPending: money > 0, heroExpDistributionPending: heroExp > 0 };
   }
 
   delete battle.activeByConvoy[id];
-
   const result = {
     battleId: mission.battleId,
     convoyId: id,
@@ -304,6 +231,7 @@ async function doyusuNeticelendir(state, playerId, convoyId, nowMs = Date.now())
     enemyPower: mission.enemyPower,
     troopStats: mission.troopStats || null,
     combatStatSource: mission.combatStatSource || "legacy",
+    combatResolution,
     formationSnapshot: Array.isArray(mission.formationSnapshot) ? mission.formationSnapshot.map(x => ({ ...x })) : [],
     victory,
     invalidated: false,
@@ -314,7 +242,6 @@ async function doyusuNeticelendir(state, playerId, convoyId, nowMs = Date.now())
 
   battle.lastResults.push(result);
   battle.lastResults = battle.lastResults.slice(-20);
-
   return { success: true, ...result };
 }
 
