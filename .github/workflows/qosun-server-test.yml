@@ -15,6 +15,7 @@ on:
       - server-convoy-defense-toggle-v1
       - server-pvp-atomic-settlement-v1
       - server-pvp-live-flow-v1
+      - server-pvp-reports-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -43,10 +44,14 @@ on:
       - 'pvp_doyus_resolver_testi.js'
       - 'pvp_doyus_settlement_sistemi.js'
       - 'pvp_doyus_settlement_sistemi_testi.js'
+      - 'pvp_doyus_raport_sistemi.js'
+      - 'pvp_doyus_raport_sistemi_testi.js'
+      - 'pvp_doyus_raport_settlement_korpu.js'
       - 'pvp_baza_hucum_start_xidmeti.js'
       - 'pvp_baza_hucum_catma_xidmeti.js'
       - 'pvp_baza_live_handler.js'
       - 'pvp_baza_live_handler_testi.js'
+      - 'pvp_baza_report_status_handler.js'
       - 'iki_oyuncu_state_mutasiya_postgres.js'
       - 'server_missiya_genisletme_v2.js'
       - '.github/workflows/qosun-server-test.yml'
@@ -96,6 +101,9 @@ jobs:
 
       - name: PvP atomic settlement testleri
         run: node pvp_doyus_settlement_sistemi_testi.js
+
+      - name: PvP battle report testleri
+        run: node pvp_doyus_raport_sistemi_testi.js
 
       - name: PvP live flow handler testleri
         run: node pvp_baza_live_handler_testi.js
