@@ -10,6 +10,7 @@ require("./qehreman_recruit_qayda_override");
 
 const { qehremanRecruitMesajiniEmalEt } = require("./qehreman_recruit_handler");
 const { qehremanExpMesajiniEmalEt } = require("./qehreman_exp_handler");
+const { qehremanSkillMesajiniEmalEt } = require("./qehreman_skill_handler");
 const { qehremanTapshiriqMesajiniEmalEt } = require("./qehreman_tapshiriq_handler");
 const { konvoyTexnologiyaMesajiniEmalEt } = require("./konvoy_texnologiya_handler");
 const { konvoyMesajiniEmalEt } = require("./konvoy_handler");
@@ -42,6 +43,8 @@ const OYUNCU_MUTASIYA_MESAJLARI = new Set([
   "hero_recruit_x10_request",
   "hero_exp_item_use_request",
   "hero_tutorial_skill_upgrade_request",
+  "hero_skill_unlock_request",
+  "hero_skill_upgrade_request",
   "technology_hero_assign_request",
   "technology_hero_remove_request",
   "research_start",
@@ -93,6 +96,7 @@ async function gameplayMesajZenciriniIcraEt(kontekst) {
   if (await missiyaMesajiniEmalEt(kontekst)) return true;
   if (await qehremanRecruitMesajiniEmalEt(kontekst)) return true;
   if (await qehremanExpMesajiniEmalEt(kontekst)) return true;
+  if (await qehremanSkillMesajiniEmalEt(kontekst)) return true;
   if (await qehremanTapshiriqMesajiniEmalEt(kontekst)) return true;
   if (await konvoyTexnologiyaMesajiniEmalEt(kontekst)) return true;
   if (await konvoyMesajiniEmalEt(kontekst)) return true;
