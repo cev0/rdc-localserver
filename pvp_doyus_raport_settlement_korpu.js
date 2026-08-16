@@ -12,6 +12,9 @@ const {
 const {
   qalibPvpHucumunuTetbiqEt
 } = require("./pvp_seher_davamliliq_sistemi");
+const {
+  zeroingiTetbiqEt
+} = require("./pvp_zeroing_yerdeyisme_sistemi");
 
 function metnAl(v, max = 128) {
   return typeof v === "string" ? v.trim().slice(0, max).toLowerCase() : "";
@@ -32,7 +35,7 @@ async function pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
     ? secimler.runnerSecimleri
     : null;
 
-  return await runner(attacker, defender, async stateler => {
+  return await runner(attacker, defender, async (stateler, trx) => {
     const attackerId = metnAl(attacker && attacker.playerId, 128);
     const defenderId = metnAl(defender && defender.playerId, 128);
     const attackerState = stateler[attackerId];
@@ -49,14 +52,27 @@ async function pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
     if (!settlement || settlement.success !== true) return settlement;
     if (settlement.alreadyResolved === true) return settlement;
 
-    // Şəhər zərəri yalnız real hücumçu qələbəsində tətbiq olunur və casualty/report
-    // ilə eyni iki-oyunçulu PostgreSQL transaction daxilində qalır.
     let cityImpact = null;
+    let zeroingRelocation = null;
     if (settlement.combat && settlement.combat.attackerVictory === true) {
       cityImpact = qalibPvpHucumunuTetbiqEt(defenderState, nowMs);
       settlement.cityImpact = cityImpact;
+
+      if (cityImpact.zeroed === true) {
+        zeroingRelocation = await zeroingiTetbiqEt(
+          defenderState,
+          defenderId,
+          trx && trx.client,
+          nowMs
+        );
+        settlement.zeroingRelocation = zeroingRelocation;
+      }
+
       if (settlement.operation && settlement.operation.result) {
         settlement.operation.result.cityImpact = JSON.parse(JSON.stringify(cityImpact));
+        settlement.operation.result.zeroingRelocation = zeroingRelocation
+          ? JSON.parse(JSON.stringify(zeroingRelocation))
+          : null;
       }
     }
 
