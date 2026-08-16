@@ -18,6 +18,11 @@ const {
 function testStateHazirla() {
   return {
     playerId: "oyuncu_mudafie",
+    technology: {
+      levels: {
+        ikinci_konvoy: 1
+      }
+    },
     army: {
       troops: {
         fighter_lv1: 100,
@@ -113,7 +118,6 @@ function testStateHazirla() {
 (function hucumcuSnapshotTesti() {
   const state = testStateHazirla();
   const netice = pvpHucumcuSnapshotiniHazirla(state, "konvoy_1", 123456);
-
   assert.strictEqual(netice.success, true);
   assert.strictEqual(netice.snapshot.convoyId, "konvoy_1");
   assert.strictEqual(netice.snapshot.troopCount, 30);
@@ -125,7 +129,6 @@ function testStateHazirla() {
 (function mudafieciSnapshotTesti() {
   const state = testStateHazirla();
   const netice = pvpMudafieciSnapshotiniHazirla(state, "oyuncu_mudafie", 654321);
-
   assert.strictEqual(netice.success, true);
   assert.strictEqual(netice.snapshot.playerId, "oyuncu_mudafie");
   assert.strictEqual(netice.snapshot.troopCount, 20);
