@@ -23,6 +23,7 @@ on:
       - server-pvp-protection-foundation-v1
       - server-pvp-storage-protection-v1
       - server-pvp-fixed-storage-protection-v1
+      - server-pvp-shield-items-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -68,6 +69,9 @@ on:
       - 'pvp_settlement_live_override_testi.js'
       - 'pvp_qoruma_sistemi.js'
       - 'pvp_qoruma_sistemi_testi.js'
+      - 'pvp_shield_item_sistemi.js'
+      - 'pvp_shield_item_sistemi_testi.js'
+      - 'pvp_shield_handler.js'
       - 'dovlet_baza_kataloqu_postgres.js'
       - 'pvp_baza_hucum_start_xidmeti.js'
       - 'pvp_baza_hucum_catma_xidmeti.js'
@@ -123,6 +127,8 @@ jobs:
         run: node pvp_resurs_talani_sistemi_testi.js
       - name: PvP anbar qoruma testleri
         run: node pvp_anbar_qoruma_sistemi_testi.js
+      - name: PvP shield item testleri
+        run: node pvp_shield_item_sistemi_testi.js
       - name: PvP live settlement override testi
         run: node pvp_settlement_live_override_testi.js
       - name: PvP qoruma ve tekrar-hucum testleri
