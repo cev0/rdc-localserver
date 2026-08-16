@@ -28,6 +28,7 @@ on:
       - server-hero-exp-level50-v1
       - server-hero-skill-progression-v1
       - server-development-hero-engine-v1
+      - server-development-skill-state-fix-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -52,6 +53,9 @@ on:
       - 'konvoy_handler.js'
       - 'konvoy_tutum_formulu.js'
       - 'konvoy_tutum_formulu_testi.js'
+      - 'konvoy_texnologiya_handler.js'
+      - 'texnologiya_inkisaf_korpu.js'
+      - 'texnologiya_inkisaf_korpu_testi.js'
       - 'qehreman_kataloqu.js'
       - 'qehreman_exp_sistemi.js'
       - 'qehreman_exp_progression_testi.js'
@@ -134,6 +138,8 @@ jobs:
         run: node qehreman_skill_sistemi_testi.js
       - name: Qehreman Inkisaf sistemi testleri
         run: node qehreman_inkisaf_sistemi_testi.js
+      - name: Texnologiya Inkisaf korpusu testleri
+        run: node texnologiya_inkisaf_korpu_testi.js
       - name: PvP konvoy mudafie snapshot testleri
         run: node pvp_doyus_snapshot_sistemi_testi.js
       - name: PvP iki teref server resolver testleri
