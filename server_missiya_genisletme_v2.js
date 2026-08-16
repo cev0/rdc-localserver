@@ -18,6 +18,7 @@ const { konvoyEmeliyyatMesajiniEmalEt } = require("./konvoy_emeliyyat_handler");
 const { qosunTelimiMesajiniEmalEt } = require("./qosun_telimi_handler");
 const { dovletXeriteKataloqMesajiniEmalEt } = require("./dovlet_xerite_kataloq_handler");
 const { dovletXeriteLayerMesajiniEmalEt } = require("./dovlet_xerite_layer_handler");
+const { pvpBazaLiveMesajiniEmalEt } = require("./pvp_baza_live_handler");
 const { pvpBazaPreviewMesajiniEmalEt } = require("./pvp_baza_preview_handler");
 const { pvpKampMesajiniEmalEt } = require("./pvp_kamp_handler");
 const { xeriteResursToplamaMesajiniEmalEt } = require("./xerite_resurs_toplama_handler");
@@ -49,6 +50,9 @@ const OYUNCU_MUTASIYA_MESAJLARI = new Set([
   "convoy_gather_start_request",
   "convoy_gather_status_request",
   "convoy_gather_claim_request",
+  "pvp_base_attack_start_request",
+  "pvp_base_attack_status_request",
+  "pvp_base_attack_return_request",
   "battle_start_request",
   "battle_resolve_request",
   "battle_reward_claim_request",
@@ -91,6 +95,7 @@ async function gameplayMesajZenciriniIcraEt(kontekst) {
   if (await qosunTelimiMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteKataloqMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteLayerMesajiniEmalEt(kontekst)) return true;
+  if (await pvpBazaLiveMesajiniEmalEt(kontekst)) return true;
   if (await pvpBazaPreviewMesajiniEmalEt(kontekst)) return true;
   if (await pvpKampMesajiniEmalEt(kontekst)) return true;
   if (await xeriteResursToplamaMesajiniEmalEt(kontekst)) return true;
