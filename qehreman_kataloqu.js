@@ -27,7 +27,7 @@ const QEHRAMANLAR = Object.freeze([
     rarity: QEHRAMAN_NADIRLIK.YASIL,
     istifadeSahesi: QEHRAMAN_ISTIFADE_SAHESI.DOYUS,
     startingLevel: 1,
-    maxLevel: 60,
+    maxLevel: 50,
     duplicateCopiesRequiredForSkill6: 1,
     duplicateCopiesRequiredForSkill8: 2
   }),
@@ -37,7 +37,7 @@ const QEHRAMANLAR = Object.freeze([
     rarity: QEHRAMAN_NADIRLIK.GOY,
     istifadeSahesi: QEHRAMAN_ISTIFADE_SAHESI.DOYUS,
     startingLevel: 1,
-    maxLevel: 60,
+    maxLevel: 50,
     duplicateCopiesRequiredForSkill6: 1,
     duplicateCopiesRequiredForSkill8: 2
   }),
@@ -47,7 +47,7 @@ const QEHRAMANLAR = Object.freeze([
     rarity: QEHRAMAN_NADIRLIK.BENOVSEYI,
     istifadeSahesi: QEHRAMAN_ISTIFADE_SAHESI.DOYUS,
     startingLevel: 1,
-    maxLevel: 60,
+    maxLevel: 50,
     duplicateCopiesRequiredForSkill6: 1,
     duplicateCopiesRequiredForSkill8: 2
   }),
@@ -57,7 +57,7 @@ const QEHRAMANLAR = Object.freeze([
     rarity: QEHRAMAN_NADIRLIK.NARINCI,
     istifadeSahesi: QEHRAMAN_ISTIFADE_SAHESI.DOYUS,
     startingLevel: 1,
-    maxLevel: 60,
+    maxLevel: 50,
     duplicateCopiesRequiredForSkill6: 1,
     duplicateCopiesRequiredForSkill8: 2
   }),
@@ -67,7 +67,7 @@ const QEHRAMANLAR = Object.freeze([
     rarity: QEHRAMAN_NADIRLIK.NARINCI,
     istifadeSahesi: QEHRAMAN_ISTIFADE_SAHESI.DOYUS,
     startingLevel: 1,
-    maxLevel: 60,
+    maxLevel: 50,
     duplicateCopiesRequiredForSkill6: 1,
     duplicateCopiesRequiredForSkill8: 2
   }),
@@ -77,7 +77,7 @@ const QEHRAMANLAR = Object.freeze([
     rarity: QEHRAMAN_NADIRLIK.NARINCI,
     istifadeSahesi: QEHRAMAN_ISTIFADE_SAHESI.DOYUS,
     startingLevel: 1,
-    maxLevel: 60,
+    maxLevel: 50,
     duplicateCopiesRequiredForSkill6: 1,
     duplicateCopiesRequiredForSkill8: 2
   })
