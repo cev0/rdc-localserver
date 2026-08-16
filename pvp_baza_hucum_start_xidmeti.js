@@ -4,6 +4,7 @@ const { stateTeminEt } = require("./konvoy_emeliyyat_sistemi");
 const { pvpHucumEmeliyyatiniHazirla } = require("./pvp_hucum_emeliyyat_sistemi");
 const { dovletBazasiniBirbasaAlClient } = require("./dovlet_baza_kataloqu_postgres");
 const {
+  ozShieldHucumBloklayicisiniAl,
   pvpHedefQorunurmuPublicBaza,
   tekrarHucumBloklayicisiniAl,
   ugurluHucumuQeydEt
@@ -30,7 +31,9 @@ function legacyKonvoyMesguldur(state, convoyId) {
   const battle = state && state.worldEnemyBattle && state.worldEnemyBattle.activeByConvoy;
   return !!(battle && battle[id]);
 }
-function pvpBazaHucumStartBloklayicisiniAl(state, convoyId) {
+function pvpBazaHucumStartBloklayicisiniAl(state, convoyId, nowMs = Date.now()) {
+  const shieldBlock = ozShieldHucumBloklayicisiniAl(state, nowMs);
+  if (shieldBlock) return shieldBlock;
   const id = metnAl(convoyId, 64);
   if (!id) return { code: "convoy_id_missing", message: "PvP hücumu üçün konvoy ID tələb olunur." };
   const emeliyyatlar = stateTeminEt(state);
@@ -56,8 +59,8 @@ async function pvpBazaHucumStartMutasiyasiniIcraEt(state, playerId, msg, client,
     const replay = tekrar.result && typeof tekrar.result === "object" ? kopyala(tekrar.result) : {};
     return { success: true, deyisdi: false, requestId: payload.requestId, idempotentReplay: true, operation: replay.operation || null, rule: replay.rule || null };
   }
-  const bloklayici = pvpBazaHucumStartBloklayicisiniAl(state, payload.convoyId);
-  if (bloklayici) return { success: false, deyisdi: false, requestId: payload.requestId, idempotentReplay: false, blocker: bloklayici.code, message: bloklayici.message };
+  const bloklayici = pvpBazaHucumStartBloklayicisiniAl(state, payload.convoyId, nowMs);
+  if (bloklayici) return { success: false, deyisdi: false, requestId: payload.requestId, idempotentReplay: false, blocker: bloklayici.code, message: bloklayici.message, shieldUntilMs: bloklayici.shieldUntilMs || 0, remainingMs: bloklayici.remainingMs || 0 };
   const repeatBlock = tekrarHucumBloklayicisiniAl(state, payload.targetPlayerId, nowMs);
   if (repeatBlock) return { success: false, deyisdi: false, requestId: payload.requestId, idempotentReplay: false, blocker: repeatBlock.code, message: repeatBlock.message, retryAtMs: repeatBlock.retryAtMs, remainingMs: repeatBlock.remainingMs };
 

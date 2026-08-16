@@ -16,12 +16,13 @@ const {
   const state = {
     playerId: "attacker",
     worldPlacement: { stateId: 1, baseX: 10, baseZ: 10 },
-    pvpProtection: { shieldUntilMs: now + 5000 }
+    pvpProtection: { shieldUntilMs: now + 5000, lastShieldItemId: "peace_shield_8h" }
   };
   const info = pvpQorumaMelumatiniAl(state, now);
   assert.strictEqual(info.shieldActive, true);
   assert.strictEqual(info.shieldRemainingMs, 5000);
-  assert.strictEqual(info.activationEndpointEnabled, false);
+  assert.strictEqual(info.activationEndpointEnabled, true);
+  assert.strictEqual(info.outgoingPvpBlockedWhileShielded, true);
 
   const publicProtection = pvpHedefQorunurmuPublicBaza({ pvpShieldUntilMs: now + 9000 }, now);
   assert.strictEqual(publicProtection.protected, true);
@@ -40,11 +41,22 @@ const {
   if (old == null) delete process.env.PVP_REPEAT_ATTACK_COOLDOWN_MS;
   else process.env.PVP_REPEAT_ATTACK_COOLDOWN_MS = old;
 
+  const fakeClient = { query: async () => ({ rows: [] }) };
+  const ownShieldAttack = await pvpBazaHucumStartMutasiyasiniIcraEt(
+    state,
+    "attacker",
+    { requestId: "req-own-shield", convoyId: "konvoy_1", targetPlayerId: "defender" },
+    fakeClient,
+    now,
+    { hedefBazaAl: async () => null }
+  );
+  assert.strictEqual(ownShieldAttack.success, false);
+  assert.strictEqual(ownShieldAttack.blocker, "attacker_pvp_shield_active");
+
   const attackState = {
     playerId: "attacker",
     worldPlacement: { stateId: 1, baseX: 10, baseZ: 10 }
   };
-  const fakeClient = { query: async () => ({ rows: [] }) };
   const result = await pvpBazaHucumStartMutasiyasiniIcraEt(
     attackState,
     "attacker",

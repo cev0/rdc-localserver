@@ -19,10 +19,8 @@ const { qosunTelimiMesajiniEmalEt } = require("./qosun_telimi_handler");
 const { dovletXeriteKataloqMesajiniEmalEt } = require("./dovlet_xerite_kataloq_handler");
 const { dovletXeriteLayerMesajiniEmalEt } = require("./dovlet_xerite_layer_handler");
 const { pvpBazaReportStatusMesajiniEmalEt } = require("./pvp_baza_report_status_handler");
+const { pvpShieldMesajiniEmalEt } = require("./pvp_shield_handler");
 
-// Live PvP handler settlement funksiyasını require zamanı destructure edir.
-// Ona görə tam report + durability + zeroing + plunder bridge override-u
-// pvp_baza_live_handler require edilməzdən əvvəl aktiv edilməlidir.
 require("./pvp_settlement_live_override");
 const { pvpBazaLiveMesajiniEmalEt } = require("./pvp_baza_live_handler");
 
@@ -60,6 +58,7 @@ const OYUNCU_MUTASIYA_MESAJLARI = new Set([
   "pvp_base_attack_start_request",
   "pvp_base_attack_status_request",
   "pvp_base_attack_return_request",
+  "pvp_shield_activate_request",
   "battle_start_request",
   "battle_resolve_request",
   "battle_reward_claim_request",
@@ -82,7 +81,6 @@ const OYUNCU_MUTASIYA_MESAJLARI = new Set([
 ]);
 
 const esasHesabLoginMesajiniEmalEt = hesabLoginModulu.hesabLoginMesajiniEmalEt;
-
 if (typeof esasHesabLoginMesajiniEmalEt !== "function") {
   throw new Error("hesab_login_handler.js daxilində hesabLoginMesajiniEmalEt tapılmadı.");
 }
@@ -102,6 +100,7 @@ async function gameplayMesajZenciriniIcraEt(kontekst) {
   if (await qosunTelimiMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteKataloqMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteLayerMesajiniEmalEt(kontekst)) return true;
+  if (await pvpShieldMesajiniEmalEt(kontekst)) return true;
   if (await pvpBazaReportStatusMesajiniEmalEt(kontekst)) return true;
   if (await pvpBazaLiveMesajiniEmalEt(kontekst)) return true;
   if (await pvpBazaPreviewMesajiniEmalEt(kontekst)) return true;
@@ -115,35 +114,22 @@ async function gameplayMesajZenciriniIcraEt(kontekst) {
   if (await kesfiyyatMesajiniEmalEt(kontekst)) return true;
   if (await dusmenMovqeyiMesajiniEmalEt(kontekst)) return true;
   if (await doyusMesajiniEmalEt(kontekst)) return true;
-
   return await esasHesabLoginMesajiniEmalEt(kontekst);
 }
 
 hesabLoginModulu.hesabLoginMesajiniEmalEt = async function(kontekst) {
   const type = metnAl(kontekst && kontekst.type, 128);
-  const playerId = metnAl(
-    kontekst && kontekst.ws && kontekst.ws._authedPlayerId,
-    128
-  );
-
+  const playerId = metnAl(kontekst && kontekst.ws && kontekst.ws._authedPlayerId, 128);
   if (!playerId || !OYUNCU_MUTASIYA_MESAJLARI.has(type)) {
     return await gameplayMesajZenciriniIcraEt(kontekst);
   }
-
-  return await oyuncuMutasiyaKilidiIleIcraEt(
-    playerId,
-    async () => await gameplayMesajZenciriniIcraEt(kontekst)
-  );
+  return await oyuncuMutasiyaKilidiIleIcraEt(playerId, async () => await gameplayMesajZenciriniIcraEt(kontekst));
 };
 
 const { dovletQaydalariniTetbiqEt } = require("./server_dovlet_patch");
 dovletQaydalariniTetbiqEt();
-
 const { clientStateQaydalariniTetbiqEt } = require("./server_client_state_patch");
 clientStateQaydalariniTetbiqEt();
-
 require("./server_hesab_genisletme");
 
-module.exports = {
-  OYUNCU_MUTASIYA_MESAJLARI
-};
+module.exports = { OYUNCU_MUTASIYA_MESAJLARI };
