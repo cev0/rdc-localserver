@@ -25,6 +25,7 @@ on:
       - server-pvp-fixed-storage-protection-v1
       - server-pvp-shield-items-v1
       - server-convoy-capacity-skill-link-v3
+      - server-hero-exp-level50-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -49,6 +50,9 @@ on:
       - 'konvoy_handler.js'
       - 'konvoy_tutum_formulu.js'
       - 'konvoy_tutum_formulu_testi.js'
+      - 'qehreman_kataloqu.js'
+      - 'qehreman_exp_sistemi.js'
+      - 'qehreman_exp_progression_testi.js'
       - 'pvp_doyus_snapshot_sistemi.js'
       - 'pvp_doyus_snapshot_sistemi_testi.js'
       - 'pvp_doyus_resolver.js'
@@ -114,6 +118,8 @@ jobs:
         run: node doyus_qosun_lifecycle_testi.js
       - name: Konvoy tutum formulu testleri
         run: node konvoy_tutum_formulu_testi.js
+      - name: Qehreman EXP progression testleri
+        run: node qehreman_exp_progression_testi.js
       - name: PvP konvoy mudafie snapshot testleri
         run: node pvp_doyus_snapshot_sistemi_testi.js
       - name: PvP iki teref server resolver testleri
