@@ -4,6 +4,8 @@ const { qehremaniTap } = require("./qehreman_kataloqu");
 const {
   SKILL_MAKSIMUM_LEVEL,
   releaseClassNormallasdir,
+  skillSlotSayiniAl,
+  skillSlotEtibarlidir,
   skillWisdomXerciniAl,
   skillUnlockProfiliniAl
 } = require("./qehreman_skill_qaydalari");
@@ -38,15 +40,16 @@ function skillMaterialStateTeminEt(state) {
   return m;
 }
 
-function heroSkillStateTeminEt(hero) {
+function heroSkillStateTeminEt(hero, definition = null) {
   if (!hero || typeof hero !== "object") return [];
   if (!Array.isArray(hero.skills)) hero.skills = [];
+  const maxSlot = definition ? skillSlotSayiniAl(definition) : 8;
 
   const temiz = [];
   const seen = new Set();
   for (const raw of hero.skills) {
     const slotIndex = Math.trunc(Number(raw && raw.slotIndex) || 0);
-    if (slotIndex < 1 || slotIndex > 8 || seen.has(slotIndex)) continue;
+    if (slotIndex < 1 || slotIndex > maxSlot || seen.has(slotIndex)) continue;
     seen.add(slotIndex);
     temiz.push({
       slotIndex,
@@ -55,29 +58,24 @@ function heroSkillStateTeminEt(hero) {
     });
   }
 
-  if (!seen.has(1)) {
-    temiz.push({ slotIndex: 1, isUnlocked: true, skillLevel: 1 });
-  }
-
-  for (const skill of temiz) {
-    if (skill.slotIndex === 1) skill.isUnlocked = true;
-  }
+  if (!seen.has(1)) temiz.push({ slotIndex: 1, isUnlocked: true, skillLevel: 1 });
+  for (const skill of temiz) if (skill.slotIndex === 1) skill.isUnlocked = true;
 
   temiz.sort((a, b) => a.slotIndex - b.slotIndex);
   hero.skills = temiz;
   return hero.skills;
 }
 
-function skillTap(hero, slotIndex) {
+function skillTap(hero, slotIndex, definition = null) {
   const slot = Math.trunc(Number(slotIndex) || 0);
-  heroSkillStateTeminEt(hero);
+  heroSkillStateTeminEt(hero, definition);
   return hero.skills.find(x => x && x.slotIndex === slot) || null;
 }
 
-function skillYarat(hero, slotIndex, unlocked) {
+function skillYarat(hero, slotIndex, unlocked, definition) {
   const slot = Math.trunc(Number(slotIndex) || 0);
-  if (slot < 1 || slot > 8) return null;
-  let skill = skillTap(hero, slot);
+  if (!skillSlotEtibarlidir(definition, slot)) return null;
+  let skill = skillTap(hero, slot, definition);
   if (!skill) {
     skill = { slotIndex: slot, isUnlocked: unlocked === true, skillLevel: 1 };
     hero.skills.push(skill);
@@ -130,10 +128,12 @@ function qehremanSkilliniAc(state, heroId, slotIndex) {
   const slot = Math.trunc(Number(slotIndex) || 0);
 
   if (!definition || !hero) return { success: false, message: "Qəhrəman oyunçuya məxsus deyil." };
-  if (slot < 1 || slot > 8) return { success: false, message: "Skill slot etibarsızdır." };
+  if (!skillSlotEtibarlidir(definition, slot)) {
+    return { success: false, message: `Bu nadirlikdə maksimum ${skillSlotSayiniAl(definition)} skill slotu var.` };
+  }
 
   hero.level = Math.max(1, Math.min(50, tamEded(hero.level) || 1));
-  const existing = skillTap(hero, slot);
+  const existing = skillTap(hero, slot, definition);
   if (existing && existing.isUnlocked === true) {
     return { success: true, alreadyUnlocked: true, heroId: definition.heroId, slotIndex: slot, skillLevel: existing.skillLevel };
   }
@@ -143,7 +143,7 @@ function qehremanSkilliniAc(state, heroId, slotIndex) {
     return {
       success: false,
       profileConfigured: false,
-      message: "Bu qəhrəman rarity-si üçün skill unlock balansı hələ təsdiqlənməyib. Server rəqəm uydurmur."
+      message: "Bu qəhrəman nadirliyi üçün skill açılma balansı hələ tam təsdiqlənməyib. Server rəqəm uydurmur."
     };
   }
 
@@ -157,7 +157,7 @@ function qehremanSkilliniAc(state, heroId, slotIndex) {
   }
 
   unlockXerciniCix(state, hero, requirement);
-  const skill = skillYarat(hero, slot, true);
+  const skill = skillYarat(hero, slot, true, definition);
   skill.isUnlocked = true;
   skill.skillLevel = Math.max(1, tamEded(skill.skillLevel) || 1);
 
@@ -179,20 +179,22 @@ function qehremanSkilliniYukselt(state, heroId, slotIndex) {
   const hero = ownedHeroTap(state, heroId);
   const slot = Math.trunc(Number(slotIndex) || 0);
   if (!definition || !hero) return { success: false, message: "Qəhrəman oyunçuya məxsus deyil." };
-  if (slot < 1 || slot > 8) return { success: false, message: "Skill slot etibarsızdır." };
+  if (!skillSlotEtibarlidir(definition, slot)) {
+    return { success: false, message: `Bu nadirlikdə maksimum ${skillSlotSayiniAl(definition)} skill slotu var.` };
+  }
 
-  const skill = skillTap(hero, slot);
+  const skill = skillTap(hero, slot, definition);
   if (!skill || skill.isUnlocked !== true) return { success: false, message: "Skill hələ açılmayıb." };
   if (skill.skillLevel >= SKILL_MAKSIMUM_LEVEL) return { success: false, message: "Skill maksimum Lv10 səviyyəsindədir." };
 
   const oldLevel = skill.skillLevel;
   const newLevel = oldLevel + 1;
   const wisdomCost = skillWisdomXerciniAl(definition.rarity, newLevel);
-  if (wisdomCost <= 0) return { success: false, message: "Bu rarity üçün skill inkişaf xərci tapılmadı." };
+  if (wisdomCost <= 0) return { success: false, message: "Bu nadirlik üçün skill inkişaf xərci tapılmadı." };
 
   const materials = skillMaterialStateTeminEt(state);
   if (materials.wisdom < wisdomCost) {
-    return { success: false, message: `Kifayət qədər Wisdom medalı yoxdur. Tələb: ${wisdomCost}.`, wisdomCost, wisdomBalance: materials.wisdom };
+    return { success: false, message: `Kifayət qədər Hikmət medalı yoxdur. Tələb: ${wisdomCost}.`, wisdomCost, wisdomBalance: materials.wisdom };
   }
 
   materials.wisdom -= wisdomCost;
@@ -215,12 +217,13 @@ function qehremanSkillMelumatiniHazirla(state, heroId) {
   if (!definition || !hero) return { success: false, message: "Qəhrəman oyunçuya məxsus deyil." };
 
   hero.level = Math.max(1, Math.min(50, tamEded(hero.level) || 1));
-  heroSkillStateTeminEt(hero);
+  heroSkillStateTeminEt(hero, definition);
   const materials = skillMaterialStateTeminEt(state);
   const skills = [];
+  const slotCount = skillSlotSayiniAl(definition);
 
-  for (let slot = 1; slot <= 8; slot++) {
-    const skill = skillTap(hero, slot);
+  for (let slot = 1; slot <= slotCount; slot++) {
+    const skill = skillTap(hero, slot, definition);
     const requirement = skillUnlockProfiliniAl(definition, slot);
     const unlocked = !!skill && skill.isUnlocked === true;
     const skillLevel = unlocked ? skill.skillLevel : 1;
@@ -244,6 +247,7 @@ function qehremanSkillMelumatiniHazirla(state, heroId) {
     rarity: definition.rarity,
     releaseClass: releaseClassNormallasdir(definition.releaseClass),
     heroLevel: hero.level,
+    skillSlotCount: slotCount,
     duplicateCopies: tamEded(hero.duplicateCopies),
     money: pulBalansiniAl(state),
     materials: { ...materials },
