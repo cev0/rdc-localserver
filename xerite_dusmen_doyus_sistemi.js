@@ -43,9 +43,9 @@ function formasiyaSnapshotiniAl(konvoy) {
 function stateTeminEt(state) {
   if (!state || typeof state !== "object") throw new Error("Düşmən döyüşü üçün oyunçu state-i yoxdur.");
   if (!state.worldEnemyBattle || typeof state.worldEnemyBattle !== "object" || Array.isArray(state.worldEnemyBattle)) {
-    state.worldEnemyBattle = { version: 4, activeByConvoy: {}, lastResults: [] };
+    state.worldEnemyBattle = { version: 5, activeByConvoy: {}, lastResults: [] };
   }
-  state.worldEnemyBattle.version = 4;
+  state.worldEnemyBattle.version = 5;
   if (!state.worldEnemyBattle.activeByConvoy || typeof state.worldEnemyBattle.activeByConvoy !== "object" || Array.isArray(state.worldEnemyBattle.activeByConvoy)) {
     state.worldEnemyBattle.activeByConvoy = {};
   }
@@ -161,7 +161,7 @@ function doyusaBasla(state, playerId, convoyId, enemyId, nowMs = Date.now()) {
       perUnit: troopStats.perUnit.map(x => ({ ...x }))
     },
     combatStatSource: "qosun_kataloqu_v1",
-    combatResolverId: "staged_front_to_back_power_v1",
+    combatResolverId: "staged_front_to_back_exchange_v2",
     startedAtMs,
     resolveAtMs: startedAtMs + DOYUS_NETICE_GOZLEME_MS,
     status: "active"
