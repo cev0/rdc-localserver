@@ -12,6 +12,7 @@ on:
       - server-casualty-exchange-integration-v1
       - server-troop-lifecycle-accounting-v1
       - server-pvp-real-resolver-v1
+      - server-convoy-defense-toggle-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -32,7 +33,10 @@ on:
       - 'doyus_sistemi.js'
       - 'doyus_qosun_stat_inteqrasiya_testi.js'
       - 'xerite_dusmen_doyus_sistemi.js'
+      - 'konvoy_mudafie_sistemi.js'
+      - 'konvoy_handler.js'
       - 'pvp_doyus_snapshot_sistemi.js'
+      - 'pvp_doyus_snapshot_sistemi_testi.js'
       - 'pvp_doyus_resolver.js'
       - 'pvp_doyus_resolver_testi.js'
       - 'server_missiya_genisletme_v2.js'
@@ -74,6 +78,9 @@ jobs:
 
       - name: Doyus qosun lifecycle accounting testleri
         run: node doyus_qosun_lifecycle_testi.js
+
+      - name: PvP konvoy mudafie snapshot testleri
+        run: node pvp_doyus_snapshot_sistemi_testi.js
 
       - name: PvP iki teref server resolver testleri
         run: node pvp_doyus_resolver_testi.js
