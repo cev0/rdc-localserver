@@ -63,12 +63,19 @@ function skillLeveliniAl(heroState, slotIndex) {
   const slot = Math.max(1, Math.trunc(Number(slotIndex) || 0));
   if (!heroState || slot <= 0) return 0;
 
-  if (heroState.skills && typeof heroState.skills === "object") {
+  if (Array.isArray(heroState.skills)) {
+    const raw = heroState.skills.find(x => x && Math.trunc(Number(x.slotIndex) || 0) === slot);
+    if (raw) {
+      if (raw.isUnlocked !== true) return 0;
+      return Math.max(1, Math.trunc(Number(raw.skillLevel) || 1));
+    }
+  }
+  else if (heroState.skills && typeof heroState.skills === "object") {
     const raw = heroState.skills[String(slot)] ?? heroState.skills[slot];
     if (typeof raw === "number") return Math.max(0, Math.trunc(raw));
     if (raw && typeof raw === "object") {
-      if (raw.unlocked === false) return 0;
-      return Math.max(0, Math.trunc(Number(raw.level) || 0));
+      if (raw.unlocked === false || raw.isUnlocked === false) return 0;
+      return Math.max(0, Math.trunc(Number(raw.level ?? raw.skillLevel) || 0));
     }
   }
 
