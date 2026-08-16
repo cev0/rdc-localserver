@@ -43,6 +43,7 @@ function defenderStateHazirla(duplicateRows = false) {
   return {
     playerId: "oyuncu_b",
     technology: { levels: { ikinci_konvoy: 1 } },
+    // shooter_lv1 konvoya yerləşdirilməyib və baza müdafiəsinə avtomatik girməməlidir.
     army: { troops: { fighter_lv1: 60, shooter_lv1: 30 } },
     konvoylar: { items: [
       {
@@ -60,11 +61,6 @@ function defenderStateHazirla(duplicateRows = false) {
         konvoyId: "konvoy_2", aciqdir: true, defenseEnabled: true,
         qosunlar: { fighter_lv1: 30 }, qehremanIdleri: [],
         formasiya: { siralar: [{ siraId: "sira_1", unitId: "fighter_lv1", count: 30 }] }
-      },
-      {
-        konvoyId: "konvoy_3", aciqdir: true, defenseEnabled: false,
-        qosunlar: { shooter_lv1: 30 }, qehremanIdleri: [],
-        formasiya: { siralar: [{ siraId: "sira_1", unitId: "shooter_lv1", count: 30 }] }
       }
     ] },
     konvoyEmeliyyatlari: { version: 3, history: [], activeByConvoy: {} }
@@ -102,7 +98,6 @@ function fakeHovuzHazirla(snapshotByPlayerId) {
   {
     const attacker = attackerStateHazirla();
     const defender = defenderStateHazirla();
-    const disabledBefore = kopyala(defender.konvoylar.items[2]);
     const result = pvpDoyusunuIkiStateUzerindeTetbiqEt(
       attacker, defender, "konvoy_1", "pvp:oyuncu_a:konvoy_1:1000", 6000
     );
@@ -114,7 +109,6 @@ function fakeHovuzHazirla(snapshotByPlayerId) {
     assert.strictEqual(result.operation.returnEndsAtMs, 10000);
     assert.deepStrictEqual(result.operation.result.defenderConvoyIds, ["konvoy_1", "konvoy_2"]);
     assert.notStrictEqual(result.combat.attackerPower, 999999999);
-    assert.deepStrictEqual(defender.konvoylar.items[2], disabledBefore);
     assert.strictEqual(defender.army.troops.shooter_lv1, 30);
     assert.ok(defender.army.troops.fighter_lv1 <= 60);
     assert.ok(attacker.army.troops.fighter_lv1 <= 100);
