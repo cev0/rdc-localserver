@@ -129,14 +129,24 @@ Təsdiqlənməmiş faizlər serverə aktiv edilməməlidir.
 - Hazırda kataloqda təsdiqlənmiş İnkişaf qəhrəmanı effekti olmadığı üçün mövcud gameplay müddəti dəyişmir; uydurma faiz aktiv edilməyib.
 - Xüsusi test əlavə edildi və bütün mövcud CI testləri ilə birlikdə uğurla keçdi.
 - PR #103 main-ə merge edildi. Merge commit: 6b2f0556f102e6dd521fdec4f958515d6b617bc0.
-- Növbəti mərhələ: bu bridge-i research start hesablamasına bağlamaq; sonra eyni pattern ilə tikinti/təlim/müalicə körpüləri qurmaq.
+
+### PR #104 — Research start İnkişaf inteqrasiyası
+
+- texnologiya_inkisaf_korpu.js real `technology_research_start` hesablamasına qoşuldu.
+- Araşdırma başlananda server əsas Institute-u seçir, mövcud təsdiqlənmiş modifier datasını hesablayır və effektiv müddəti server-authoritative şəkildə yazır.
+- `currentResearch` daxilində `instituteInstanceId`, `baseDurationSeconds` və `researchSpeedPercent` saxlanır.
+- Cavab/idempotent nəticədə `developmentModifier` metadata-sı saxlanır.
+- Təsdiqlənmiş İnkişaf qəhrəmanı faizi olmadığı üçün hazırkı gameplay müddəti dəyişmir; uydurma balans əlavə edilməyib.
+- Ayrıca `konvoy_texnologiya_inkisaf_inteqrasiya_testi.js` əlavə edildi və CI-də uğurla keçdi.
+- PR #104 merge üçün hazırdır; bu qeydin yazıldığı anda CI success-dir.
 
 ## Növbəti təhlükəsiz backend addımları
 
-1. texnologiya_inkisaf_korpu.js-ni konvoy_texnologiya_handler.js research start müddətinə server-authoritative şəkildə bağlamaq; heç bir hero faizi əlavə etmədən yalnız mövcud modifier datasını tətbiq etmək.
-2. Eyni pattern ilə Tikinti, Qoşun təlimi və Xəstəxana hesablamaları üçün İnkişaf modifier körpüləri əlavə etmək.
-3. Qəhrəman kataloqunda real İnkişaf qəhrəman ID-ləri və allowedBuildingIds mapping-i yalnız təsdiqlənəndə əlavə etmək.
-4. Konkret skill effect faizlərini yalnız təsdiqlənmiş data ilə kataloqa yazmaq.
-5. Green/Blue/Purple unlock material cədvəllərini etibarlı mənbə və ya oyun screenshot-u ilə tamamlamaq.
-6. Hero medal acquisition/conversion sistemi və Starter Wisdom məsələsini ayrıca bağlamaq.
-7. Konvoy üçün vahid mission state: idle → marching → gathering/battle → returning → idle.
+1. PR #104 merge vəziyyətini və Koyeb deploy-u yoxlamaq.
+2. Eyni pattern ilə Tikinti hesablamaları üçün İnkişaf modifier körpüsü əlavə etmək; təsdiqlənməmiş faiz aktiv etməmək.
+3. Sonra Qoşun təlimi və Xəstəxana hesablamaları üçün İnkişaf modifier körpüləri qurmaq.
+4. Qəhrəman kataloqunda real İnkişaf qəhrəman ID-ləri və allowedBuildingIds mapping-i yalnız təsdiqlənəndə əlavə etmək.
+5. Konkret skill effect faizlərini yalnız təsdiqlənmiş data ilə kataloqa yazmaq.
+6. Green/Blue/Purple unlock material cədvəllərini etibarlı mənbə və ya oyun screenshot-u ilə tamamlamaq.
+7. Hero medal acquisition/conversion sistemi və Starter Wisdom məsələsini ayrıca bağlamaq.
+8. Konvoy üçün vahid mission state: idle → marching → gathering/battle → returning → idle.
