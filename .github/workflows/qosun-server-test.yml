@@ -18,6 +18,7 @@ on:
       - server-pvp-reports-v1
       - server-pvp-city-durability-v1
       - server-pvp-zeroing-teleport-v1
+      - server-pvp-zeroing-recall-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -53,6 +54,8 @@ on:
       - 'pvp_seher_davamliliq_sistemi_testi.js'
       - 'pvp_zeroing_yerdeyisme_sistemi.js'
       - 'pvp_zeroing_yerdeyisme_sistemi_testi.js'
+      - 'pvp_zeroing_konvoy_recall_postcommit.js'
+      - 'pvp_zeroing_konvoy_recall_postcommit_testi.js'
       - 'pvp_baza_hucum_start_xidmeti.js'
       - 'pvp_baza_hucum_catma_xidmeti.js'
       - 'pvp_baza_live_handler.js'
@@ -101,5 +104,7 @@ jobs:
         run: node pvp_seher_davamliliq_sistemi_testi.js
       - name: PvP zeroing yerdeyisme testleri
         run: node pvp_zeroing_yerdeyisme_sistemi_testi.js
+      - name: PvP zeroing post-commit convoy recall testleri
+        run: node pvp_zeroing_konvoy_recall_postcommit_testi.js
       - name: PvP live flow handler testleri
         run: node pvp_baza_live_handler_testi.js

@@ -15,6 +15,9 @@ const {
 const {
   zeroingiTetbiqEt
 } = require("./pvp_zeroing_yerdeyisme_sistemi");
+const {
+  pvpZeroingKonvoyRecalliniPostCommitIcraEt
+} = require("./pvp_zeroing_konvoy_recall_postcommit");
 
 function metnAl(v, max = 128) {
   return typeof v === "string" ? v.trim().slice(0, max).toLowerCase() : "";
@@ -34,14 +37,19 @@ async function pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
   const runnerSecimleri = secimler && secimler.runnerSecimleri
     ? secimler.runnerSecimleri
     : null;
+  const postCommitRecallFn = secimler && typeof secimler.postCommitRecallFn === "function"
+    ? secimler.postCommitRecallFn
+    : pvpZeroingKonvoyRecalliniPostCommitIcraEt;
 
-  return await runner(attacker, defender, async (stateler, trx) => {
+  const defenderId = metnAl(defender && defender.playerId, 128);
+
+  const settlement = await runner(attacker, defender, async (stateler, trx) => {
     const attackerId = metnAl(attacker && attacker.playerId, 128);
-    const defenderId = metnAl(defender && defender.playerId, 128);
+    const lockedDefenderId = metnAl(defender && defender.playerId, 128);
     const attackerState = stateler[attackerId];
-    const defenderState = stateler[defenderId];
+    const defenderState = stateler[lockedDefenderId];
 
-    const settlement = pvpDoyusunuIkiStateUzerindeTetbiqEt(
+    const innerSettlement = pvpDoyusunuIkiStateUzerindeTetbiqEt(
       attackerState,
       defenderState,
       convoyId,
@@ -49,28 +57,28 @@ async function pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
       nowMs
     );
 
-    if (!settlement || settlement.success !== true) return settlement;
-    if (settlement.alreadyResolved === true) return settlement;
+    if (!innerSettlement || innerSettlement.success !== true) return innerSettlement;
+    if (innerSettlement.alreadyResolved === true) return innerSettlement;
 
     let cityImpact = null;
     let zeroingRelocation = null;
-    if (settlement.combat && settlement.combat.attackerVictory === true) {
+    if (innerSettlement.combat && innerSettlement.combat.attackerVictory === true) {
       cityImpact = qalibPvpHucumunuTetbiqEt(defenderState, nowMs);
-      settlement.cityImpact = cityImpact;
+      innerSettlement.cityImpact = cityImpact;
 
       if (cityImpact.zeroed === true) {
         zeroingRelocation = await zeroingiTetbiqEt(
           defenderState,
-          defenderId,
+          lockedDefenderId,
           trx && trx.client,
           nowMs
         );
-        settlement.zeroingRelocation = zeroingRelocation;
+        innerSettlement.zeroingRelocation = zeroingRelocation;
       }
 
-      if (settlement.operation && settlement.operation.result) {
-        settlement.operation.result.cityImpact = JSON.parse(JSON.stringify(cityImpact));
-        settlement.operation.result.zeroingRelocation = zeroingRelocation
+      if (innerSettlement.operation && innerSettlement.operation.result) {
+        innerSettlement.operation.result.cityImpact = JSON.parse(JSON.stringify(cityImpact));
+        innerSettlement.operation.result.zeroingRelocation = zeroingRelocation
           ? JSON.parse(JSON.stringify(zeroingRelocation))
           : null;
       }
@@ -79,7 +87,7 @@ async function pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
     const reports = pvpIkiTerefRaportlariniYarat(
       attackerState,
       defenderState,
-      settlement,
+      innerSettlement,
       nowMs
     );
 
@@ -87,21 +95,49 @@ async function pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
       throw new Error("PvP döyüş raportları atomik settlement daxilində yaradıla bilmədi.");
     }
 
-    settlement.reports = reports;
-    settlement.deyisdi = true;
-    settlement.deyisenPlayerIdleri = [attackerId, defenderId];
+    innerSettlement.reports = reports;
+    innerSettlement.deyisdi = true;
+    innerSettlement.deyisenPlayerIdleri = [attackerId, lockedDefenderId];
 
-    if (settlement.operation && settlement.operation.result) {
-      settlement.operation.result.attackerReportId = reports.attackerReport
+    if (innerSettlement.operation && innerSettlement.operation.result) {
+      innerSettlement.operation.result.attackerReportId = reports.attackerReport
         ? reports.attackerReport.reportId
         : "";
-      settlement.operation.result.defenderReportId = reports.defenderReport
+      innerSettlement.operation.result.defenderReportId = reports.defenderReport
         ? reports.defenderReport.reportId
         : "";
     }
 
-    return settlement;
+    return innerSettlement;
   }, runnerSecimleri);
+
+  // Bu nöqtəyə yalnız iki-oyunçulu transaction COMMIT-dən sonra çatılır.
+  // Konvoy recall gather/enemy/shared-runtime yan təsirləri yarada bildiyi üçün
+  // qəsdən əsas PvP transaction daxilində icra edilmir.
+  if (
+    settlement &&
+    settlement.success === true &&
+    settlement.zeroingRelocation &&
+    settlement.zeroingRelocation.zeroed === true &&
+    defenderId
+  ) {
+    try {
+      settlement.zeroingConvoyRecall = await postCommitRecallFn(defenderId, nowMs);
+    }
+    catch (xeta) {
+      // PvP/zeroing artıq commit olub. Burada throw etmək client-ə yanlış şəkildə
+      // bütün döyüş rollback olub təsiri verərdi. Pending flag snapshot-da qalır
+      // və recall təhlükəsiz şəkildə retry edilə bilər.
+      console.error("[PVP_ZEROING_POST_COMMIT_RECALL]", xeta);
+      settlement.zeroingConvoyRecall = {
+        success: false,
+        retryPending: true,
+        message: "Zeroing tamamlandı, konvoyların geri çağırılması təkrar yoxlanacaq."
+      };
+    }
+  }
+
+  return settlement;
 }
 
 module.exports = {
