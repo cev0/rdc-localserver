@@ -21,6 +21,7 @@ on:
       - server-pvp-zeroing-recall-v1
       - server-pvp-resource-plunder-v1
       - server-pvp-protection-foundation-v1
+      - server-pvp-storage-protection-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -60,6 +61,8 @@ on:
       - 'pvp_zeroing_konvoy_recall_postcommit_testi.js'
       - 'pvp_resurs_talani_sistemi.js'
       - 'pvp_resurs_talani_sistemi_testi.js'
+      - 'pvp_anbar_qoruma_sistemi.js'
+      - 'pvp_anbar_qoruma_sistemi_testi.js'
       - 'pvp_settlement_live_override.js'
       - 'pvp_settlement_live_override_testi.js'
       - 'pvp_qoruma_sistemi.js'
@@ -117,6 +120,8 @@ jobs:
         run: node pvp_zeroing_konvoy_recall_postcommit_testi.js
       - name: PvP resurs talani testleri
         run: node pvp_resurs_talani_sistemi_testi.js
+      - name: PvP anbar qoruma testleri
+        run: node pvp_anbar_qoruma_sistemi_testi.js
       - name: PvP live settlement override testi
         run: node pvp_settlement_live_override_testi.js
       - name: PvP qoruma ve tekrar-hucum testleri
