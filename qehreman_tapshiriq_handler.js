@@ -3,7 +3,9 @@
 const {
   tapshiriqMelumatiniHazirla,
   texnologiyaQehremaniTeyinEt,
-  texnologiyaQehremaniniCixar
+  texnologiyaQehremaniniCixar,
+  inkisafQehremaniTeyinEt,
+  inkisafQehremaniniCixar
 } = require("./qehreman_tapshiriq_sistemi");
 const {
   oyunStateIniBerpaEt,
@@ -16,7 +18,9 @@ const {
 const MESAJLAR = new Set([
   "hero_assignment_info_request",
   "technology_hero_assign_request",
-  "technology_hero_remove_request"
+  "technology_hero_remove_request",
+  "development_hero_assign_request",
+  "development_hero_remove_request"
 ]);
 
 function metnAl(v, max = 128) {
@@ -42,39 +46,31 @@ function tapshiriqYedeyiniAl(state) {
 
 function tapshiriqYedeyiniBerpaEt(state, yedek) {
   if (!state || !yedek) return;
-
-  if (yedek.varIdi) {
-    state.qehremanTapshiriqlari = kopyala(yedek.deyer);
-  }
-  else {
-    delete state.qehremanTapshiriqlari;
-  }
+  if (yedek.varIdi) state.qehremanTapshiriqlari = kopyala(yedek.deyer);
+  else delete state.qehremanTapshiriqlari;
 }
 
 function qehremanTapshiriqMutasiyasiniTetbiqEt(state, type, msg) {
-  const assignSorqusudur = type === "technology_hero_assign_request";
-  const removeSorqusudur = type === "technology_hero_remove_request";
-
-  if (!assignSorqusudur && !removeSorqusudur) {
-    return {
-      success: false,
-      deyisdi: false,
-      message: "Naməlum qəhrəman təyinat sorğusu."
-    };
-  }
-
   const yedek = tapshiriqYedeyiniAl(state);
   const heroId = metnAl(msg && msg.heroId);
 
   let netice;
   try {
-    netice = assignSorqusudur
-      ? texnologiyaQehremaniTeyinEt(
-          state,
-          heroId,
-          metnAl(msg && msg.instituteInstanceId)
-        )
-      : texnologiyaQehremaniniCixar(state, heroId);
+    if (type === "technology_hero_assign_request") {
+      netice = texnologiyaQehremaniTeyinEt(state, heroId, metnAl(msg && msg.instituteInstanceId));
+    }
+    else if (type === "technology_hero_remove_request") {
+      netice = texnologiyaQehremaniniCixar(state, heroId);
+    }
+    else if (type === "development_hero_assign_request") {
+      netice = inkisafQehremaniTeyinEt(state, heroId, metnAl(msg && msg.buildingInstanceId));
+    }
+    else if (type === "development_hero_remove_request") {
+      netice = inkisafQehremaniniCixar(state, heroId);
+    }
+    else {
+      return { success: false, deyisdi: false, message: "Naməlum qəhrəman təyinat sorğusu." };
+    }
   }
   catch (xeta) {
     tapshiriqYedeyiniBerpaEt(state, yedek);
@@ -91,17 +87,11 @@ function qehremanTapshiriqMutasiyasiniTetbiqEt(state, type, msg) {
     return {
       success: false,
       deyisdi: false,
-      message: netice && netice.message
-        ? netice.message
-        : "Qəhrəman təyinat əməliyyatı mümkün deyil."
+      message: netice && netice.message ? netice.message : "Qəhrəman təyinat əməliyyatı mümkün deyil."
     };
   }
 
-  return {
-    success: true,
-    deyisdi: true,
-    netice: kopyala(netice)
-  };
+  return { success: true, deyisdi: true, netice: kopyala(netice) };
 }
 
 async function qehremanTapshiriqMesajiniEmalEt(kontekst) {
@@ -116,49 +106,29 @@ async function qehremanTapshiriqMesajiniEmalEt(kontekst) {
   }
 
   try {
-    if (!oyuncuStateBerpaOlunub(playerId)) {
-      await oyunStateIniBerpaEt(kontekst, playerId);
-    }
-
+    if (!oyuncuStateBerpaOlunub(playerId)) await oyunStateIniBerpaEt(kontekst, playerId);
     const state = kontekst.getOrCreatePlayerState(playerId);
 
     if (type === "hero_assignment_info_request") {
       const info = tapshiriqMelumatiniHazirla(state);
-      gonder(kontekst, resultType, {
-        success: true,
-        playerId,
-        info,
-        payloadJson: JSON.stringify(info)
-      });
+      gonder(kontekst, resultType, { success: true, playerId, info, payloadJson: JSON.stringify(info) });
       return true;
     }
 
     const mutasiyaNeticesi = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
       playerId,
       state,
-      async kilidliState => {
-        return qehremanTapshiriqMutasiyasiniTetbiqEt(
-          kilidliState,
-          type,
-          kontekst.msg
-        );
-      }
+      async kilidliState => qehremanTapshiriqMutasiyasiniTetbiqEt(kilidliState, type, kontekst.msg)
     );
 
     if (!mutasiyaNeticesi || mutasiyaNeticesi.success !== true) {
       if (mutasiyaNeticesi && mutasiyaNeticesi.daxiliXeta) {
-        console.error("[QEHRAMAN_TAPSHIRIQ] Hesablama xətası:", {
-          playerId,
-          message: mutasiyaNeticesi.daxiliXeta
-        });
+        console.error("[QEHRAMAN_TAPSHIRIQ] Hesablama xətası:", { playerId, message: mutasiyaNeticesi.daxiliXeta });
       }
-
       gonder(kontekst, resultType, {
         success: false,
         playerId,
-        message: mutasiyaNeticesi && mutasiyaNeticesi.message
-          ? mutasiyaNeticesi.message
-          : "Qəhrəman təyinat əməliyyatı mümkün deyil."
+        message: mutasiyaNeticesi && mutasiyaNeticesi.message ? mutasiyaNeticesi.message : "Qəhrəman təyinat əməliyyatı mümkün deyil."
       });
       return true;
     }
@@ -174,11 +144,7 @@ async function qehremanTapshiriqMesajiniEmalEt(kontekst) {
   }
   catch (e) {
     console.error("[QEHRAMAN_TAPSHIRIQ]", e);
-    gonder(kontekst, resultType, {
-      success: false,
-      playerId,
-      message: "Qəhrəman təyinat əməliyyatı tamamlanmadı."
-    });
+    gonder(kontekst, resultType, { success: false, playerId, message: "Qəhrəman təyinat əməliyyatı tamamlanmadı." });
   }
 
   return true;
