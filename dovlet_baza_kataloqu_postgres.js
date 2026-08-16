@@ -30,7 +30,6 @@ function zonaAl(x, z) {
   const dx = Number(x) - Number(XERITE.centerX);
   const dz = Number(z) - Number(XERITE.centerZ);
   const mesafe = Math.sqrt((dx * dx) + (dz * dz));
-
   if (mesafe <= Number(XERITE.innerRadius)) return "inner_green";
   if (mesafe <= Number(XERITE.middleRadius)) return "middle";
   return "outer";
@@ -43,17 +42,11 @@ function binaIdAl(bina) {
 function binaLeveliniAl(state, buildingId) {
   const axtarilan = metnAl(buildingId, 128).toLowerCase();
   let maksimum = 0;
-
   for (const bina of Array.isArray(state && state.buildings) ? state.buildings : []) {
     if (!bina || binaIdAl(bina) !== axtarilan) continue;
     if (bina.isCompleted === false) continue;
-
-    maksimum = Math.max(
-      maksimum,
-      Math.max(1, tamEded(bina.level) || 1)
-    );
+    maksimum = Math.max(maksimum, Math.max(1, tamEded(bina.level) || 1));
   }
-
   return maksimum;
 }
 
@@ -76,15 +69,11 @@ function publicGucuAl(state) {
     state && state.stats && state.stats.totalPower,
     state && state.stats && state.stats.power
   ];
-
   for (const deyer of namizedler) {
     if (deyer == null || typeof deyer === "object") continue;
     const say = Number(deyer);
-    if (Number.isFinite(say) && say >= 0) {
-      return Math.trunc(say);
-    }
+    if (Number.isFinite(say) && say >= 0) return Math.trunc(say);
   }
-
   return null;
 }
 
@@ -95,59 +84,46 @@ function publicProfiliniAl(state) {
   };
 }
 
+function pvpShieldUntilMsAl(state) {
+  return tamEded(state && state.pvpProtection && state.pvpProtection.shieldUntilMs);
+}
+
 function bazaElementiniHazirla(playerId, state, stateId) {
   if (!state || typeof state !== "object") return null;
   const wp = state.worldPlacement;
   if (!wp || typeof wp !== "object") return null;
-
   const sid = Math.max(1, tamEded(wp.stateId) || 1);
   if (sid !== stateId) return null;
-
   const baseX = reqemAl(wp.baseX);
   const baseZ = reqemAl(wp.baseZ);
   if (baseX === null || baseZ === null) return null;
-
   const dx = baseX - Number(XERITE.centerX);
   const dz = baseZ - Number(XERITE.centerZ);
   const distanceToCenter = Math.round(Math.sqrt((dx * dx) + (dz * dz)));
   const profil = publicProfiliniAl(state);
-
   return {
-    playerId: metnAl(playerId, 128),
-    stateId: sid,
-    baseX,
-    baseZ,
-    x: baseX,
-    z: baseZ,
-    zoneId: zonaAl(baseX, baseZ),
-    distanceToCenter,
+    playerId: metnAl(playerId, 128), stateId: sid, baseX, baseZ, x: baseX, z: baseZ,
+    zoneId: zonaAl(baseX, baseZ), distanceToCenter,
     hqLevel: binaLeveliniAl(state, "hq"),
     completedBuildingCount: tamamlanmisBinaSayiniAl(state),
     publicPower: publicGucuAl(state),
     commanderName: profil.commanderName,
-    allianceName: profil.allianceName
+    allianceName: profil.allianceName,
+    pvpShieldUntilMs: pvpShieldUntilMsAl(state)
   };
 }
 
 async function bazalariPostgresdenAl(sid) {
-  const netice = await sorguEt(
-    `
+  const netice = await sorguEt(`
       WITH son_snapshot AS (
-        SELECT DISTINCT ON (oyuncu_id)
-          oyuncu_id,
-          detallar
+        SELECT DISTINCT ON (oyuncu_id) oyuncu_id, detallar
         FROM hesab_audit_jurnali
         WHERE hadise_novu = $1
           AND detallar #>> '{state,worldPlacement,stateId}' = $2
         ORDER BY oyuncu_id, id DESC
       )
-      SELECT oyuncu_id, detallar
-      FROM son_snapshot
-      ORDER BY oyuncu_id ASC
-    `,
-    [SNAPSHOT_HADISE_NOVU, String(sid)]
-  );
-
+      SELECT oyuncu_id, detallar FROM son_snapshot ORDER BY oyuncu_id ASC
+    `, [SNAPSHOT_HADISE_NOVU, String(sid)]);
   const bases = [];
   for (const row of (netice.rows || [])) {
     const detallar = row && row.detallar;
@@ -155,127 +131,63 @@ async function bazalariPostgresdenAl(sid) {
     const item = bazaElementiniHazirla(row && row.oyuncu_id, state, sid);
     if (item && item.playerId) bases.push(item);
   }
-
-  return {
-    version: 4,
-    stateId: sid,
-    count: bases.length,
-    bases
-  };
+  return { version: 5, stateId: sid, count: bases.length, bases };
 }
 
-async function birBazaSnapshotiniSorquIleAl(sorquEt, stateId, targetPlayerId) {
+async function birBazaSnapshotiniSorquIleAl(sorquEtFn, stateId, targetPlayerId) {
   const sid = Math.max(1, tamEded(stateId) || 1);
   const target = metnAl(targetPlayerId, 128).toLowerCase();
-
-  if (typeof sorquEt !== "function" || !target) {
-    return null;
-  }
-
-  // State filtri qəsdən SQL daxilində edilmir. Əvvəl oyunçunun həqiqi ən son
-  // snapshot-u alınır, SONRA onun hələ tələb olunan Dövlətdə olub-olmadığı
-  // yoxlanılır. Beləliklə oyunçu başqa Dövlətə keçibsə köhnə State snapshot-u
-  // səhvən cari baza kimi qaytarılmır.
-  const netice = await sorquEt(
-    `
+  if (typeof sorquEtFn !== "function" || !target) return null;
+  const netice = await sorquEtFn(`
       SELECT oyuncu_id, detallar
       FROM hesab_audit_jurnali
-      WHERE oyuncu_id = $1
-        AND hadise_novu = $2
-      ORDER BY id DESC
-      LIMIT 1
-    `,
-    [target, SNAPSHOT_HADISE_NOVU]
-  );
-
-  const row = netice && Array.isArray(netice.rows)
-    ? netice.rows[0]
-    : null;
-
+      WHERE oyuncu_id = $1 AND hadise_novu = $2
+      ORDER BY id DESC LIMIT 1
+    `, [target, SNAPSHOT_HADISE_NOVU]);
+  const row = netice && Array.isArray(netice.rows) ? netice.rows[0] : null;
   if (!row) return null;
-
   const detallar = row.detallar;
-  const state = detallar && typeof detallar === "object"
-    ? detallar.state
-    : null;
+  const state = detallar && typeof detallar === "object" ? detallar.state : null;
   const item = bazaElementiniHazirla(row.oyuncu_id, state, sid);
-
-  return item && item.playerId
-    ? item
-    : null;
+  return item && item.playerId ? item : null;
 }
 
 async function dovletBazasiniBirbasaAl(stateId, targetPlayerId) {
-  return await birBazaSnapshotiniSorquIleAl(
-    async (sql, parametrler) => await sorguEt(sql, parametrler),
-    stateId,
-    targetPlayerId
-  );
+  return await birBazaSnapshotiniSorquIleAl(async (sql, parametrler) => await sorguEt(sql, parametrler), stateId, targetPlayerId);
 }
 
 async function dovletBazasiniBirbasaAlClient(client, stateId, targetPlayerId) {
-  if (!client || typeof client.query !== "function") {
-    return null;
-  }
-
-  return await birBazaSnapshotiniSorquIleAl(
-    async (sql, parametrler) => await client.query(sql, parametrler),
-    stateId,
-    targetPlayerId
-  );
+  if (!client || typeof client.query !== "function") return null;
+  return await birBazaSnapshotiniSorquIleAl(async (sql, parametrler) => await client.query(sql, parametrler), stateId, targetPlayerId);
 }
 
 async function dovletBazalariniAl(stateId, nowMs = Date.now()) {
   const sid = Math.max(1, tamEded(stateId) || 1);
   const now = tamEded(nowMs) || Date.now();
   const cached = bazaKeshi.get(sid);
-
-  if (cached && cached.expiresAtMs > now && cached.value) {
-    return kopyala(cached.value);
-  }
-
+  if (cached && cached.expiresAtMs > now && cached.value) return kopyala(cached.value);
   const movcudSorqu = aktivSorqular.get(sid);
-  if (movcudSorqu) {
-    return kopyala(await movcudSorqu);
-  }
-
+  if (movcudSorqu) return kopyala(await movcudSorqu);
   const promise = (async () => {
     const value = await bazalariPostgresdenAl(sid);
-    bazaKeshi.set(sid, {
-      expiresAtMs: Date.now() + BAZA_KESHI_MS,
-      value: kopyala(value)
-    });
+    bazaKeshi.set(sid, { expiresAtMs: Date.now() + BAZA_KESHI_MS, value: kopyala(value) });
     return value;
   })();
-
   aktivSorqular.set(sid, promise);
-
-  try {
-    return kopyala(await promise);
-  }
-  finally {
-    if (aktivSorqular.get(sid) === promise) {
-      aktivSorqular.delete(sid);
-    }
-  }
+  try { return kopyala(await promise); }
+  finally { if (aktivSorqular.get(sid) === promise) aktivSorqular.delete(sid); }
 }
 
 async function dovletBazasiniAl(stateId, targetPlayerId, nowMs = Date.now()) {
   const sid = Math.max(1, tamEded(stateId) || 1);
   const target = metnAl(targetPlayerId, 128).toLowerCase();
   if (!target) return null;
-
   const netice = await dovletBazalariniAl(sid, nowMs);
-  return (netice.bases || []).find(item =>
-    item && metnAl(item.playerId, 128).toLowerCase() === target
-  ) || null;
+  return (netice.bases || []).find(item => item && metnAl(item.playerId, 128).toLowerCase() === target) || null;
 }
 
 function dovletBazaKeshiniTemizle(stateId = null) {
-  if (stateId == null) {
-    bazaKeshi.clear();
-    return;
-  }
+  if (stateId == null) { bazaKeshi.clear(); return; }
   bazaKeshi.delete(Math.max(1, tamEded(stateId) || 1));
 }
 
