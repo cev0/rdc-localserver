@@ -20,6 +20,7 @@ on:
       - server-pvp-zeroing-teleport-v1
       - server-pvp-zeroing-recall-v1
       - server-pvp-resource-plunder-v1
+      - server-pvp-protection-foundation-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -61,6 +62,9 @@ on:
       - 'pvp_resurs_talani_sistemi_testi.js'
       - 'pvp_settlement_live_override.js'
       - 'pvp_settlement_live_override_testi.js'
+      - 'pvp_qoruma_sistemi.js'
+      - 'pvp_qoruma_sistemi_testi.js'
+      - 'dovlet_baza_kataloqu_postgres.js'
       - 'pvp_baza_hucum_start_xidmeti.js'
       - 'pvp_baza_hucum_catma_xidmeti.js'
       - 'pvp_baza_live_handler.js'
@@ -115,5 +119,7 @@ jobs:
         run: node pvp_resurs_talani_sistemi_testi.js
       - name: PvP live settlement override testi
         run: node pvp_settlement_live_override_testi.js
+      - name: PvP qoruma ve tekrar-hucum testleri
+        run: node pvp_qoruma_sistemi_testi.js
       - name: PvP live flow handler testleri
         run: node pvp_baza_live_handler_testi.js
