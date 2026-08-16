@@ -47,6 +47,8 @@ const OYUNCU_MUTASIYA_MESAJLARI = new Set([
   "hero_skill_upgrade_request",
   "technology_hero_assign_request",
   "technology_hero_remove_request",
+  "development_hero_assign_request",
+  "development_hero_remove_request",
   "research_start",
   "technology_research_start",
   "convoy_hero_assign_request",

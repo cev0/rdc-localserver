@@ -10,6 +10,14 @@ const QEHRAMAN_RELEASE_CLASS = Object.freeze({
 
 const SKILL_MAKSIMUM_LEVEL = 10;
 
+// Oyun ekranlarından təsdiqlənmiş maksimum skill slotları.
+const NADIRLIYE_GORE_SKILL_SLOT_SAYI = Object.freeze({
+  [QEHRAMAN_NADIRLIK.YASIL]: 3,
+  [QEHRAMAN_NADIRLIK.GOY]: 4,
+  [QEHRAMAN_NADIRLIK.BENOVSEYI]: 6,
+  [QEHRAMAN_NADIRLIK.NARINCI]: 8
+});
+
 const SKILL_WISDOM_XERCI = Object.freeze({
   [QEHRAMAN_NADIRLIK.YASIL]: Object.freeze([0, 0, 5, 10, 15, 20, 30, 40, 60, 90, 125]),
   [QEHRAMAN_NADIRLIK.GOY]: Object.freeze([0, 0, 10, 15, 20, 30, 40, 60, 85, 120, 175]),
@@ -46,6 +54,18 @@ function releaseClassNormallasdir(value) {
   return QEHRAMAN_RELEASE_CLASS.NORMAL;
 }
 
+function skillSlotSayiniAl(definitionOrRarity) {
+  const rarity = definitionOrRarity && typeof definitionOrRarity === "object"
+    ? Number(definitionOrRarity.rarity)
+    : Number(definitionOrRarity);
+  return Math.max(1, Number(NADIRLIYE_GORE_SKILL_SLOT_SAYI[rarity]) || 1);
+}
+
+function skillSlotEtibarlidir(definition, slotIndex) {
+  const slot = Math.trunc(Number(slotIndex) || 0);
+  return !!definition && slot >= 1 && slot <= skillSlotSayiniAl(definition);
+}
+
 function skillWisdomXerciniAl(rarity, hedefLevel) {
   const level = Math.max(1, Math.min(SKILL_MAKSIMUM_LEVEL, Math.trunc(Number(hedefLevel) || 1)));
   const table = SKILL_WISDOM_XERCI[Number(rarity)];
@@ -60,10 +80,10 @@ function skillWisdomCeminiAl(rarity) {
 
 function skillUnlockProfiliniAl(definition, slotIndex) {
   const slot = Math.trunc(Number(slotIndex) || 0);
-  if (!definition || slot < 1 || slot > 8) return null;
+  if (!skillSlotEtibarlidir(definition, slot)) return null;
 
-  // Hazırda tam təsdiqlənmiş unlock cədvəli yalnız narıncı döyüş qəhrəmanları üçündür.
-  // Aşağı rarity-lər üçün rəqəm uydurulmur; ayrıca data gələnədək unlock API onları bloklayır.
+  // Aşağı nadirliklər üçün unlock material/pul cədvəli tam təsdiqlənməyib.
+  // Slot sayı təsdiqlidir, amma rəqəm uydurulmur.
   if (Number(definition.rarity) !== QEHRAMAN_NADIRLIK.NARINCI) return null;
 
   const releaseClass = releaseClassNormallasdir(definition.releaseClass);
@@ -77,10 +97,13 @@ function skillUnlockProfiliniAl(definition, slotIndex) {
 module.exports = {
   QEHRAMAN_RELEASE_CLASS,
   SKILL_MAKSIMUM_LEVEL,
+  NADIRLIYE_GORE_SKILL_SLOT_SAYI,
   SKILL_WISDOM_XERCI,
   NARINCI_NORMAL_UNLOCK,
   NARINCI_SEASON_UNLOCK,
   releaseClassNormallasdir,
+  skillSlotSayiniAl,
+  skillSlotEtibarlidir,
   skillWisdomXerciniAl,
   skillWisdomCeminiAl,
   skillUnlockProfiliniAl
