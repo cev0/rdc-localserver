@@ -18,11 +18,7 @@ const {
 function testStateHazirla() {
   return {
     playerId: "oyuncu_mudafie",
-    technology: {
-      levels: {
-        ikinci_konvoy: 1
-      }
-    },
+    technology: { levels: { ikinci_konvoy: 1 } },
     army: {
       troops: {
         fighter_lv1: 100,
@@ -31,9 +27,9 @@ function testStateHazirla() {
       }
     },
     heroes: [
-      { heroId: "hero_1" },
-      { heroId: "hero_2" },
-      { heroId: "hero_3" }
+      { heroId: "doyuscu" },
+      { heroId: "war_master" },
+      { heroId: "iron_maiden" }
     ],
     konvoylar: {
       items: [
@@ -41,7 +37,7 @@ function testStateHazirla() {
           konvoyId: "konvoy_1",
           aciqdir: true,
           qosunlar: { fighter_lv1: 30 },
-          qehremanIdleri: ["hero_1"],
+          qehremanIdleri: ["doyuscu"],
           formasiya: {
             siralar: [
               { siraId: "sira_1", unitId: "fighter_lv1", count: 30 }
@@ -52,7 +48,7 @@ function testStateHazirla() {
           konvoyId: "konvoy_2",
           aciqdir: true,
           qosunlar: { shooter_lv1: 20 },
-          qehremanIdleri: ["hero_2"],
+          qehremanIdleri: ["war_master"],
           formasiya: {
             siralar: [
               { siraId: "sira_1", unitId: "shooter_lv1", count: 20 }
@@ -85,7 +81,6 @@ function testStateHazirla() {
   const info = konvoyMudafieMelumatiniHazirla(state, 1000);
   const bir = info.items.find(x => x.konvoyId === "konvoy_1");
   const iki = info.items.find(x => x.konvoyId === "konvoy_2");
-
   assert.strictEqual(bir.defenseEnabled, true);
   assert.strictEqual(bir.participatesNow, false);
   assert.strictEqual(iki.defenseEnabled, true);
@@ -96,7 +91,7 @@ function testStateHazirla() {
 (function bazaMudafieYalnizSecilmisBosKonvoyTesti() {
   const state = testStateHazirla();
   assert.deepStrictEqual(mudafieQosunlariniHazirla(state, 1000), { shooter_lv1: 20 });
-  assert.deepStrictEqual(mudafieQehremanIdleriniHazirla(state, 1000), ["hero_2"]);
+  assert.deepStrictEqual(mudafieQehremanIdleriniHazirla(state, 1000), ["war_master"]);
 })();
 
 (function deaktivKonvoyMudafiedeIstirakEtmirTesti() {
@@ -122,7 +117,7 @@ function testStateHazirla() {
   assert.strictEqual(netice.snapshot.convoyId, "konvoy_1");
   assert.strictEqual(netice.snapshot.troopCount, 30);
   assert.strictEqual(netice.snapshot.troopPower, 150);
-  assert.deepStrictEqual(netice.snapshot.heroIds, ["hero_1"]);
+  assert.deepStrictEqual(netice.snapshot.heroIds, ["doyuscu"]);
   assert.strictEqual(netice.snapshot.locked, true);
 })();
 
@@ -135,7 +130,7 @@ function testStateHazirla() {
   assert.strictEqual(netice.snapshot.troopPower, 120);
   assert.deepStrictEqual(netice.snapshot.defenseConvoyIds, ["konvoy_2"]);
   assert.deepStrictEqual(netice.snapshot.activeConvoyIds, ["konvoy_1"]);
-  assert.deepStrictEqual(netice.snapshot.heroIds, ["hero_2"]);
+  assert.deepStrictEqual(netice.snapshot.heroIds, ["war_master"]);
   assert.strictEqual(netice.snapshot.freeTroopsAutoDefend, false);
   assert.strictEqual(netice.snapshot.locked, true);
 })();
