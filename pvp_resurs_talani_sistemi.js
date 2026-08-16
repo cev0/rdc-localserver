@@ -1,6 +1,7 @@
 "use strict";
 
 const { konvoyTutumHesabiniAl } = require("./konvoy_tutum_formulu");
+const { anbarPvpQorumasiniHesabla } = require("./pvp_anbar_qoruma_sistemi");
 
 const DEFAULT_LOOTABLE_RESOURCE_IDS = Object.freeze([
   "food",
@@ -74,12 +75,37 @@ function stateQorumaCedveliniAl(state) {
   return {};
 }
 
+function maksimumCedveli(cedveller) {
+  const out = {};
+  for (const cedvel of Array.isArray(cedveller) ? cedveller : []) {
+    if (!cedvel || typeof cedvel !== "object" || Array.isArray(cedvel)) continue;
+    for (const [rawId, rawAmount] of Object.entries(cedvel)) {
+      const id = metnAl(rawId, 64);
+      if (!id) continue;
+      out[id] = Math.max(tamEded(out[id]), tamEded(rawAmount));
+    }
+  }
+  return out;
+}
+
 function qorumaCedveliniAl(state) {
   const env = envQorumaCedveliniAl();
   const local = stateQorumaCedveliniAl(state);
+  const anbar = anbarPvpQorumasiniHesabla(state);
+  const byResource = maksimumCedveli([
+    anbar.byResource,
+    env,
+    local
+  ]);
+
   return {
-    configured: Object.keys(local).length > 0 || Object.keys(env).length > 0,
-    byResource: { ...env, ...local }
+    configured:
+      anbar.enabled === true ||
+      Object.keys(local).length > 0 ||
+      Object.keys(env).length > 0,
+    byResource,
+    warehouseProtection: anbar,
+    mergePolicy: "max_per_resource"
   };
 }
 
@@ -174,9 +200,6 @@ function pvpResursTalaniTetbiqEt(attackerState, defenderState, convoyId, nowMs =
     : null;
 
   if (operation && typeof operation === "object") {
-    // UI/raport üçün konvoyun götürdüyü yük ayrıca saxlanılır. Resursun ownership-i
-    // isə iki oyunçulu PostgreSQL transaction daxilində dərhal hücumçuya keçirilir;
-    // buna görə sonradan geri dönüşdə ikinci dəfə resource credit edilməməlidir.
     operation.carriedResources = kopyala(stolenByResource);
     operation.plunderCapacity = dasimaTutumu;
     operation.plunderAssignedAtMs = tamEded(nowMs) || Date.now();
@@ -185,13 +208,15 @@ function pvpResursTalaniTetbiqEt(attackerState, defenderState, convoyId, nowMs =
 
   return {
     success: true,
-    version: 1,
-    policyId: "pvp_resource_plunder_v1",
+    version: 2,
+    policyId: "pvp_resource_plunder_v2_storage_protection",
     convoyId: metnAl(convoyId, 64),
     survivingTroopCount: sagQalanQosunSayi,
     carryingCapacity: dasimaTutumu,
     capacityFormula: kopyala(tutumHesabi),
     protectionConfigured: protection.configured,
+    protectionMergePolicy: protection.mergePolicy,
+    warehouseProtection: kopyala(protection.warehouseProtection),
     lootableResourceIds: ids,
     defenderBefore: before,
     attackerBefore,
