@@ -9,6 +9,7 @@ on:
       - server-formation-combat-rows-v1
       - server-staged-combat-resolver-v1
       - server-combat-damage-exchange-v1
+      - server-casualty-exchange-integration-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
