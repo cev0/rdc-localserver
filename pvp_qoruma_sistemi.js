@@ -21,10 +21,11 @@ function pvpQorumaStateTeminEt(state) {
     state.pvpProtection = {};
   }
   const p = state.pvpProtection;
-  p.version = 1;
+  p.version = 2;
   p.shieldUntilMs = tamEded(p.shieldUntilMs);
   p.lastShieldStartedAtMs = tamEded(p.lastShieldStartedAtMs);
   p.lastShieldEndedAtMs = tamEded(p.lastShieldEndedAtMs);
+  p.lastShieldItemId = metnAl(p.lastShieldItemId, 64);
   if (!p.lastAttackByTarget || typeof p.lastAttackByTarget !== "object" || Array.isArray(p.lastAttackByTarget)) {
     p.lastAttackByTarget = {};
   }
@@ -35,14 +36,31 @@ function pvpQorumaMelumatiniAl(state, nowMs = Date.now()) {
   const p = pvpQorumaStateTeminEt(state);
   const now = tamEded(nowMs) || Date.now();
   const shieldActive = p.shieldUntilMs > now;
+  if (!shieldActive && p.shieldUntilMs > 0) {
+    p.lastShieldEndedAtMs = p.shieldUntilMs;
+    p.shieldUntilMs = 0;
+  }
   return {
-    version: 1,
+    version: 2,
     shieldActive,
     shieldUntilMs: shieldActive ? p.shieldUntilMs : 0,
     shieldRemainingMs: shieldActive ? Math.max(0, p.shieldUntilMs - now) : 0,
-    activationEndpointEnabled: false,
+    activeShieldItemId: shieldActive ? p.lastShieldItemId : "",
+    activationEndpointEnabled: true,
+    outgoingPvpBlockedWhileShielded: true,
     repeatAttackCooldownMs: envMs("PVP_REPEAT_ATTACK_COOLDOWN_MS"),
     repeatAttackCooldownConfigured: envMs("PVP_REPEAT_ATTACK_COOLDOWN_MS") > 0
+  };
+}
+
+function ozShieldHucumBloklayicisiniAl(state, nowMs = Date.now()) {
+  const info = pvpQorumaMelumatiniAl(state, nowMs);
+  if (!info.shieldActive) return null;
+  return {
+    code: "attacker_pvp_shield_active",
+    message: "Qoruma qalxanı aktiv olduğu müddətdə başqa oyunçuya PvP hücumu başlatmaq olmaz.",
+    shieldUntilMs: info.shieldUntilMs,
+    remainingMs: info.shieldRemainingMs
   };
 }
 
@@ -83,6 +101,7 @@ function ugurluHucumuQeydEt(attackerState, targetPlayerId, nowMs = Date.now()) {
 module.exports = {
   pvpQorumaStateTeminEt,
   pvpQorumaMelumatiniAl,
+  ozShieldHucumBloklayicisiniAl,
   pvpHedefQorunurmuPublicBaza,
   tekrarHucumBloklayicisiniAl,
   ugurluHucumuQeydEt
