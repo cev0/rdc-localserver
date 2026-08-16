@@ -107,9 +107,9 @@ Dəstəklənəcək effekt tipləri:
 
 Təsdiqlənməmiş faizlər serverə aktiv edilməməlidir.
 
-## Bu branch-da görülən yeni iş
+## Görülən İnkişaf backend işləri
 
-Branch: server-development-hero-engine-v1
+### PR #102 — development hero engine
 
 - qehreman_inkisaf_sistemi.js əlavə edildi.
 - İnkişaf sahələri və effekt növləri Azərbaycan dilində display adı ilə data-driven quruldu.
@@ -119,13 +119,24 @@ Branch: server-development-hero-engine-v1
 - development_hero_assign_request / development_hero_remove_request əlavə edildi.
 - Rarity üzrə skill slot limitləri serverdə tətbiq edildi: 3/4/6/8.
 - Təsdiqlənməmiş aşağı-rarity unlock qiymətləri yenə bloklanır.
+- CI uğurla keçdi və PR main-ə merge edildi.
+
+### PR #103 — Texnologiya İnkişaf körpüsü
+
+- texnologiya_inkisaf_korpu.js əlavə edildi.
+- Tamamlanmış və yol çıxışı olan Institute-lardan əsas Institute deterministik seçilir: ən yüksək level, bərabərlikdə instanceId sırası.
+- Tədqiqat sürəti bonusunu effektiv müddətə çevirmək üçün server funksiyası əlavə edildi: müddət / (1 + faiz/100).
+- Hazırda kataloqda təsdiqlənmiş İnkişaf qəhrəmanı effekti olmadığı üçün mövcud gameplay müddəti dəyişmir; uydurma faiz aktiv edilməyib.
+- Xüsusi test əlavə edildi və bütün mövcud CI testləri ilə birlikdə uğurla keçdi.
+- PR #103 main-ə merge edildi. Merge commit: 6b2f0556f102e6dd521fdec4f958515d6b617bc0.
+- Növbəti mərhələ: bu bridge-i research start hesablamasına bağlamaq; sonra eyni pattern ilə tikinti/təlim/müalicə körpüləri qurmaq.
 
 ## Növbəti təhlükəsiz backend addımları
 
-1. CI keçdikdən sonra development hero engine PR merge/deploy.
-2. Qəhrəman kataloqunda real İnkişaf qəhrəman ID-ləri və onların allowedBuildingIds mapping-i təsdiqlənəndə əlavə etmək.
-3. Konkret skill effect faizlərini yalnız təsdiqlənmiş data ilə kataloqa yazmaq.
-4. Tədqiqat/tikinti/istehsal/təlim/müalicə hesablamalarında bina üçün İnkişaf modifierlərini faktiki tətbiq edən körpüləri əlavə etmək.
+1. texnologiya_inkisaf_korpu.js-ni konvoy_texnologiya_handler.js research start müddətinə server-authoritative şəkildə bağlamaq; heç bir hero faizi əlavə etmədən yalnız mövcud modifier datasını tətbiq etmək.
+2. Eyni pattern ilə Tikinti, Qoşun təlimi və Xəstəxana hesablamaları üçün İnkişaf modifier körpüləri əlavə etmək.
+3. Qəhrəman kataloqunda real İnkişaf qəhrəman ID-ləri və allowedBuildingIds mapping-i yalnız təsdiqlənəndə əlavə etmək.
+4. Konkret skill effect faizlərini yalnız təsdiqlənmiş data ilə kataloqa yazmaq.
 5. Green/Blue/Purple unlock material cədvəllərini etibarlı mənbə və ya oyun screenshot-u ilə tamamlamaq.
 6. Hero medal acquisition/conversion sistemi və Starter Wisdom məsələsini ayrıca bağlamaq.
 7. Konvoy üçün vahid mission state: idle → marching → gathering/battle → returning → idle.
