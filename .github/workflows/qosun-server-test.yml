@@ -11,6 +11,7 @@ on:
       - server-combat-damage-exchange-v1
       - server-casualty-exchange-integration-v1
       - server-troop-lifecycle-accounting-v1
+      - server-pvp-real-resolver-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -32,6 +33,8 @@ on:
       - 'doyus_qosun_stat_inteqrasiya_testi.js'
       - 'xerite_dusmen_doyus_sistemi.js'
       - 'pvp_doyus_snapshot_sistemi.js'
+      - 'pvp_doyus_resolver.js'
+      - 'pvp_doyus_resolver_testi.js'
       - 'server_missiya_genisletme_v2.js'
       - '.github/workflows/qosun-server-test.yml'
 
@@ -71,3 +74,6 @@ jobs:
 
       - name: Doyus qosun lifecycle accounting testleri
         run: node doyus_qosun_lifecycle_testi.js
+
+      - name: PvP iki teref server resolver testleri
+        run: node pvp_doyus_resolver_testi.js
