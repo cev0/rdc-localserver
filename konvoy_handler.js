@@ -17,6 +17,11 @@ const {
 } = require("./konvoy_formasiya_sistemi");
 
 const {
+  konvoyMudafieMelumatiniHazirla,
+  konvoyMudafiesiniTeyinEt
+} = require("./konvoy_mudafie_sistemi");
+
+const {
   konvoyMesguldur
 } = require("./konvoy_mesgul_sistemi");
 
@@ -34,7 +39,8 @@ const KONVOY_MESAJLARI = new Set([
   "convoy_hero_assign_request",
   "convoy_hero_remove_request",
   "convoy_troops_set_request",
-  "convoy_formation_set_request"
+  "convoy_formation_set_request",
+  "convoy_defense_set_request"
 ]);
 
 function metnAl(deyer, maksimum = 128) {
@@ -62,6 +68,7 @@ function neticeTipiniAl(type) {
   if (type === "convoy_hero_assign_request") return "convoy_hero_assign_result";
   if (type === "convoy_hero_remove_request") return "convoy_hero_remove_result";
   if (type === "convoy_formation_set_request") return "convoy_formation_set_result";
+  if (type === "convoy_defense_set_request") return "convoy_defense_set_result";
   return "convoy_troops_set_result";
 }
 
@@ -111,10 +118,16 @@ function konvoyMutasiyasiniTetbiqEt(state, type, msg, nowMs = Date.now()) {
     netice = formasiyaTeyinEt(state, konvoyId, siralar);
   }
   else if (type === "convoy_troops_set_request") {
-    // Legacy Unity müqaviləsi hələlik saxlanılır. Yeni UI
-    // `convoy_formation_set_request` istifadə etməlidir.
     const troops = msg && msg.troops;
     netice = konvoyQosunlariniTeyinEt(state, konvoyId, troops);
+  }
+  else if (type === "convoy_defense_set_request") {
+    netice = konvoyMudafiesiniTeyinEt(
+      state,
+      konvoyId,
+      msg && msg.enabled,
+      nowMs
+    );
   }
   else {
     return {
@@ -132,7 +145,9 @@ function konvoyMutasiyasiniTetbiqEt(state, type, msg, nowMs = Date.now()) {
       deyisdi: false,
       message: netice && netice.message
         ? netice.message
-        : "Konvoy mutation-u tətbiq edilə bilmədi."
+        : "Konvoy mutation-u tətbiq edilə bilmədi.",
+      busyReason: netice && netice.busyReason ? netice.busyReason : undefined,
+      mission: netice && netice.mission ? netice.mission : undefined
     };
   }
 
@@ -173,10 +188,15 @@ async function konvoyMesajiniEmalEt(kontekst) {
       const heroInfo = konvoyMelumatiniHazirla(state);
       const troopInfo = konvoyQosunMelumatiniHazirla(state);
       const formationInfo = formasiyaMelumatiniHazirla(state);
+      const defenseInfo = konvoyMudafieMelumatiniHazirla(
+        state,
+        kontekst.nowMs()
+      );
       const info = {
         ...heroInfo,
         troopInfo,
-        formationInfo
+        formationInfo,
+        defenseInfo
       };
 
       gonder(kontekst, resultType, {
