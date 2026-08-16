@@ -3,6 +3,7 @@
 const assert = require("assert");
 const { QEHRAMAN_NADIRLIK } = require("./qehreman_kataloqu");
 const {
+  skillSlotSayiniAl,
   skillWisdomCeminiAl,
   skillWisdomXerciniAl,
   skillUnlockProfiliniAl
@@ -12,6 +13,11 @@ const {
   qehremanSkilliniYukselt,
   qehremanSkillMelumatiniHazirla
 } = require("./qehreman_skill_sistemi");
+
+assert.strictEqual(skillSlotSayiniAl(QEHRAMAN_NADIRLIK.YASIL), 3);
+assert.strictEqual(skillSlotSayiniAl(QEHRAMAN_NADIRLIK.GOY), 4);
+assert.strictEqual(skillSlotSayiniAl(QEHRAMAN_NADIRLIK.BENOVSEYI), 6);
+assert.strictEqual(skillSlotSayiniAl(QEHRAMAN_NADIRLIK.NARINCI), 8);
 
 assert.strictEqual(skillWisdomCeminiAl(QEHRAMAN_NADIRLIK.YASIL), 395);
 assert.strictEqual(skillWisdomCeminiAl(QEHRAMAN_NADIRLIK.GOY), 555);
@@ -63,6 +69,7 @@ assert.strictEqual(state.heroSkillMaterials.legendary, 7);
 
 const info = qehremanSkillMelumatiniHazirla(state, "feroman");
 assert.strictEqual(info.success, true);
+assert.strictEqual(info.skillSlotCount, 8);
 assert.strictEqual(info.skills.length, 8);
 assert.strictEqual(info.skills[1].isUnlocked, true);
 assert.strictEqual(info.skills[1].skillLevel, 2);
@@ -76,5 +83,26 @@ const lowerRarityState = {
 result = qehremanSkilliniAc(lowerRarityState, "doyuscu", 2);
 assert.strictEqual(result.success, false);
 assert.strictEqual(result.profileConfigured, false);
+
+const greenInfo = qehremanSkillMelumatiniHazirla(lowerRarityState, "doyuscu");
+assert.strictEqual(greenInfo.skillSlotCount, 3);
+assert.strictEqual(greenInfo.skills.length, 3);
+result = qehremanSkilliniAc(lowerRarityState, "doyuscu", 4);
+assert.strictEqual(result.success, false);
+assert.match(result.message, /maksimum 3 skill/);
+
+const blueState = {
+  resources: { money: 0 },
+  heroSkillMaterials: { wisdom: 0, rare: 0, epic: 0, legendary: 0 },
+  heroes: [{ heroId: "war_master", level: 1 }]
+};
+assert.strictEqual(qehremanSkillMelumatiniHazirla(blueState, "war_master").skills.length, 4);
+
+const purpleState = {
+  resources: { money: 0 },
+  heroSkillMaterials: { wisdom: 0, rare: 0, epic: 0, legendary: 0 },
+  heroes: [{ heroId: "iron_maiden", level: 1 }]
+};
+assert.strictEqual(qehremanSkillMelumatiniHazirla(purpleState, "iron_maiden").skills.length, 6);
 
 console.log("Qəhrəman skill progression testləri uğurla keçdi.");
