@@ -31,34 +31,23 @@ const { dusmenMovqeyiMesajiniEmalEt } = require("./dusmen_movqeyi_handler");
 const { doyusMesajiniEmalEt } = require("./doyus_handler");
 
 const OYUNCU_MUTASIYA_MESAJLARI = new Set([
-  // Missiya / mükafat
   "mission_reward_claim_request",
-
-  // Hero recruit / progression / assignment
   "hero_recruit_single_request",
   "hero_recruit_x10_request",
   "hero_exp_item_use_request",
   "hero_tutorial_skill_upgrade_request",
   "technology_hero_assign_request",
   "technology_hero_remove_request",
-
-  // Texnologiya
   "research_start",
   "technology_research_start",
-
-  // Konvoy quruluşu və əməliyyat
   "convoy_hero_assign_request",
   "convoy_hero_remove_request",
   "convoy_troops_set_request",
   "convoy_formation_set_request",
   "convoy_operation_start_request",
-
-  // Legacy resurs toplama mutation-ları
   "convoy_gather_start_request",
   "convoy_gather_status_request",
   "convoy_gather_claim_request",
-
-  // Döyüş / raport / mükafat
   "battle_start_request",
   "battle_resolve_request",
   "battle_reward_claim_request",
@@ -66,15 +55,13 @@ const OYUNCU_MUTASIYA_MESAJLARI = new Set([
   "battle_report_mark_read_request",
   "battle_report_save_request",
   "battle_report_delete_request",
-
-  // Xəstəxana
   "xestexana_sagaltma_request",
-
-  // Legacy/core gameplay state mutation-ları
   "expand_area_request",
   "expand_base",
   "build_request",
   "train_unit_request",
+  "troop_training_preview_request",
+  "troop_training_status_request",
   "upgrade_request",
   "base_teleport_request",
   "move_request",

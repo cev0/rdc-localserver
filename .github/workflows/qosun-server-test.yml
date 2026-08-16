@@ -1,0 +1,37 @@
+name: Qosun Server Testleri
+
+on:
+  push:
+    branches:
+      - server-troop-training-catalog-v1
+  pull_request:
+    paths:
+      - 'qosun_kataloqu.js'
+      - 'qosun_kataloqu_testi.js'
+      - 'qosun_telimi_sistemi.js'
+      - 'qosun_telimi_handler.js'
+      - 'qosun_telimi_pg_mutasiya_testi.js'
+      - 'server_missiya_genisletme_v2.js'
+      - '.github/workflows/qosun-server-test.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node qur
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Paketleri qur
+        run: npm ci
+
+      - name: Qosun kataloqu testleri
+        run: node qosun_kataloqu_testi.js
+
+      - name: Qosun telimi testleri
+        run: node qosun_telimi_pg_mutasiya_testi.js
