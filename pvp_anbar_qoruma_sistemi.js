@@ -11,12 +11,6 @@ function tamEded(v) {
   return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
 }
 
-function faizAl() {
-  const raw = Number(process.env.PVP_STORAGE_PROTECTION_PERCENT);
-  if (!Number.isFinite(raw)) return 0;
-  return Math.min(100, Math.max(0, raw));
-}
-
 function definitionListiniAl(definitionsRaw = buildingDefinitionsRaw) {
   if (Array.isArray(definitionsRaw)) return definitionsRaw;
   if (definitionsRaw && Array.isArray(definitionsRaw.definitions)) return definitionsRaw.definitions;
@@ -58,41 +52,40 @@ function anbarTutumBazisiniHesabla(state, definitionsRaw = buildingDefinitionsRa
 
     const level = Math.max(1, tamEded(bina.level) || 1);
     const levelInfo = levelMelumatiniAl(def, level);
-    const capacity = tamEded(levelInfo && levelInfo.storageCapacityBonus);
-    if (capacity <= 0) continue;
+    const protectedAmount = tamEded(levelInfo && levelInfo.storageCapacityBonus);
+    if (protectedAmount <= 0) continue;
 
-    byResource[resourceId] = tamEded(byResource[resourceId]) + capacity;
-    contributions.push({ buildingId, level, resourceId, storageCapacityBonus: capacity });
+    byResource[resourceId] = tamEded(byResource[resourceId]) + protectedAmount;
+    contributions.push({
+      buildingId,
+      level,
+      resourceId,
+      protectedAmount,
+      sourceField: "storageCapacityBonus"
+    });
   }
 
   return {
-    version: 1,
+    version: 2,
+    policyId: "fixed_protected_amount_by_storage_level_v2",
     byResource,
     contributions
   };
 }
 
 function anbarPvpQorumasiniHesabla(state, definitionsRaw = buildingDefinitionsRaw) {
-  const percent = faizAl();
   const basis = anbarTutumBazisiniHesabla(state, definitionsRaw);
-  const byResource = {};
-
-  for (const [resourceId, capacity] of Object.entries(basis.byResource)) {
-    byResource[resourceId] = Math.floor(tamEded(capacity) * percent / 100);
-  }
-
   return {
-    version: 1,
-    enabled: percent > 0,
-    protectionPercent: percent,
-    storageBasisByResource: basis.byResource,
-    byResource,
+    version: 2,
+    enabled: Object.values(basis.byResource).some(x => tamEded(x) > 0),
+    policyId: basis.policyId,
+    byResource: { ...basis.byResource },
+    protectedAmountByResource: { ...basis.byResource },
     contributions: basis.contributions
   };
 }
 
 module.exports = {
-  faizAl,
   definitionListiniAl,
   anbarTutumBazisiniHesabla,
   anbarPvpQorumasiniHesabla
