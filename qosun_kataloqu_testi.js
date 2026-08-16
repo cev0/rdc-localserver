@@ -8,7 +8,8 @@ const {
   qosunMelumatiniAl,
   qosunKilidiniYoxla,
   telimXerciniHesabla,
-  telimMuddetiniHesabla
+  telimMuddetiniHesabla,
+  kataloquClientUcunHazirla
 } = require("./qosun_kataloqu");
 
 function bina(buildingId, level) {
@@ -52,6 +53,11 @@ function bina(buildingId, level) {
     }
   }
 
+  const clientCatalog = kataloquClientUcunHazirla();
+  assert.strictEqual(clientCatalog.length, 30);
+  assert.strictEqual(clientCatalog[0].unitId, "warrior_t1");
+  assert.ok(clientCatalog[0].stats.consumption);
+
   const warrior1 = qosunMelumatiniAl("warrior_t1");
   assert.strictEqual(warrior1.displayNameAz, "Əsgər");
   assert.deepStrictEqual(warrior1.costPerUnit, [{ type: "food", amount: 14 }]);
@@ -68,14 +74,8 @@ function bina(buildingId, level) {
     { type: "iron", amount: 12 }
   ]);
 
-  assert.strictEqual(
-    qosunKilidiniYoxla({}, bina("fighter_camp", 4), "warrior_t3").success,
-    false
-  );
-  assert.strictEqual(
-    qosunKilidiniYoxla({}, bina("fighter_camp", 5), "warrior_t3").success,
-    true
-  );
+  assert.strictEqual(qosunKilidiniYoxla({}, bina("fighter_camp", 4), "warrior_t3").success, false);
+  assert.strictEqual(qosunKilidiniYoxla({}, bina("fighter_camp", 5), "warrior_t3").success, true);
 
   for (const [classId, buildingId] of [
     ["warrior", "fighter_camp"],
@@ -100,17 +100,13 @@ function bina(buildingId, level) {
     assert.strictEqual(qosunKilidiniYoxla(state10, bina(buildingId, 25), t10).success, true);
   }
 
-  const wrongTechState = {
-    technology: { levels: { unlock_vehicle_t10: 1 } }
-  };
+  const wrongTechState = { technology: { levels: { unlock_vehicle_t10: 1 } } };
   assert.strictEqual(
     qosunKilidiniYoxla(wrongTechState, bina("fighter_camp", 25), "warrior_t10").success,
     false
   );
 
-  const costState = {
-    technology: { stats: { trainingCostReductionPct: 10 } }
-  };
+  const costState = { technology: { stats: { trainingCostReductionPct: 10 } } };
   const cost = telimXerciniHesabla(costState, "warrior_t2", 10);
   assert.deepStrictEqual(cost.baseCost, [
     { type: "food", amount: 350 },
@@ -121,9 +117,7 @@ function bina(buildingId, level) {
     { type: "wood", amount: 72 }
   ]);
 
-  const classCostState = {
-    technology: { stats: { shooterTrainingCostReductionPct: 20 } }
-  };
+  const classCostState = { technology: { stats: { shooterTrainingCostReductionPct: 20 } } };
   const shooterCost = telimXerciniHesabla(classCostState, "shooter_t2", 10);
   assert.strictEqual(shooterCost.reductionPct, 20);
   assert.deepStrictEqual(shooterCost.finalCost, [
@@ -131,9 +125,7 @@ function bina(buildingId, level) {
     { type: "iron", amount: 88 }
   ]);
 
-  const timeState = {
-    technology: { stats: { trainingSpeedPct: 20 } }
-  };
+  const timeState = { technology: { stats: { trainingSpeedPct: 20 } } };
   const duration = telimMuddetiniHesabla(timeState, "vehicle_t1", 100);
   assert.strictEqual(duration.baseDurationMs, 500000);
   assert.strictEqual(duration.finalDurationMs, 416667);
