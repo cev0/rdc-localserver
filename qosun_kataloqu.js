@@ -92,6 +92,7 @@ const VEHICLE_NAMES = [
   "Zəfər Maşını"
 ];
 
+// [attackSpeed, defense, hp, battlePower, marchSpeed, loadCapacity, consumption]
 const WARRIOR_STATS = [
   [9, 11, 4, 1.0, 15, 15, 0.04],
   [13, 15, 5, 1.4, 15, 15, 0.04],
