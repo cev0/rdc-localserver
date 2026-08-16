@@ -4,6 +4,12 @@ const {
   qosunDoyusMelumatiniAl,
   qosunDoyusStatlariniHesabla
 } = require("./qosun_doyus_stat_sistemi");
+const {
+  aktivSiraEkspozisiyalariniHazirla,
+  formasiyaDoyusMelumatiniHazirla,
+  siraSirasi,
+  unitRolunuAl
+} = require("./doyus_formasiya_sistemi");
 
 const ITKI_POLICY = Object.freeze({
   NORMAL: "normal",
@@ -161,53 +167,118 @@ function siraRiskModifieriniHesabla(unitId, cfg = dovusItkiKonfiqi()) {
   return clamp(raw, cfg.siraRiskMinimum, cfg.siraRiskMaksimum);
 }
 
-function itkiniSiralarArasindaBol(formasiya, umumiItki, cfg = dovusItkiKonfiqi()) {
-  const rows = formasiyaTemizle(formasiya);
+function itkiniSiralarArasindaBolDetalli(formasiya, umumiItki, cfg = dovusItkiKonfiqi()) {
+  const rows = formasiyaTemizle(formasiya)
+    .sort((a, b) => siraSirasi(a.siraId) - siraSirasi(b.siraId));
   const toplam = rows.reduce((cem, x) => cem + x.count, 0);
-  const qalan = Math.min(tamEded(umumiItki), toplam);
-  if (qalan <= 0 || toplam <= 0) return rows.map(x => ({ ...x, count: 0 }));
+  let qalan = Math.min(tamEded(umumiItki), toplam);
 
-  const weighted = rows.map((row, index) => {
-    const riskModifier = siraRiskModifieriniHesabla(row.unitId, cfg);
+  const states = rows.map((row, index) => ({
+    ...row,
+    _index: index,
+    remaining: row.count,
+    lost: 0,
+    currentWeight: 0,
+    riskModifier: siraRiskModifieriniHesabla(row.unitId, cfg),
+    initialExposure: 0,
+    maxExposure: 0,
+    becameFrontline: false
+  }));
+
+  const initialExposure = aktivSiraEkspozisiyalariniHazirla(
+    states.map(x => ({ siraId: x.siraId, unitId: x.unitId, count: x.remaining }))
+  );
+  for (const item of initialExposure) {
+    const state = states.find(x => x.siraId === item.siraId);
+    if (!state) continue;
+    state.initialExposure = item.exposure;
+    state.maxExposure = item.exposure;
+    state.becameFrontline = item.activeDepth === 1;
+  }
+
+  const frontlineSequence = [];
+  let lastFrontline = "";
+  let addim = 0;
+
+  while (qalan > 0) {
+    const activeInput = states
+      .filter(x => x.remaining > 0)
+      .map(x => ({ siraId: x.siraId, unitId: x.unitId, count: x.remaining }));
+    if (activeInput.length <= 0) break;
+
+    const exposures = aktivSiraEkspozisiyalariniHazirla(activeInput);
+    const exposureByRow = new Map(exposures.map(x => [x.siraId, x]));
+    const frontline = exposures.find(x => x.activeDepth === 1) || null;
+    if (frontline && frontline.siraId !== lastFrontline) {
+      lastFrontline = frontline.siraId;
+      frontlineSequence.push({
+        siraId: frontline.siraId,
+        becameFrontlineAfterLosses: addim
+      });
+    }
+
+    let totalWeight = 0;
+    for (const state of states) {
+      if (state.remaining <= 0) continue;
+      const exposure = exposureByRow.get(state.siraId);
+      const exposureValue = exposure ? exposure.exposure : 0;
+      state.maxExposure = Math.max(state.maxExposure, exposureValue);
+      if (exposure && exposure.activeDepth === 1) state.becameFrontline = true;
+
+      const weight = Math.max(0.0001, state.remaining * state.riskModifier * exposureValue);
+      state.currentWeight += weight;
+      state._lastWeight = weight;
+      state._lastExposure = exposureValue;
+      totalWeight += weight;
+    }
+
+    const candidates = states
+      .filter(x => x.remaining > 0)
+      .sort((a, b) => {
+        if (b.currentWeight !== a.currentWeight) return b.currentWeight - a.currentWeight;
+        return siraSirasi(a.siraId) - siraSirasi(b.siraId);
+      });
+    const selected = candidates[0];
+    if (!selected) break;
+
+    selected.currentWeight -= totalWeight;
+    selected.remaining -= 1;
+    selected.lost += 1;
+    qalan -= 1;
+    addim += 1;
+  }
+
+  const resultRows = states.map(x => {
+    const role = unitRolunuAl(x.unitId);
     return {
-      ...row,
-      _index: index,
-      _riskModifier: riskModifier,
-      _weight: row.count * riskModifier
+      siraId: x.siraId,
+      unitId: x.unitId,
+      count: x.lost,
+      riskModifier: yuvarlaqla(x.riskModifier),
+      initialExposure: yuvarlaqla(x.initialExposure),
+      maxExposure: yuvarlaqla(x.maxExposure),
+      becameFrontline: x.becameFrontline === true,
+      classId: role ? role.classId : "",
+      classRoleId: role ? role.roleId : "",
+      preferredPlacement: !!(role && role.preferredRows.includes(x.siraId))
     };
   });
 
-  const weightTotal = weighted.reduce((cem, x) => cem + x._weight, 0) || toplam;
-  const ilkin = weighted.map(row => {
-    const exact = (row._weight / weightTotal) * qalan;
-    const count = Math.min(row.count, Math.floor(exact));
-    return { ...row, count, _qaliq: exact - count };
-  });
-
-  let artiq = qalan - ilkin.reduce((cem, x) => cem + x.count, 0);
-  const sirali = ilkin.slice().sort((a, b) => b._qaliq - a._qaliq || a._index - b._index);
-
-  let dovr = 0;
-  while (artiq > 0 && dovr < rows.length * 2) {
-    let verildi = false;
-    for (const row of sirali) {
-      if (artiq <= 0) break;
-      const target = ilkin[row._index];
-      if (target.count >= rows[row._index].count) continue;
-      target.count += 1;
-      artiq -= 1;
-      verildi = true;
+  return {
+    rows: resultRows,
+    formationResolution: {
+      version: 1,
+      targetingRuleId: "front_to_back_dynamic_exposure_v1",
+      classRoleBonusEnabled: false,
+      classRolePenaltyEnabled: false,
+      frontlineSequence,
+      formationInfo: formasiyaDoyusMelumatiniHazirla(rows)
     }
-    if (!verildi) break;
-    dovr += 1;
-  }
+  };
+}
 
-  return ilkin.map(x => ({
-    siraId: x.siraId,
-    unitId: x.unitId,
-    count: x.count,
-    riskModifier: yuvarlaqla(x._riskModifier)
-  }));
+function itkiniSiralarArasindaBol(formasiya, umumiItki, cfg = dovusItkiKonfiqi()) {
+  return itkiniSiralarArasindaBolDetalli(formasiya, umumiItki, cfg).rows;
 }
 
 function birSiraniNovlereBol(row, cfg = dovusItkiKonfiqi(), policyId = ITKI_POLICY.NORMAL) {
@@ -216,7 +287,13 @@ function birSiraniNovlereBol(row, cfg = dovusItkiKonfiqi(), policyId = ITKI_POLI
     siraId: metnAl(row && row.siraId, 32),
     unitId: metnAl(row && row.unitId, 128),
     itki,
-    riskModifier: yuvarlaqla(row && row.riskModifier)
+    riskModifier: yuvarlaqla(row && row.riskModifier),
+    initialExposure: yuvarlaqla(row && row.initialExposure),
+    maxExposure: yuvarlaqla(row && row.maxExposure),
+    becameFrontline: row && row.becameFrontline === true,
+    classId: metnAl(row && row.classId, 64),
+    classRoleId: metnAl(row && row.classRoleId, 64),
+    preferredPlacement: row && row.preferredPlacement === true
   };
 
   if (itki <= 0) {
@@ -245,12 +322,12 @@ function itkiPlaniniHazirla(formasiya, playerPower, enemyPower, victory, options
     ? ITKI_POLICY.DEATH_ZONE
     : ITKI_POLICY.NORMAL;
   const hesab = umumiItkiniHesabla(formasiya, playerPower, enemyPower, victory, cfg);
-  const siralar = itkiniSiralarArasindaBol(formasiya, hesab.itki, cfg)
-    .map(x => birSiraniNovlereBol(x, cfg, policyId));
+  const bolgu = itkiniSiralarArasindaBolDetalli(formasiya, hesab.itki, cfg);
+  const siralar = bolgu.rows.map(x => birSiraniNovlereBol(x, cfg, policyId));
 
   return {
-    version: 2,
-    formulaId: "power_ratio_plus_authoritative_attack_defense_hp_v2",
+    version: 3,
+    formulaId: "power_ratio_plus_stats_plus_dynamic_rows_v3",
     policyId,
     victory: victory === true,
     sentCount: hesab.toplam,
@@ -263,8 +340,12 @@ function itkiPlaniniHazirla(formasiya, playerPower, enemyPower, victory, options
       totalAttack: hesab.combatStats.totalAttack,
       totalDefense: hesab.combatStats.totalDefense,
       totalHp: hesab.combatStats.totalHp,
-      totalBattlePower: hesab.combatStats.totalBattlePower
+      totalBattlePower: hesab.combatStats.totalBattlePower,
+      rowTargetingRuleId: bolgu.formationResolution.targetingRuleId,
+      classRoleBonusEnabled: false,
+      classRolePenaltyEnabled: false
     },
+    formationResolution: bolgu.formationResolution,
     config: { ...cfg },
     siralar
   };
@@ -282,6 +363,7 @@ module.exports = {
   itkiFaiziniHesabla,
   umumiItkiniHesabla,
   siraRiskModifieriniHesabla,
+  itkiniSiralarArasindaBolDetalli,
   itkiniSiralarArasindaBol,
   itkiPlaniniHazirla
 };
