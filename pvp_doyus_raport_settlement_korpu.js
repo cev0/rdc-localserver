@@ -9,6 +9,9 @@ const {
 const {
   pvpIkiTerefRaportlariniYarat
 } = require("./pvp_doyus_raport_sistemi");
+const {
+  qalibPvpHucumunuTetbiqEt
+} = require("./pvp_seher_davamliliq_sistemi");
 
 function metnAl(v, max = 128) {
   return typeof v === "string" ? v.trim().slice(0, max).toLowerCase() : "";
@@ -43,12 +46,18 @@ async function pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
       nowMs
     );
 
-    if (!settlement || settlement.success !== true) {
-      return settlement;
-    }
+    if (!settlement || settlement.success !== true) return settlement;
+    if (settlement.alreadyResolved === true) return settlement;
 
-    if (settlement.alreadyResolved === true) {
-      return settlement;
+    // Şəhər zərəri yalnız real hücumçu qələbəsində tətbiq olunur və casualty/report
+    // ilə eyni iki-oyunçulu PostgreSQL transaction daxilində qalır.
+    let cityImpact = null;
+    if (settlement.combat && settlement.combat.attackerVictory === true) {
+      cityImpact = qalibPvpHucumunuTetbiqEt(defenderState, nowMs);
+      settlement.cityImpact = cityImpact;
+      if (settlement.operation && settlement.operation.result) {
+        settlement.operation.result.cityImpact = JSON.parse(JSON.stringify(cityImpact));
+      }
     }
 
     const reports = pvpIkiTerefRaportlariniYarat(
