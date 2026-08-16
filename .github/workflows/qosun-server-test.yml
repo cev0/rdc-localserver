@@ -16,6 +16,7 @@ on:
       - server-pvp-atomic-settlement-v1
       - server-pvp-live-flow-v1
       - server-pvp-reports-v1
+      - server-pvp-city-durability-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -47,6 +48,8 @@ on:
       - 'pvp_doyus_raport_sistemi.js'
       - 'pvp_doyus_raport_sistemi_testi.js'
       - 'pvp_doyus_raport_settlement_korpu.js'
+      - 'pvp_seher_davamliliq_sistemi.js'
+      - 'pvp_seher_davamliliq_sistemi_testi.js'
       - 'pvp_baza_hucum_start_xidmeti.js'
       - 'pvp_baza_hucum_catma_xidmeti.js'
       - 'pvp_baza_live_handler.js'
@@ -62,48 +65,36 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Node qur
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: npm
-
       - name: Paketleri qur
         run: npm ci
-
       - name: Qosun kataloqu testleri
         run: node qosun_kataloqu_testi.js
-
       - name: Qosun telimi testleri
         run: node qosun_telimi_pg_mutasiya_testi.js
-
       - name: Qosun doyus stat testleri
         run: node qosun_doyus_stat_sistemi_testi.js
-
       - name: Doyus inteqrasiya testleri
         run: node doyus_qosun_stat_inteqrasiya_testi.js
-
       - name: Doyus itki ve formasiya testleri
         run: node doyus_itki_stat_v2_testi.js
-
       - name: Merheleli doyus ve qarsi zerbe testleri
         run: node doyus_merheleli_resolver_testi.js
-
       - name: Doyus qosun lifecycle accounting testleri
         run: node doyus_qosun_lifecycle_testi.js
-
       - name: PvP konvoy mudafie snapshot testleri
         run: node pvp_doyus_snapshot_sistemi_testi.js
-
       - name: PvP iki teref server resolver testleri
         run: node pvp_doyus_resolver_testi.js
-
       - name: PvP atomic settlement testleri
         run: node pvp_doyus_settlement_sistemi_testi.js
-
       - name: PvP battle report testleri
         run: node pvp_doyus_raport_sistemi_testi.js
-
+      - name: PvP seher davamliliq testleri
+        run: node pvp_seher_davamliliq_sistemi_testi.js
       - name: PvP live flow handler testleri
         run: node pvp_baza_live_handler_testi.js
