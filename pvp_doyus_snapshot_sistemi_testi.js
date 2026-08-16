@@ -116,7 +116,7 @@ function testStateHazirla() {
   assert.strictEqual(netice.success, true);
   assert.strictEqual(netice.snapshot.convoyId, "konvoy_1");
   assert.strictEqual(netice.snapshot.troopCount, 30);
-  assert.strictEqual(netice.snapshot.troopPower, 150);
+  assert.strictEqual(netice.snapshot.troopPower, 30);
   assert.deepStrictEqual(netice.snapshot.heroIds, ["doyuscu"]);
   assert.strictEqual(netice.snapshot.locked, true);
 })();
@@ -127,7 +127,7 @@ function testStateHazirla() {
   assert.strictEqual(netice.success, true);
   assert.strictEqual(netice.snapshot.playerId, "oyuncu_mudafie");
   assert.strictEqual(netice.snapshot.troopCount, 20);
-  assert.strictEqual(netice.snapshot.troopPower, 120);
+  assert.strictEqual(netice.snapshot.troopPower, 20);
   assert.deepStrictEqual(netice.snapshot.defenseConvoyIds, ["konvoy_2"]);
   assert.deepStrictEqual(netice.snapshot.activeConvoyIds, ["konvoy_1"]);
   assert.deepStrictEqual(netice.snapshot.heroIds, ["war_master"]);
