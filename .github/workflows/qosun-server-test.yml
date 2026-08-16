@@ -6,6 +6,7 @@ on:
       - server-troop-training-catalog-v1
       - server-troop-combat-stats-v1
       - server-casualty-combat-stats-v2
+      - server-formation-combat-rows-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -15,6 +16,7 @@ on:
       - 'qosun_telimi_pg_mutasiya_testi.js'
       - 'qosun_doyus_stat_sistemi.js'
       - 'qosun_doyus_stat_sistemi_testi.js'
+      - 'doyus_formasiya_sistemi.js'
       - 'doyus_itki_sistemi.js'
       - 'doyus_itki_stat_v2_testi.js'
       - 'doyus_sistemi.js'
@@ -52,5 +54,5 @@ jobs:
       - name: Doyus inteqrasiya testleri
         run: node doyus_qosun_stat_inteqrasiya_testi.js
 
-      - name: Doyus itki stat v2 testleri
+      - name: Doyus itki ve formasiya testleri
         run: node doyus_itki_stat_v2_testi.js
