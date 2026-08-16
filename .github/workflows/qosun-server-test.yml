@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - server-troop-training-catalog-v1
+      - server-troop-combat-stats-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -11,6 +12,12 @@ on:
       - 'qosun_telimi_sistemi.js'
       - 'qosun_telimi_handler.js'
       - 'qosun_telimi_pg_mutasiya_testi.js'
+      - 'qosun_doyus_stat_sistemi.js'
+      - 'qosun_doyus_stat_sistemi_testi.js'
+      - 'doyus_sistemi.js'
+      - 'doyus_qosun_stat_inteqrasiya_testi.js'
+      - 'xerite_dusmen_doyus_sistemi.js'
+      - 'pvp_doyus_snapshot_sistemi.js'
       - 'server_missiya_genisletme_v2.js'
       - '.github/workflows/qosun-server-test.yml'
 
@@ -35,3 +42,9 @@ jobs:
 
       - name: Qosun telimi testleri
         run: node qosun_telimi_pg_mutasiya_testi.js
+
+      - name: Qosun doyus stat testleri
+        run: node qosun_doyus_stat_sistemi_testi.js
+
+      - name: Doyus inteqrasiya testleri
+        run: node doyus_qosun_stat_inteqrasiya_testi.js
