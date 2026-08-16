@@ -8,6 +8,7 @@ on:
       - server-casualty-combat-stats-v2
       - server-formation-combat-rows-v1
       - server-staged-combat-resolver-v1
+      - server-combat-damage-exchange-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -60,5 +61,5 @@ jobs:
       - name: Doyus itki ve formasiya testleri
         run: node doyus_itki_stat_v2_testi.js
 
-      - name: Merheleli doyus resolver testleri
+      - name: Merheleli doyus ve qarsi zerbe testleri
         run: node doyus_merheleli_resolver_testi.js
