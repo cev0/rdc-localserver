@@ -181,7 +181,8 @@ function convoyRowCount(state) {
   assert.strictEqual(state.army.troops.warrior_t1, convoyRowCount(state));
 
   yungulYaralilariBerpaEt(state, "konvoy_1", casualty.lightWoundedFormation, null, 6000);
-  assert.strictEqual(state.army.troops.warrior_t1, convoyRowCount(state) + 18);
+  assert.strictEqual(state.army.troops.warrior_t1, convoyRowCount(state));
+  assert.strictEqual(state.xestexana.yaralilar.warrior_t1, 18);
   assert.strictEqual(
     state.army.troops.warrior_t1,
     76,
