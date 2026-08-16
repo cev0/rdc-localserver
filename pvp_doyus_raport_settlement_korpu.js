@@ -18,6 +18,9 @@ const {
 const {
   pvpZeroingKonvoyRecalliniPostCommitIcraEt
 } = require("./pvp_zeroing_konvoy_recall_postcommit");
+const {
+  pvpResursTalaniTetbiqEt
+} = require("./pvp_resurs_talani_sistemi");
 
 function metnAl(v, max = 128) {
   return typeof v === "string" ? v.trim().slice(0, max).toLowerCase() : "";
@@ -62,7 +65,19 @@ async function pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
 
     let cityImpact = null;
     let zeroingRelocation = null;
+    let plunder = null;
     if (innerSettlement.combat && innerSettlement.combat.attackerVictory === true) {
+      // Defender resursu burada, eyni iki-oyunçulu transaction daxilində çıxılır.
+      // Hücumçu tərəfdə həmin resurs birbaşa bazaya yazılmır; konvoyun
+      // carriedResources sahəsinə keçir və geri dönüş tamamlananda bazaya teslim olunur.
+      plunder = pvpResursTalaniTetbiqEt(
+        attackerState,
+        defenderState,
+        convoyId,
+        nowMs
+      );
+      innerSettlement.plunder = plunder;
+
       cityImpact = qalibPvpHucumunuTetbiqEt(defenderState, nowMs);
       innerSettlement.cityImpact = cityImpact;
 
@@ -77,6 +92,9 @@ async function pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
       }
 
       if (innerSettlement.operation && innerSettlement.operation.result) {
+        innerSettlement.operation.result.plunder = plunder
+          ? JSON.parse(JSON.stringify(plunder))
+          : null;
         innerSettlement.operation.result.cityImpact = JSON.parse(JSON.stringify(cityImpact));
         innerSettlement.operation.result.zeroingRelocation = zeroingRelocation
           ? JSON.parse(JSON.stringify(zeroingRelocation))
