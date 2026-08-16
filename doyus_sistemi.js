@@ -3,6 +3,11 @@
 const {
   TUTORIAL_HEDEF_ID
 } = require("./kesfiyyat_sistemi");
+const {
+  birQosununGucunuAl,
+  qosunGucunuHesabla,
+  qosunDoyusStatlariniHesabla
+} = require("./qosun_doyus_stat_sistemi");
 
 const TUTORIAL_DOYUS_ID = "tutorial_doyus_001";
 const TUTORIAL_NETICE_GOZLEME_MS = 5 * 1000;
@@ -22,6 +27,13 @@ function musbetTamEded(deyer) {
   const say = Number(deyer);
   return Number.isFinite(say)
     ? Math.max(0, Math.trunc(say))
+    : 0;
+}
+
+function musbetEded(deyer) {
+  const say = Number(deyer);
+  return Number.isFinite(say)
+    ? Math.max(0, say)
     : 0;
 }
 
@@ -57,7 +69,7 @@ function doyusStateTeminEt(state) {
     state.doyus = {};
   }
 
-  state.doyus.version = 1;
+  state.doyus.version = 2;
 
   if (
     !state.doyus.tutorial ||
@@ -100,10 +112,10 @@ function doyusStateTeminEt(state) {
   ).toLowerCase();
 
   tutorial.playerPower =
-    musbetTamEded(tutorial.playerPower);
+    musbetEded(tutorial.playerPower);
 
   tutorial.enemyPower =
-    musbetTamEded(tutorial.enemyPower);
+    musbetEded(tutorial.enemyPower);
 
   tutorial.rewardClaimed =
     tutorial.rewardClaimed === true;
@@ -136,6 +148,19 @@ function doyusStateTeminEt(state) {
   }
 
   tutorial.troopSnapshot = temizQosunlar;
+
+  if (
+    !tutorial.troopStats ||
+    typeof tutorial.troopStats !== "object" ||
+    Array.isArray(tutorial.troopStats)
+  ) {
+    tutorial.troopStats = null;
+  }
+
+  tutorial.combatStatSource = metnAl(
+    tutorial.combatStatSource,
+    64
+  ).toLowerCase();
 
   return state.doyus;
 }
@@ -209,68 +234,8 @@ function tutorialHedefiAskarlandi(state) {
   );
 }
 
-function birQosununGucunuAl(unitId) {
-  const id = metnAl(
-    unitId,
-    128
-  ).toLowerCase();
-
-  const netice = id.match(
-    /^(fighter|shooter|vehicle)_lv(\d+)$/
-  );
-
-  if (!netice) {
-    return 0;
-  }
-
-  const qosunNovu = netice[1];
-  const level = Math.max(
-    1,
-    Math.min(
-      10,
-      musbetTamEded(netice[2]) || 1
-    )
-  );
-
-  let esasGuc = 0;
-
-  switch (qosunNovu) {
-    case "fighter":
-      esasGuc = 5;
-      break;
-
-    case "shooter":
-      esasGuc = 6;
-      break;
-
-    case "vehicle":
-      esasGuc = 20;
-      break;
-
-    default:
-      esasGuc = 0;
-      break;
-  }
-
-  return esasGuc * level;
-}
-
 function qosunSnapshotGucunuHesabla(snapshot) {
-  if (!snapshot || typeof snapshot !== "object") {
-    return 0;
-  }
-
-  let umumiGuc = 0;
-
-  for (const [unitId, rawCount] of Object.entries(snapshot)) {
-    const say = musbetTamEded(rawCount);
-    if (say <= 0) continue;
-
-    umumiGuc +=
-      birQosununGucunuAl(unitId) * say;
-  }
-
-  return Math.max(0, Math.trunc(umumiGuc));
+  return qosunGucunuHesabla(snapshot);
 }
 
 function doyusMelumatiniHazirla(
@@ -303,6 +268,11 @@ function doyusMelumatiniHazirla(
       ? Math.max(0, neticeHazirAtMs - indi)
       : 0;
 
+  const cariSnapshotStatlari =
+    snapshotSay > 0
+      ? qosunDoyusStatlariniHesabla(tutorial.troopSnapshot)
+      : null;
+
   return {
     battleId: tutorial.battleId,
     targetId: tutorial.targetId,
@@ -313,6 +283,18 @@ function doyusMelumatiniHazirla(
     troopSnapshot: {
       ...tutorial.troopSnapshot
     },
+    troopStats: tutorial.troopStats || (cariSnapshotStatlari
+      ? {
+          totalTroops: cariSnapshotStatlari.totalTroops,
+          totalAttack: cariSnapshotStatlari.totalAttack,
+          totalDefense: cariSnapshotStatlari.totalDefense,
+          totalHp: cariSnapshotStatlari.totalHp,
+          totalBattlePower: cariSnapshotStatlari.totalBattlePower,
+          classes: JSON.parse(JSON.stringify(cariSnapshotStatlari.classes)),
+          perUnit: cariSnapshotStatlari.perUnit.map(x => ({ ...x }))
+        }
+      : null),
+    combatStatSource: tutorial.combatStatSource || (snapshotSay > 0 ? "qosun_kataloqu_v1" : ""),
     usedTroopCount: snapshotSay,
     availableTroopCount: cariQosun.totalTroops,
     playerPower: tutorial.playerPower,
@@ -368,6 +350,24 @@ function tutorialDoyusunaBasla(
     };
   }
 
+  const troopStats = qosunDoyusStatlariniHesabla(qosun.troops);
+  if (troopStats.totalTroops <= 0 || troopStats.totalBattlePower <= 0) {
+    return {
+      success: false,
+      message: "Server kataloqunda tanınan döyüş qoşunu yoxdur.",
+      info: doyusMelumatiniHazirla(state, nowMs)
+    };
+  }
+
+  if (troopStats.unknownUnitIds.length > 0) {
+    return {
+      success: false,
+      message: "Server kataloqunda olmayan qoşun ID-si aşkarlandı.",
+      unknownUnitIds: troopStats.unknownUnitIds,
+      info: doyusMelumatiniHazirla(state, nowMs)
+    };
+  }
+
   const heroId = ilkOwnedQehremanIdAl(state);
 
   if (!heroId) {
@@ -386,8 +386,18 @@ function tutorialDoyusunaBasla(
   tutorial.completedAtMs = 0;
   tutorial.heroId = heroId;
   tutorial.troopSnapshot = {
-    ...qosun.troops
+    ...troopStats.canonicalTroops
   };
+  tutorial.troopStats = {
+    totalTroops: troopStats.totalTroops,
+    totalAttack: troopStats.totalAttack,
+    totalDefense: troopStats.totalDefense,
+    totalHp: troopStats.totalHp,
+    totalBattlePower: troopStats.totalBattlePower,
+    classes: JSON.parse(JSON.stringify(troopStats.classes)),
+    perUnit: troopStats.perUnit.map(x => ({ ...x }))
+  };
+  tutorial.combatStatSource = "qosun_kataloqu_v1";
   tutorial.playerPower = 0;
   tutorial.enemyPower = 0;
   tutorial.pendingRewards = [];
@@ -449,19 +459,25 @@ function tutorialDoyusunuNeticelendir(
     };
   }
 
-  const oyuncuGucu =
-    qosunSnapshotGucunuHesabla(
-      tutorial.troopSnapshot
-    );
-
-  const dusmenGucu =
-    TUTORIAL_DUSMEN_GUCU;
-
-  const qelebe =
-    oyuncuGucu >= dusmenGucu;
+  const troopStats = qosunDoyusStatlariniHesabla(
+    tutorial.troopSnapshot
+  );
+  const oyuncuGucu = troopStats.totalBattlePower;
+  const dusmenGucu = TUTORIAL_DUSMEN_GUCU;
+  const qelebe = oyuncuGucu >= dusmenGucu;
 
   tutorial.playerPower = oyuncuGucu;
   tutorial.enemyPower = dusmenGucu;
+  tutorial.troopStats = {
+    totalTroops: troopStats.totalTroops,
+    totalAttack: troopStats.totalAttack,
+    totalDefense: troopStats.totalDefense,
+    totalHp: troopStats.totalHp,
+    totalBattlePower: troopStats.totalBattlePower,
+    classes: JSON.parse(JSON.stringify(troopStats.classes)),
+    perUnit: troopStats.perUnit.map(x => ({ ...x }))
+  };
+  tutorial.combatStatSource = "qosun_kataloqu_v1";
   tutorial.completedAtMs = indi;
   tutorial.status = qelebe
     ? "qelebe"
@@ -488,6 +504,9 @@ module.exports = {
   TUTORIAL_DOYUS_ID,
   TUTORIAL_NETICE_GOZLEME_MS,
   TUTORIAL_DUSMEN_GUCU,
+  birQosununGucunuAl,
+  qosunSnapshotGucunuHesabla,
+  qosunDoyusStatlariniHesabla,
   doyusStateTeminEt,
   doyusMelumatiniHazirla,
   tutorialDoyusunaBasla,
