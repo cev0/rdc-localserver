@@ -24,6 +24,7 @@ on:
       - server-pvp-storage-protection-v1
       - server-pvp-fixed-storage-protection-v1
       - server-pvp-shield-items-v1
+      - server-convoy-capacity-skill-link-v3
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -46,6 +47,8 @@ on:
       - 'xerite_dusmen_doyus_sistemi.js'
       - 'konvoy_mudafie_sistemi.js'
       - 'konvoy_handler.js'
+      - 'konvoy_tutum_formulu.js'
+      - 'konvoy_tutum_formulu_testi.js'
       - 'pvp_doyus_snapshot_sistemi.js'
       - 'pvp_doyus_snapshot_sistemi_testi.js'
       - 'pvp_doyus_resolver.js'
@@ -109,6 +112,8 @@ jobs:
         run: node doyus_merheleli_resolver_testi.js
       - name: Doyus qosun lifecycle accounting testleri
         run: node doyus_qosun_lifecycle_testi.js
+      - name: Konvoy tutum formulu testleri
+        run: node konvoy_tutum_formulu_testi.js
       - name: PvP konvoy mudafie snapshot testleri
         run: node pvp_doyus_snapshot_sistemi_testi.js
       - name: PvP iki teref server resolver testleri

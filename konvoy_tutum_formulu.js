@@ -38,9 +38,6 @@ function cedvelEnv(ad) {
 }
 
 function legacyTutumLeveliniAl() {
-  // Köhnə 5K -> 20K tutum texnologiyası artıq gameplay mənbəyi deyil.
-  // Yeni bina + Hero level + Skill 1 + Skill 6 formulu tam konfiqurasiya
-  // olunana qədər yalnız Lv0 test fallback saxlanılır.
   return 0;
 }
 
@@ -86,26 +83,44 @@ function completedBinaLeveliniAl(state, binaIdleri) {
   return netice;
 }
 
+function cedveldenSeviyeDeyeriniAl(cedvel, level) {
+  const seviye = Math.max(0, tamEded(level));
+  if (seviye <= 0 || !Array.isArray(cedvel) || cedvel.length === 0) return 0;
+  const index = Math.min(seviye, cedvel.length) - 1;
+  return tamEded(cedvel[index]);
+}
+
 function yeniFormulaKonfiqi() {
   const binaIdleri = siyahiEnv("KONVOY_BINASI_IDLERI");
   const binaTutumCedveli = cedvelEnv("KONVOY_BINASI_TUTUM_CEDVELI");
+  const heroLevelTutumCedveli = cedvelEnv("KONVOY_HERO_LEVEL_TUTUM_CEDVELI");
   const heroLevelBonusu = tamEdedEnv("KONVOY_HERO_LEVEL_TUTUM_BONUSU");
-  const skill1Bonusu = tamEdedEnv("KONVOY_SKILL1_TUTUM_BONUSU");
-  const skill6Bonusu = tamEdedEnv("KONVOY_SKILL6_TUTUM_BONUSU");
+  const skill1TutumCedveli = cedvelEnv("KONVOY_SKILL1_TUTUM_CEDVELI");
+  const skill6LiderlikFaizCedveli = cedvelEnv("KONVOY_SKILL6_LIDERLIK_FAIZ_CEDVELI");
+
+  const heroLevelConfigured = heroLevelTutumCedveli.length > 0 || heroLevelBonusu > 0;
 
   return {
     binaIdleri,
     binaTutumCedveli,
+    heroLevelTutumCedveli,
     heroLevelBonusu,
-    skill1Bonusu,
-    skill6Bonusu,
+    skill1TutumCedveli,
+    skill6LiderlikFaizCedveli,
     configured:
       binaIdleri.length > 0 &&
       binaTutumCedveli.length > 0 &&
-      heroLevelBonusu > 0 &&
-      skill1Bonusu > 0 &&
-      skill6Bonusu > 0
+      heroLevelConfigured &&
+      skill1TutumCedveli.length >= 10 &&
+      skill6LiderlikFaizCedveli.length >= 10
   };
+}
+
+function heroLevelTutumBonusunuAl(cfg, level) {
+  if (cfg.heroLevelTutumCedveli.length > 0) {
+    return cedveldenSeviyeDeyeriniAl(cfg.heroLevelTutumCedveli, level);
+  }
+  return Math.max(0, Math.max(1, tamEded(level) || 1) - 1) * cfg.heroLevelBonusu;
 }
 
 function konvoyTutumHesabiniAl(state, konvoyId) {
@@ -116,13 +131,12 @@ function konvoyTutumHesabiniAl(state, konvoyId) {
 
   let esasBinaTutumu = 0;
   if (bina.level > 0 && cfg.binaTutumCedveli.length > 0) {
-    const index = Math.min(bina.level, cfg.binaTutumCedveli.length) - 1;
-    esasBinaTutumu = tamEded(cfg.binaTutumCedveli[index]);
+    esasBinaTutumu = cedveldenSeviyeDeyeriniAl(cfg.binaTutumCedveli, bina.level);
   }
 
   let qehremanLevelBonusu = 0;
-  let skill1Bonusu = 0;
-  let skill6Bonusu = 0;
+  let skill1EsasBonusu = 0;
+  let skill6LiderlikBonusu = 0;
   const qehremanlar = [];
 
   for (const rawHeroId of Array.isArray(konvoy && konvoy.qehremanIdleri) ? konvoy.qehremanIdleri : []) {
@@ -133,13 +147,14 @@ function konvoyTutumHesabiniAl(state, konvoyId) {
     const skill1Level = skillLeveliniAl(hero, 1);
     const skill6Level = skillLeveliniAl(hero, 6);
 
-    const levelBonus = Math.max(0, level - 1) * cfg.heroLevelBonusu;
-    const s1Bonus = skill1Level * cfg.skill1Bonusu;
-    const s6Bonus = skill6Level * cfg.skill6Bonusu;
+    const levelBonus = heroLevelTutumBonusunuAl(cfg, level);
+    const s1EsasBonus = cedveldenSeviyeDeyeriniAl(cfg.skill1TutumCedveli, skill1Level);
+    const s6LiderlikFaizi = cedveldenSeviyeDeyeriniAl(cfg.skill6LiderlikFaizCedveli, skill6Level);
+    const s6LiderlikBonusu = Math.floor((s1EsasBonus * s6LiderlikFaizi) / 100);
 
     qehremanLevelBonusu += levelBonus;
-    skill1Bonusu += s1Bonus;
-    skill6Bonusu += s6Bonus;
+    skill1EsasBonusu += s1EsasBonus;
+    skill6LiderlikBonusu += s6LiderlikBonusu;
 
     qehremanlar.push({
       heroId: metnAl(hero.heroId, 128),
@@ -147,27 +162,29 @@ function konvoyTutumHesabiniAl(state, konvoyId) {
       skill1Level,
       skill6Level,
       levelBonus,
-      skill1Bonus: s1Bonus,
-      skill6Bonus: s6Bonus
+      skill1EsasBonus: s1EsasBonus,
+      skill6LiderlikFaizi: s6LiderlikFaizi,
+      skill6LiderlikBonusu: s6LiderlikBonusu,
+      heroTutumCemi: levelBonus + s1EsasBonus + s6LiderlikBonusu
     });
   }
 
-  const yeniYekun = esasBinaTutumu + qehremanLevelBonusu + skill1Bonusu + skill6Bonusu;
+  const yeniYekun = esasBinaTutumu + qehremanLevelBonusu + skill1EsasBonusu + skill6LiderlikBonusu;
   const yeniFormulaAktivdir = cfg.configured && bina.level > 0 && yeniYekun > 0;
 
   return {
-    formulaVersion: 2,
+    formulaVersion: 3,
     formulaConfigured: cfg.configured,
     formulaActive: yeniFormulaAktivdir,
     pendingReason: cfg.configured
       ? (bina.level > 0 ? "" : "completed_convoy_building_not_found")
-      : "convoy_building_and_bonus_balance_not_configured",
+      : "convoy_building_hero_level_skill1_skill6_tables_not_configured",
     buildingId: bina.buildingId,
     buildingLevel: bina.level,
     esasBinaTutumu,
     qehremanLevelBonusu,
-    skill1Bonusu,
-    skill6Bonusu,
+    skill1EsasBonusu,
+    skill6LiderlikBonusu,
     yekunTutum: yeniFormulaAktivdir ? yeniYekun : fallbackTutum,
     legacyFallbackTutum: fallbackTutum,
     legacyFallbackLevel: 0,
