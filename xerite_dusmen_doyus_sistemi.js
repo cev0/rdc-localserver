@@ -6,6 +6,11 @@ const {
   qosunSayiniHesabla
 } = require("./konvoy_qosun_sistemi");
 const { formasiyaStateTeminEt } = require("./konvoy_formasiya_sistemi");
+const {
+  birQosununGucunuAl,
+  qosunGucunuHesabla,
+  qosunDoyusStatlariniHesabla
+} = require("./qosun_doyus_stat_sistemi");
 
 const DOYUS_NETICE_GOZLEME_MS = 5 * 1000;
 
@@ -18,36 +23,16 @@ function tamEded(v) {
   return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
 }
 
+function musbetEded(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0, n) : 0;
+}
+
 function dovletIdAl(state) {
   return Math.max(
     1,
     tamEded(state && state.worldPlacement && state.worldPlacement.stateId) || 1
   );
-}
-
-function birQosununGucunuAl(unitId) {
-  const id = metnAl(unitId, 128);
-  const match = id.match(/^(fighter|shooter|vehicle)_lv(\d+)$/);
-  if (!match) return 0;
-
-  const level = Math.max(1, Math.min(10, tamEded(match[2]) || 1));
-  const esasGuc = match[1] === "fighter"
-    ? 5
-    : match[1] === "shooter"
-      ? 6
-      : 20;
-
-  return esasGuc * level;
-}
-
-function qosunGucunuHesabla(snapshot) {
-  let guc = 0;
-  for (const [unitId, rawSay] of Object.entries(snapshot || {})) {
-    const say = tamEded(rawSay);
-    if (say <= 0) continue;
-    guc += birQosununGucunuAl(unitId) * say;
-  }
-  return Math.max(0, Math.trunc(guc));
 }
 
 function formasiyaSnapshotiniAl(konvoy) {
@@ -73,13 +58,13 @@ function stateTeminEt(state) {
     Array.isArray(state.worldEnemyBattle)
   ) {
     state.worldEnemyBattle = {
-      version: 2,
+      version: 3,
       activeByConvoy: {},
       lastResults: []
     };
   }
 
-  state.worldEnemyBattle.version = 2;
+  state.worldEnemyBattle.version = 3;
 
   if (
     !state.worldEnemyBattle.activeByConvoy ||
@@ -181,6 +166,19 @@ function doyusaBasla(state, playerId, convoyId, enemyId, nowMs = Date.now()) {
     return { success: false, message: "Döyüş üçün konvoyda qoşun olmalıdır." };
   }
 
+  const troopStats = qosunDoyusStatlariniHesabla(troopSnapshot);
+  if (troopStats.totalTroops <= 0 || troopStats.totalBattlePower <= 0) {
+    return { success: false, message: "Konvoyda server kataloqunda tanınan döyüş qoşunu yoxdur." };
+  }
+
+  if (troopStats.unknownUnitIds.length > 0) {
+    return {
+      success: false,
+      message: "Konvoyda server kataloqunda olmayan qoşun ID-si aşkarlandı.",
+      unknownUnitIds: troopStats.unknownUnitIds
+    };
+  }
+
   const heroIds = heroIdleriAl(konvoy);
   if (heroIds.length <= 0) {
     return { success: false, message: "Döyüş üçün konvoyda Döyüş qəhrəmanı olmalıdır." };
@@ -208,17 +206,27 @@ function doyusaBasla(state, playerId, convoyId, enemyId, nowMs = Date.now()) {
     enemyType: descriptor.enemyType,
     enemyLevel: descriptor.level,
     enemyPower: descriptor.power,
-    troopSnapshot,
+    troopSnapshot: { ...troopStats.canonicalTroops },
     formationSnapshot,
     heroIds,
-    playerPower: qosunGucunuHesabla(troopSnapshot),
+    playerPower: troopStats.totalBattlePower,
+    troopStats: {
+      totalTroops: troopStats.totalTroops,
+      totalAttack: troopStats.totalAttack,
+      totalDefense: troopStats.totalDefense,
+      totalHp: troopStats.totalHp,
+      totalBattlePower: troopStats.totalBattlePower,
+      classes: JSON.parse(JSON.stringify(troopStats.classes)),
+      perUnit: troopStats.perUnit.map(x => ({ ...x }))
+    },
+    combatStatSource: "qosun_kataloqu_v1",
     startedAtMs,
     resolveAtMs: startedAtMs + DOYUS_NETICE_GOZLEME_MS,
     status: "active"
   };
 
   battle.activeByConvoy[id] = mission;
-  return { success: true, mission: { ...mission } };
+  return { success: true, mission: JSON.parse(JSON.stringify(mission)) };
 }
 
 async function doyusuNeticelendir(state, playerId, convoyId, nowMs = Date.now()) {
@@ -239,7 +247,7 @@ async function doyusuNeticelendir(state, playerId, convoyId, nowMs = Date.now())
     };
   }
 
-  const victory = tamEded(mission.playerPower) >= tamEded(mission.enemyPower);
+  const victory = musbetEded(mission.playerPower) >= musbetEded(mission.enemyPower);
   let sharedResult = null;
   let reward = { money: 0, heroExp: 0, deliveryPending: false };
 
@@ -257,6 +265,10 @@ async function doyusuNeticelendir(state, playerId, convoyId, nowMs = Date.now())
         battleId: mission.battleId,
         convoyId: id,
         enemyId: mission.enemyId,
+        playerPower: mission.playerPower,
+        enemyPower: mission.enemyPower,
+        troopStats: mission.troopStats || null,
+        combatStatSource: mission.combatStatSource || "legacy",
         formationSnapshot: Array.isArray(mission.formationSnapshot) ? mission.formationSnapshot.map(x => ({ ...x })) : [],
         victory: false,
         invalidated: true,
@@ -290,6 +302,8 @@ async function doyusuNeticelendir(state, playerId, convoyId, nowMs = Date.now())
     enemyLevel: mission.enemyLevel,
     playerPower: mission.playerPower,
     enemyPower: mission.enemyPower,
+    troopStats: mission.troopStats || null,
+    combatStatSource: mission.combatStatSource || "legacy",
     formationSnapshot: Array.isArray(mission.formationSnapshot) ? mission.formationSnapshot.map(x => ({ ...x })) : [],
     victory,
     invalidated: false,
@@ -308,6 +322,7 @@ module.exports = {
   DOYUS_NETICE_GOZLEME_MS,
   birQosununGucunuAl,
   qosunGucunuHesabla,
+  qosunDoyusStatlariniHesabla,
   formasiyaSnapshotiniAl,
   stateTeminEt,
   aktivDoyusTap,
