@@ -19,7 +19,13 @@ const { qosunTelimiMesajiniEmalEt } = require("./qosun_telimi_handler");
 const { dovletXeriteKataloqMesajiniEmalEt } = require("./dovlet_xerite_kataloq_handler");
 const { dovletXeriteLayerMesajiniEmalEt } = require("./dovlet_xerite_layer_handler");
 const { pvpBazaReportStatusMesajiniEmalEt } = require("./pvp_baza_report_status_handler");
+
+// Live PvP handler settlement funksiyasını require zamanı destructure edir.
+// Ona görə tam report + durability + zeroing + plunder bridge override-u
+// pvp_baza_live_handler require edilməzdən əvvəl aktiv edilməlidir.
+require("./pvp_settlement_live_override");
 const { pvpBazaLiveMesajiniEmalEt } = require("./pvp_baza_live_handler");
+
 const { pvpBazaPreviewMesajiniEmalEt } = require("./pvp_baza_preview_handler");
 const { pvpKampMesajiniEmalEt } = require("./pvp_kamp_handler");
 const { xeriteResursToplamaMesajiniEmalEt } = require("./xerite_resurs_toplama_handler");
