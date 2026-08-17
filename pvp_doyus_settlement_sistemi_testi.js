@@ -43,6 +43,10 @@ function defenderStateHazirla(duplicateRows = false) {
   return {
     playerId: "oyuncu_b",
     technology: { levels: { ikinci_konvoy: 1 } },
+    buildings: [
+      { instanceId: "defender_barrack_1", buildingId: "barrack_1", level: 1, isCompleted: true },
+      { instanceId: "defender_barrack_2", buildingId: "barrack_2", level: 1, isCompleted: true }
+    ],
     // shooter_lv1 konvoya yerləşdirilməyib və baza müdafiəsinə avtomatik girməməlidir.
     army: { troops: { fighter_lv1: 60, shooter_lv1: 30 } },
     konvoylar: { items: [
