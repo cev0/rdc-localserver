@@ -1,0 +1,76 @@
+name: Patch Construction Runtime
+
+on:
+  push:
+    branches:
+      - server-construction-runtime-patcher-v1
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: server-construction-runtime-patcher-v1
+          fetch-depth: 0
+      - name: Patch server.js construction duration
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('server.js')
+          s = p.read_text(encoding='utf-8')
+          old = '''function getAdjustedBuildDurationMs(state, baseBuildTimeSeconds) {
+            ensureTechnologyObject(state);
+            refreshTechnologyStats(state);
+
+            const rawMs = Math.max(0, Math.round((Number(baseBuildTimeSeconds) || 0) * 1000));
+            const speedPct = Math.max(0, Number(state.technology?.stats?.buildSpeedPct) || 0);
+
+            if (rawMs <= 0 || speedPct <= 0) return rawMs;
+
+            return Math.max(1000, Math.round(rawMs * (100 / (100 + speedPct))));
+          }'''
+          new = '''function getAdjustedBuildDurationMs(state, baseBuildTimeSeconds) {
+            ensureTechnologyObject(state);
+            refreshTechnologyStats(state);
+
+            const rawMs = Math.max(0, Math.round((Number(baseBuildTimeSeconds) || 0) * 1000));
+            const technologySpeedPct = Math.max(0, Number(state.technology?.stats?.buildSpeedPct) || 0);
+
+            if (rawMs <= 0) return rawMs;
+
+            const { stateUcunTikintiMuddetiniHesabla } = require("./tikinti_inkisaf_korpu");
+            const netice = stateUcunTikintiMuddetiniHesabla(
+              state,
+              rawMs,
+              technologySpeedPct
+            );
+
+            if (!netice || Number(netice.totalSpeedPct) <= 0) return rawMs;
+            return Math.max(1000, Math.round(Number(netice.effectiveDurationMs) || rawMs));
+          }'''
+          if new in s:
+              print('server.js already patched')
+          else:
+              if old not in s:
+                  raise SystemExit('Expected getAdjustedBuildDurationMs block not found; refusing unsafe patch')
+              s = s.replace(old, new, 1)
+              p.write_text(s, encoding='utf-8')
+          test = Path('tikinti_inkisaf_runtime_inteqrasiya_testi.js')
+          test.write_text('''"use strict";\n\nconst assert = require("assert");\nconst fs = require("fs");\nconst source = fs.readFileSync("./server.js", "utf8");\nassert.ok(source.includes('require("./tikinti_inkisaf_korpu")'));\nassert.ok(source.includes('stateUcunTikintiMuddetiniHesabla('));\nassert.ok(source.includes('technologySpeedPct'));\nassert.ok(source.includes('netice.effectiveDurationMs'));\nconsole.log("Tikinti İnkişaf runtime inteqrasiya testi uğurla keçdi.");\n''', encoding='utf-8')
+      - name: Test runtime integration
+        run: node tikinti_inkisaf_runtime_inteqrasiya_testi.js
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js tikinti_inkisaf_runtime_inteqrasiya_testi.js
+          git commit -m "Integrate construction development speed into runtime"
+          git push origin HEAD:server-construction-runtime-patcher-v1
