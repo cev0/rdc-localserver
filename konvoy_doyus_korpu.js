@@ -1,15 +1,50 @@
 "use strict";
 
 const esas = require("./doyus_sistemi");
-const { konvoyStateTeminEt } = require("./konvoy_sistemi");
 const {
   konvoyQosunStateTeminEt,
   konvoyTutumunuAl,
   qosunSayiniHesabla
 } = require("./konvoy_qosun_sistemi");
 
+function konvoyOxuStateKopyasiniHazirla(state) {
+  const esasState = state && typeof state === "object" ? state : {};
+  const esasKonvoylar =
+    esasState.konvoylar &&
+    typeof esasState.konvoylar === "object" &&
+    !Array.isArray(esasState.konvoylar)
+      ? esasState.konvoylar
+      : {};
+
+  return {
+    ...esasState,
+    konvoylar: {
+      ...esasKonvoylar,
+      items: Array.isArray(esasKonvoylar.items)
+        ? esasKonvoylar.items.map(konvoy => {
+            if (!konvoy || typeof konvoy !== "object") return konvoy;
+
+            return {
+              ...konvoy,
+              qehremanIdleri: Array.isArray(konvoy.qehremanIdleri)
+                ? [...konvoy.qehremanIdleri]
+                : konvoy.qehremanIdleri,
+              qosunlar:
+                konvoy.qosunlar &&
+                typeof konvoy.qosunlar === "object" &&
+                !Array.isArray(konvoy.qosunlar)
+                  ? { ...konvoy.qosunlar }
+                  : konvoy.qosunlar
+            };
+          })
+        : esasKonvoylar.items
+    }
+  };
+}
+
 function konvoyuTap(state) {
-  const konvoylar = konvoyStateTeminEt(state);
+  const oxuState = konvoyOxuStateKopyasiniHazirla(state);
+  const konvoylar = konvoyQosunStateTeminEt(oxuState);
   return konvoylar.items.find(x =>
     x && x.konvoyId === "konvoy_1" && x.aciqdir === true
   ) || null;
@@ -23,7 +58,6 @@ function konvoyQehremanIdleriAl(state) {
 }
 
 function konvoyQosunlariniAl(state) {
-  konvoyQosunStateTeminEt(state);
   const konvoy = konvoyuTap(state);
   return konvoy && konvoy.qosunlar && typeof konvoy.qosunlar === "object"
     ? { ...konvoy.qosunlar }
