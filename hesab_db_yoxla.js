@@ -32,8 +32,6 @@ async function baslat() {
         console.log("[HESAB_YOXLA] HESAB TAPILDI:", {
             accountId: hesab.accountId,
             playerId: hesab.playerId,
-            email: hesab.primaryEmail,
-            emailVerified: hesab.emailVerified,
             status: hesab.status
         });
     }
