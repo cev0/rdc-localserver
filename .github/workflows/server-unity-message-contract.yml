@@ -8,6 +8,7 @@ on:
       - "server_*genisletme*.js"
       - "server_client_state_patch.js"
       - "building_definitions.json"
+      - "server_unity_message_contract.json"
       - "server_unity_mesaj_muqavilesi_testi.js"
       - "package.json"
       - ".github/workflows/server-unity-message-contract.yml"
@@ -20,6 +21,7 @@ on:
       - "server_*genisletme*.js"
       - "server_client_state_patch.js"
       - "building_definitions.json"
+      - "server_unity_message_contract.json"
       - "server_unity_mesaj_muqavilesi_testi.js"
       - "package.json"
       - ".github/workflows/server-unity-message-contract.yml"
@@ -28,26 +30,13 @@ jobs:
   message-contract:
     runs-on: ubuntu-latest
     steps:
-      - name: Server repo-nu al
+      - name: Repo-nu al
         uses: actions/checkout@v4
-        with:
-          path: server
-
-      - name: Unity müqavilə fayllarını al
-        uses: actions/checkout@v4
-        with:
-          repository: cev0/testgame
-          ref: main
-          path: testgame
-          sparse-checkout: |
-            Assets/_RDC/Scripts
-            Assets/_Game/Scripts
-            building_definitions.json
 
       - name: Node qur
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Server və Unity mesaj müqaviləsini yoxla
-        run: node server/server_unity_mesaj_muqavilesi_testi.js testgame
+      - name: Server mesaj müqaviləsini yoxla
+        run: node server_unity_mesaj_muqavilesi_testi.js
