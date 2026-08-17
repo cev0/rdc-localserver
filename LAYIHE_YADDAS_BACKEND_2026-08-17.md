@@ -172,10 +172,20 @@ Təsdiqlənməmiş faizlər serverə aktiv edilməməlidir.
 - Override `xestexana_handler.js` require edilməzdən əvvəl yüklənir.
 - Təsdiqlənmiş Xəstəxana İnkişaf qəhrəmanı/faizi olmadığı üçün cari gameplay tutum/xərc rəqəmləri dəyişmir.
 - `xestexana_inkisaf_override_testi.js` əlavə edildi; CI uğurla keçdi.
+- PR #107 main-ə merge edildi. Merge commit: 8f78e2079b864e01177c6a3e5841ed24de215145.
+
+### PR #108 — İnkişaf təyinat state sağlamlığı
+
+- `qehreman_tapshiriq_saglamliq.js` əlavə edildi.
+- Köhnə/səhv İnkişaf təyinatları server tərəfindən deterministik barışdırılır: naməlum qəhrəman, oyunçuya məxsus olmayan qəhrəman, olmayan/tamamlanmamış/uyğunsuz bina, təkrar qəhrəman və təkrar bina təyinatı saxlanmır.
+- Konvoy və legacy Texnologiya/Resurs tapşırığı ilə konflikt yaranarsa stale İnkişaf təyinatı silinir; eyni qəhrəman iki sistemdə eyni vaxtda aktiv qalmır.
+- `hero_assignment_info_request` məlumatı hazırlanarkən reconciliation işləyir və client-ə yalnız sağlam təyinatlar qaytarılır.
+- Yeni balans rəqəmi və ya təsdiqlənməmiş Hero effekti əlavə edilməyib.
+- `qehreman_tapshiriq_saglamliq_testi.js` CI-yə əlavə edildi.
 
 ## Növbəti təhlükəsiz backend addımları
 
-1. PR #107-ni main-ə merge et və Koyeb deploy statusunu yoxla.
+1. PR #108 CI nəticəsi uğurlu olduqdan sonra main-ə merge et və Koyeb deploy statusunu yoxla.
 2. `server.js` mərkəzi `getAdjustedBuildDurationMs` hesablamasına `tikinti_inkisaf_korpu.js` modifier-ini yalnız təhlükəsiz, kiçik patch yolu ilə qoş; 230KB-lıq `server.js`-i tam-fayl avtomatik əvəzləmə ilə riskə atma.
 3. Xəstəxanada real sağaltma timer sistemi ayrıca dizayn edilərsə yalnız onda `Müalicə sürəti` effektini müddətə bağla; indiki ani sağaltmada tətbiq etmə.
 4. Qəhrəman kataloqunda real İnkişaf qəhrəman ID-ləri və allowedBuildingIds mapping-i yalnız təsdiqlənəndə əlavə et.

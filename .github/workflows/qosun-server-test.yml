@@ -33,6 +33,7 @@ on:
       - server-construction-development-bridge-v1
       - server-development-hero-skill-state-v1
       - server-hospital-development-bridge-v1
+      - server-build-development-adapter-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -79,6 +80,8 @@ on:
       - 'qehreman_inkisaf_sistemi_testi.js'
       - 'qehreman_tapshiriq_sistemi.js'
       - 'qehreman_tapshiriq_handler.js'
+      - 'qehreman_tapshiriq_saglamliq.js'
+      - 'qehreman_tapshiriq_saglamliq_testi.js'
       - 'pvp_doyus_snapshot_sistemi.js'
       - 'pvp_doyus_snapshot_sistemi_testi.js'
       - 'pvp_doyus_resolver.js'
@@ -152,6 +155,8 @@ jobs:
         run: node qehreman_skill_sistemi_testi.js
       - name: Qehreman Inkisaf sistemi testleri
         run: node qehreman_inkisaf_sistemi_testi.js
+      - name: Qehreman Inkisaf teyinat saglamliq testleri
+        run: node qehreman_tapshiriq_saglamliq_testi.js
       - name: Texnologiya Inkisaf korpusu testleri
         run: node texnologiya_inkisaf_korpu_testi.js
       - name: Konvoy texnologiyasi Inkisaf inteqrasiya testleri
