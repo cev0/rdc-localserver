@@ -75,7 +75,7 @@
     "ws": "^8.19.0"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node server_unit_regressiya_testi.js",
     "db:test": "node verilenler_bazasi_testi.js",
     "db:migrate": "node verilenler_bazasi_miqrasiya.js",
     "db:hesab-test": "node hesab_db_testi.js",
