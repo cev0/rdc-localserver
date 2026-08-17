@@ -98,6 +98,12 @@ on:
       - 'pvp_baza_report_status_handler.js'
       - 'iki_oyuncu_state_mutasiya_postgres.js'
       - 'server_missiya_genisletme_v2.js'
+      - 'missiya_handler.js'
+      - 'missiya_postgres.js'
+      - 'missiya_mukafat_tranzaksiya.js'
+      - 'missiya_mukafat_pg_mutasiya_testi.js'
+      - 'oyun_state_mutasiya_postgres.js'
+      - 'oyun_state_snapshot_postgres.js'
       - '.github/workflows/qosun-server-test.yml'
 
 jobs:
@@ -113,6 +119,8 @@ jobs:
           cache: npm
       - name: Paketleri qur
         run: npm ci
+      - name: Missiya mukafat PG mutasiya testleri
+        run: node missiya_mukafat_pg_mutasiya_testi.js
       - name: Qosun kataloqu testleri
         run: node qosun_kataloqu_testi.js
       - name: Qosun telimi testleri
