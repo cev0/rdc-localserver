@@ -2,13 +2,11 @@
 
 const {
   KONVOY_TUTUM_TEXNOLOGIYA_ID,
-  KONVOY_TUTUM_BALANSI,
   tutumLevelMelumatiniAl
 } = require("./konvoy_tutum_qaydalari");
 
 const {
   oyunStateIniBerpaEt,
-  oyunStateIniYaddaSaxla,
   oyuncuStateBerpaOlunub
 } = require("./oyun_state_daimilik_korpu");
 
@@ -23,26 +21,12 @@ function tamEded(deyer) {
   return Number.isFinite(say) ? Math.max(0, Math.trunc(say)) : 0;
 }
 
-function binaLeveliniAl(state, buildingId, yolTelebi = false) {
-  let maksimum = 0;
-
-  for (const bina of Array.isArray(state && state.buildings) ? state.buildings : []) {
-    if (!bina || bina.isCompleted !== true) continue;
-    if (metnAl(bina.buildingId) !== buildingId) continue;
-    if (yolTelebi && bina.hasRoadAccess === false) continue;
-
-    maksimum = Math.max(maksimum, Math.max(1, tamEded(bina.level) || 1));
-  }
-
-  return maksimum;
-}
-
 function stateTeminEt(state) {
-  if (!state.resources || typeof state.resources !== "object") state.resources = {};
-  for (const id of ["wood", "iron", "fuel", "money"]) {
-    if (!Number.isFinite(Number(state.resources[id]))) state.resources[id] = 0;
+  if (!state || typeof state !== "object") {
+    throw new Error("Konvoy tutum texnologiyası üçün oyunçu state-i yoxdur.");
   }
 
+  if (!state.resources || typeof state.resources !== "object") state.resources = {};
   if (!state.technology || typeof state.technology !== "object") state.technology = {};
   if (!state.technology.levels || typeof state.technology.levels !== "object") {
     state.technology.levels = {};
@@ -59,91 +43,47 @@ function melumatiHazirla(state) {
   stateTeminEt(state);
 
   const currentLevel = cariLeveliAl(state);
-  const current = tutumLevelMelumatiniAl(currentLevel);
-  const nextLevel = currentLevel < 4 ? currentLevel + 1 : null;
-  const next = nextLevel === null ? null : tutumLevelMelumatiniAl(nextLevel);
-  const hqLevel = binaLeveliniAl(state, "hq");
-  const instituteLevel = binaLeveliniAl(state, "institute", true);
-
-  let resourcesReady = true;
-  if (next) {
-    for (const item of next.cost || []) {
-      if ((Number(state.resources[item.type]) || 0) < item.amount) {
-        resourcesReady = false;
-        break;
-      }
-    }
-  }
+  const legacy = tutumLevelMelumatiniAl(currentLevel);
+  const currentResearch = state.technology.currentResearch;
+  const legacyResearchRunning = !!(
+    currentResearch &&
+    metnAl(currentResearch.techId, 128) === KONVOY_TUTUM_TEXNOLOGIYA_ID
+  );
 
   return {
     techId: KONVOY_TUTUM_TEXNOLOGIYA_ID,
     displayName: "Konvoy Qoşun Tutumu",
+    legacyDisabled: true,
+    gameplaySource: "convoy_building_hero_level_skill1_skill6",
     currentLevel,
     maxLevel: 4,
-    currentCapacity: current.capacity,
-    nextLevel,
-    nextCapacity: next ? next.capacity : current.capacity,
-    completed: currentLevel >= 4,
-    requiredHqLevel: next ? next.requiredHqLevel : 0,
-    currentHqLevel: hqLevel,
-    requiredInstituteLevel: next ? next.requiredInstituteLevel : 0,
-    currentInstituteLevel: instituteLevel,
-    researchTimeSeconds: next ? next.researchTimeSeconds : 0,
-    cost: next ? next.cost.map(x => ({ ...x })) : [],
-    resourcesReady,
-    researchRunning: !!state.technology.currentResearch,
-    canResearch:
-      !!next &&
-      !state.technology.currentResearch &&
-      hqLevel >= next.requiredHqLevel &&
-      instituteLevel >= next.requiredInstituteLevel &&
-      resourcesReady
+    currentCapacity: legacy.capacity,
+    currentCapacityIsLegacyOnly: true,
+    nextLevel: null,
+    nextCapacity: legacy.capacity,
+    completed: false,
+    requiredHqLevel: 0,
+    currentHqLevel: 0,
+    requiredInstituteLevel: 0,
+    currentInstituteLevel: 0,
+    researchTimeSeconds: 0,
+    cost: [],
+    resourcesReady: false,
+    researchRunning: legacyResearchRunning,
+    canResearch: false,
+    message:
+      "Köhnə Konvoy tutum texnologiyası deaktivdir. Tutum Konvoy binası, Qəhrəman level-i, Skill 1 və Skill 6 ilə serverdə hesablanır."
   };
 }
 
-function baslat(state, nowMs) {
+function baslat(state) {
   const info = melumatiHazirla(state);
 
-  if (info.completed) {
-    return { ok: false, message: "Konvoy qoşun tutumu maksimum səviyyədədir.", info };
-  }
-  if (state.technology.currentResearch) {
-    return { ok: false, message: "Başqa araşdırma artıq davam edir.", info };
-  }
-  if (info.currentHqLevel < info.requiredHqLevel) {
-    return { ok: false, message: `HQ Level ${info.requiredHqLevel} tələb olunur.`, info };
-  }
-  if (info.currentInstituteLevel < info.requiredInstituteLevel) {
-    return { ok: false, message: `Institute Level ${info.requiredInstituteLevel} tələb olunur.`, info };
-  }
-  if (!info.resourcesReady) {
-    return { ok: false, message: "Araşdırma üçün resurslar kifayət etmir.", info };
-  }
-
-  const next = KONVOY_TUTUM_BALANSI[info.nextLevel];
-  for (const item of next.cost || []) {
-    state.resources[item.type] = Math.max(
-      0,
-      (Number(state.resources[item.type]) || 0) - item.amount
-    );
-  }
-
-  const startedAtMs = Number(nowMs) || Date.now();
-  const durationMs = Math.max(0, tamEded(next.researchTimeSeconds) * 1000);
-
-  state.technology.currentResearch = {
-    techId: KONVOY_TUTUM_TEXNOLOGIYA_ID,
-    targetLevel: info.nextLevel,
-    startedAtMs,
-    durationMs,
-    endsAtMs: startedAtMs + durationMs,
-    instituteInstanceId: null
-  };
-
   return {
-    ok: true,
-    research: { ...state.technology.currentResearch },
-    info: melumatiHazirla(state)
+    ok: false,
+    legacyDisabled: true,
+    message: info.message,
+    info
   };
 }
 
@@ -179,9 +119,9 @@ async function konvoyTutumTexnologiyaMesajiniEmalEt(kontekst) {
     }
 
     const state = kontekst.getOrCreatePlayerState(playerId);
+    const info = melumatiHazirla(state);
 
     if (infoIsteyi) {
-      const info = melumatiHazirla(state);
       kontekst.send(kontekst.ws, {
         type: resultType,
         success: true,
@@ -193,39 +133,16 @@ async function konvoyTutumTexnologiyaMesajiniEmalEt(kontekst) {
       return true;
     }
 
-    const evvelkiResources = JSON.parse(JSON.stringify(state.resources || {}));
-    const evvelkiTechnology = JSON.parse(JSON.stringify(state.technology || {}));
-    const netice = baslat(state, kontekst.nowMs());
-
-    if (!netice.ok) {
-      kontekst.send(kontekst.ws, {
-        type: resultType,
-        success: false,
-        playerId,
-        techId,
-        message: netice.message,
-        info: netice.info,
-        serverTimeUnixMs: kontekst.nowMs()
-      });
-      return true;
-    }
-
-    try {
-      await oyunStateIniYaddaSaxla(playerId, state);
-    }
-    catch (xeta) {
-      state.resources = evvelkiResources;
-      state.technology = evvelkiTechnology;
-      throw xeta;
-    }
+    const netice = baslat(state);
 
     kontekst.send(kontekst.ws, {
-      type: "technology_research_started",
-      success: true,
+      type: resultType,
+      success: false,
       playerId,
       techId,
-      research: netice.research,
-      payloadJson: JSON.stringify(netice.research),
+      legacyDisabled: true,
+      message: netice.message,
+      info: netice.info,
       serverTimeUnixMs: kontekst.nowMs()
     });
   }
@@ -244,5 +161,8 @@ async function konvoyTutumTexnologiyaMesajiniEmalEt(kontekst) {
 }
 
 module.exports = {
+  cariLeveliAl,
+  melumatiHazirla,
+  baslat,
   konvoyTutumTexnologiyaMesajiniEmalEt
 };
