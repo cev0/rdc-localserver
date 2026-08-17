@@ -9,8 +9,9 @@ const EMAIL_FROM = String(
 ).trim();
 
 const EMAIL_DEV_LOG_CODE = String(
-    process.env.EMAIL_DEV_LOG_CODE || ""
-)
+    process.env.NODE_ENV || ""
+).trim().toLowerCase() !== "production" &&
+String(process.env.EMAIL_DEV_LOG_CODE || "")
     .trim()
     .toLowerCase() === "true";
 
