@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - "server.js"
+      - "email_gonderici.js"
+      - "hesab_pin_berpa_email_gonderici.js"
+      - "sifre_sifirlama_email_gonderici.js"
+      - "email_dev_log_qoruma_testi.js"
       - "*_handler.js"
       - "server_*genisletme*.js"
       - "server_hessas_mesaj_log_qoruma_testi.js"
@@ -14,6 +18,10 @@ on:
       - main
     paths:
       - "server.js"
+      - "email_gonderici.js"
+      - "hesab_pin_berpa_email_gonderici.js"
+      - "sifre_sifirlama_email_gonderici.js"
+      - "email_dev_log_qoruma_testi.js"
       - "*_handler.js"
       - "server_*genisletme*.js"
       - "server_hessas_mesaj_log_qoruma_testi.js"
@@ -34,3 +42,6 @@ jobs:
 
       - name: Həssas log regression testini işə sal
         run: node server_hessas_mesaj_log_qoruma_testi.js
+
+      - name: Production email dev-log qorumasını yoxla
+        run: node email_dev_log_qoruma_testi.js
