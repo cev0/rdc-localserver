@@ -31,6 +31,7 @@ on:
       - server-development-skill-state-fix-v1
       - server-research-development-integration-v1
       - server-construction-development-bridge-v1
+      - server-development-hero-skill-state-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -38,6 +39,8 @@ on:
       - 'qosun_telimi_sistemi.js'
       - 'qosun_telimi_handler.js'
       - 'qosun_telimi_pg_mutasiya_testi.js'
+      - 'qosun_telimi_inkisaf_override.js'
+      - 'qosun_telimi_inkisaf_override_testi.js'
       - 'qosun_doyus_stat_sistemi.js'
       - 'qosun_doyus_stat_sistemi_testi.js'
       - 'doyus_formasiya_sistemi.js'
@@ -125,6 +128,8 @@ jobs:
         run: node qosun_kataloqu_testi.js
       - name: Qosun telimi testleri
         run: node qosun_telimi_pg_mutasiya_testi.js
+      - name: Qosun telimi Inkisaf korpusu testleri
+        run: node qosun_telimi_inkisaf_override_testi.js
       - name: Qosun doyus stat testleri
         run: node qosun_doyus_stat_sistemi_testi.js
       - name: Doyus inteqrasiya testleri
