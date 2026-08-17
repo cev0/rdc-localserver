@@ -83,20 +83,41 @@ function birlikPayloadiniHazirla(rawBirlikler) {
     });
 }
 
+function saheniYedekle(state, acar) {
+  return {
+    varIdi: Object.prototype.hasOwnProperty.call(state, acar),
+    deyer: kopyala(state[acar])
+  };
+}
+
+function saheniBerpaEt(state, acar, yedek) {
+  if (yedek && yedek.varIdi) {
+    state[acar] = kopyala(yedek.deyer);
+  }
+  else {
+    delete state[acar];
+  }
+}
+
 function xestexanaMutationYedeyiniAl(state) {
-  return kopyala({
-    xestexana: state.xestexana || null,
-    resources: state.resources || null,
-    army: state.army || null,
-    serverSorquIdempotentliyi: state.serverSorquIdempotentliyi || null
-  });
+  return {
+    xestexana: saheniYedekle(state, "xestexana"),
+    resources: saheniYedekle(state, "resources"),
+    army: saheniYedekle(state, "army"),
+    serverSorquIdempotentliyi: saheniYedekle(
+      state,
+      "serverSorquIdempotentliyi"
+    )
+  };
 }
 
 function xestexanaMutationRollbackEt(state, evvelki) {
-  state.xestexana = kopyala(evvelki && evvelki.xestexana);
-  state.resources = kopyala(evvelki && evvelki.resources);
-  state.army = kopyala(evvelki && evvelki.army);
-  state.serverSorquIdempotentliyi = kopyala(
+  saheniBerpaEt(state, "xestexana", evvelki && evvelki.xestexana);
+  saheniBerpaEt(state, "resources", evvelki && evvelki.resources);
+  saheniBerpaEt(state, "army", evvelki && evvelki.army);
+  saheniBerpaEt(
+    state,
+    "serverSorquIdempotentliyi",
     evvelki && evvelki.serverSorquIdempotentliyi
   );
 }
