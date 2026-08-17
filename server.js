@@ -535,11 +535,19 @@ function getAdjustedBuildDurationMs(state, baseBuildTimeSeconds) {
   refreshTechnologyStats(state);
 
   const rawMs = Math.max(0, Math.round((Number(baseBuildTimeSeconds) || 0) * 1000));
-  const speedPct = Math.max(0, Number(state.technology?.stats?.buildSpeedPct) || 0);
+  const technologySpeedPct = Math.max(0, Number(state.technology?.stats?.buildSpeedPct) || 0);
 
-  if (rawMs <= 0 || speedPct <= 0) return rawMs;
+  if (rawMs <= 0) return rawMs;
 
-  return Math.max(1000, Math.round(rawMs * (100 / (100 + speedPct))));
+  const { stateUcunTikintiMuddetiniHesabla } = require("./tikinti_inkisaf_korpu");
+  const netice = stateUcunTikintiMuddetiniHesabla(
+    state,
+    rawMs,
+    technologySpeedPct
+  );
+
+  if (!netice || Number(netice.totalSpeedPct) <= 0) return rawMs;
+  return Math.max(1000, Math.round(Number(netice.effectiveDurationMs) || rawMs));
 }
 
 function getAdjustedTrainingDurationMs(state, rawDurationMs) {
