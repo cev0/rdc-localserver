@@ -1,0 +1,30 @@
+name: Konvoy Unity Contract Testi
+
+on:
+  push:
+    branches:
+      - server-convoy-unity-contract-regression-v1
+  pull_request:
+    paths:
+      - 'konvoy_handler.js'
+      - 'konvoy_formasiya_sistemi.js'
+      - 'konvoy_qosun_sistemi.js'
+      - 'konvoy_tutum_formulu.js'
+      - 'konvoy_unity_contract_testi.js'
+      - '.github/workflows/konvoy-unity-contract-test.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node qur
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Paketleri qur
+        run: npm ci
+      - name: Unity konvoy contract regression testi
+        run: node konvoy_unity_contract_testi.js
