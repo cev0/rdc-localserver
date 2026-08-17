@@ -19,9 +19,12 @@ const {
 
 const {
   oyunStateIniBerpaEt,
-  oyunStateIniYaddaSaxla,
   oyuncuStateBerpaOlunub
 } = require("./oyun_state_daimilik_korpu");
+
+const {
+  oyuncuStateMutasiyasiniPostgresIleIcraEt
+} = require("./oyun_state_mutasiya_postgres");
 
 const DUSMEN_MOVQEYI_MESAJLARI = new Set([
   "enemy_position_info_request",
@@ -35,6 +38,8 @@ function metnAl(deyer, maksimum = 128) {
 }
 
 function kopyala(deyer) {
+  if (deyer === undefined) return undefined;
+  if (deyer === null) return null;
   return JSON.parse(JSON.stringify(deyer));
 }
 
@@ -64,6 +69,102 @@ function dusmenMovqeyiHadisesiVar(state) {
       : 0;
 
   return Number.isFinite(say) && say > 0;
+}
+
+function dusmenMovqeyiReadStateKopyasi(state) {
+  return kopyala(state) || {};
+}
+
+function m016StatusunuAl(state) {
+  const m016 = missiyaniTap("M016");
+  if (!m016) return "kilidli";
+
+  // missiyaStatusunuAl() mission state normalizasiyası edə bilər.
+  // Status yoxlaması authoritative state-i dəyişməsin deyə clone istifadə olunur.
+  return missiyaStatusunuAl(
+    dusmenMovqeyiReadStateKopyasi(state),
+    m016
+  );
+}
+
+function dusmenMovqeyiYedeyiniAl(state) {
+  return {
+    varIdi: Object.prototype.hasOwnProperty.call(state, "dusmenMovqeleri"),
+    deyer: kopyala(state.dusmenMovqeleri)
+  };
+}
+
+function dusmenMovqeyiYedeyiniBerpaEt(state, yedek) {
+  if (!state || !yedek) return;
+
+  if (yedek.varIdi) {
+    state.dusmenMovqeleri = kopyala(yedek.deyer);
+  }
+  else {
+    delete state.dusmenMovqeleri;
+  }
+}
+
+function dusmenMovqeyiImzasi(state) {
+  return JSON.stringify(state && state.dusmenMovqeleri);
+}
+
+function dusmenMovqeyiMutasiyasiniTetbiqEt(
+  state,
+  nowMs = Date.now()
+) {
+  const missionStatus = m016StatusunuAl(state);
+
+  if (missionStatus === "kilidli") {
+    return {
+      success: false,
+      deyisdi: false,
+      missionStatus,
+      message: "Düşmən mövqeyi missiyası hələ aktiv deyil."
+    };
+  }
+
+  const yedek = dusmenMovqeyiYedeyiniAl(state);
+  const evvelkiImza = dusmenMovqeyiImzasi(state);
+  let netice;
+
+  try {
+    netice = tutorialDusmenMovqeyiniAskarla(
+      state,
+      nowMs
+    );
+  }
+  catch (xeta) {
+    dusmenMovqeyiYedeyiniBerpaEt(state, yedek);
+    return {
+      success: false,
+      deyisdi: false,
+      missionStatus,
+      message: "Düşmən mövqeyi nəticəsi hesablana bilmədi.",
+      daxiliXeta: xeta && xeta.message ? xeta.message : String(xeta)
+    };
+  }
+
+  if (!netice || netice.success !== true) {
+    dusmenMovqeyiYedeyiniBerpaEt(state, yedek);
+    return {
+      success: false,
+      deyisdi: false,
+      missionStatus,
+      netice: netice && typeof netice === "object" ? kopyala(netice) : null,
+      message: netice && netice.message
+        ? netice.message
+        : "Düşmən mövqeyi əməliyyatı mümkün deyil."
+    };
+  }
+
+  return {
+    success: true,
+    deyisdi: evvelkiImza !== dusmenMovqeyiImzasi(state),
+    missionStatus,
+    netice: kopyala(netice),
+    missionHadisesiLazimdir: !dusmenMovqeyiHadisesiVar(state)
+  };
 }
 
 async function dusmenMovqeyiMesajiniEmalEt(kontekst) {
@@ -101,66 +202,65 @@ async function dusmenMovqeyiMesajiniEmalEt(kontekst) {
     const state =
       kontekst.getOrCreatePlayerState(playerId);
 
-    const m016 = missiyaniTap("M016");
-    const missionStatus = m016
-      ? missiyaStatusunuAl(state, m016)
-      : "kilidli";
-
     if (type === "enemy_position_info_request") {
+      const missionStatus = m016StatusunuAl(state);
+
       gonder(kontekst, resultType, {
         success: true,
         playerId,
         missionId: "M016",
         missionStatus,
-        info: dusmenMovqeyiMelumatiniHazirla(state)
+        info: dusmenMovqeyiMelumatiniHazirla(
+          dusmenMovqeyiReadStateKopyasi(state)
+        )
       });
       return true;
     }
 
-    if (missionStatus === "kilidli") {
+    const mutasiyaNeticesi = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
+      playerId,
+      state,
+      async kilidliState => {
+        return dusmenMovqeyiMutasiyasiniTetbiqEt(
+          kilidliState,
+          kontekst.nowMs()
+        );
+      }
+    );
+
+    if (mutasiyaNeticesi && mutasiyaNeticesi.daxiliXeta) {
+      console.error("[DUSMEN_MOVQEYI] Mutation hesablanma xətası:", {
+        playerId,
+        message: mutasiyaNeticesi.daxiliXeta
+      });
+    }
+
+    if (!mutasiyaNeticesi || mutasiyaNeticesi.success !== true) {
+      const netice = mutasiyaNeticesi && mutasiyaNeticesi.netice
+        ? mutasiyaNeticesi.netice
+        : {};
+
       gonder(kontekst, resultType, {
         success: false,
         playerId,
         missionId: "M016",
-        missionStatus,
-        message: "Düşmən mövqeyi missiyası hələ aktiv deyil."
+        missionStatus: mutasiyaNeticesi && mutasiyaNeticesi.missionStatus
+          ? mutasiyaNeticesi.missionStatus
+          : m016StatusunuAl(state),
+        ...netice,
+        message: mutasiyaNeticesi && mutasiyaNeticesi.message
+          ? mutasiyaNeticesi.message
+          : (netice.message || "Düşmən mövqeyi əməliyyatı mümkün deyil.")
       });
       return true;
     }
 
-    const evvelkiDusmenMovqeleri =
-      kopyala(state.dusmenMovqeleri || {});
+    const netice = mutasiyaNeticesi.netice || {};
 
-    const netice =
-      tutorialDusmenMovqeyiniAskarla(
-        state,
-        kontekst.nowMs()
-      );
-
-    if (!netice.success) {
-      gonder(kontekst, resultType, {
-        success: false,
-        playerId,
-        missionId: "M016",
-        missionStatus,
-        ...netice
-      });
-      return true;
-    }
-
-    try {
-      await oyunStateIniYaddaSaxla(
-        playerId,
-        state
-      );
-    }
-    catch (xeta) {
-      state.dusmenMovqeleri =
-        evvelkiDusmenMovqeleri;
-      throw xeta;
-    }
-
-    if (!dusmenMovqeyiHadisesiVar(state)) {
+    if (
+      mutasiyaNeticesi.missionHadisesiLazimdir === true &&
+      !dusmenMovqeyiHadisesiVar(state)
+    ) {
       await missiyaServerHadisesiniQeydEt(
         playerId,
         state,
@@ -173,6 +273,7 @@ async function dusmenMovqeyiMesajiniEmalEt(kontekst) {
       success: true,
       playerId,
       missionId: "M016",
+      missionStatus: mutasiyaNeticesi.missionStatus || m016StatusunuAl(state),
       ...netice
     });
   }
@@ -191,5 +292,7 @@ async function dusmenMovqeyiMesajiniEmalEt(kontekst) {
 
 module.exports = {
   DUSMEN_MOVQEYI_MESAJLARI,
+  m016StatusunuAl,
+  dusmenMovqeyiMutasiyasiniTetbiqEt,
   dusmenMovqeyiMesajiniEmalEt
 };
