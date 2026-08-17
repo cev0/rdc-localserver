@@ -124,7 +124,12 @@ function konvoyTutumHesabiniAl(state, konvoyId) {
 
   const formulaActive = !!barrack && esasBinaTutumu > 0;
   const yekunTutum = formulaActive ? esasBinaTutumu : legacyTutumuAl();
-  const siraTutumu = Math.floor(yekunTutum / KONVOY_SIRA_SAYI);
+
+  // Barrack cədvəlindəki bütün canlı tutumlar 3-ə qalıqsız bölünür.
+  // Legacy 5000 fallback isə bölünmür. `ceil` yalnız həmin compatibility
+  // halında 5000-in 4998-ə süni enməsinin qarşısını alır; ümumi tutum
+  // validatoru yenə yekunTutum-u (5000) keçməyə icazə vermir.
+  const siraTutumu = Math.ceil(yekunTutum / KONVOY_SIRA_SAYI);
 
   return {
     formulaVersion: 4,
