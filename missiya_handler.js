@@ -61,6 +61,13 @@ const STATE_DEYISEN_MESAJLAR = new Set([
   "start_construction_request"
 ]);
 
+const POSTGRES_ATOMIK_MUTASIYA_MESAJLARI = new Set([
+  // Qoşun handler-i eyni oyunçu üçün PostgreSQL advisory lock alır,
+  // son snapshot-ı kiliddən sonra oxuyur və commit olunmuş state-i RAM-a qaytarır.
+  // Legacy setImmediate snapshot həmin commit-i köhnə state ilə əvəz edə bilər.
+  "train_unit_request"
+]);
+
 const BERPA_MESAJLARI = new Set([
   "auth",
   "account_login_request",
@@ -194,10 +201,19 @@ function authdanSonraBerpaniPlanla(kontekst) {
   setTimeout(() => void cehdEt(), 1200);
 }
 
+function gameplaySnapshotiTelebOlunur(type) {
+  const mesajTipi = metnAl(type, 128);
+
+  return (
+    STATE_DEYISEN_MESAJLAR.has(mesajTipi) &&
+    !POSTGRES_ATOMIK_MUTASIYA_MESAJLARI.has(mesajTipi)
+  );
+}
+
 function gameplaySnapshotiniPlanla(kontekst, playerId) {
   const type = metnAl(kontekst && kontekst.type, 128);
 
-  if (!STATE_DEYISEN_MESAJLAR.has(type)) {
+  if (!gameplaySnapshotiTelebOlunur(type)) {
     return;
   }
 
@@ -495,5 +511,6 @@ async function missiyaMesajiniEmalEt(kontekst) {
 }
 
 module.exports = {
+  gameplaySnapshotiTelebOlunur,
   missiyaMesajiniEmalEt
 };

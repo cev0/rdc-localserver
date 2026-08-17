@@ -14,6 +14,9 @@ const {
 const {
   qosunTelimiMutasiyasiniTetbiqEt
 } = require("./qosun_telimi_handler");
+const {
+  gameplaySnapshotiTelebOlunur
+} = require("./missiya_handler");
 
 function kopyala(v) {
   return v == null ? null : JSON.parse(JSON.stringify(v));
@@ -289,6 +292,19 @@ function stateHazirla() {
   assert.strictEqual(netice.success, false);
   assert.strictEqual(netice.reason, "unknown_unit");
   assert.deepStrictEqual(state, evvelki);
+})();
+
+(function legacySnapshotYarisiQorumasiTesti() {
+  assert.strictEqual(
+    gameplaySnapshotiTelebOlunur("train_unit_request"),
+    false,
+    "PostgreSQL transaction-u olan training üçün legacy tam snapshot yazılmamalıdır."
+  );
+  assert.strictEqual(
+    gameplaySnapshotiTelebOlunur("build_request"),
+    true,
+    "Legacy tikinti daimiliyi port olunana qədər snapshot observer saxlanmalıdır."
+  );
 })();
 
 (function sourceInteqrasiyaTesti() {
