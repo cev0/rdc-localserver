@@ -1,0 +1,36 @@
+name: Server Həssas Log Qoruması
+
+on:
+  pull_request:
+    paths:
+      - "server.js"
+      - "*_handler.js"
+      - "server_*genisletme*.js"
+      - "server_hessas_mesaj_log_qoruma_testi.js"
+      - "package.json"
+      - ".github/workflows/server-sensitive-log-guard.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "server.js"
+      - "*_handler.js"
+      - "server_*genisletme*.js"
+      - "server_hessas_mesaj_log_qoruma_testi.js"
+      - "package.json"
+      - ".github/workflows/server-sensitive-log-guard.yml"
+
+jobs:
+  sensitive-log-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo-nu al
+        uses: actions/checkout@v4
+
+      - name: Node qur
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Həssas log regression testini işə sal
+        run: node server_hessas_mesaj_log_qoruma_testi.js
