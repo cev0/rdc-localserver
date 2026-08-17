@@ -576,7 +576,11 @@ async function emailSifreIleDaxilOlCihazQorumali(
   );
 }
 
-async function refreshCihazQorumasiniYoxla(refreshToken, cihazId) {
+async function refreshCihazQorumasiniYoxla(
+  refreshToken,
+  cihazId,
+  secimler = {}
+) {
   const token = metnAl(refreshToken, 512);
   const temizCihazId = cihazIdTemizle(cihazId);
 
@@ -587,7 +591,23 @@ async function refreshCihazQorumasiniYoxla(refreshToken, cihazId) {
     };
   }
 
-  const hovuz = proqramHovuzunuAl();
+  const hovuzAl = typeof secimler.proqramHovuzunuAl === "function"
+    ? secimler.proqramHovuzunuAl
+    : proqramHovuzunuAl;
+  const cihazEtibarlidirFn =
+    typeof secimler.cihazEtibarlidir === "function"
+      ? secimler.cihazEtibarlidir
+      : cihazEtibarlidir;
+  const cihaziEtibarliEtFn =
+    typeof secimler.cihaziEtibarliEtHesabIdIle === "function"
+      ? secimler.cihaziEtibarliEtHesabIdIle
+      : cihaziEtibarliEtHesabIdIle;
+  const cihazPinSorqusuYaratFn =
+    typeof secimler.cihazPinSorqusuYarat === "function"
+      ? secimler.cihazPinSorqusuYarat
+      : cihazPinSorqusuYarat;
+
+  const hovuz = hovuzAl();
   const netice = await hovuz.query(
     `
     SELECT
@@ -626,9 +646,9 @@ async function refreshCihazQorumasiniYoxla(refreshToken, cihazId) {
 
   if (
     metnAl(setr.cihaz_id, 128) === temizCihazId ||
-    await cihazEtibarlidir(hesab.accountId, temizCihazId)
+    await cihazEtibarlidirFn(hesab.accountId, temizCihazId)
   ) {
-    await cihaziEtibarliEtHesabIdIle(
+    await cihaziEtibarliEtFn(
       hesab.accountId,
       temizCihazId
     );
@@ -640,18 +660,18 @@ async function refreshCihazQorumasiniYoxla(refreshToken, cihazId) {
     };
   }
 
-  const sorqu = await cihazPinSorqusuYarat(
+  const sorqu = await cihazPinSorqusuYaratFn(
     hesab,
     temizCihazId,
     "refresh"
   );
 
-  if (!sorqu.success) {
-    return {
-      valid: true,
-      requiresPin: false,
-      account: hesab
-    };
+  if (!sorqu || sorqu.success !== true) {
+    throw new Error(
+      sorqu && sorqu.message
+        ? sorqu.message
+        : "Cihaz PIN sorğusu yaradıla bilmədi."
+    );
   }
 
   await hovuz.query(
