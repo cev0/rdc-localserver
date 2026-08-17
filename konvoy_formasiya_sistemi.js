@@ -55,16 +55,49 @@ function formasiyaQosunlariniTopla(siralar) {
   return qosunlar;
 }
 
-function legacyQosunlardanFormasiyaHazirla(qosunlar) {
+function legacyQosunlardanFormasiyaHazirla(qosunlar, rawSiraTutumu = 0) {
   const entries = Object.entries(qosunlar || {})
     .map(([unitId, count]) => [metnAl(unitId, 128), musbetTamEded(count)])
     .filter(([unitId, count]) => !!unitId && count > 0)
     .sort((a, b) => a[0].localeCompare(b[0]));
-  if (entries.length > FORMASIYA_SIRA_IDLERI.length) return null;
-  return FORMASIYA_SIRA_IDLERI.map((siraId, index) => {
-    const entry = entries[index];
-    return entry ? { siraId, unitId: entry[0], count: entry[1] } : bosSira(siraId);
-  });
+
+  if (entries.length === 0) {
+    return FORMASIYA_SIRA_IDLERI.map(bosSira);
+  }
+
+  const siraTutumu = musbetTamEded(rawSiraTutumu);
+
+  // Köhnə caller sıra tutumu göndərmirsə əvvəlki deterministik 1 unit = 1 sıra
+  // davranışını saxlayırıq. Yeni gameplay migration-u isə aşağıdakı capacity-aware
+  // packing yolundan istifadə edir.
+  if (siraTutumu <= 0) {
+    if (entries.length > FORMASIYA_SIRA_IDLERI.length) return null;
+    return FORMASIYA_SIRA_IDLERI.map((siraId, index) => {
+      const entry = entries[index];
+      return entry ? { siraId, unitId: entry[0], count: entry[1] } : bosSira(siraId);
+    });
+  }
+
+  const siralar = [];
+  for (const [unitId, count] of entries) {
+    let qalan = count;
+    while (qalan > 0) {
+      if (siralar.length >= FORMASIYA_SIRA_IDLERI.length) return null;
+      const hissə = Math.min(qalan, siraTutumu);
+      siralar.push({
+        siraId: FORMASIYA_SIRA_IDLERI[siralar.length],
+        unitId,
+        count: hissə
+      });
+      qalan -= hissə;
+    }
+  }
+
+  while (siralar.length < FORMASIYA_SIRA_IDLERI.length) {
+    siralar.push(bosSira(FORMASIYA_SIRA_IDLERI[siralar.length]));
+  }
+
+  return siralar;
 }
 
 function konvoyFormasiyalariniTeminEt(state) {
@@ -74,7 +107,11 @@ function konvoyFormasiyalariniTeminEt(state) {
     const formasiya = formasiyaStateTeminEt(konvoy);
     const formasiyaQosunlari = formasiyaQosunlariniTopla(formasiya.siralar);
     if (Object.keys(formasiyaQosunlari).length === 0 && konvoy.qosunlar && Object.keys(konvoy.qosunlar).length > 0) {
-      const migrated = legacyQosunlardanFormasiyaHazirla(konvoy.qosunlar);
+      const tutumHesabi = konvoyTutumHesabiniAl(state, konvoy.konvoyId);
+      const migrated = legacyQosunlardanFormasiyaHazirla(
+        konvoy.qosunlar,
+        tutumHesabi.siraTutumu
+      );
       if (migrated) formasiya.siralar = migrated;
     }
   }
@@ -159,6 +196,7 @@ module.exports = {
   FORMASIYA_SIRA_IDLERI,
   formasiyaStateTeminEt,
   formasiyaQosunlariniTopla,
+  legacyQosunlardanFormasiyaHazirla,
   konvoyFormasiyalariniTeminEt,
   formasiyaMelumatiniHazirla,
   formasiyaTeyinEt
