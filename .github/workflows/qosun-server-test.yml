@@ -3,40 +3,7 @@ name: Qosun Server Testleri
 on:
   push:
     branches:
-      - server-troop-training-catalog-v1
-      - server-troop-combat-stats-v1
-      - server-casualty-combat-stats-v2
-      - server-formation-combat-rows-v1
-      - server-staged-combat-resolver-v1
-      - server-combat-damage-exchange-v1
-      - server-casualty-exchange-integration-v1
-      - server-troop-lifecycle-accounting-v1
-      - server-pvp-real-resolver-v1
-      - server-convoy-defense-toggle-v1
-      - server-pvp-atomic-settlement-v1
-      - server-pvp-live-flow-v1
-      - server-pvp-reports-v1
-      - server-pvp-city-durability-v1
-      - server-pvp-zeroing-teleport-v1
-      - server-pvp-zeroing-recall-v1
-      - server-pvp-resource-plunder-v1
-      - server-pvp-protection-foundation-v1
-      - server-pvp-storage-protection-v1
-      - server-pvp-fixed-storage-protection-v1
-      - server-pvp-shield-items-v1
-      - server-convoy-capacity-skill-link-v3
-      - server-convoy-dispatch-readiness-v1
-      - server-hero-exp-level50-v1
-      - server-hero-skill-progression-v1
-      - server-development-hero-engine-v1
-      - server-development-skill-state-fix-v1
-      - server-research-development-integration-v1
-      - server-construction-development-bridge-v1
-      - server-development-hero-skill-state-v1
-      - server-hospital-development-bridge-v1
-      - server-build-development-adapter-v1
-      - server-construction-runtime-patcher-v1
-      - server-resource-development-runtime-v1
+      - main
   pull_request:
     paths:
       - 'server.js'
