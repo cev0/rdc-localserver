@@ -39,7 +39,10 @@ function detaliObyektEt(deyer) {
   return {};
 }
 
-async function missiyaDaimiVeziyyetiniAl(playerId) {
+async function missiyaDaimiVeziyyetiniSorquIle(
+  sorquFunksiyasi,
+  playerId
+) {
   const oyuncuId = metnAl(playerId, 128);
 
   if (!oyuncuId) {
@@ -49,7 +52,11 @@ async function missiyaDaimiVeziyyetiniAl(playerId) {
     };
   }
 
-  const netice = await sorguEt(
+  if (typeof sorquFunksiyasi !== "function") {
+    throw new Error("Missiya daimi state sorğu funksiyası yoxdur.");
+  }
+
+  const netice = await sorquFunksiyasi(
     `
       SELECT hadise_novu, detallar
       FROM hesab_audit_jurnali
@@ -91,6 +98,24 @@ async function missiyaDaimiVeziyyetiniAl(playerId) {
     claimedRewardIds: Array.from(claimedSet),
     eventCounters
   };
+}
+
+async function missiyaDaimiVeziyyetiniAl(playerId) {
+  return await missiyaDaimiVeziyyetiniSorquIle(
+    async (sql, parametrler) => await sorguEt(sql, parametrler),
+    playerId
+  );
+}
+
+async function missiyaDaimiVeziyyetiniAlClient(client, playerId) {
+  if (!client || typeof client.query !== "function") {
+    throw new Error("Missiya daimi state üçün PostgreSQL client yoxdur.");
+  }
+
+  return await missiyaDaimiVeziyyetiniSorquIle(
+    async (sql, parametrler) => await client.query(sql, parametrler),
+    playerId
+  );
 }
 
 async function missiyaMukafatiniAuditdeYaddaSaxla(playerId, missionId) {
@@ -275,6 +300,7 @@ function daimiVeziyyetiStateIleBirlesdir(state, daimiVeziyyet) {
 
 module.exports = {
   missiyaDaimiVeziyyetiniAl,
+  missiyaDaimiVeziyyetiniAlClient,
   missiyaMukafatiniAuditdeYaddaSaxla,
   missiyaProqresHadisesiniAuditdeYaddaSaxla,
   daimiVeziyyetiStateIleBirlesdir
