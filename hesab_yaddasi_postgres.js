@@ -916,16 +916,16 @@ async function emailTesdiqKoduHazirla(
 
 async function emailTesdiqKodunuYoxla(
     playerId,
-    kod
+    kod,
+    secimler = {}
 )
 {
-    const hesab =
-        await hesabPlayerIdIleTap(
-            playerId
-        );
+    const temizPlayerId =
+        typeof playerId === "string"
+            ? playerId.trim()
+            : "";
 
-
-    if (!hesab) {
+    if (!temizPlayerId) {
         return {
             success: false,
             message:
@@ -933,27 +933,9 @@ async function emailTesdiqKodunuYoxla(
         };
     }
 
-
-    if (hesab.emailVerified === true) {
-        return {
-            success: true,
-            alreadyVerified: true,
-
-            message:
-                "E-poçt artıq təsdiqlənib.",
-
-            account:
-                clientHesabMelumati(
-                    hesab
-                )
-        };
-    }
-
-
     const temizKod =
         String(kod || "")
             .trim();
-
 
     if (!/^\d{6}$/.test(temizKod)) {
         return {
@@ -963,203 +945,240 @@ async function emailTesdiqKodunuYoxla(
         };
     }
 
-
     const hovuz =
+        secimler.hovuz ||
         proqramHovuzunuAl();
 
+    const secilmisVaxt =
+        Number(secimler.nowMs);
 
-    const netice =
-        await hovuz.query(
-            `
-            SELECT
-                kod_hash,
-                duz,
-                bitme_vaxti,
-                cehd_sayi
-            FROM email_tesdiqleri
-            WHERE hesab_id = $1
-            LIMIT 1
-            `,
-            [
-                hesab.accountId
-            ]
-        );
-
-
-    if (
-        !netice.rows ||
-        netice.rows.length === 0
-    ) {
-        return {
-            success: false,
-            message:
-                "Aktiv təsdiq kodu yoxdur. Yeni kod istəyin."
-        };
-    }
-
-
-    const tesdiq =
-        netice.rows[0];
-
-
-    // ========================================================
-    // VAXT BİTİB?
-    // ========================================================
-
-    const bitmeVaxti =
-        new Date(
-            tesdiq.bitme_vaxti
-        ).getTime();
-
-
-    if (
-        Date.now() >
-        bitmeVaxti
-    ) {
-        await hovuz.query(
-            `
-            DELETE FROM email_tesdiqleri
-            WHERE hesab_id = $1
-            `,
-            [
-                hesab.accountId
-            ]
-        );
-
-
-        return {
-            success: false,
-            expired: true,
-
-            message:
-                "Təsdiq kodunun vaxtı bitib. Yeni kod istəyin."
-        };
-    }
-
-
-    // ========================================================
-    // CƏHD SAYI
-    // ========================================================
-
-    const cehdSayi =
-        Math.max(
-            0,
-            Math.trunc(
-                Number(
-                    tesdiq.cehd_sayi
-                ) || 0
-            )
-        );
-
-
-    if (
-        cehdSayi >=
-        EMAIL_TESDIQ_MAKSIMUM_CEHD
-    ) {
-        return {
-            success: false,
-            tooManyAttempts: true,
-
-            message:
-                "Çox sayda səhv cəhd edildi. Yeni kod istəyin."
-        };
-    }
-
-
-    // ========================================================
-    // HASH YOXLAMASI
-    // ========================================================
-
-    const yeniHash =
-        emailTesdiqKoduHashYarat(
-            temizKod,
-            tesdiq.duz
-        );
-
-
-    const saxlanmisBuffer =
-        Buffer.from(
-            String(
-                tesdiq.kod_hash || ""
-            ),
-            "hex"
-        );
-
-    const yeniBuffer =
-        Buffer.from(
-            yeniHash,
-            "hex"
-        );
-
-
-    let kodDuzgundur =
-        false;
-
-
-    if (
-        saxlanmisBuffer.length ===
-            yeniBuffer.length &&
-        saxlanmisBuffer.length > 0
-    ) {
-        kodDuzgundur =
-            crypto.timingSafeEqual(
-                saxlanmisBuffer,
-                yeniBuffer
-            );
-    }
-
-
-    // ========================================================
-    // SƏHV KOD
-    // ========================================================
-
-    if (!kodDuzgundur) {
-        const yeniCehdSayi =
-            cehdSayi + 1;
-
-
-        await hovuz.query(
-            `
-            UPDATE email_tesdiqleri
-            SET cehd_sayi = $2
-            WHERE hesab_id = $1
-            `,
-            [
-                hesab.accountId,
-                yeniCehdSayi
-            ]
-        );
-
-
-        return {
-            success: false,
-
-            attemptsRemaining:
-                Math.max(
-                    0,
-                    EMAIL_TESDIQ_MAKSIMUM_CEHD -
-                    yeniCehdSayi
-                ),
-
-            message:
-                "Təsdiq kodu yanlışdır."
-        };
-    }
-
-
-    // ========================================================
-    // UĞURLU TƏSDİQ
-    // ========================================================
+    const indi =
+        Number.isFinite(secilmisVaxt) &&
+        secilmisVaxt > 0
+            ? Math.trunc(secilmisVaxt)
+            : Date.now();
 
     const client =
         await hovuz.connect();
 
-
     try {
-        await client.query(
-            "BEGIN"
-        );
+        await client.query("BEGIN");
 
+        // Kod yaratma axını da eyni hesab sətrini kilidləyir. Bununla
+        // resend, səhv cəhd və uğurlu təsdiq bir hesab üçün ardıcıl işləyir.
+        const hesabNeticesi =
+            await client.query(
+                `
+                SELECT *
+                FROM hesablar
+                WHERE oyuncu_id = $1
+                LIMIT 1
+                FOR UPDATE
+                `,
+                [
+                    temizPlayerId
+                ]
+            );
+
+        if (
+            !hesabNeticesi.rows ||
+            hesabNeticesi.rows.length !== 1
+        ) {
+            await client.query("ROLLBACK");
+
+            return {
+                success: false,
+                message:
+                    "Hesab tapılmadı."
+            };
+        }
+
+        const hesab =
+            dbSetriniHesabaCevir(
+                hesabNeticesi.rows[0]
+            );
+
+        if (hesab.emailVerified === true) {
+            await client.query("ROLLBACK");
+
+            return {
+                success: true,
+                alreadyVerified: true,
+
+                message:
+                    "E-poçt artıq təsdiqlənib.",
+
+                account:
+                    clientHesabMelumati(
+                        hesab
+                    )
+            };
+        }
+
+        const netice =
+            await client.query(
+                `
+                SELECT
+                    kod_hash,
+                    duz,
+                    bitme_vaxti,
+                    cehd_sayi
+                FROM email_tesdiqleri
+                WHERE hesab_id = $1
+                LIMIT 1
+                FOR UPDATE
+                `,
+                [
+                    hesab.accountId
+                ]
+            );
+
+        if (
+            !netice.rows ||
+            netice.rows.length === 0
+        ) {
+            await client.query("ROLLBACK");
+
+            return {
+                success: false,
+                message:
+                    "Aktiv təsdiq kodu yoxdur. Yeni kod istəyin."
+            };
+        }
+
+        const tesdiq =
+            netice.rows[0];
+
+        const bitmeVaxti =
+            new Date(
+                tesdiq.bitme_vaxti
+            ).getTime();
+
+        if (indi > bitmeVaxti) {
+            await client.query(
+                `
+                DELETE FROM email_tesdiqleri
+                WHERE hesab_id = $1
+                `,
+                [
+                    hesab.accountId
+                ]
+            );
+
+            await client.query("COMMIT");
+
+            return {
+                success: false,
+                expired: true,
+
+                message:
+                    "Təsdiq kodunun vaxtı bitib. Yeni kod istəyin."
+            };
+        }
+
+        const cehdSayi =
+            Math.max(
+                0,
+                Math.trunc(
+                    Number(
+                        tesdiq.cehd_sayi
+                    ) || 0
+                )
+            );
+
+        if (
+            cehdSayi >=
+            EMAIL_TESDIQ_MAKSIMUM_CEHD
+        ) {
+            await client.query("ROLLBACK");
+
+            return {
+                success: false,
+                tooManyAttempts: true,
+
+                message:
+                    "Çox sayda səhv cəhd edildi. Yeni kod istəyin."
+            };
+        }
+
+        const yeniHash =
+            emailTesdiqKoduHashYarat(
+                temizKod,
+                tesdiq.duz
+            );
+
+        const saxlanmisBuffer =
+            Buffer.from(
+                String(
+                    tesdiq.kod_hash || ""
+                ),
+                "hex"
+            );
+
+        const yeniBuffer =
+            Buffer.from(
+                yeniHash,
+                "hex"
+            );
+
+        let kodDuzgundur =
+            false;
+
+        if (
+            saxlanmisBuffer.length ===
+                yeniBuffer.length &&
+            saxlanmisBuffer.length > 0
+        ) {
+            kodDuzgundur =
+                crypto.timingSafeEqual(
+                    saxlanmisBuffer,
+                    yeniBuffer
+                );
+        }
+
+        if (!kodDuzgundur) {
+            const cehdYenileme =
+                await client.query(
+                    `
+                    UPDATE email_tesdiqleri
+                    SET cehd_sayi = cehd_sayi + 1
+                    WHERE hesab_id = $1
+                    RETURNING cehd_sayi
+                    `,
+                    [
+                        hesab.accountId
+                    ]
+                );
+
+            const yeniCehdSayi =
+                cehdYenileme.rows &&
+                cehdYenileme.rows.length === 1
+                    ? Math.max(
+                        0,
+                        Math.trunc(
+                            Number(
+                                cehdYenileme.rows[0].cehd_sayi
+                            ) || 0
+                        )
+                    )
+                    : cehdSayi + 1;
+
+            await client.query("COMMIT");
+
+            return {
+                success: false,
+
+                attemptsRemaining:
+                    Math.max(
+                        0,
+                        EMAIL_TESDIQ_MAKSIMUM_CEHD -
+                        yeniCehdSayi
+                    ),
+
+                message:
+                    "Təsdiq kodu yanlışdır."
+            };
+        }
 
         await client.query(
             `
@@ -1174,7 +1193,6 @@ async function emailTesdiqKodunuYoxla(
             ]
         );
 
-
         await client.query(
             `
             DELETE FROM email_tesdiqleri
@@ -1184,7 +1202,6 @@ async function emailTesdiqKodunuYoxla(
                 hesab.accountId
             ]
         );
-
 
         await client.query(
             `
@@ -1212,16 +1229,42 @@ async function emailTesdiqKodunuYoxla(
             ]
         );
 
+        await client.query("COMMIT");
 
-        await client.query(
-            "COMMIT"
+        hesab.emailVerified =
+            true;
+
+        console.log(
+            "[HESAB_DB] E-poçt təsdiqləndi:",
+            {
+                accountId:
+                    hesab.accountId,
+
+                playerId:
+                    hesab.playerId,
+
+                email:
+                    hesab.primaryEmail
+            }
         );
+
+        return {
+            success: true,
+
+            alreadyVerified: false,
+
+            message:
+                "E-poçt uğurla təsdiqləndi.",
+
+            account:
+                clientHesabMelumati(
+                    hesab
+                )
+        };
     }
     catch (xeta) {
         try {
-            await client.query(
-                "ROLLBACK"
-            );
+            await client.query("ROLLBACK");
         }
         catch {
         }
@@ -1231,41 +1274,8 @@ async function emailTesdiqKodunuYoxla(
     finally {
         client.release();
     }
-
-
-    hesab.emailVerified =
-        true;
-
-
-    console.log(
-        "[HESAB_DB] E-poçt təsdiqləndi:",
-        {
-            accountId:
-                hesab.accountId,
-
-            playerId:
-                hesab.playerId,
-
-            email:
-                hesab.primaryEmail
-        }
-    );
-
-
-    return {
-        success: true,
-
-        alreadyVerified: false,
-
-        message:
-            "E-poçt uğurla təsdiqləndi.",
-
-        account:
-            clientHesabMelumati(
-                hesab
-            )
-    };
 }
+
 
 // ============================================================
 // EXPORT
