@@ -32,6 +32,7 @@ const { xeriteResursToplamaMesajiniEmalEt } = require("./xerite_resurs_toplama_h
 const { xeriteDusmenMesajiniEmalEt } = require("./xerite_dusmen_handler");
 const { xeriteDusmenDoyusMesajiniEmalEt } = require("./xerite_dusmen_doyus_handler");
 const { doyusRaportMesajiniEmalEt } = require("./doyus_raport_handler");
+require("./xestexana_inkisaf_override");
 const { xestexanaMesajiniEmalEt } = require("./xestexana_handler");
 const { dovletLifecycleMesajiniEmalEt } = require("./dovlet_lifecycle_handler");
 const { kesfiyyatMesajiniEmalEt } = require("./kesfiyyat_handler");

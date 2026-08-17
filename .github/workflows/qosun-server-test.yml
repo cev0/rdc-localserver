@@ -32,6 +32,7 @@ on:
       - server-research-development-integration-v1
       - server-construction-development-bridge-v1
       - server-development-hero-skill-state-v1
+      - server-hospital-development-bridge-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -51,6 +52,9 @@ on:
       - 'doyus_xestexana_korpu.js'
       - 'doyus_qosun_lifecycle_testi.js'
       - 'xestexana_sistemi.js'
+      - 'xestexana_handler.js'
+      - 'xestexana_inkisaf_override.js'
+      - 'xestexana_inkisaf_override_testi.js'
       - 'doyus_sistemi.js'
       - 'doyus_qosun_stat_inteqrasiya_testi.js'
       - 'xerite_dusmen_doyus_sistemi.js'
@@ -154,6 +158,8 @@ jobs:
         run: node konvoy_texnologiya_inkisaf_inteqrasiya_testi.js
       - name: Tikinti Inkisaf korpusu testleri
         run: node tikinti_inkisaf_korpu_testi.js
+      - name: Xestexana Inkisaf korpusu testleri
+        run: node xestexana_inkisaf_override_testi.js
       - name: PvP konvoy mudafie snapshot testleri
         run: node pvp_doyus_snapshot_sistemi_testi.js
       - name: PvP iki teref server resolver testleri
