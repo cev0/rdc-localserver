@@ -704,6 +704,8 @@ async function pinSil(playerId, cariPin) {
 }
 
 module.exports = {
+  pinDuzgundur,
+  pinYoxlamaDaxili,
   pinStatusunuAl,
   pinTeyinEt,
   pinSil,
