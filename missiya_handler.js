@@ -24,12 +24,17 @@ const {
 
 const {
   missiyaDaimiVeziyyetiniAl,
+  missiyaDaimiVeziyyetiniAlClient,
   daimiVeziyyetiStateIleBirlesdir
 } = require("./missiya_postgres");
 
 const {
-  missiyaMukafatVeSnapshotiniAtomikYaz
+  missiyaMukafatAuditiniYazClient
 } = require("./missiya_mukafat_tranzaksiya");
+
+const {
+  oyuncuStateMutasiyasiniPostgresIleIcraEt
+} = require("./oyun_state_mutasiya_postgres");
 
 const {
   oyunStateIniBerpaEt,
@@ -139,6 +144,72 @@ function oyunStateGonder(kontekst, playerId, state, xeriteleriDeGonder = false) 
 async function daimiMissiyaStateYukle(playerId, state) {
   const daimiVeziyyet = await missiyaDaimiVeziyyetiniAl(playerId);
   daimiVeziyyetiStateIleBirlesdir(state, daimiVeziyyet);
+}
+
+function stateIleEvezEt(hedef, menbe) {
+  for (const acar of Object.keys(hedef)) {
+    delete hedef[acar];
+  }
+
+  Object.assign(hedef, derinKopyala(menbe));
+}
+
+async function missiyaMukafatMutasiyasiniTetbiqEt(
+  state,
+  playerId,
+  missionId,
+  client
+) {
+  const daimiVeziyyet =
+    await missiyaDaimiVeziyyetiniAlClient(client, playerId);
+
+  daimiVeziyyetiStateIleBirlesdir(state, daimiVeziyyet);
+  bazaGirisiKecidiniTeminEt(state);
+
+  // Reward əvvəl clone üzərində hesablanır. Audit duplicate çıxarsa,
+  // authoritative state-ə heç bir resurs artımı köçürülmür.
+  const isState = derinKopyala(state);
+  const netice = missiyaMukafatiniAl(isState, missionId);
+
+  if (!netice.success) {
+    return {
+      ...netice,
+      deyisdi: false
+    };
+  }
+
+  bazaGirisiKecidiniTeminEt(isState);
+
+  const auditNeticesi = await missiyaMukafatAuditiniYazClient(
+    client,
+    playerId,
+    netice.missionId
+  );
+
+  if (auditNeticesi.artiqMovcuddur) {
+    daimiVeziyyetiStateIleBirlesdir(state, {
+      claimedRewardIds: [netice.missionId],
+      eventCounters: {}
+    });
+    bazaGirisiKecidiniTeminEt(state);
+
+    return {
+      success: false,
+      alreadyClaimed: true,
+      locked: false,
+      missionId: netice.missionId,
+      message: "Missiya mükafatı artıq alınıb.",
+      rewards: [],
+      deyisdi: false
+    };
+  }
+
+  stateIleEvezEt(state, isState);
+
+  return {
+    ...netice,
+    deyisdi: true
+  };
 }
 
 function bazaGirisiKecidiniTeminEt(state) {
@@ -437,63 +508,47 @@ async function missiyaMesajiniEmalEt(kontekst) {
 
   const missionId = metnAl(kontekst.msg && kontekst.msg.missionId, 64);
 
-  const evvelkiResurslar = derinKopyala(state.resources || {});
-  const evvelkiMissiyalar = derinKopyala(state.missions || {});
+  let netice;
 
-  let netice = missiyaMukafatiniAl(state, missionId);
+  try {
+    netice = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
+      playerId,
+      state,
+      async (kilidliState, { client }) => {
+        const mutasiyaNeticesi =
+          await missiyaMukafatMutasiyasiniTetbiqEt(
+            kilidliState,
+            playerId,
+            missionId,
+            client
+          );
 
-  if (netice.success) {
-    // Derived missiya state-i də eyni snapshot-a daxil olsun.
-    bazaGirisiKecidiniTeminEt(state);
+        if (
+          mutasiyaNeticesi.deyisdi === true &&
+          typeof kontekst.updateServerTime === "function"
+        ) {
+          kontekst.updateServerTime(kilidliState);
+        }
 
-    if (typeof kontekst.updateServerTime === "function") {
-      kontekst.updateServerTime(state);
-    }
-
-    try {
-      const tranzaksiyaNeticesi =
-        await missiyaMukafatVeSnapshotiniAtomikYaz(
-          playerId,
-          netice.missionId,
-          state
-        );
-
-      if (tranzaksiyaNeticesi.artiqMovcuddur) {
-        state.resources = evvelkiResurslar;
-        state.missions = evvelkiMissiyalar;
-
-        await daimiMissiyaStateYukle(playerId, state);
-        bazaGirisiKecidiniTeminEt(state);
-
-        netice = {
-          success: false,
-          alreadyClaimed: true,
-          locked: false,
-          missionId: netice.missionId,
-          message: "Missiya mükafatı artıq alınıb.",
-          rewards: []
-        };
+        return mutasiyaNeticesi;
       }
-    }
-    catch (xeta) {
-      state.resources = evvelkiResurslar;
-      state.missions = evvelkiMissiyalar;
+    );
+  }
+  catch (xeta) {
+    console.error("[MISSIYA_DB] Reward transaction yazıla bilmədi:", {
+      playerId,
+      missionId,
+      message: xeta && xeta.message ? xeta.message : String(xeta)
+    });
 
-      console.error("[MISSIYA_DB] Reward transaction yazıla bilmədi:", {
-        playerId,
-        missionId,
-        message: xeta && xeta.message ? xeta.message : String(xeta)
-      });
-
-      netice = {
-        success: false,
-        alreadyClaimed: false,
-        locked: false,
-        missionId,
-        message: "Missiya mükafatı daimi yaddaşa atomik yazıla bilmədi. Mükafat verilmədi.",
-        rewards: []
-      };
-    }
+    netice = {
+      success: false,
+      alreadyClaimed: false,
+      locked: false,
+      missionId,
+      message: "Missiya mükafatı daimi yaddaşa atomik yazıla bilmədi. Mükafat verilmədi.",
+      rewards: []
+    };
   }
 
   kontekst.send(kontekst.ws, {
@@ -512,5 +567,6 @@ async function missiyaMesajiniEmalEt(kontekst) {
 
 module.exports = {
   gameplaySnapshotiTelebOlunur,
+  missiyaMukafatMutasiyasiniTetbiqEt,
   missiyaMesajiniEmalEt
 };
