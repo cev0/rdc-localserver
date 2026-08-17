@@ -138,12 +138,22 @@ Təsdiqlənməmiş faizlər serverə aktiv edilməməlidir.
 - Cavab/idempotent nəticədə `developmentModifier` metadata-sı saxlanır.
 - Təsdiqlənmiş İnkişaf qəhrəmanı faizi olmadığı üçün hazırkı gameplay müddəti dəyişmir; uydurma balans əlavə edilməyib.
 - Ayrıca `konvoy_texnologiya_inkisaf_inteqrasiya_testi.js` əlavə edildi və CI-də uğurla keçdi.
-- PR #104 merge üçün hazırdır; bu qeydin yazıldığı anda CI success-dir.
+- PR #104 main-ə merge edilib.
+
+### Tikinti İnkişaf körpüsü — növbəti PR
+
+- `tikinti_inkisaf_korpu.js` əlavə edildi.
+- Tikinti sahəsinə təyin edilmiş, uyğun tamamlanmış binada olan İnkişaf qəhrəmanlarının yalnız təsdiqlənmiş `Tikinti sürəti` effektləri toplanır.
+- Texnologiya və İnkişaf sürət bonuslarını vahid müddət formulunda birləşdirən server funksiyası əlavə edildi: `müddət / (1 + ümumiFaiz/100)`.
+- Mənfi və etibarsız modifier-lər 0 kimi qəbul edilir; təsdiqlənməmiş faiz yaratmır.
+- Kataloqda təsdiqlənmiş Tikinti İnkişaf qəhrəmanı olmadığı müddətdə İnkişaf modifier-i 0% qalır və gameplay dəyişmir.
+- `tikinti_inkisaf_korpu_testi.js` əlavə edildi və CI workflow-a daxil edildi.
+- Bu mərhələdə körpü ayrıca modul kimi qurulub; `server.js` daxilindəki mərkəzi `getAdjustedBuildDurationMs` funksiyasına faktiki inteqrasiya növbəti addımdır.
 
 ## Növbəti təhlükəsiz backend addımları
 
-1. PR #104 merge vəziyyətini və Koyeb deploy-u yoxlamaq.
-2. Eyni pattern ilə Tikinti hesablamaları üçün İnkişaf modifier körpüsü əlavə etmək; təsdiqlənməmiş faiz aktiv etməmək.
+1. Tikinti İnkişaf körpüsü PR-nin CI/merge vəziyyətini yoxlamaq.
+2. `server.js` mərkəzi `getAdjustedBuildDurationMs` hesablamasına `tikinti_inkisaf_korpu.js` modifier-ini təhlükəsiz şəkildə qoşmaq; real Hero faizi olmadığı üçün hazırkı müddətlər dəyişməməlidir.
 3. Sonra Qoşun təlimi və Xəstəxana hesablamaları üçün İnkişaf modifier körpüləri qurmaq.
 4. Qəhrəman kataloqunda real İnkişaf qəhrəman ID-ləri və allowedBuildingIds mapping-i yalnız təsdiqlənəndə əlavə etmək.
 5. Konkret skill effect faizlərini yalnız təsdiqlənmiş data ilə kataloqa yazmaq.

@@ -30,6 +30,7 @@ on:
       - server-development-hero-engine-v1
       - server-development-skill-state-fix-v1
       - server-research-development-integration-v1
+      - server-construction-development-bridge-v1
   pull_request:
     paths:
       - 'qosun_kataloqu.js'
@@ -58,6 +59,8 @@ on:
       - 'konvoy_texnologiya_inkisaf_inteqrasiya_testi.js'
       - 'texnologiya_inkisaf_korpu.js'
       - 'texnologiya_inkisaf_korpu_testi.js'
+      - 'tikinti_inkisaf_korpu.js'
+      - 'tikinti_inkisaf_korpu_testi.js'
       - 'qehreman_kataloqu.js'
       - 'qehreman_exp_sistemi.js'
       - 'qehreman_exp_progression_testi.js'
@@ -144,6 +147,8 @@ jobs:
         run: node texnologiya_inkisaf_korpu_testi.js
       - name: Konvoy texnologiyasi Inkisaf inteqrasiya testleri
         run: node konvoy_texnologiya_inkisaf_inteqrasiya_testi.js
+      - name: Tikinti Inkisaf korpusu testleri
+        run: node tikinti_inkisaf_korpu_testi.js
       - name: PvP konvoy mudafie snapshot testleri
         run: node pvp_doyus_snapshot_sistemi_testi.js
       - name: PvP iki teref server resolver testleri
