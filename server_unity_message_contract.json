@@ -74,6 +74,14 @@
       "convoy_info_request",
       "convoy_info_result",
       "siraTutumu"
+    ],
+    "troopTrainingStatus": [
+      "troop_training_status_request",
+      "troop_training_status_result",
+      "status",
+      "activeQueues",
+      "tamamlananlar",
+      "serverTimeUnixMs"
     ]
   },
   "buildingDefinitions": {

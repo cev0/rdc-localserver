@@ -155,6 +155,18 @@ saheleriYoxla(
 );
 saheleriYoxla(
   serverKoku,
+  "qosun_telimi_handler.js",
+  manifest.criticalFields.troopTrainingStatus.filter(
+    sahe => sahe !== "activeQueues"
+  )
+);
+saheleriYoxla(
+  serverKoku,
+  "qosun_telimi_sistemi.js",
+  ["activeQueues"]
+);
+saheleriYoxla(
+  serverKoku,
   "konvoy_handler.js",
   manifest.criticalFields.convoyInfo
 );
