@@ -15,7 +15,8 @@ const {
 } = require("./hesab_yaddasi_postgres");
 
 const {
-  pinYoxla
+  pinDuzgundur,
+  pinYoxlamaDaxili
 } = require("./hesab_pin_postgres");
 
 const PIN_SORQU_MUDDETI_MS = 10 * 60 * 1000;
@@ -385,7 +386,7 @@ async function artiqSessiyalariLegvEt(client, hesabId) {
   );
 }
 
-async function sessiyaYaratHesabUcun(hesab, cihazId) {
+async function sessiyaYaratHesabUcunDaxili(client, hesab, cihazId) {
   if (!hesab || !hesab.accountId || !hesab.playerId) {
     return {
       success: false,
@@ -399,89 +400,110 @@ async function sessiyaYaratHesabUcun(hesab, cihazId) {
   const refreshTokenHash = tokenHashYarat(refreshToken);
   const bitmeVaxtiMs = Date.now() + SESSIYA_MUDDETI_MS;
 
+  await kohneSessiyalariTemizle(client, hesab.accountId);
+
+  if (temizCihazId) {
+    await client.query(
+      `
+      UPDATE hesab_sessiyalari
+      SET legv_vaxti = NOW()
+      WHERE hesab_id = $1
+        AND cihaz_id = $2
+        AND legv_vaxti IS NULL
+        AND bitme_vaxti > NOW()
+      `,
+      [hesab.accountId, temizCihazId]
+    );
+  }
+
+  await artiqSessiyalariLegvEt(client, hesab.accountId);
+
+  await client.query(
+    `
+    INSERT INTO hesab_sessiyalari (
+      sessiya_id,
+      hesab_id,
+      refresh_token_hash,
+      cihaz_id,
+      bitme_vaxti
+    )
+    VALUES (
+      $1,
+      $2,
+      $3,
+      $4,
+      TO_TIMESTAMP($5 / 1000.0)
+    )
+    `,
+    [
+      sessiyaId,
+      hesab.accountId,
+      refreshTokenHash,
+      temizCihazId || null,
+      bitmeVaxtiMs
+    ]
+  );
+
+  await client.query(
+    `
+    INSERT INTO hesab_audit_jurnali (
+      hesab_id,
+      oyuncu_id,
+      hadise_novu,
+      detallar
+    )
+    VALUES ($1, $2, $3, $4::jsonb)
+    `,
+    [
+      hesab.accountId,
+      hesab.playerId,
+      "cihaz_pin_tesdiqi_ile_giris",
+      JSON.stringify({
+        sessiyaId,
+        cihazHash: cihazHashYarat(temizCihazId)
+      })
+    ]
+  );
+
+  return {
+    success: true,
+    message: "Sessiya yaradıldı.",
+    account: clientHesabMelumati(hesab),
+    session: {
+      sessionId: sessiyaId,
+      refreshToken,
+      expiresAtMs: bitmeVaxtiMs
+    }
+  };
+}
+
+async function sessiyaYaratHesabUcun(hesab, cihazId) {
+  if (!hesab || !hesab.accountId || !hesab.playerId) {
+    return {
+      success: false,
+      message: "Hesab məlumatı düzgün deyil."
+    };
+  }
+
   const hovuz = proqramHovuzunuAl();
   const client = await hovuz.connect();
 
   try {
     await client.query("BEGIN");
 
-    await kohneSessiyalariTemizle(client, hesab.accountId);
+    const netice = await sessiyaYaratHesabUcunDaxili(
+      client,
+      hesab,
+      cihazId
+    );
 
-    if (temizCihazId) {
-      await client.query(
-        `
-        UPDATE hesab_sessiyalari
-        SET legv_vaxti = NOW()
-        WHERE hesab_id = $1
-          AND cihaz_id = $2
-          AND legv_vaxti IS NULL
-          AND bitme_vaxti > NOW()
-        `,
-        [hesab.accountId, temizCihazId]
-      );
+    if (!netice || netice.success !== true) {
+      await client.query("ROLLBACK");
+      return netice;
     }
 
-    await artiqSessiyalariLegvEt(client, hesab.accountId);
-
-    await client.query(
-      `
-      INSERT INTO hesab_sessiyalari (
-        sessiya_id,
-        hesab_id,
-        refresh_token_hash,
-        cihaz_id,
-        bitme_vaxti
-      )
-      VALUES (
-        $1,
-        $2,
-        $3,
-        $4,
-        TO_TIMESTAMP($5 / 1000.0)
-      )
-      `,
-      [
-        sessiyaId,
-        hesab.accountId,
-        refreshTokenHash,
-        temizCihazId || null,
-        bitmeVaxtiMs
-      ]
-    );
-
-    await client.query(
-      `
-      INSERT INTO hesab_audit_jurnali (
-        hesab_id,
-        oyuncu_id,
-        hadise_novu,
-        detallar
-      )
-      VALUES ($1, $2, $3, $4::jsonb)
-      `,
-      [
-        hesab.accountId,
-        hesab.playerId,
-        "cihaz_pin_tesdiqi_ile_giris",
-        JSON.stringify({
-          sessiyaId,
-          cihazHash: cihazHashYarat(temizCihazId)
-        })
-      ]
-    );
-
     await client.query("COMMIT");
-
-    return {
-      success: true,
-      message: "Sessiya yaradıldı.",
-      account: clientHesabMelumati(hesab),
-      session: {
-        sessionId: sessiyaId,
-        refreshToken,
-        expiresAtMs: bitmeVaxtiMs
-      }
-    };
+    return netice;
   }
   catch (xeta) {
     try { await client.query("ROLLBACK"); } catch {}
@@ -653,7 +675,8 @@ async function refreshCihazQorumasiniYoxla(refreshToken, cihazId) {
 async function cihazPinSorqusunuYoxlaVeSessiyaYarat(
   challengeId,
   cihazId,
-  pin
+  pin,
+  secimler = {}
 ) {
   const temizChallengeId = metnAl(challengeId, 128);
   const temizCihazId = cihazIdTemizle(cihazId);
@@ -666,120 +689,154 @@ async function cihazPinSorqusunuYoxlaVeSessiyaYarat(
     };
   }
 
-  const hovuz = proqramHovuzunuAl();
-  const netice = await hovuz.query(
-    `
-    SELECT
-      c.sorqu_id,
-      c.hesab_id,
-      c.cihaz_hash,
-      c.meqsed,
-      c.bitme_vaxti,
-      c.istifade_vaxti,
-      h.*
-    FROM hesab_cihaz_pin_sorqulari c
-    JOIN hesablar h
-      ON h.hesab_id = c.hesab_id
-    WHERE c.sorqu_id = $1
-    LIMIT 1
-    `,
-    [temizChallengeId]
-  );
+  const hovuzAl = typeof secimler.proqramHovuzunuAl === "function"
+    ? secimler.proqramHovuzunuAl
+    : proqramHovuzunuAl;
+  const pinDuzgundurFn = typeof secimler.pinDuzgundur === "function"
+    ? secimler.pinDuzgundur
+    : pinDuzgundur;
+  const pinYoxlamaFn = typeof secimler.pinYoxlamaDaxili === "function"
+    ? secimler.pinYoxlamaDaxili
+    : pinYoxlamaDaxili;
+  const sessiyaYaratFn =
+    typeof secimler.sessiyaYaratHesabUcunDaxili === "function"
+      ? secimler.sessiyaYaratHesabUcunDaxili
+      : sessiyaYaratHesabUcunDaxili;
 
-  if (!netice.rows || netice.rows.length !== 1) {
-    return {
-      success: false,
-      message: "PIN təsdiq sorğusu tapılmadı."
-    };
-  }
-
-  const setr = netice.rows[0];
-
-  if (setr.istifade_vaxti) {
-    return {
-      success: false,
-      expired: true,
-      message: "PIN təsdiq sorğusu artıq istifadə olunub."
-    };
-  }
-
-  if (
-    !setr.bitme_vaxti ||
-    Date.now() > new Date(setr.bitme_vaxti).getTime()
-  ) {
-    await hovuz.query(
-      `
-      UPDATE hesab_cihaz_pin_sorqulari
-      SET istifade_vaxti = NOW()
-      WHERE sorqu_id = $1
-        AND istifade_vaxti IS NULL
-      `,
-      [temizChallengeId]
-    );
-
-    return {
-      success: false,
-      expired: true,
-      message: "PIN təsdiq sorğusunun vaxtı bitib. Yenidən daxil olun."
-    };
-  }
-
-  if (setr.cihaz_hash !== cihazHash) {
-    return {
-      success: false,
-      message: "PIN sorğusu bu cihaz üçün yaradılmayıb."
-    };
-  }
-
-  const hesab = dbSetriniHesabaCevir(setr);
-
-  if (!hesab || hesab.status !== "aktiv") {
-    return {
-      success: false,
-      message: "Hesab aktiv deyil."
-    };
-  }
-
-  const pinNeticesi = await pinYoxla(
-    hesab.playerId,
-    pin
-  );
-
-  if (!pinNeticesi || pinNeticesi.success !== true) {
-    return {
-      success: false,
-      hasPin: pinNeticesi && pinNeticesi.hasPin === true,
-      locked: pinNeticesi && pinNeticesi.locked === true,
-      tooManyAttempts:
-        pinNeticesi && pinNeticesi.tooManyAttempts === true,
-      attemptsRemaining:
-        Number(pinNeticesi && pinNeticesi.attemptsRemaining || 0),
-      retryAfterMs:
-        Number(pinNeticesi && pinNeticesi.retryAfterMs || 0),
-      message: pinNeticesi && pinNeticesi.message
-        ? pinNeticesi.message
-        : "PIN yanlışdır."
-    };
-  }
-
-  const sessiyaNeticesi = await sessiyaYaratHesabUcun(
-    hesab,
-    temizCihazId
-  );
-
-  if (!sessiyaNeticesi || sessiyaNeticesi.success !== true) {
-    return {
-      success: false,
-      message: sessiyaNeticesi && sessiyaNeticesi.message
-        ? sessiyaNeticesi.message
-        : "Sessiya yaradıla bilmədi."
-    };
-  }
-
+  const hovuz = hovuzAl();
   const client = await hovuz.connect();
 
   try {
     await client.query("BEGIN");
+
+    const netice = await client.query(
+      `
+      SELECT
+        c.sorqu_id,
+        c.hesab_id,
+        c.cihaz_hash,
+        c.meqsed,
+        c.bitme_vaxti,
+        c.istifade_vaxti,
+        h.*
+      FROM hesab_cihaz_pin_sorqulari c
+      JOIN hesablar h
+        ON h.hesab_id = c.hesab_id
+      WHERE c.sorqu_id = $1
+      LIMIT 1
+      FOR UPDATE OF c, h
+      `,
+      [temizChallengeId]
+    );
+
+    if (!netice.rows || netice.rows.length !== 1) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        message: "PIN təsdiq sorğusu tapılmadı."
+      };
+    }
+
+    const setr = netice.rows[0];
+
+    if (setr.istifade_vaxti) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        expired: true,
+        message: "PIN təsdiq sorğusu artıq istifadə olunub."
+      };
+    }
+
+    if (
+      !setr.bitme_vaxti ||
+      Date.now() > new Date(setr.bitme_vaxti).getTime()
+    ) {
+      await client.query(
+        `
+        UPDATE hesab_cihaz_pin_sorqulari
+        SET istifade_vaxti = NOW()
+        WHERE sorqu_id = $1
+          AND istifade_vaxti IS NULL
+        `,
+        [temizChallengeId]
+      );
+      await client.query("COMMIT");
+
+      return {
+        success: false,
+        expired: true,
+        message: "PIN təsdiq sorğusunun vaxtı bitib. Yenidən daxil olun."
+      };
+    }
+
+    if (setr.cihaz_hash !== cihazHash) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        message: "PIN sorğusu bu cihaz üçün yaradılmayıb."
+      };
+    }
+
+    const hesab = dbSetriniHesabaCevir(setr);
+
+    if (!hesab || hesab.status !== "aktiv") {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        message: "Hesab aktiv deyil."
+      };
+    }
+
+    if (!pinDuzgundurFn(pin)) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        message: "PIN formatı düzgün deyil."
+      };
+    }
+
+    const pinNeticesi = await pinYoxlamaFn(
+      client,
+      setr,
+      pin
+    );
+
+    if (!pinNeticesi || pinNeticesi.success !== true) {
+      await client.query("COMMIT");
+
+      return {
+        success: false,
+        hasPin: pinNeticesi && pinNeticesi.hasPin === true,
+        locked: pinNeticesi && pinNeticesi.locked === true,
+        tooManyAttempts:
+          pinNeticesi && pinNeticesi.tooManyAttempts === true,
+        attemptsRemaining:
+          Number(pinNeticesi && pinNeticesi.attemptsRemaining || 0),
+        retryAfterMs:
+          Number(pinNeticesi && pinNeticesi.retryAfterMs || 0),
+        message: pinNeticesi && pinNeticesi.message
+          ? pinNeticesi.message
+          : "PIN yanlışdır."
+      };
+    }
+
+    const sessiyaNeticesi = await sessiyaYaratFn(
+      client,
+      hesab,
+      temizCihazId
+    );
+
+    if (!sessiyaNeticesi || sessiyaNeticesi.success !== true) {
+      await client.query("ROLLBACK");
+
+      return {
+        success: false,
+        message: sessiyaNeticesi && sessiyaNeticesi.message
+          ? sessiyaNeticesi.message
+          : "Sessiya yaradıla bilmədi."
+      };
+    }
 
     await client.query(
       `
@@ -799,17 +856,39 @@ async function cihazPinSorqusunuYoxlaVeSessiyaYarat(
       [hesab.accountId, cihazHash]
     );
 
-    await client.query(
+    const istifadeNeticesi = await client.query(
       `
       UPDATE hesab_cihaz_pin_sorqulari
       SET istifade_vaxti = NOW()
       WHERE sorqu_id = $1
         AND istifade_vaxti IS NULL
+      RETURNING sorqu_id
       `,
       [temizChallengeId]
     );
 
+    if (
+      !istifadeNeticesi.rows ||
+      istifadeNeticesi.rows.length !== 1
+    ) {
+      await client.query("ROLLBACK");
+
+      return {
+        success: false,
+        expired: true,
+        message: "PIN təsdiq sorğusu artıq istifadə olunub."
+      };
+    }
+
     await client.query("COMMIT");
+
+    return {
+      success: true,
+      reason: metnAl(setr.meqsed, 32),
+      message: "PIN təsdiqləndi. Cihaz etibarlı kimi yadda saxlanıldı.",
+      account: sessiyaNeticesi.account,
+      session: sessiyaNeticesi.session
+    };
   }
   catch (xeta) {
     try { await client.query("ROLLBACK"); } catch {}
@@ -818,14 +897,6 @@ async function cihazPinSorqusunuYoxlaVeSessiyaYarat(
   finally {
     client.release();
   }
-
-  return {
-    success: true,
-    reason: metnAl(setr.meqsed, 32),
-    message: "PIN təsdiqləndi. Cihaz etibarlı kimi yadda saxlanıldı.",
-    account: sessiyaNeticesi.account,
-    session: sessiyaNeticesi.session
-  };
 }
 
 module.exports = {
