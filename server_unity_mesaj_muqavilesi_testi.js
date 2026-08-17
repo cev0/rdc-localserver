@@ -155,6 +155,11 @@ saheleriYoxla(
 );
 saheleriYoxla(
   serverKoku,
+  "qosun_telimi_handler.js",
+  manifest.criticalFields.troopTrainingStatus
+);
+saheleriYoxla(
+  serverKoku,
   "konvoy_handler.js",
   manifest.criticalFields.convoyInfo
 );
