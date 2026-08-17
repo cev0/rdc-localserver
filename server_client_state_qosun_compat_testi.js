@@ -23,6 +23,7 @@ assert.strictEqual(
 
 const patchedKod = fs.readFileSync(tempServer, "utf8");
 assert.ok(patchedKod.includes("[CLIENT_TROOP_ALIAS_COMPAT]"));
+assert.ok(patchedKod.includes("[CLIENT_TECH_LEVEL_COMPAT]"));
 assert.ok(patchedKod.includes("delete clientState.serverSorquIdempotentliyi;"));
 
 // Eyni patch ikinci dəfə məzmunu dəyişməməlidir.
@@ -37,6 +38,22 @@ const { makeClientState } = require(tempServer);
 
 const source = {
   serverSorquIdempotentliyi: { secret: true },
+  technology: {
+    levels: {
+      training_speed_1: 2,
+      production_1: 1
+    },
+    currentResearch: {
+      techId: "build_speed_1",
+      targetLevel: 1,
+      endsAtMs: 99999
+    },
+    stats: {
+      productionPct: 5,
+      buildSpeedPct: 0,
+      trainingSpeedPct: 10
+    }
+  },
   army: {
     troops: {
       fighter_lv1: 2,
@@ -63,6 +80,25 @@ const source = {
 const client = makeClientState(source);
 
 assert.strictEqual(client.serverSorquIdempotentliyi, undefined);
+assert.deepStrictEqual(
+  client.technology.techLevels,
+  [
+    { techId: "production_1", level: 1 },
+    { techId: "training_speed_1", level: 2 }
+  ]
+);
+assert.deepStrictEqual(
+  source.technology.levels,
+  {
+    training_speed_1: 2,
+    production_1: 1
+  },
+  "Authoritative technology.levels obyekti dəyişməməlidir."
+);
+assert.strictEqual(
+  Object.prototype.hasOwnProperty.call(source.technology, "techLevels"),
+  false
+);
 assert.strictEqual(client.army.troops.fighter_lv1, 7);
 assert.strictEqual(client.army.troops.shooter_lv1, 8);
 assert.strictEqual(client.army.troops.vehicle_lv1, 7);
