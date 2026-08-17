@@ -1,0 +1,37 @@
+name: Server Unit Regression
+
+on:
+  pull_request:
+    paths:
+      - "**/*.js"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/server-unit-regression.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "**/*.js"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/server-unit-regression.yml"
+
+jobs:
+  unit-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node qur
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Paketləri qur
+        run: npm ci
+
+      - name: Xarici servis tələb etməyən bütün regression testləri
+        run: npm test
