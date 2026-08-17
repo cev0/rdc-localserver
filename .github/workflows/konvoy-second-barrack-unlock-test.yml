@@ -1,0 +1,29 @@
+name: Konvoy Second Barrack Unlock Testi
+
+on:
+  push:
+    branches:
+      - server-convoy-second-barrack-unlock-v1
+  pull_request:
+    paths:
+      - 'konvoy_sistemi.js'
+      - 'konvoy_ikinci_kamp_unlock_testi.js'
+      - '.github/workflows/konvoy-second-barrack-unlock-test.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node qur
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Paketleri qur
+        run: npm ci
+      - name: Ikinci kamp Konvoy 2 unlock regression testi
+        run: node konvoy_ikinci_kamp_unlock_testi.js
+      - name: Unity konvoy contract regression testi
+        run: node konvoy_unity_contract_testi.js
