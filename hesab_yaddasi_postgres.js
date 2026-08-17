@@ -7,6 +7,13 @@ const {
 } = require("./verilenler_bazasi");
 
 
+const SIFRE_MINIMUM_UZUNLUQ =
+    8;
+
+const SIFRE_MAKSIMUM_UZUNLUQ =
+    64;
+
+
 // ============================================================
 // EMAIL NORMALLAŞDIRMA
 // ============================================================
@@ -80,10 +87,13 @@ function sifreHashYarat(sifre)
 {
     if (
         typeof sifre !== "string" ||
-        sifre.length < 8
+        sifre.length <
+            SIFRE_MINIMUM_UZUNLUQ ||
+        sifre.length >
+            SIFRE_MAKSIMUM_UZUNLUQ
     ) {
         throw new Error(
-            "Şifrə ən azı 8 simvol olmalıdır."
+            "Şifrə 8-64 simvol arasında olmalıdır."
         );
     }
 
@@ -389,12 +399,15 @@ async function hesabYaratVeBagla(
 
     if (
         typeof sifre !== "string" ||
-        sifre.length < 8
+        sifre.length <
+            SIFRE_MINIMUM_UZUNLUQ ||
+        sifre.length >
+            SIFRE_MAKSIMUM_UZUNLUQ
     ) {
         return {
             success: false,
             message:
-                "Şifrə ən azı 8 simvol olmalıdır."
+                "Şifrə 8-64 simvol arasında olmalıdır."
         };
     }
 
@@ -1285,6 +1298,8 @@ module.exports = {
     emailNormallasdir,
     emailDuzgundur,
 
+    SIFRE_MINIMUM_UZUNLUQ,
+    SIFRE_MAKSIMUM_UZUNLUQ,
     sifreHashYarat,
     sifreDuzgundur,
 
