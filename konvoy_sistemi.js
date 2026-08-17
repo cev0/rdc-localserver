@@ -9,6 +9,14 @@ const {
   qehremanKonvoyaYerleseBiler
 } = require("./qehreman_kataloqu");
 
+const ESGER_KAMPI_IDLERI = Object.freeze([
+  "barrack_1",
+  "barrack_2",
+  "barrack_3"
+]);
+
+const IKINCI_KONVOY_UCUN_KAMP_SAYI = 2;
+
 function metnAl(deyer, maksimum = 128) {
   return typeof deyer === "string"
     ? deyer.trim().slice(0, maksimum).toLowerCase()
@@ -23,6 +31,42 @@ function texnologiyaSeviyesiniAl(state, techId) {
   return Number.isFinite(seviye)
     ? Math.max(0, Math.trunc(seviye))
     : 0;
+}
+
+function tamamlanmisEsgerKampiSayiniAl(state) {
+  const gorulenInstanceIdleri = new Set();
+  let say = 0;
+
+  for (const bina of Array.isArray(state && state.buildings) ? state.buildings : []) {
+    if (!bina || bina.isCompleted !== true) continue;
+
+    const buildingId = metnAl(bina.buildingId, 128);
+    if (!ESGER_KAMPI_IDLERI.includes(buildingId)) continue;
+
+    // Eyni persistent bina snapshot-u iki dəfə gəlibsə iki kamp kimi sayılmır.
+    // Köhnə snapshot-larda instanceId boş ola bilər; həmin halda real array
+    // elementini saymaq compatibility üçün saxlanılır.
+    const instanceId = metnAl(bina.instanceId, 128);
+    if (instanceId) {
+      if (gorulenInstanceIdleri.has(instanceId)) continue;
+      gorulenInstanceIdleri.add(instanceId);
+    }
+
+    say++;
+  }
+
+  return say;
+}
+
+function ikinciKonvoyUnlockMelumatiniAl(state) {
+  const tamamlanmisKampSayi = tamamlanmisEsgerKampiSayiniAl(state);
+
+  return {
+    rule: "second_completed_barrack",
+    requiredCompletedBarracks: IKINCI_KONVOY_UCUN_KAMP_SAYI,
+    completedBarracks: tamamlanmisKampSayi,
+    unlocked: tamamlanmisKampSayi >= IKINCI_KONVOY_UCUN_KAMP_SAYI
+  };
 }
 
 function aciqQehremanYeriSayiniAl(state) {
@@ -51,10 +95,9 @@ function aciqQehremanYeriSayiniAl(state) {
 function aciqKonvoySayiniAl(state) {
   let say = KONVOY_QAYDALARI.baslangicKonvoySayi;
 
-  if (texnologiyaSeviyesiniAl(
-    state,
-    KONVOY_TEXNOLOGIYA_ACARLARI.IKINCI_KONVOY
-  ) > 0) {
+  // Oyun qaydası: Konvoy 2 ikinci tamamlanmış Əsgər Kampı ilə açılır.
+  // Köhnə `ikinci_konvoy` texnologiyası bu unlock-un gameplay authority-si deyil.
+  if (ikinciKonvoyUnlockMelumatiniAl(state).unlocked) {
     say = 2;
   }
 
@@ -139,6 +182,7 @@ function konvoyMelumatiniHazirla(state) {
     maksimumKonvoySayi: KONVOY_QAYDALARI.maksimumKonvoySayi,
     aciqQehremanYeri: aciqQehremanYeriSayiniAl(state),
     maksimumQehremanYeri: KONVOY_QAYDALARI.maksimumQehremanYeri,
+    ikinciKonvoyUnlockInfo: ikinciKonvoyUnlockMelumatiniAl(state),
     items: konvoylar.items.map(konvoy => ({
       konvoyId: konvoy.konvoyId,
       aciqdir: konvoy.aciqdir === true,
@@ -206,7 +250,11 @@ function qehremaniKonvoydanCixar(state, konvoyId, heroId) {
 }
 
 module.exports = {
+  ESGER_KAMPI_IDLERI,
+  IKINCI_KONVOY_UCUN_KAMP_SAYI,
   texnologiyaSeviyesiniAl,
+  tamamlanmisEsgerKampiSayiniAl,
+  ikinciKonvoyUnlockMelumatiniAl,
   aciqQehremanYeriSayiniAl,
   aciqKonvoySayiniAl,
   konvoyStateTeminEt,
