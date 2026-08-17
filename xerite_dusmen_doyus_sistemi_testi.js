@@ -8,6 +8,7 @@ const {
 } = require("./xerite_dusmen_doyus_sistemi");
 const { konvoyMesguldur } = require("./konvoy_mesgul_sistemi");
 
+// Legacy unit IDs must resolve through the current canonical troop catalog.
 assert.strictEqual(birQosununGucunuAl("fighter_lv1"), 1);
 assert.strictEqual(birQosununGucunuAl("shooter_lv2"), 1.4);
 assert.strictEqual(birQosununGucunuAl("vehicle_lv3"), 1.9);
