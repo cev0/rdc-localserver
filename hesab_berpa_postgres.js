@@ -103,12 +103,15 @@ async function hesabNamizediniTap(email, oyuncuId) {
   return emailHesabi || oyuncuHesabi || null;
 }
 
-async function hesabBerpaSorqusuHazirla({
-  email,
-  oyuncuId,
-  komandirAdi,
-  elaveMelumat
-}) {
+async function hesabBerpaSorqusuHazirla(
+  {
+    email,
+    oyuncuId,
+    komandirAdi,
+    elaveMelumat
+  },
+  secimler = {}
+) {
   const temizEmail = emailNormallasdir(email);
   const temizOyuncuId = metnTemizle(oyuncuId, 128);
   const temizKomandirAdi = metnTemizle(komandirAdi, 64);
@@ -128,14 +131,31 @@ async function hesabBerpaSorqusuHazirla({
     };
   }
 
+  const namizediniTap =
+    typeof secimler.hesabNamizediniTap === "function"
+      ? secimler.hesabNamizediniTap
+      : hesabNamizediniTap;
+  const emailGonder =
+    typeof secimler.tesdiqKoduEmailiGonder === "function"
+      ? secimler.tesdiqKoduEmailiGonder
+      : tesdiqKoduEmailiGonder;
+  const hovuz = secimler.hovuz || proqramHovuzunuAl();
+  const secilmisVaxt = Number(secimler.nowMs);
+  const indiMs = Number.isFinite(secilmisVaxt) && secilmisVaxt > 0
+    ? Math.trunc(secilmisVaxt)
+    : Date.now();
+
   const saxtaSorquId = crypto.randomBytes(16).toString("hex");
-  const hesab = await hesabNamizediniTap(temizEmail, temizOyuncuId);
+  const namizedHesab = await namizediniTap(
+    temizEmail,
+    temizOyuncuId
+  );
 
   if (
-    !hesab ||
-    hesab.status !== "aktiv" ||
-    hesab.emailVerified !== true ||
-    !hesab.primaryEmail
+    !namizedHesab ||
+    namizedHesab.status !== "aktiv" ||
+    namizedHesab.emailVerified !== true ||
+    !namizedHesab.primaryEmail
   ) {
     return {
       success: true,
@@ -145,47 +165,94 @@ async function hesabBerpaSorqusuHazirla({
     };
   }
 
-  const hovuz = proqramHovuzunuAl();
+  const client = await hovuz.connect();
+  let hesab = null;
+  let sorquId = "";
+  let kod = "";
+  let bitmeVaxtiMs = 0;
 
-  const sonSorqu = await hovuz.query(
-    `
-    SELECT sorqu_id, son_gonderilme_vaxti
-    FROM hesab_berpa_sorqulari
-    WHERE hesab_id = $1
-      AND istifade_vaxti IS NULL
-    ORDER BY yaradilma_vaxti DESC
-    LIMIT 1
-    `,
-    [hesab.accountId]
-  );
+  try {
+    await client.query("BEGIN");
 
-  if (sonSorqu.rows && sonSorqu.rows.length > 0) {
-    const setr = sonSorqu.rows[0];
-    const sonGonderilmeMs = new Date(setr.son_gonderilme_vaxti).getTime();
-    const kecen = Date.now() - sonGonderilmeMs;
+    const hesabNeticesi = await client.query(
+      `
+      SELECT
+        hesab_id,
+        oyuncu_id,
+        esas_email,
+        email_tesdiqlenib,
+        status
+      FROM hesablar
+      WHERE hesab_id = $1
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [namizedHesab.accountId]
+    );
 
-    if (kecen >= 0 && kecen < YENIDEN_GONDERME_MS) {
+    if (
+      !hesabNeticesi.rows ||
+      hesabNeticesi.rows.length !== 1 ||
+      hesabNeticesi.rows[0].status !== "aktiv" ||
+      hesabNeticesi.rows[0].email_tesdiqlenib !== true ||
+      !hesabNeticesi.rows[0].esas_email
+    ) {
+      await client.query("ROLLBACK");
+
       return {
         success: true,
-        berpaSorquId: setr.sorqu_id,
-        cooldown: true,
-        retryAfterMs: YENIDEN_GONDERME_MS - kecen,
+        berpaSorquId: saxtaSorquId,
         emailGonderilmeli: false,
         message: sabitMesaj()
       };
     }
-  }
 
-  const sorquId = crypto.randomBytes(16).toString("hex");
-  const kod = kodYarat();
-  const duz = crypto.randomBytes(16).toString("hex");
-  const kodHash = kodHashYarat(kod, duz);
-  const bitmeVaxtiMs = Date.now() + KOD_MUDDETI_MS;
+    const hesabSetri = hesabNeticesi.rows[0];
+    hesab = {
+      accountId: hesabSetri.hesab_id,
+      playerId: hesabSetri.oyuncu_id,
+      primaryEmail: hesabSetri.esas_email
+    };
 
-  const client = await hovuz.connect();
+    const sonSorqu = await client.query(
+      `
+      SELECT
+        sorqu_id,
+        son_gonderilme_vaxti
+      FROM hesab_berpa_sorqulari
+      WHERE hesab_id = $1
+        AND istifade_vaxti IS NULL
+      ORDER BY yaradilma_vaxti DESC
+      LIMIT 1
+      `,
+      [hesab.accountId]
+    );
 
-  try {
-    await client.query("BEGIN");
+    if (sonSorqu.rows && sonSorqu.rows.length > 0) {
+      const setr = sonSorqu.rows[0];
+      const sonGonderilmeMs =
+        new Date(setr.son_gonderilme_vaxti).getTime();
+      const kecen = indiMs - sonGonderilmeMs;
+
+      if (kecen >= 0 && kecen < YENIDEN_GONDERME_MS) {
+        await client.query("ROLLBACK");
+
+        return {
+          success: true,
+          berpaSorquId: setr.sorqu_id,
+          cooldown: true,
+          retryAfterMs: YENIDEN_GONDERME_MS - kecen,
+          emailGonderilmeli: false,
+          message: sabitMesaj()
+        };
+      }
+    }
+
+    sorquId = crypto.randomBytes(16).toString("hex");
+    kod = kodYarat();
+    const duz = crypto.randomBytes(16).toString("hex");
+    const kodHash = kodHashYarat(kod, duz);
+    bitmeVaxtiMs = indiMs + KOD_MUDDETI_MS;
 
     await client.query(
       `
@@ -252,7 +319,7 @@ async function hesabBerpaSorqusuHazirla({
     client.release();
   }
 
-  const emailNeticesi = await tesdiqKoduEmailiGonder(
+  const emailNeticesi = await emailGonder(
     hesab.primaryEmail,
     kod
   );
