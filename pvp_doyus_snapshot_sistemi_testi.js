@@ -19,6 +19,20 @@ function testStateHazirla() {
   return {
     playerId: "oyuncu_mudafie",
     technology: { levels: { ikinci_konvoy: 1 } },
+    buildings: [
+      {
+        instanceId: "barrack_defense_1",
+        buildingId: "barrack_1",
+        level: 1,
+        isCompleted: true
+      },
+      {
+        instanceId: "barrack_defense_2",
+        buildingId: "barrack_2",
+        level: 1,
+        isCompleted: true
+      }
+    ],
     army: {
       troops: {
         fighter_lv1: 100,
