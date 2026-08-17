@@ -26,6 +26,9 @@ const {
   serverItkiPlaniniTetbiqEt,
   yungulYaralilariBerpaEt
 } = require("./doyus_xestexana_korpu");
+const {
+  konvoyYolaHazirliginiYoxla
+} = require("./konvoy_yola_hazirliq_sistemi");
 
 const DEFAULT_KONVOY_HEREKET_MS_XANA = 1000;
 
@@ -159,6 +162,18 @@ function emeliyyatiBaslat(state, playerId, convoyId, targetType, targetId, nowMs
   const hedef = hedefMelumatiniAl(state, targetType, targetId);
   if (!hedef) return { success: false, message: "Konvoy hədəfi tapılmadı." };
 
+  const hazirliq = konvoyYolaHazirliginiYoxla(state, id, hedef.targetType);
+  if (!hazirliq || hazirliq.success !== true) {
+    return {
+      success: false,
+      message: hazirliq && hazirliq.message
+        ? hazirliq.message
+        : "Konvoy xəritəyə göndərilməyə hazır deyil.",
+      readinessCode: hazirliq && hazirliq.code ? hazirliq.code : "convoy_not_ready",
+      readiness: hazirliq || null
+    };
+  }
+
   const hereket = hereketKonfiqiniAl();
   const baza = bazaMovqeyiAl(state);
   const travelDurationMs = hereketMuddetiniHesabla(baza.x, baza.z, hedef.x, hedef.z);
@@ -191,6 +206,12 @@ function emeliyyatiBaslat(state, playerId, convoyId, targetType, targetId, nowMs
     plannedReturnEndsAtMs,
     movementMsPerMapUnit: hereket.msPerMapUnit,
     movementSource: hereket.source,
+    dispatchReadiness: {
+      troopCount: hazirliq.troopCount,
+      tutum: hazirliq.tutum,
+      siraTutumu: hazirliq.siraTutumu,
+      heroIds: Array.isArray(hazirliq.heroIds) ? [...hazirliq.heroIds] : []
+    },
     status: STATUS.YOLDA,
     reportId: "",
     gatherRewardId: "",
