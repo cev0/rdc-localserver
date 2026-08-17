@@ -194,13 +194,7 @@ async function provayderTesdiqiniEsasHesabaSinxronEt(playerId) {
     console.log("[PROVAYDER_TESDIQ_SINXRON] Əsas hesab yeniləndi:", {
       playerId: temizPlayerId,
       accountId: hesab.hesab_id,
-      provider: provayder,
-      primaryEmail: yenilenmis && yenilenmis.esas_email
-        ? yenilenmis.esas_email
-        : "",
-      emailVerified: Boolean(
-        yenilenmis && yenilenmis.email_tesdiqlenib
-      )
+      provider: provayder
     });
 
     return {

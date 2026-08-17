@@ -500,10 +500,7 @@ async function kocurmeniBaslat()
                 "[HESAB_KOCURME] Hesab köçürüldü:",
                 {
                     playerId:
-                        netice.playerId,
-
-                    email:
-                        netice.email
+                        netice.playerId
                 }
             );
         }

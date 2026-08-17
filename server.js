@@ -7613,10 +7613,7 @@ updateServerTime(state);
               playerId,
 
             accountId:
-              hesab.accountId || "",
-
-            email:
-              hesab.primaryEmail || ""
+              hesab.accountId || ""
           }
         );
 
@@ -7820,13 +7817,7 @@ case "account_info_request": {
     "[HESAB] Hesab məlumatı göndərildi:",
     {
       playerId:
-        playerId,
-
-      email:
-        hesab.primaryEmail || "",
-
-      emailVerified:
-        hesab.emailVerified === true
+        playerId
     }
   );
 

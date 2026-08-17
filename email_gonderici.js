@@ -245,9 +245,6 @@ if (EMAIL_DEV_LOG_CODE) {
     console.log(
         "[EMAIL_DEV] Təsdiq kodu:",
         {
-            email:
-                temizEmail,
-
             kod:
                 temizKod
         }

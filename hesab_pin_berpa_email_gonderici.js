@@ -44,7 +44,6 @@ async function pinBerpaKoduEmailiGonder(email, kod) {
 
   if (EMAIL_DEV_LOG_CODE) {
     console.log("[EMAIL_DEV] PIN bərpa kodu:", {
-      email: temizEmail,
       kod: temizKod
     });
 

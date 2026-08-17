@@ -617,10 +617,7 @@ function emailTesdiqKodunuYoxla(
         "[HESAB] E-poçt təsdiqləndi:",
         {
             playerId:
-                hesab.playerId,
-
-            email:
-                hesab.primaryEmail
+                hesab.playerId
         }
     );
 
@@ -965,10 +962,7 @@ function hesabYaratVeBagla(
                 yeniHesab.accountId,
 
             playerId:
-                yeniHesab.playerId,
-
-            email:
-                yeniHesab.primaryEmail
+                yeniHesab.playerId
         }
     );
 

@@ -749,8 +749,7 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
 
     console.log("[HESAB_LOGIN] Hesaba giriş uğurludur:", {
       playerId,
-      accountId: hesab.accountId || "",
-      email: hesab.primaryEmail || ""
+      accountId: hesab.accountId || ""
     });
 
     return true;

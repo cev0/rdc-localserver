@@ -546,10 +546,7 @@ async function hesabYaratVeBagla(
                     yeniHesab.accountId,
 
                 playerId:
-                    yeniHesab.playerId,
-
-                email:
-                    yeniHesab.primaryEmail
+                    yeniHesab.playerId
             }
         );
 
@@ -883,10 +880,7 @@ async function emailTesdiqKoduHazirla(
                     hesab.accountId,
 
                 playerId:
-                    hesab.playerId,
-
-                email:
-                    hesab.primaryEmail
+                    hesab.playerId
             }
         );
 
@@ -1254,10 +1248,7 @@ async function emailTesdiqKodunuYoxla(
                     hesab.accountId,
 
                 playerId:
-                    hesab.playerId,
-
-                email:
-                    hesab.primaryEmail
+                    hesab.playerId
             }
         );
 

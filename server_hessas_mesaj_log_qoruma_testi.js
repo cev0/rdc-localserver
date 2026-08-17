@@ -40,7 +40,8 @@ const qadağanOlunmusLog = /console\.(?:log|info|debug|warn|error)\s*\(([\s\S]{0
 const hassasIfadeler = [
   /JSON\.stringify\s*\(\s*msg\s*\)/,
   /\bmsg\.(?:sifre|password|idToken|refreshToken|kod|pin|token)\b/i,
-  /\b(?:sifre|password|idToken|refreshToken)\b\s*[,)]/i
+  /\b(?:sifre|password|idToken|refreshToken)\b\s*[,)]/i,
+  /\b[a-zA-Z_]*email[a-zA-Z_]*\b\s*(?:[:,)]|\|\|)/i
 ];
 
 for (const ad of runtimeFayllari) {
