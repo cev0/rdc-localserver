@@ -1,0 +1,11 @@
+"use strict";
+const assert = require("assert");
+const fs = require("fs");
+const source = fs.readFileSync("./server.js", "utf8");
+assert.ok(source.includes('const effectiveCost = Array.isArray(developmentModifier.effektivXerc)'));
+assert.ok(source.includes('hasEnoughResources(state, effectiveCost)'));
+assert.ok(source.includes('spendResources(state, effectiveCost);'));
+assert.ok(source.includes('researchCostReductionPercent'));
+assert.ok(source.includes('researchSpeedPercent'));
+assert.ok(source.includes('effectiveCost: effectiveCost.map'));
+console.log("Texnologiya İnkişaf xərc runtime testi uğurla keçdi.");

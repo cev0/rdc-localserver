@@ -600,7 +600,17 @@ function canStartTechnologyResearch(state, techId) {
     }
   }
 
-  const check = hasEnoughResources(state, levelData.cost);
+  const { texnologiyaInkIsafModifikatorunuHesabla } = require("./texnologiya_inkisaf_korpu");
+  const developmentModifier = texnologiyaInkIsafModifikatorunuHesabla(
+    state,
+    levelData.researchTimeSeconds,
+    levelData.cost
+  );
+  const effectiveCost = Array.isArray(developmentModifier.effektivXerc)
+    ? developmentModifier.effektivXerc
+    : levelData.cost;
+
+  const check = hasEnoughResources(state, effectiveCost);
   if (!check.ok) {
     return {
       ok: false,
@@ -611,7 +621,9 @@ function canStartTechnologyResearch(state, techId) {
   return {
     ok: true,
     institute,
-    levelData
+    levelData,
+    effectiveCost,
+    developmentModifier
   };
 }
 
@@ -621,16 +633,27 @@ function startTechnologyResearch(state, techId) {
 
   const now = nowMs();
   const levelData = check.levelData;
+  const developmentModifier = check.developmentModifier || {};
+  const effectiveDurationSeconds = Math.max(
+    1,
+    Math.trunc(Number(developmentModifier.effektivMuddetSaniye) || levelData.researchTimeSeconds || 1)
+  );
+  const effectiveCost = Array.isArray(check.effectiveCost) ? check.effectiveCost : levelData.cost;
 
-  spendResources(state, levelData.cost);
+  spendResources(state, effectiveCost);
 
   state.technology.currentResearch = {
     techId: levelData.techId,
     targetLevel: levelData.targetLevel,
     startedAtMs: now,
-    durationMs: Math.max(0, Math.round(levelData.researchTimeSeconds * 1000)),
-    endsAtMs: now + Math.max(0, Math.round(levelData.researchTimeSeconds * 1000)),
-    instituteInstanceId: check.institute.instanceId
+    durationMs: effectiveDurationSeconds * 1000,
+    endsAtMs: now + effectiveDurationSeconds * 1000,
+    instituteInstanceId: check.institute.instanceId,
+    baseDurationSeconds: Math.max(1, Math.trunc(Number(levelData.researchTimeSeconds) || 1)),
+    researchSpeedPercent: Math.max(0, Number(developmentModifier.tedqiqatSuretiFaiz) || 0),
+    researchCostReductionPercent: Math.max(0, Math.min(100, Number(developmentModifier.tedqiqatXerciEndirimFaiz) || 0)),
+    baseCost: Array.isArray(levelData.cost) ? levelData.cost.map(x => ({ ...x })) : [],
+    effectiveCost: effectiveCost.map(x => ({ ...x }))
   };
 
   updateServerTime(state);
