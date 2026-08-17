@@ -1,14 +1,16 @@
-name: Konvoy Capacity Tech Disabled Testi
+name: Konvoy Capacity Testi
 
 on:
-  push:
-    branches:
-      - server-disable-obsolete-convoy-capacity-research-v1
   pull_request:
     paths:
+      - 'konvoy_tutum_qaydalari.js'
+      - 'konvoy_tutum_formulu.js'
+      - 'konvoy_tutum_formulu_testi.js'
+      - 'konvoy_formasiya_sistemi.js'
+      - 'konvoy_formasiya_sira_tutumu_testi.js'
       - 'konvoy_tutum_texnologiya_handler.js'
       - 'konvoy_tutum_texnologiya_disabled_testi.js'
-      - 'konvoy_tutum_formulu.js'
+      - 'konvoy_unity_contract_testi.js'
       - '.github/workflows/konvoy-capacity-tech-disabled-test.yml'
 
 jobs:
@@ -26,7 +28,9 @@ jobs:
         run: npm ci
       - name: Legacy tutum research disabled regression testi
         run: node konvoy_tutum_texnologiya_disabled_testi.js
-      - name: Aktiv Konvoy tutum formulu testi
+      - name: Əsgər Kampı tutum formulu testi
         run: node konvoy_tutum_formulu_testi.js
+      - name: 3 sıra tutum regression testi
+        run: node konvoy_formasiya_sira_tutumu_testi.js
       - name: Unity Konvoy contract regression testi
         run: node konvoy_unity_contract_testi.js
