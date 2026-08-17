@@ -53,11 +53,14 @@ assert.strictEqual(ikinci.buildingLevel, 2);
 assert.strictEqual(ikinci.yekunTutum, 1350);
 assert.strictEqual(ikinci.siraTutumu, 450);
 
-// Tamamlanmamış kamp tutum mənbəyi deyil.
+// Tamamlanmamış kamp tutum mənbəyi deyil. Legacy 5000 fallback 3 sıraya
+// ceil ilə bölünür ki, 5000-in hamısı istifadə edilə bilsin; ümumi validator
+// yenə 5000-dən yuxarı cəmi bloklayır.
 const ucuncu = konvoyTutumHesabiniAl(state, "konvoy_3");
 assert.strictEqual(ucuncu.formulaActive, false);
 assert.strictEqual(ucuncu.source, "legacy_5000_fallback");
 assert.strictEqual(ucuncu.yekunTutum, 5000);
+assert.strictEqual(ucuncu.siraTutumu, 1667);
 
 // Köhnə snapshot compatibility: eyni barrack ID-li iki persistent instance
 // varsa ikinci konvoy ikinci tamamlanmış instance-i götürə bilir.

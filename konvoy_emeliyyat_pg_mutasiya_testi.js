@@ -19,6 +19,34 @@ function stateHazirla() {
       baseX: 10,
       baseZ: 10
     },
+    buildings: [
+      {
+        instanceId: "operation_barrack_1",
+        buildingId: "barrack_1",
+        level: 1,
+        isCompleted: true
+      }
+    ],
+    heroes: [
+      { heroId: "doyuscu" }
+    ],
+    konvoylar: {
+      items: [
+        {
+          konvoyId: "konvoy_1",
+          qehremanIdleri: ["doyuscu"],
+          qosunlar: { fighter_lv1: 30 },
+          formasiya: {
+            version: 2,
+            siralar: [
+              { siraId: "sira_1", unitId: "fighter_lv1", count: 30 },
+              { siraId: "sira_2", unitId: "", count: 0 },
+              { siraId: "sira_3", unitId: "", count: 0 }
+            ]
+          }
+        }
+      ]
+    },
     konvoyEmeliyyatlari: {
       version: 3,
       activeByConvoy: {},
@@ -29,7 +57,9 @@ function stateHazirla() {
       items: []
     },
     army: {
-      troops: {}
+      troops: {
+        fighter_lv1: 30
+      }
     },
     resources: {}
   };
@@ -136,6 +166,10 @@ function fakeClientHazirla() {
     assert.ok(ilk.operation);
     assert.strictEqual(ilk.operation.convoyId, "konvoy_1");
     assert.strictEqual(ilk.operation.targetType, "enemy");
+    assert.strictEqual(ilk.operation.dispatchReadiness.troopCount, 30);
+    assert.strictEqual(ilk.operation.dispatchReadiness.tutum, 1200);
+    assert.strictEqual(ilk.operation.dispatchReadiness.siraTutumu, 400);
+    assert.deepStrictEqual(ilk.operation.dispatchReadiness.heroIds, ["doyuscu"]);
     assert.ok(state.konvoyEmeliyyatlari.activeByConvoy.konvoy_1);
     assert.strictEqual(state.serverSorquIdempotentliyi.items.length, 1);
     assert.strictEqual(fake.yazmaSayiniAl(), 1);

@@ -26,6 +26,18 @@ const MESAJLAR = new Set([
   "convoy_operation_start_request"
 ]);
 
+const STATE_YEDEK_SAHELERI = Object.freeze([
+  "konvoyEmeliyyatlari",
+  "xeriteToplama",
+  "worldEnemyBattle",
+  "doyusRaportlari",
+  "resources",
+  "army",
+  "konvoylar",
+  "xestexana",
+  "serverSorquIdempotentliyi"
+]);
+
 const oyuncuKilidleri = new Map();
 
 function metnAl(v, max = 220) {
@@ -108,31 +120,29 @@ async function sharedKonvoylariTransactiondaSinxronEt(
 }
 
 function stateYedeyiniAl(state) {
-  return kopyala({
-    konvoyEmeliyyatlari: state.konvoyEmeliyyatlari || null,
-    xeriteToplama: state.xeriteToplama || null,
-    worldEnemyBattle: state.worldEnemyBattle || null,
-    doyusRaportlari: state.doyusRaportlari || null,
-    resources: state.resources || null,
-    army: state.army || null,
-    konvoylar: state.konvoylar || null,
-    xestexana: state.xestexana || null,
-    serverSorquIdempotentliyi: state.serverSorquIdempotentliyi || null
-  });
+  const yedek = {};
+
+  for (const sahe of STATE_YEDEK_SAHELERI) {
+    const varIdi = Object.prototype.hasOwnProperty.call(state, sahe);
+    yedek[sahe] = {
+      varIdi,
+      deyer: varIdi ? kopyala(state[sahe]) : undefined
+    };
+  }
+
+  return yedek;
 }
 
 function stateRollbackEt(state, evvelki) {
-  state.konvoyEmeliyyatlari = kopyala(evvelki && evvelki.konvoyEmeliyyatlari);
-  state.xeriteToplama = kopyala(evvelki && evvelki.xeriteToplama);
-  state.worldEnemyBattle = kopyala(evvelki && evvelki.worldEnemyBattle);
-  state.doyusRaportlari = kopyala(evvelki && evvelki.doyusRaportlari);
-  state.resources = kopyala(evvelki && evvelki.resources);
-  state.army = kopyala(evvelki && evvelki.army);
-  state.konvoylar = kopyala(evvelki && evvelki.konvoylar);
-  state.xestexana = kopyala(evvelki && evvelki.xestexana);
-  state.serverSorquIdempotentliyi = kopyala(
-    evvelki && evvelki.serverSorquIdempotentliyi
-  );
+  for (const sahe of STATE_YEDEK_SAHELERI) {
+    const item = evvelki && evvelki[sahe];
+    if (item && item.varIdi) {
+      state[sahe] = kopyala(item.deyer);
+    }
+    else {
+      delete state[sahe];
+    }
+  }
 }
 
 function startPayloadiniAl(msg) {
@@ -223,10 +233,10 @@ async function konvoyEmeliyyatMutasiyasiniTetbiqEt(
     };
   }
 
-  // `emeliyyatiBaslat()` stateTeminEt() vasitəsilə validation-dan əvvəl
-  // default konvoy əməliyyat state-i yarada bilər. Uğursuz start cəhdi
-  // time-based `emeliyyatlariYenile()` nəticələrini silməməlidir, ona görə
-  // backup məhz yeniləmədən və idempotency yoxlamasından SONRA götürülür.
+  // `emeliyyatiBaslat()` stateTeminEt() və readiness normalizasiyası ilə
+  // validation zamanı state-ə toxuna bilər. Uğursuz start cəhdi time-based
+  // `emeliyyatlariYenile()` nəticələrini silməməlidir, ona görə backup məhz
+  // yeniləmədən və idempotency yoxlamasından SONRA götürülür.
   const startdanEvvel = stateYedeyiniAl(state);
 
   const result = emeliyyatiBaslat(
@@ -258,6 +268,12 @@ async function konvoyEmeliyyatMutasiyasiniTetbiqEt(
       message: result && result.message
         ? result.message
         : "Konvoy əməliyyatı başlaya bilmədi.",
+      readinessCode: result && result.readinessCode
+        ? result.readinessCode
+        : undefined,
+      readiness: result && result.readiness
+        ? kopyala(result.readiness)
+        : undefined,
       movementConfigured: result && result.movementConfigured === false
         ? false
         : undefined,
@@ -367,6 +383,12 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
           message: netice && netice.message
             ? netice.message
             : "Konvoy əməliyyatı başlaya bilmədi.",
+          readinessCode: netice && netice.readinessCode
+            ? netice.readinessCode
+            : undefined,
+          readiness: netice && netice.readiness
+            ? netice.readiness
+            : undefined,
           movementConfigured: netice && netice.movementConfigured === false
             ? false
             : undefined,
@@ -407,7 +429,10 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
 
 module.exports = {
   MESAJLAR,
+  STATE_YEDEK_SAHELERI,
   startPayloadiniAl,
+  stateYedeyiniAl,
+  stateRollbackEt,
   konvoyEmeliyyatMutasiyasiniTetbiqEt,
   konvoyEmeliyyatMesajiniEmalEt
 };

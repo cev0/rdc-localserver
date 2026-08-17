@@ -25,6 +25,7 @@ on:
       - server-pvp-fixed-storage-protection-v1
       - server-pvp-shield-items-v1
       - server-convoy-capacity-skill-link-v3
+      - server-convoy-dispatch-readiness-v1
       - server-hero-exp-level50-v1
       - server-hero-skill-progression-v1
       - server-development-hero-engine-v1
@@ -64,8 +65,15 @@ on:
       - 'xerite_dusmen_doyus_sistemi.js'
       - 'konvoy_mudafie_sistemi.js'
       - 'konvoy_handler.js'
+      - 'konvoy_qosun_sistemi.js'
+      - 'konvoy_formasiya_sistemi.js'
       - 'konvoy_tutum_formulu.js'
       - 'konvoy_tutum_formulu_testi.js'
+      - 'konvoy_yola_hazirliq_sistemi.js'
+      - 'konvoy_yola_hazirliq_sistemi_testi.js'
+      - 'konvoy_emeliyyat_sistemi.js'
+      - 'konvoy_emeliyyat_handler.js'
+      - 'konvoy_emeliyyat_pg_mutasiya_testi.js'
       - 'konvoy_texnologiya_handler.js'
       - 'konvoy_texnologiya_inkisaf_inteqrasiya_testi.js'
       - 'texnologiya_inkisaf_korpu.js'
@@ -156,6 +164,10 @@ jobs:
         run: node doyus_qosun_lifecycle_testi.js
       - name: Konvoy tutum formulu testleri
         run: node konvoy_tutum_formulu_testi.js
+      - name: Konvoy yola hazirliq testleri
+        run: node konvoy_yola_hazirliq_sistemi_testi.js
+      - name: Konvoy emeliyyat PG mutasiya testleri
+        run: node konvoy_emeliyyat_pg_mutasiya_testi.js
       - name: Qehreman EXP progression testleri
         run: node qehreman_exp_progression_testi.js
       - name: Qehreman skill progression testleri
