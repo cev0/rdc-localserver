@@ -21,7 +21,7 @@ jobs:
           node-version: '20'
           cache: npm
       - run: npm ci
-      - name: Patch production runtime and CI
+      - name: Patch production runtime
         shell: python
         run: |
           from pathlib import Path
@@ -49,44 +49,8 @@ jobs:
               s = s.replace(old, new, 1)
               p.write_text(s, encoding='utf-8')
 
-          wf = Path('.github/workflows/qosun-server-test.yml')
-          w = wf.read_text(encoding='utf-8')
-          branch_line = '      - server-resource-development-runtime-v1\n'
-          anchor = '      - server-construction-runtime-patcher-v1\n'
-          if branch_line not in w:
-              if anchor in w:
-                  w = w.replace(anchor, anchor + branch_line, 1)
-              else:
-                  raise SystemExit('CI branch anchor not found')
-
-          path_anchor = "      - 'tikinti_inkisaf_runtime_inteqrasiya_testi.js'\n"
-          path_lines = "      - 'resurs_inkisaf_korpu.js'\n      - 'resurs_inkisaf_korpu_testi.js'\n"
-          if "      - 'resurs_inkisaf_korpu.js'\n" not in w:
-              if path_anchor in w:
-                  w = w.replace(path_anchor, path_anchor + path_lines, 1)
-              else:
-                  raise SystemExit('CI path anchor not found')
-
-          step_anchor = '      - name: Xestexana Inkisaf korpusu testleri\n        run: node xestexana_inkisaf_override_testi.js\n'
-          step_lines = '      - name: Resurs istehsali Inkisaf korpusu testleri\n        run: node resurs_inkisaf_korpu_testi.js\n'
-          if 'run: node resurs_inkisaf_korpu_testi.js' not in w:
-              if step_anchor in w:
-                  w = w.replace(step_anchor, step_anchor + step_lines, 1)
-              else:
-                  raise SystemExit('CI test step anchor not found')
-          wf.write_text(w, encoding='utf-8')
-
           test = Path('resurs_inkisaf_runtime_inteqrasiya_testi.js')
           test.write_text('''"use strict";\n\nconst assert = require("assert");\nconst fs = require("fs");\nconst source = fs.readFileSync("./server.js", "utf8");\nassert.ok(source.includes('require("./resurs_inkisaf_korpu")'));\nassert.ok(source.includes('stateUcunBinaIstehsaliniHesabla('));\nassert.ok(source.includes('building.instanceId'));\nassert.ok(source.includes('productionCalculation.finalAmount'));\nconsole.log("Resurs İnkişaf runtime inteqrasiya testi uğurla keçdi.");\n''', encoding='utf-8')
-
-          w = wf.read_text(encoding='utf-8')
-          runtime_path = "      - 'resurs_inkisaf_runtime_inteqrasiya_testi.js'\n"
-          if runtime_path not in w:
-              w = w.replace("      - 'resurs_inkisaf_korpu_testi.js'\n", "      - 'resurs_inkisaf_korpu_testi.js'\n" + runtime_path, 1)
-          runtime_step = '      - name: Resurs istehsali Inkisaf runtime inteqrasiya testleri\n        run: node resurs_inkisaf_runtime_inteqrasiya_testi.js\n'
-          if 'run: node resurs_inkisaf_runtime_inteqrasiya_testi.js' not in w:
-              w = w.replace(step_lines, step_lines + runtime_step, 1)
-          wf.write_text(w, encoding='utf-8')
       - name: Test resource development integration
         run: |
           node resurs_inkisaf_korpu_testi.js
@@ -99,6 +63,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add server.js resurs_inkisaf_runtime_inteqrasiya_testi.js .github/workflows/qosun-server-test.yml
+          git add server.js resurs_inkisaf_runtime_inteqrasiya_testi.js
           git commit -m "Integrate resource development bonus into production runtime"
           git push origin HEAD:server-resource-development-runtime-v1
