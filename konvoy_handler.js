@@ -43,10 +43,23 @@ const KONVOY_MESAJLARI = new Set([
   "convoy_defense_set_request"
 ]);
 
+const FORMASIYA_SIRA_IDLERI = Object.freeze([
+  "sira_1",
+  "sira_2",
+  "sira_3"
+]);
+
 function metnAl(deyer, maksimum = 128) {
   return typeof deyer === "string"
     ? deyer.trim().slice(0, maksimum).toLowerCase()
     : "";
+}
+
+function musbetTamEded(deyer) {
+  const say = Number(deyer);
+  return Number.isFinite(say)
+    ? Math.max(0, Math.trunc(say))
+    : 0;
 }
 
 function kopyala(deyer) {
@@ -70,6 +83,87 @@ function neticeTipiniAl(type) {
   if (type === "convoy_formation_set_request") return "convoy_formation_set_result";
   if (type === "convoy_defense_set_request") return "convoy_defense_set_result";
   return "convoy_troops_set_result";
+}
+
+function unityFormasiyasiniSiralarArrayinaCevir(rawFormasiya) {
+  if (Array.isArray(rawFormasiya)) {
+    return rawFormasiya;
+  }
+
+  if (!rawFormasiya || typeof rawFormasiya !== "object") {
+    return rawFormasiya;
+  }
+
+  return FORMASIYA_SIRA_IDLERI.map(siraId => {
+    const raw = rawFormasiya[siraId];
+    return {
+      siraId,
+      unitId: metnAl(raw && raw.unitId, 128),
+      count: musbetTamEded(raw && raw.count)
+    };
+  });
+}
+
+function siralarArrayiniUnityFormasiyasinaCevir(rawSiralar) {
+  const netice = {
+    sira_1: { unitId: "", count: 0 },
+    sira_2: { unitId: "", count: 0 },
+    sira_3: { unitId: "", count: 0 }
+  };
+
+  for (const raw of Array.isArray(rawSiralar) ? rawSiralar : []) {
+    const siraId = metnAl(raw && raw.siraId, 32);
+    if (!FORMASIYA_SIRA_IDLERI.includes(siraId)) continue;
+
+    netice[siraId] = {
+      unitId: metnAl(raw && raw.unitId, 128),
+      count: musbetTamEded(raw && raw.count)
+    };
+  }
+
+  return netice;
+}
+
+function formationInfoUnityUcunUyğunlaşdır(formationInfo, troopInfo) {
+  const rawFormation = formationInfo && typeof formationInfo === "object"
+    ? formationInfo
+    : {};
+  const rawTroop = troopInfo && typeof troopInfo === "object"
+    ? troopInfo
+    : {};
+
+  const troopItems = Array.isArray(rawTroop.items) ? rawTroop.items : [];
+  const troopById = new Map(
+    troopItems
+      .filter(x => x && metnAl(x.konvoyId, 64))
+      .map(x => [metnAl(x.konvoyId, 64), x])
+  );
+
+  const items = Array.isArray(rawFormation.items)
+    ? rawFormation.items.map(item => {
+        const konvoyId = metnAl(item && item.konvoyId, 64);
+        const troopItem = troopById.get(konvoyId) || null;
+        const siralar = Array.isArray(item && item.siralar)
+          ? item.siralar.map(x => ({ ...x }))
+          : [];
+
+        return {
+          ...item,
+          tutum: musbetTamEded(troopItem && troopItem.tutum),
+          istifadeOlunanTutum: musbetTamEded(
+            troopItem && troopItem.istifadeOlunanTutum
+          ),
+          formation: siralarArrayiniUnityFormasiyasinaCevir(siralar)
+        };
+      })
+    : [];
+
+  return {
+    ...rawFormation,
+    tutumLevel: musbetTamEded(rawTroop.tutumLevel),
+    tutum: musbetTamEded(rawTroop.tutum),
+    items
+  };
 }
 
 function konvoyStateYedeyiniAl(state) {
@@ -114,8 +208,24 @@ function konvoyMutasiyasiniTetbiqEt(state, type, msg, nowMs = Date.now()) {
     netice = qehremaniKonvoydanCixar(state, konvoyId, heroId);
   }
   else if (type === "convoy_formation_set_request") {
-    const siralar = msg && msg.siralar;
+    // Serverin canonical müqaviləsi `siralar[]` saxlanılır.
+    // Unity 3-sıralı UI isə `formation.sira_1..sira_3` göndərir.
+    // Hər iki formatı qəbul edirik ki, köhnə client-lər pozulmasın.
+    const rawFormasiya = msg && (
+      Array.isArray(msg.siralar)
+        ? msg.siralar
+        : msg.formation
+    );
+    const siralar = unityFormasiyasiniSiralarArrayinaCevir(rawFormasiya);
     netice = formasiyaTeyinEt(state, konvoyId, siralar);
+
+    if (netice && netice.success === true) {
+      netice.formation = siralarArrayiniUnityFormasiyasinaCevir(netice.siralar);
+      netice.formationInfo = formationInfoUnityUcunUyğunlaşdır(
+        netice.formationInfo,
+        netice.troopInfo
+      );
+    }
   }
   else if (type === "convoy_troops_set_request") {
     const troops = msg && msg.troops;
@@ -187,7 +297,10 @@ async function konvoyMesajiniEmalEt(kontekst) {
     if (type === "convoy_info_request") {
       const heroInfo = konvoyMelumatiniHazirla(state);
       const troopInfo = konvoyQosunMelumatiniHazirla(state);
-      const formationInfo = formasiyaMelumatiniHazirla(state);
+      const formationInfo = formationInfoUnityUcunUyğunlaşdır(
+        formasiyaMelumatiniHazirla(state),
+        troopInfo
+      );
       const defenseInfo = konvoyMudafieMelumatiniHazirla(
         state,
         kontekst.nowMs()
@@ -261,6 +374,9 @@ async function konvoyMesajiniEmalEt(kontekst) {
 
 module.exports = {
   KONVOY_MESAJLARI,
+  unityFormasiyasiniSiralarArrayinaCevir,
+  siralarArrayiniUnityFormasiyasinaCevir,
+  formationInfoUnityUcunUyğunlaşdır,
   konvoyMutasiyasiniTetbiqEt,
   konvoyMesajiniEmalEt
 };
