@@ -8,6 +8,7 @@ const {
 
 const UNIT_TESTLERI = [
   "baza_yerdeyisme_dovlet_kilidi_client_testi.js",
+  "berpa_kodu_yaradilma_kilidi_testi.js",
   "dovlet_baza_birbasa_postgres_testi.js",
   "dovlet_konvoy_runtime_client_sync_testi.js",
   "dovlet_konvoy_runtime_pvp_status_testi.js",
@@ -18,6 +19,7 @@ const UNIT_TESTLERI = [
   "doyus_raport_pg_mutasiya_testi.js",
   "dusmen_movqeyi_pg_mutasiya_testi.js",
   "email_dev_log_qoruma_testi.js",
+  "email_tesdiq_kodu_yaradilma_kilidi_testi.js",
   "hesab_provayder_cavab_uygunlugu_testi.js",
   "iki_oyuncu_state_mutasiya_postgres_testi.js",
   "kesfiyyat_pg_mutasiya_testi.js",

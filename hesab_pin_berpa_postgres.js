@@ -78,104 +78,116 @@ function emailMaskala(email) {
   return ilk + "***" + son + "@" + domen;
 }
 
-async function hesabSetriniAl(playerId) {
+async function pinBerpaKodunuHazirla(playerId, secimler = {}) {
   const temizPlayerId = metnAl(playerId, 128);
-  if (!temizPlayerId) return null;
 
-  const hovuz = proqramHovuzunuAl();
-  const netice = await hovuz.query(
-    `
-    SELECT
-      hesab_id,
-      oyuncu_id,
-      esas_email,
-      email_tesdiqlenib,
-      pin_hash,
-      status
-    FROM hesablar
-    WHERE oyuncu_id = $1
-    LIMIT 1
-    `,
-    [temizPlayerId]
-  );
-
-  if (!netice.rows || netice.rows.length !== 1) {
-    return null;
-  }
-
-  return netice.rows[0];
-}
-
-async function pinBerpaKodunuHazirla(playerId) {
-  const hesab = await hesabSetriniAl(playerId);
-
-  if (!hesab || hesab.status !== "aktiv") {
+  if (!temizPlayerId) {
     return {
       success: false,
       message: "Aktiv hesab tapılmadı."
     };
   }
 
-  if (!hesab.pin_hash) {
-    return {
-      success: false,
-      hasPin: false,
-      message: "Bu hesabda PIN aktiv deyil."
-    };
-  }
-
-  if (!hesab.email_tesdiqlenib || !hesab.esas_email) {
-    return {
-      success: false,
-      hasPin: true,
-      message: "PIN bərpası üçün təsdiqlənmiş e-poçt tələb olunur."
-    };
-  }
-
-  const hovuz = proqramHovuzunuAl();
-
-  const sonSorqu = await hovuz.query(
-    `
-    SELECT yaradilma_vaxti
-    FROM hesab_pin_berpa_sorqulari
-    WHERE hesab_id = $1
-      AND istifade_vaxti IS NULL
-    ORDER BY yaradilma_vaxti DESC
-    LIMIT 1
-    `,
-    [hesab.hesab_id]
-  );
-
-  if (sonSorqu.rows && sonSorqu.rows.length > 0) {
-    const sonVaxt = new Date(
-      sonSorqu.rows[0].yaradilma_vaxti
-    ).getTime();
-
-    const kecen = Date.now() - sonVaxt;
-
-    if (kecen >= 0 && kecen < YENIDEN_GONDERME_MS) {
-      return {
-        success: true,
-        hasPin: true,
-        cooldown: true,
-        retryAfterMs: YENIDEN_GONDERME_MS - kecen,
-        maskedEmail: emailMaskala(hesab.esas_email),
-        emailGonderilmeli: false,
-        message: "Yeni kod istəmək üçün bir qədər gözləyin."
-      };
-    }
-  }
-
-  const sorquId = crypto.randomBytes(16).toString("hex");
-  const kod = kodYarat();
-  const duz = crypto.randomBytes(16).toString("hex");
-  const kodHash = kodHashYarat(kod, duz);
-  const bitmeVaxtiMs = Date.now() + KOD_MUDDETI_MS;
-
+  const hovuz = secimler.hovuz || proqramHovuzunuAl();
+  const secilmisVaxt = Number(secimler.nowMs);
+  const indiMs = Number.isFinite(secilmisVaxt) && secilmisVaxt > 0
+    ? Math.trunc(secilmisVaxt)
+    : Date.now();
   const client = await hovuz.connect();
 
   try {
     await client.query("BEGIN");
+
+    const hesabNeticesi = await client.query(
+      `
+      SELECT
+        hesab_id,
+        oyuncu_id,
+        esas_email,
+        email_tesdiqlenib,
+        pin_hash,
+        status
+      FROM hesablar
+      WHERE oyuncu_id = $1
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [temizPlayerId]
+    );
+
+    if (!hesabNeticesi.rows || hesabNeticesi.rows.length !== 1) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        message: "Aktiv hesab tapılmadı."
+      };
+    }
+
+    const hesab = hesabNeticesi.rows[0];
+
+    if (hesab.status !== "aktiv") {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        message: "Aktiv hesab tapılmadı."
+      };
+    }
+
+    if (!hesab.pin_hash) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        hasPin: false,
+        message: "Bu hesabda PIN aktiv deyil."
+      };
+    }
+
+    if (!hesab.email_tesdiqlenib || !hesab.esas_email) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        hasPin: true,
+        message: "PIN bərpası üçün təsdiqlənmiş e-poçt tələb olunur."
+      };
+    }
+
+    const sonSorqu = await client.query(
+      `
+      SELECT yaradilma_vaxti
+      FROM hesab_pin_berpa_sorqulari
+      WHERE hesab_id = $1
+        AND istifade_vaxti IS NULL
+      ORDER BY yaradilma_vaxti DESC
+      LIMIT 1
+      `,
+      [hesab.hesab_id]
+    );
+
+    if (sonSorqu.rows && sonSorqu.rows.length > 0) {
+      const sonVaxt = new Date(
+        sonSorqu.rows[0].yaradilma_vaxti
+      ).getTime();
+      const kecen = indiMs - sonVaxt;
+
+      if (kecen >= 0 && kecen < YENIDEN_GONDERME_MS) {
+        await client.query("ROLLBACK");
+        return {
+          success: true,
+          hasPin: true,
+          cooldown: true,
+          retryAfterMs: YENIDEN_GONDERME_MS - kecen,
+          maskedEmail: emailMaskala(hesab.esas_email),
+          emailGonderilmeli: false,
+          message: "Yeni kod istəmək üçün bir qədər gözləyin."
+        };
+      }
+    }
+
+    const sorquId = crypto.randomBytes(16).toString("hex");
+    const kod = kodYarat();
+    const duz = crypto.randomBytes(16).toString("hex");
+    const kodHash = kodHashYarat(kod, duz);
+    const bitmeVaxtiMs = indiMs + KOD_MUDDETI_MS;
 
     await client.query(
       `
