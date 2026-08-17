@@ -9,6 +9,9 @@ const {
   binaUyğundur,
   binaUcunInkIsafModifikatorlariniHesabla
 } = require("./qehreman_inkisaf_sistemi");
+const {
+  inkisafTapshiriqlariniBarisdir
+} = require("./qehreman_tapshiriq_saglamliq");
 
 function metnAl(v, max = 128) {
   return typeof v === "string" ? v.trim().toLowerCase().slice(0, max) : "";
@@ -104,7 +107,7 @@ function inkisafQehremaniTeyinEt(state, heroId, buildingInstanceId) {
     heroId: id,
     buildingInstanceId: instanceId,
     buildingId: metnAl(bina.buildingId),
-    field: metnAl(inkisaf.field, 64)
+    field: metnAl(inkisaf.field || inkisaf.sahesi, 64)
   };
   t.development.push(assignment);
   return {
@@ -125,6 +128,7 @@ function inkisafQehremaniniCixar(state, heroId) {
 
 function tapshiriqMelumatiniHazirla(state) {
   const t = tapshiriqStateTeminEt(state);
+  const barisdirma = inkisafTapshiriqlariniBarisdir(state, t);
   return {
     technology: t.technology ? { ...t.technology } : null,
     resources: t.resources.map(x => ({ ...x })),
@@ -132,12 +136,17 @@ function tapshiriqMelumatiniHazirla(state) {
       ...x,
       modifiers: binaUcunInkIsafModifikatorlariniHesabla(state, x.buildingInstanceId)
     })),
+    reconciliation: {
+      changed: barisdirma.deyisdi,
+      removedCount: barisdirma.silinenler.length
+    },
     policies: {
       battleHeroTarget: "konvoy",
       technologyHeroTarget: "tamamlanmis_institut",
       developmentHeroTarget: "qehreman_kataloqunda_icazeli_tamamlanmis_bina",
       oneHeroOneAssignment: true,
       oneDevelopmentHeroPerBuilding: true,
+      staleDevelopmentAssignmentsAreRemoved: true,
       unapprovedEffectValuesEnabled: false,
       note: "İnkişaf effektləri yalnız qəhrəman kataloqunda təsdiqlənmiş rəqəmlərlə aktiv olur."
     }
