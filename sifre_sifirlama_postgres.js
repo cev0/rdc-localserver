@@ -195,7 +195,6 @@ async function sifreSifirlamaKodunuHazirla(email, secimler = {}) {
         console.log("[SIFRE_SIFIRLAMA] Kod hazırlandı:", {
             accountId: hesab.accountId,
             playerId: hesab.playerId,
-            email: hesab.primaryEmail,
             sorquId
         });
 
@@ -564,8 +563,7 @@ async function yeniSifreTeyinEt(resetToken, yeniSifre) {
 
         console.log("[SIFRE_SIFIRLAMA] Şifrə uğurla dəyişdirildi:", {
             accountId: setr.hesab_id,
-            playerId: setr.oyuncu_id,
-            email: setr.esas_email
+            playerId: setr.oyuncu_id
         });
 
         return {
