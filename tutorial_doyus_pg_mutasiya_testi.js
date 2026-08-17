@@ -27,7 +27,7 @@ function stateHazirla() {
     },
     army: {
       troops: {
-        fighter_lv1: 2
+        fighter_lv1: 5
       }
     },
     heroes: [
@@ -36,6 +36,38 @@ function stateHazirla() {
         level: 1
       }
     ],
+    konvoylar: {
+      items: [
+        {
+          konvoyId: "konvoy_1",
+          aciqdir: true,
+          qehremanIdleri: ["doyuscu"],
+          qosunlar: {
+            fighter_lv1: 5
+          },
+          formasiya: {
+            version: 1,
+            siralar: [
+              {
+                siraId: "sira_1",
+                unitId: "fighter_lv1",
+                count: 5
+              },
+              {
+                siraId: "sira_2",
+                unitId: "",
+                count: 0
+              },
+              {
+                siraId: "sira_3",
+                unitId: "",
+                count: 0
+              }
+            ]
+          }
+        }
+      ]
+    },
     dusmenMovqeleri: {
       tutorial: {
         targetId: TUTORIAL_HEDEF_ID,
@@ -59,7 +91,7 @@ function stateHazirla() {
   assert.strictEqual(start.netice.alreadyStarted, false);
   assert.strictEqual(state.doyus.tutorial.status, "davam_edir");
   assert.strictEqual(state.doyus.tutorial.heroId, "doyuscu");
-  assert.strictEqual(state.doyus.tutorial.troopSnapshot.fighter_lv1, 2);
+  assert.strictEqual(state.doyus.tutorial.troopSnapshot.warrior_t1, 5);
 
   const tezResolve = tutorialDoyusMutasiyasiniTetbiqEt(
     state,
@@ -164,27 +196,20 @@ function stateHazirla() {
 
 (function alreadyResolvedNoExtraMutationTesti() {
   const state = stateHazirla();
-  state.doyus = {
-    version: 1,
-    tutorial: {
-      battleId: "tutorial_doyus_001",
-      targetId: TUTORIAL_HEDEF_ID,
-      status: "qelebe",
-      startedAtMs: 1000,
-      completedAtMs: 6000,
-      heroId: "doyuscu",
-      playerPower: 10,
-      enemyPower: 5,
-      rewardClaimed: false,
-      pendingRewards: [
-        { resourceId: "food", amount: 200 },
-        { resourceId: "wood", amount: 200 }
-      ],
-      troopSnapshot: {
-        fighter_lv1: 2
-      }
-    }
-  };
+  const start = tutorialDoyusMutasiyasiniTetbiqEt(
+    state,
+    "battle_start_request",
+    1000
+  );
+  const ilkResolve = tutorialDoyusMutasiyasiniTetbiqEt(
+    state,
+    "battle_resolve_request",
+    6000
+  );
+
+  assert.strictEqual(start.success, true);
+  assert.strictEqual(ilkResolve.success, true);
+  assert.strictEqual(state.doyus.tutorial.status, "qelebe");
 
   const evvelki = kopyala(state);
   const netice = tutorialDoyusMutasiyasiniTetbiqEt(
