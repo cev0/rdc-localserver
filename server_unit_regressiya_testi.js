@@ -127,10 +127,19 @@ for (const testFayli of UNIT_TESTLERI) {
         ...process.env,
         NODE_ENV: "test"
       },
-      stdio: "inherit",
+      stdio: "pipe",
+      encoding: "utf8",
+      maxBuffer: 4 * 1024 * 1024,
       timeout: 60000
     }
   );
+
+  if (netice.stdout) {
+    process.stdout.write(netice.stdout);
+  }
+  if (netice.stderr) {
+    process.stderr.write(netice.stderr);
+  }
 
   if (netice.status === 0 && !netice.error) {
     console.log(`[UNIT_SUITE] PASS  ${testFayli}`);
@@ -143,8 +152,18 @@ for (const testFayli of UNIT_TESTLERI) {
       ? `signal=${netice.signal}`
       : `exit=${netice.status}`;
 
+  const xetaMetni = String(netice.stderr || netice.stdout || sebeb)
+    .trim()
+    .split(/\r?\n/)
+    .slice(-4)
+    .join(" | ")
+    .slice(-1200)
+    .replace(/%/g, "%25")
+    .replace(/\r/g, "%0D")
+    .replace(/\n/g, "%0A");
+
   console.error(
-    `::error file=${testFayli}::Unit regression uğursuzdur: ${sebeb}`
+    `::error file=${testFayli}::Unit regression uğursuzdur: ${sebeb} | ${xetaMetni}`
   );
   ugursuzTestler.push(testFayli);
 }
