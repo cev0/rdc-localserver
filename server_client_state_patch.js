@@ -52,6 +52,43 @@ function clientStateQaydalariniTetbiqEt(serverYolu = path.join(__dirname, "serve
     deyisdi = true;
   }
 
+  // ------------------------------------------------------------
+  // Unity JsonUtility Dictionary<string, int> oxumur.
+  // Authoritative levels obyekti server state-də dəyişmədən qalır;
+  // client clone-a əlavə, deterministik array görünüşü verilir.
+  // ------------------------------------------------------------
+  if (!kod.includes("[CLIENT_TECH_LEVEL_COMPAT]")) {
+    const techLevelsKod = `
+  // [CLIENT_TECH_LEVEL_COMPAT]
+  if (
+    clientState.technology &&
+    typeof clientState.technology === "object" &&
+    !Array.isArray(clientState.technology)
+  ) {
+    const levels =
+      clientState.technology.levels &&
+      typeof clientState.technology.levels === "object" &&
+      !Array.isArray(clientState.technology.levels)
+        ? clientState.technology.levels
+        : {};
+
+    clientState.technology.techLevels = Object.entries(levels)
+      .map(([techId, rawLevel]) => ({
+        techId: String(techId || "").trim().toLowerCase(),
+        level: Math.max(0, Math.trunc(Number(rawLevel) || 0))
+      }))
+      .filter(x => x.techId)
+      .sort((a, b) => a.techId.localeCompare(b.techId));
+  }
+`;
+
+    const yeniCloneIndex = kod.indexOf(cloneSetri);
+    kod = kod.slice(0, yeniCloneIndex + cloneSetri.length) +
+      techLevelsKod +
+      kod.slice(yeniCloneIndex + cloneSetri.length);
+    deyisdi = true;
+  }
+
   if (!deyisdi) {
     return false;
   }
