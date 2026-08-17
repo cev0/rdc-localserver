@@ -5,6 +5,9 @@ const {
   PVP_HUCUM_START_EMELIYYAT_TIPI,
   pvpBazaHucumStartMutasiyasiniIcraEt
 } = require("./pvp_baza_hucum_start_xidmeti");
+const {
+  qosunGucunuHesabla
+} = require("./qosun_doyus_stat_sistemi");
 
 function stateHazirla() {
   return {
@@ -155,7 +158,10 @@ const fakeClient = {
       assert.strictEqual(netice.operation.arrivalAtMs, 6000);
       assert.strictEqual(netice.operation.status, "marching_to_player_base");
       assert.strictEqual(netice.operation.attackerCombatSnapshot.troopCount, 10);
-      assert.strictEqual(netice.operation.attackerCombatSnapshot.troopPower, 50);
+      assert.strictEqual(
+        netice.operation.attackerCombatSnapshot.troopPower,
+        qosunGucunuHesabla({ fighter_lv1: 10 })
+      );
 
       assert.ok(state.konvoyEmeliyyatlari);
       assert.ok(state.konvoyEmeliyyatlari.activeByConvoy.konvoy_1);

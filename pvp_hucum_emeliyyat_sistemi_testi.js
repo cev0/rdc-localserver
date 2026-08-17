@@ -6,6 +6,9 @@ const {
   pvpHucumEmeliyyatiniHazirla,
   pvpHucumCatmaVeziyyetiniHazirla
 } = require("./pvp_hucum_emeliyyat_sistemi");
+const {
+  qosunGucunuHesabla
+} = require("./qosun_doyus_stat_sistemi");
 
 function hucumcuStateHazirla() {
   return {
@@ -75,7 +78,10 @@ function hedefBazaHazirla(x = 13, z = 24) {
   assert.strictEqual(netice.operation.targetZ, 24);
   assert.strictEqual(netice.operation.status, "marching_to_player_base");
   assert.strictEqual(netice.operation.attackerCombatSnapshot.troopCount, 30);
-  assert.strictEqual(netice.operation.attackerCombatSnapshot.troopPower, 150);
+  assert.strictEqual(
+    netice.operation.attackerCombatSnapshot.troopPower,
+    qosunGucunuHesabla({ fighter_lv1: 30 })
+  );
   assert.strictEqual(netice.operation.targetSnapshot.coordinatesLocked, true);
   assert.strictEqual(netice.operation.targetSnapshot.targetPlayerId, "oyuncu_b");
   assert.ok(netice.operation.travelDurationMs > 0);
