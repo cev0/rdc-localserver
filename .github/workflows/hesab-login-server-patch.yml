@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Repo-nu al
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Login handler-i servere qos
         shell: bash
