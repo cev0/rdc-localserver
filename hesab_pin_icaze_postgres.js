@@ -7,7 +7,8 @@ const {
 } = require("./verilenler_bazasi");
 
 const {
-  pinYoxla
+  pinDuzgundur,
+  pinYoxlamaDaxili
 } = require("./hesab_pin_postgres");
 
 const ICAZE_MUDDETI_MS = 2 * 60 * 1000;
@@ -40,6 +41,8 @@ async function hesabSetriniPlayerIdIleAl(client, playerId, kilidle = false) {
       hesab_id,
       oyuncu_id,
       pin_hash,
+      pin_sehv_cehd_sayi,
+      pin_blok_vaxti,
       status
     FROM hesablar
     WHERE oyuncu_id = $1
@@ -56,7 +59,12 @@ async function hesabSetriniPlayerIdIleAl(client, playerId, kilidle = false) {
   return netice.rows[0];
 }
 
-async function pinIcazesiYarat(playerId, emeliyyatNovu, pin) {
+async function pinIcazesiYarat(
+  playerId,
+  emeliyyatNovu,
+  pin,
+  secimler = {}
+) {
   const temizPlayerId = metnAl(playerId, 128);
   const temizEmeliyyat = metnAl(emeliyyatNovu, 64);
 
@@ -74,77 +82,25 @@ async function pinIcazesiYarat(playerId, emeliyyatNovu, pin) {
     };
   }
 
-  const hovuz = proqramHovuzunuAl();
+  const hovuz =
+    secimler.hovuz ||
+    proqramHovuzunuAl();
 
-  const ilkinNetice = await hovuz.query(
-    `
-    SELECT
-      hesab_id,
-      oyuncu_id,
-      pin_hash,
-      status
-    FROM hesablar
-    WHERE oyuncu_id = $1
-    LIMIT 1
-    `,
-    [temizPlayerId]
-  );
-
-  if (!ilkinNetice.rows || ilkinNetice.rows.length !== 1) {
-    return {
-      success: false,
-      message: "Hesab tapılmadı."
-    };
-  }
-
-  const ilkinHesab = ilkinNetice.rows[0];
-
-  if (ilkinHesab.status !== "aktiv") {
-    return {
-      success: false,
-      message: "Hesab aktiv deyil."
-    };
-  }
-
-  if (!ilkinHesab.pin_hash) {
-    return {
-      success: true,
-      hasPin: false,
-      pinRequired: false,
-      operation: temizEmeliyyat,
-      authorizationToken: "",
-      expiresAtMs: 0,
-      message: "Hesabda PIN aktiv deyil. Əlavə PIN təsdiqi tələb olunmur."
-    };
-  }
-
-  const pinNeticesi = await pinYoxla(
-    temizPlayerId,
-    metnAl(pin, 16)
-  );
-
-  if (!pinNeticesi || pinNeticesi.success !== true) {
-    return {
-      success: false,
-      hasPin: pinNeticesi && pinNeticesi.hasPin === true,
-      locked: pinNeticesi && pinNeticesi.locked === true,
-      tooManyAttempts:
-        pinNeticesi && pinNeticesi.tooManyAttempts === true,
-      attemptsRemaining:
-        Number(pinNeticesi && pinNeticesi.attemptsRemaining || 0),
-      retryAfterMs:
-        Number(pinNeticesi && pinNeticesi.retryAfterMs || 0),
-      message: pinNeticesi && pinNeticesi.message
-        ? pinNeticesi.message
-        : "PIN yanlışdır."
-    };
-  }
+  const secilmisVaxt = Number(secimler.nowMs);
+  const indi =
+    Number.isFinite(secilmisVaxt) &&
+    secilmisVaxt > 0
+      ? Math.trunc(secilmisVaxt)
+      : Date.now();
 
   const client = await hovuz.connect();
 
   try {
     await client.query("BEGIN");
 
+    // PIN yoxlaması və icazə tokeninin yaradılması eyni hesab kilidi
+    // altında aparılır. Beləliklə PIN paralel dəyişdirilərsə köhnə PIN-lə
+    // həssas əməliyyat icazəsi yaradıla bilməz.
     const hesab = await hesabSetriniPlayerIdIleAl(
       client,
       temizPlayerId,
@@ -172,6 +128,48 @@ async function pinIcazesiYarat(playerId, emeliyyatNovu, pin) {
       };
     }
 
+    const temizPin = metnAl(pin, 16);
+
+    if (!pinDuzgundur(temizPin)) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        hasPin: true,
+        pinRequired: true,
+        attemptsRemaining: 0,
+        retryAfterMs: 0,
+        message: "PIN formatı düzgün deyil."
+      };
+    }
+
+    const pinNeticesi = await pinYoxlamaDaxili(
+      client,
+      hesab,
+      temizPin
+    );
+
+    if (!pinNeticesi || pinNeticesi.success !== true) {
+      // Səhv cəhd sayı və mümkün blok vaxtı pinYoxlamaDaxili-də
+      // yeniləndiyi üçün uğursuz yoxlama da commit olunur.
+      await client.query("COMMIT");
+
+      return {
+        success: false,
+        hasPin: pinNeticesi && pinNeticesi.hasPin === true,
+        pinRequired: true,
+        locked: pinNeticesi && pinNeticesi.locked === true,
+        tooManyAttempts:
+          pinNeticesi && pinNeticesi.tooManyAttempts === true,
+        attemptsRemaining:
+          Number(pinNeticesi && pinNeticesi.attemptsRemaining || 0),
+        retryAfterMs:
+          Number(pinNeticesi && pinNeticesi.retryAfterMs || 0),
+        message: pinNeticesi && pinNeticesi.message
+          ? pinNeticesi.message
+          : "PIN yanlışdır."
+      };
+    }
+
     await client.query(
       `
       UPDATE hesab_pin_icazeleri
@@ -186,7 +184,7 @@ async function pinIcazesiYarat(playerId, emeliyyatNovu, pin) {
     const icazeId = crypto.randomBytes(16).toString("hex");
     const token = tokenYarat();
     const tokenHash = tokenHashYarat(token);
-    const bitmeVaxtiMs = Date.now() + ICAZE_MUDDETI_MS;
+    const bitmeVaxtiMs = indi + ICAZE_MUDDETI_MS;
 
     await client.query(
       `
