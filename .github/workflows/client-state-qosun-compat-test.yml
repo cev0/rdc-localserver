@@ -1,0 +1,24 @@
+name: Client State Qosun Uyumluluq Testi
+
+on:
+  push:
+    branches:
+      - fix-training-client-troop-sync
+  pull_request:
+    paths:
+      - 'server_client_state_patch.js'
+      - 'server_client_state_qosun_compat_testi.js'
+      - '.github/workflows/client-state-qosun-compat-test.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node qur
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Client state qosun compatibility testi
+        run: node server_client_state_qosun_compat_testi.js
