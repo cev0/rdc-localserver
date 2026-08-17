@@ -28,6 +28,55 @@ function metnAl(deyer, maksimum = 128) {
     : "";
 }
 
+function vaxtiBitmisTikintiIsleriniYekunlasdir(state, nowMs = Date.now()) {
+  if (!state || typeof state !== "object" || Array.isArray(state)) return false;
+  if (!Array.isArray(state.buildings)) return false;
+  if (!state.builders || !Array.isArray(state.builders.jobs)) return false;
+
+  const rawNow = Number(nowMs);
+  const indi = Number.isFinite(rawNow) && rawNow > 0
+    ? Math.trunc(rawNow)
+    : Date.now();
+
+  let deyisdi = false;
+
+  for (const job of state.builders.jobs) {
+    if (!job || job.isCompleted === true) continue;
+
+    const rawEndsAtMs = Number(job.endsAtMs);
+    const endsAtMs = Number.isFinite(rawEndsAtMs)
+      ? Math.max(0, Math.trunc(rawEndsAtMs))
+      : 0;
+
+    if (endsAtMs <= 0 || indi < endsAtMs) continue;
+
+    job.isCompleted = true;
+    deyisdi = true;
+
+    const building = state.buildings.find(
+      b => b && b.instanceId === job.buildingInstanceId
+    );
+
+    if (!building) continue;
+
+    if (job.kind === "upgrade") {
+      building.level = Math.max(1, Math.trunc(Number(job.targetLevel) || 1));
+    }
+
+    building.isCompleted = true;
+    building.buildFinishTimeMs = 0;
+  }
+
+  if (!deyisdi) return false;
+
+  state.builders.jobs = state.builders.jobs.filter(
+    job => job && job.isCompleted !== true
+  );
+  state.serverTimeUnixMs = indi;
+
+  return true;
+}
+
 function gonder(kontekst, type, melumat) {
   kontekst.send(kontekst.ws, {
     type,
@@ -37,13 +86,18 @@ function gonder(kontekst, type, melumat) {
 }
 
 function qosunTelimiMutasiyasiniTetbiqEt(state, msg, nowMs = Date.now(), emeliyyat = "train") {
+  // Tikinti timeri RAM-da artıq yekunlaşmış, amma son PostgreSQL snapshot-da
+  // hələ köhnə isCompleted=false qalmış ola bilər. Training mutation kilidli
+  // snapshot üzərində işlədiyi üçün validasiyadan əvvəl vaxtı bitmiş builder
+  // job-ları burada da authoritative şəkildə yekunlaşdırırıq.
+  const tikintiYekunlasdi = vaxtiBitmisTikintiIsleriniYekunlasdir(state, nowMs);
   const yekunlasma = qosunTelimleriniYekunlasdir(state, nowMs);
 
   if (emeliyyat === "status") {
     const status = qosunTelimStatusunuHazirla(state, nowMs);
     return {
       success: true,
-      deyisdi: !!(yekunlasma.deyisdi || status.deyisdi),
+      deyisdi: !!(tikintiYekunlasdi || yekunlasma.deyisdi || status.deyisdi),
       status,
       tamamlananlar: yekunlasma.tamamlananlar || []
     };
@@ -59,7 +113,7 @@ function qosunTelimiMutasiyasiniTetbiqEt(state, msg, nowMs = Date.now(), emeliyy
 
     return {
       success: !!(preview && preview.success === true),
-      deyisdi: yekunlasma.deyisdi === true,
+      deyisdi: !!(tikintiYekunlasdi || yekunlasma.deyisdi === true),
       message: preview && preview.message ? preview.message : "",
       reason: preview && preview.reason ? preview.reason : "",
       preview,
@@ -78,7 +132,7 @@ function qosunTelimiMutasiyasiniTetbiqEt(state, msg, nowMs = Date.now(), emeliyy
   if (!start || start.success !== true) {
     return {
       success: false,
-      deyisdi: yekunlasma.deyisdi === true,
+      deyisdi: !!(tikintiYekunlasdi || yekunlasma.deyisdi === true),
       reason: start && start.reason ? start.reason : "training_start_failed",
       message: start && start.message
         ? start.message
@@ -240,6 +294,7 @@ async function qosunTelimiMesajiniEmalEt(kontekst) {
 
 module.exports = {
   MESAJLAR,
+  vaxtiBitmisTikintiIsleriniYekunlasdir,
   qosunTelimiMutasiyasiniTetbiqEt,
   qosunTelimiMesajiniEmalEt
 };
