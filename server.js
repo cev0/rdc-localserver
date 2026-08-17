@@ -6292,8 +6292,6 @@ wss.on("connection", (ws, req) => {
 
   ws.on("message", async (data) => {
     const text = data.toString();
-    console.log("[SERVER RAW MESSAGE]", text);
-
     const [msg, err] = safeJsonParse(text);
 
     if (err) {
