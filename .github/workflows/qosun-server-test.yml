@@ -34,8 +34,10 @@ on:
       - server-development-hero-skill-state-v1
       - server-hospital-development-bridge-v1
       - server-build-development-adapter-v1
+      - server-construction-runtime-patcher-v1
   pull_request:
     paths:
+      - 'server.js'
       - 'qosun_kataloqu.js'
       - 'qosun_kataloqu_testi.js'
       - 'qosun_telimi_sistemi.js'
@@ -69,6 +71,7 @@ on:
       - 'texnologiya_inkisaf_korpu_testi.js'
       - 'tikinti_inkisaf_korpu.js'
       - 'tikinti_inkisaf_korpu_testi.js'
+      - 'tikinti_inkisaf_runtime_inteqrasiya_testi.js'
       - 'qehreman_kataloqu.js'
       - 'qehreman_exp_sistemi.js'
       - 'qehreman_exp_progression_testi.js'
@@ -163,6 +166,8 @@ jobs:
         run: node konvoy_texnologiya_inkisaf_inteqrasiya_testi.js
       - name: Tikinti Inkisaf korpusu testleri
         run: node tikinti_inkisaf_korpu_testi.js
+      - name: Tikinti Inkisaf runtime inteqrasiya testleri
+        run: node tikinti_inkisaf_runtime_inteqrasiya_testi.js
       - name: Xestexana Inkisaf korpusu testleri
         run: node xestexana_inkisaf_override_testi.js
       - name: PvP konvoy mudafie snapshot testleri
