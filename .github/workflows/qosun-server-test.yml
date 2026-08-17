@@ -161,6 +161,8 @@ jobs:
         run: node tikinti_inkisaf_runtime_inteqrasiya_testi.js
       - name: Xestexana Inkisaf korpusu testleri
         run: node xestexana_inkisaf_override_testi.js
+      - name: Xestexana PG mutasiya testleri
+        run: node xestexana_pg_mutasiya_testi.js
       - name: Resurs istehsali Inkisaf korpusu testleri
         run: node resurs_inkisaf_korpu_testi.js
       - name: Resurs istehsali Inkisaf runtime inteqrasiya testleri
