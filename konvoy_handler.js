@@ -7,14 +7,18 @@ const {
 } = require("./konvoy_sistemi");
 
 const {
-  konvoyQosunMelumatiniHazirla,
-  konvoyQosunlariniTeyinEt
+  konvoyQosunMelumatiniHazirla
 } = require("./konvoy_qosun_sistemi");
 
 const {
+  legacyQosunlardanFormasiyaHazirla,
   formasiyaMelumatiniHazirla,
   formasiyaTeyinEt
 } = require("./konvoy_formasiya_sistemi");
+
+const {
+  konvoyTutumHesabiniAl
+} = require("./konvoy_tutum_formulu");
 
 const {
   konvoyMudafieMelumatiniHazirla,
@@ -166,6 +170,59 @@ function formationInfoUnityUcunUyğunlaşdır(formationInfo, troopInfo) {
   };
 }
 
+function legacyTroopRequestiniTetbiqEt(state, konvoyId, rawTroops) {
+  const id = metnAl(konvoyId, 64);
+  const tutumHesabi = konvoyTutumHesabiniAl(state, id);
+  const siralar = legacyQosunlardanFormasiyaHazirla(
+    rawTroops,
+    tutumHesabi.siraTutumu
+  );
+
+  if (!siralar) {
+    return {
+      success: false,
+      message: "Köhnə qoşun seçimi 3 sıralı konvoy formasiyasına sığmır. Qoşunları 3 sıra üzrə yenidən yerləşdirin.",
+      legacyFormationSyncRequired: true,
+      tutum: musbetTamEded(tutumHesabi.yekunTutum),
+      siraTutumu: musbetTamEded(tutumHesabi.siraTutumu),
+      tutumHesabi
+    };
+  }
+
+  const formasiyaNeticesi = formasiyaTeyinEt(state, id, siralar);
+  if (!formasiyaNeticesi || formasiyaNeticesi.success !== true) {
+    return formasiyaNeticesi || {
+      success: false,
+      message: "Köhnə qoşun seçimi konvoy formasiyasına tətbiq edilə bilmədi."
+    };
+  }
+
+  const troopInfo = formasiyaNeticesi.troopInfo || konvoyQosunMelumatiniHazirla(state);
+  const formationInfo = formationInfoUnityUcunUyğunlaşdır(
+    formasiyaNeticesi.formationInfo,
+    troopInfo
+  );
+
+  return {
+    success: true,
+    konvoyId: id,
+    tutum: formasiyaNeticesi.tutum,
+    siraTutumu: formasiyaNeticesi.siraTutumu,
+    tutumHesabi,
+    istifadeOlunanTutum: formasiyaNeticesi.istifadeOlunanTutum,
+    qosunlar: { ...(formasiyaNeticesi.qosunlar || {}) },
+    siralar: Array.isArray(formasiyaNeticesi.siralar)
+      ? formasiyaNeticesi.siralar.map(x => ({ ...x }))
+      : [],
+    formation: siralarArrayiniUnityFormasiyasinaCevir(formasiyaNeticesi.siralar),
+    formationInfo,
+    troopInfo,
+    // Köhnə `convoy_troops_set_result` client-ləri `info` sahəsini gözləyə bilər.
+    info: troopInfo,
+    legacyFormationSynced: true
+  };
+}
+
 function konvoyStateYedeyiniAl(state) {
   const varIdi = Object.prototype.hasOwnProperty.call(state, "konvoylar");
   return {
@@ -228,8 +285,14 @@ function konvoyMutasiyasiniTetbiqEt(state, type, msg, nowMs = Date.now()) {
     }
   }
   else if (type === "convoy_troops_set_request") {
-    const troops = msg && msg.troops;
-    netice = konvoyQosunlariniTeyinEt(state, konvoyId, troops);
+    // Legacy client aggregate `troops` göndərir. Onu ayrıca qosunlar-a yazmaq
+    // formasiya ilə state mismatch yaradırdı. İndi eyni məlumat serverdə
+    // deterministik 3 sıraya çevrilir və canonical formation mutation işləyir.
+    netice = legacyTroopRequestiniTetbiqEt(
+      state,
+      konvoyId,
+      msg && msg.troops
+    );
   }
   else if (type === "convoy_defense_set_request") {
     netice = konvoyMudafiesiniTeyinEt(
@@ -257,7 +320,10 @@ function konvoyMutasiyasiniTetbiqEt(state, type, msg, nowMs = Date.now()) {
         ? netice.message
         : "Konvoy mutation-u tətbiq edilə bilmədi.",
       busyReason: netice && netice.busyReason ? netice.busyReason : undefined,
-      mission: netice && netice.mission ? netice.mission : undefined
+      mission: netice && netice.mission ? netice.mission : undefined,
+      legacyFormationSyncRequired: netice && netice.legacyFormationSyncRequired === true
+        ? true
+        : undefined
     };
   }
 
@@ -346,6 +412,9 @@ async function konvoyMesajiniEmalEt(kontekst) {
           : undefined,
         mission: mutasiyaNeticesi && mutasiyaNeticesi.mission
           ? mutasiyaNeticesi.mission
+          : undefined,
+        legacyFormationSyncRequired: mutasiyaNeticesi && mutasiyaNeticesi.legacyFormationSyncRequired === true
+          ? true
           : undefined
       });
       return true;
@@ -377,6 +446,7 @@ module.exports = {
   unityFormasiyasiniSiralarArrayinaCevir,
   siralarArrayiniUnityFormasiyasinaCevir,
   formationInfoUnityUcunUyğunlaşdır,
+  legacyTroopRequestiniTetbiqEt,
   konvoyMutasiyasiniTetbiqEt,
   konvoyMesajiniEmalEt
 };
