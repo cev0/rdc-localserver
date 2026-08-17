@@ -9,6 +9,8 @@ const {
 const {
     emailNormallasdir,
     emailDuzgundur,
+    SIFRE_MINIMUM_UZUNLUQ,
+    SIFRE_MAKSIMUM_UZUNLUQ,
     sifreHashYarat
 } = require("./hesab_yaddasi_postgres");
 
@@ -433,8 +435,10 @@ async function yeniSifreTeyinEt(resetToken, yeniSifre) {
 
     if (
         typeof yeniSifre !== "string" ||
-        yeniSifre.length < 8 ||
-        yeniSifre.length > 64
+        yeniSifre.length <
+            SIFRE_MINIMUM_UZUNLUQ ||
+        yeniSifre.length >
+            SIFRE_MAKSIMUM_UZUNLUQ
     ) {
         return {
             success: false,
