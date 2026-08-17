@@ -4989,8 +4989,15 @@ function processProductionForState(state) {
     if (typeof state.resources[key] !== "number") continue;
 
     const baseAmount = Math.max(0, Number(rule.amountPerTick) || 0);
-    const productionPct = Math.max(0, Number(state.technology?.stats?.productionPct) || 0);
-    const addAmount = Math.max(0, Math.floor(baseAmount * (100 + productionPct) / 100));
+    const technologyProductionPct = Math.max(0, Number(state.technology?.stats?.productionPct) || 0);
+    const { stateUcunBinaIstehsaliniHesabla } = require("./resurs_inkisaf_korpu");
+    const productionCalculation = stateUcunBinaIstehsaliniHesabla(
+      state,
+      building.instanceId,
+      baseAmount,
+      technologyProductionPct
+    );
+    const addAmount = Math.max(0, Number(productionCalculation.finalAmount) || 0);
     if (addAmount <= 0) continue;
 
     const cap = typeof state.resourceCaps?.[key] === "number"
