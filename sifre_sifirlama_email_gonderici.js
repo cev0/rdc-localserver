@@ -44,7 +44,6 @@ async function sifreSifirlamaKoduEmailiGonder(email, kod) {
 
     if (EMAIL_DEV_LOG_CODE) {
         console.log("[EMAIL_DEV] Şifrə sıfırlama kodu:", {
-            email: temizEmail,
             kod: temizKod
         });
 
