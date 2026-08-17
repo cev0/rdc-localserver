@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "description": "RDC Unity client -> server protocol contract",
+  "clientOutboundTypes": [
+    "account_bind_request",
+    "account_device_pin_verify_request",
+    "account_email_verification_confirm_request",
+    "account_email_verification_send_request",
+    "account_info_request",
+    "account_login_request",
+    "account_logout_request",
+    "account_password_reset_complete_request",
+    "account_password_reset_send_request",
+    "account_password_reset_verify_request",
+    "account_pin_delete_request",
+    "account_pin_protected_delete_request",
+    "account_pin_recovery_complete_request",
+    "account_pin_recovery_send_request",
+    "account_pin_recovery_verify_request",
+    "account_pin_sensitive_authorize_request",
+    "account_pin_set_request",
+    "account_pin_status_request",
+    "account_pin_verify_request",
+    "account_provider_login_request",
+    "account_recovery_resend_request",
+    "account_recovery_send_request",
+    "account_recovery_verify_request",
+    "account_session_refresh_request",
+    "auth",
+    "base_teleport_request",
+    "build_request",
+    "connect_road_request",
+    "convoy_formation_set_request",
+    "convoy_hero_assign_request",
+    "convoy_hero_remove_request",
+    "convoy_info_request",
+    "convoy_troops_set_request",
+    "expand_area_request",
+    "get_state",
+    "get_state_local_map",
+    "get_world_map",
+    "hello",
+    "mission_reward_claim_request",
+    "move_request",
+    "player_name_change_request",
+    "research_start",
+    "start_construction_request",
+    "train_unit_request",
+    "troop_catalog_request",
+    "troop_training_status_request",
+    "upgrade_request"
+  ],
+  "criticalFields": {
+    "accountInfo": [
+      "playerId",
+      "accountId",
+      "isBound",
+      "primaryEmail",
+      "emailVerified"
+    ],
+    "technologyState": [
+      "technology",
+      "techLevels",
+      "techId",
+      "level"
+    ],
+    "troopCatalog": [
+      "troop_catalog_request",
+      "troop_catalog_result",
+      "catalog",
+      "payloadJson"
+    ],
+    "convoyInfo": [
+      "convoy_info_request",
+      "convoy_info_result",
+      "siraTutumu"
+    ]
+  },
+  "buildingDefinitions": {
+    "normalizedLength": 759702,
+    "fnv1a64": "f5871a4769a799b9"
+  }
+}
