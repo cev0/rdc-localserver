@@ -1,0 +1,34 @@
+name: Google Hesab Müqaviləsi
+
+on:
+  pull_request:
+    paths:
+      - "server_hesab_genisletme.js"
+      - "hesab_provayder_cavab_uygunlugu.js"
+      - "hesab_provayder_cavab_uygunlugu_testi.js"
+      - "package.json"
+      - ".github/workflows/google-account-contract.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "server_hesab_genisletme.js"
+      - "hesab_provayder_cavab_uygunlugu.js"
+      - "hesab_provayder_cavab_uygunlugu_testi.js"
+      - "package.json"
+      - ".github/workflows/google-account-contract.yml"
+
+jobs:
+  google-account-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo-nu al
+        uses: actions/checkout@v4
+
+      - name: Node qur
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Google hesab cavab müqaviləsini yoxla
+        run: node hesab_provayder_cavab_uygunlugu_testi.js
