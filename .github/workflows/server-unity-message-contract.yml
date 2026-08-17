@@ -1,0 +1,42 @@
+name: Server Unity Mesaj Müqaviləsi
+
+on:
+  pull_request:
+    paths:
+      - "server.js"
+      - "*_handler.js"
+      - "server_*genisletme*.js"
+      - "server_client_state_patch.js"
+      - "building_definitions.json"
+      - "server_unity_message_contract.json"
+      - "server_unity_mesaj_muqavilesi_testi.js"
+      - "package.json"
+      - ".github/workflows/server-unity-message-contract.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "server.js"
+      - "*_handler.js"
+      - "server_*genisletme*.js"
+      - "server_client_state_patch.js"
+      - "building_definitions.json"
+      - "server_unity_message_contract.json"
+      - "server_unity_mesaj_muqavilesi_testi.js"
+      - "package.json"
+      - ".github/workflows/server-unity-message-contract.yml"
+
+jobs:
+  message-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo-nu al
+        uses: actions/checkout@v4
+
+      - name: Node qur
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Server mesaj müqaviləsini yoxla
+        run: node server_unity_mesaj_muqavilesi_testi.js

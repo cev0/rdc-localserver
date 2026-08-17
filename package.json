@@ -119,7 +119,8 @@
     "kesfiyyat:pg-test": "node kesfiyyat_pg_mutasiya_testi.js",
     "start": "node server_missiya_genisletme.js",
     "server:hessas-log-test": "node server_hessas_mesaj_log_qoruma_testi.js",
-    "server:google-account-contract-test": "node hesab_provayder_cavab_uygunlugu_testi.js"
+    "server:google-account-contract-test": "node hesab_provayder_cavab_uygunlugu_testi.js",
+    "server:unity-contract-test": "node server_unity_mesaj_muqavilesi_testi.js"
   },
   "repository": {
     "type": "git",
