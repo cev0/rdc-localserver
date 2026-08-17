@@ -159,13 +159,25 @@ Təsdiqlənməmiş faizlər serverə aktiv edilməməlidir.
 - Queue daxilində `developmentTrainingSpeedPct`, `totalTrainingSpeedPct` və tətbiq olunan `developmentEffects` metadata-sı saxlanır.
 - Override `qosun_telimi_handler.js` require edilməzdən əvvəl yüklənir, buna görə handler patched funksiyaları götürür.
 - Təsdiqlənmiş Qoşun təlimi İnkişaf qəhrəmanı/faizi olmadığı üçün cari gameplay müddəti dəyişmir.
-- `qosun_telimi_inkisaf_override_testi.js` CI-yə əlavə edildi; yeni və bütün mövcud testlər uğurla keçirilməlidir.
+- `qosun_telimi_inkisaf_override_testi.js` CI-yə əlavə edildi və bütün testlər uğurla keçdi.
+- PR #106 main-ə merge edildi. Merge commit: fa08ffcd5b10704ecea4c596263f74138de5f2f5.
+
+### PR #107 — Xəstəxana İnkişaf körpüsü
+
+- `xestexana_inkisaf_override.js` əlavə edildi.
+- Yalnız təsdiqlənmiş İnkişaf effektləri əsasında `Müalicə xərclərinin azalması` və `Xəstəxana tutumu` real Xəstəxana hesablamasına qoşulur.
+- Xəstəxana tutumu baza tutuma tam ədəd bonus kimi əlavə olunur və boş tutum serverdə yenidən hesablanır.
+- Müalicə xərci faiz endirimi 0–100 aralığında təhlükəsiz şəkildə tətbiq olunur; mənfi/etibarsız dəyər 0 qəbul edilir.
+- `Müalicə sürəti` modifier-i hesablanır, lakin hazırkı sağaltma axını ani olduğu üçün uydurma timer yaradılmır və bu effekt hələ müddətə tətbiq edilmir.
+- Override `xestexana_handler.js` require edilməzdən əvvəl yüklənir.
+- Təsdiqlənmiş Xəstəxana İnkişaf qəhrəmanı/faizi olmadığı üçün cari gameplay tutum/xərc rəqəmləri dəyişmir.
+- `xestexana_inkisaf_override_testi.js` əlavə edildi; CI uğurla keçdi.
 
 ## Növbəti təhlükəsiz backend addımları
 
-1. PR #106 CI nəticəsini yoxla; uğurludursa main-ə merge et və Koyeb deploy statusunu yoxla.
+1. PR #107-ni main-ə merge et və Koyeb deploy statusunu yoxla.
 2. `server.js` mərkəzi `getAdjustedBuildDurationMs` hesablamasına `tikinti_inkisaf_korpu.js` modifier-ini yalnız təhlükəsiz, kiçik patch yolu ilə qoş; 230KB-lıq `server.js`-i tam-fayl avtomatik əvəzləmə ilə riskə atma.
-3. Xəstəxana üçün İnkişaf modifier körpüsü qur: müalicə sürəti, müalicə xərci və tutum yalnız təsdiqlənmiş data ilə.
+3. Xəstəxanada real sağaltma timer sistemi ayrıca dizayn edilərsə yalnız onda `Müalicə sürəti` effektini müddətə bağla; indiki ani sağaltmada tətbiq etmə.
 4. Qəhrəman kataloqunda real İnkişaf qəhrəman ID-ləri və allowedBuildingIds mapping-i yalnız təsdiqlənəndə əlavə et.
 5. Konkret skill effect faizlərini yalnız təsdiqlənmiş data ilə kataloqa yaz.
 6. Green/Blue/Purple unlock material cədvəllərini etibarlı mənbə və ya oyun screenshot-u ilə tamamla.
