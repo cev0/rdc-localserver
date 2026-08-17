@@ -1,0 +1,48 @@
+name: Düşmən Mövqeyi PostgreSQL Mutasiyası
+
+on:
+  pull_request:
+    paths:
+      - "dusmen_movqeyi_handler.js"
+      - "dusmen_movqeyi_sistemi.js"
+      - "dusmen_movqeyi_pg_mutasiya_testi.js"
+      - "oyun_state_mutasiya_postgres.js"
+      - "oyun_state_snapshot_postgres.js"
+      - "missiya_proqres.js"
+      - "missiya_kataloqu.js"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/enemy-position-pg-mutation.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "dusmen_movqeyi_handler.js"
+      - "dusmen_movqeyi_sistemi.js"
+      - "dusmen_movqeyi_pg_mutasiya_testi.js"
+      - "oyun_state_mutasiya_postgres.js"
+      - "oyun_state_snapshot_postgres.js"
+      - "missiya_proqres.js"
+      - "missiya_kataloqu.js"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/enemy-position-pg-mutation.yml"
+
+jobs:
+  enemy-position-pg:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo-nu al
+        uses: actions/checkout@v4
+
+      - name: Node qur
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Paketləri qur
+        run: npm ci
+
+      - name: Düşmən mövqeyi mutasiya testini işə sal
+        run: node dusmen_movqeyi_pg_mutasiya_testi.js
