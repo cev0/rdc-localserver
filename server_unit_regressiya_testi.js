@@ -8,6 +8,7 @@ const {
 
 const UNIT_TESTLERI = [
   "baza_yerdeyisme_dovlet_kilidi_client_testi.js",
+  "berpa_kodu_yaradilma_kilidi_testi.js",
   "dovlet_baza_birbasa_postgres_testi.js",
   "dovlet_konvoy_runtime_client_sync_testi.js",
   "dovlet_konvoy_runtime_pvp_status_testi.js",

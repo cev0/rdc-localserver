@@ -9,7 +9,6 @@ const {
 const {
     emailNormallasdir,
     emailDuzgundur,
-    hesabEmailIleTap,
     sifreHashYarat
 } = require("./hesab_yaddasi_postgres");
 
@@ -46,7 +45,7 @@ function sabitMesaj() {
     return "Əgər bu e-poçt ünvanı hesabla bağlıdırsa, təsdiq kodu göndəriləcək.";
 }
 
-async function sifreSifirlamaKodunuHazirla(email) {
+async function sifreSifirlamaKodunuHazirla(email, secimler = {}) {
     const temizEmail = emailNormallasdir(email);
 
     if (!emailDuzgundur(temizEmail)) {
@@ -56,59 +55,89 @@ async function sifreSifirlamaKodunuHazirla(email) {
         };
     }
 
-    const hesab = await hesabEmailIleTap(temizEmail);
-
-    // Hesabın mövcudluğunu client-ə açıqlamırıq.
-    if (!hesab || hesab.status !== "aktiv") {
-        return {
-            success: true,
-            emailGonderilmeli: false,
-            message: sabitMesaj()
-        };
-    }
-
-    const hovuz = proqramHovuzunuAl();
-
-    const sonSorqu = await hovuz.query(
-        `
-        SELECT yaradilma_vaxti
-        FROM sifre_sifirlama_sorqulari
-        WHERE hesab_id = $1
-          AND istifade_vaxti IS NULL
-        ORDER BY yaradilma_vaxti DESC
-        LIMIT 1
-        `,
-        [hesab.accountId]
-    );
-
-    if (sonSorqu.rows && sonSorqu.rows.length > 0) {
-        const sonVaxt = new Date(
-            sonSorqu.rows[0].yaradilma_vaxti
-        ).getTime();
-
-        const kecen = Date.now() - sonVaxt;
-
-        if (kecen >= 0 && kecen < YENIDEN_GONDERME_MS) {
-            return {
-                success: true,
-                emailGonderilmeli: false,
-                cooldown: true,
-                retryAfterMs: YENIDEN_GONDERME_MS - kecen,
-                message: sabitMesaj()
-            };
-        }
-    }
-
-    const sorquId = crypto.randomBytes(16).toString("hex");
-    const kod = kodYarat();
-    const duz = crypto.randomBytes(16).toString("hex");
-    const kodHash = kodHashYarat(kod, duz);
-    const bitmeVaxtiMs = Date.now() + KOD_MUDDETI_MS;
-
+    const hovuz = secimler.hovuz || proqramHovuzunuAl();
+    const secilmisVaxt = Number(secimler.nowMs);
+    const indiMs = Number.isFinite(secilmisVaxt) && secilmisVaxt > 0
+        ? Math.trunc(secilmisVaxt)
+        : Date.now();
     const client = await hovuz.connect();
 
     try {
         await client.query("BEGIN");
+
+        const hesabNeticesi = await client.query(
+            `
+            SELECT
+                hesab_id,
+                oyuncu_id,
+                esas_email,
+                status
+            FROM hesablar
+            WHERE LOWER(esas_email) = $1
+            LIMIT 1
+            FOR UPDATE
+            `,
+            [temizEmail]
+        );
+
+        // Hesabın mövcudluğunu client-ə açıqlamırıq.
+        if (
+            !hesabNeticesi.rows ||
+            hesabNeticesi.rows.length !== 1 ||
+            hesabNeticesi.rows[0].status !== "aktiv"
+        ) {
+            await client.query("ROLLBACK");
+
+            return {
+                success: true,
+                emailGonderilmeli: false,
+                message: sabitMesaj()
+            };
+        }
+
+        const hesabSetri = hesabNeticesi.rows[0];
+        const hesab = {
+            accountId: hesabSetri.hesab_id,
+            playerId: hesabSetri.oyuncu_id,
+            primaryEmail: hesabSetri.esas_email
+        };
+
+        const sonSorqu = await client.query(
+            `
+            SELECT yaradilma_vaxti
+            FROM sifre_sifirlama_sorqulari
+            WHERE hesab_id = $1
+              AND istifade_vaxti IS NULL
+            ORDER BY yaradilma_vaxti DESC
+            LIMIT 1
+            `,
+            [hesab.accountId]
+        );
+
+        if (sonSorqu.rows && sonSorqu.rows.length > 0) {
+            const sonVaxt = new Date(
+                sonSorqu.rows[0].yaradilma_vaxti
+            ).getTime();
+            const kecen = indiMs - sonVaxt;
+
+            if (kecen >= 0 && kecen < YENIDEN_GONDERME_MS) {
+                await client.query("ROLLBACK");
+
+                return {
+                    success: true,
+                    emailGonderilmeli: false,
+                    cooldown: true,
+                    retryAfterMs: YENIDEN_GONDERME_MS - kecen,
+                    message: sabitMesaj()
+                };
+            }
+        }
+
+        const sorquId = crypto.randomBytes(16).toString("hex");
+        const kod = kodYarat();
+        const duz = crypto.randomBytes(16).toString("hex");
+        const kodHash = kodHashYarat(kod, duz);
+        const bitmeVaxtiMs = indiMs + KOD_MUDDETI_MS;
 
         // Köhnə istifadə olunmamış sorğuları ləğv edirik.
         await client.query(
