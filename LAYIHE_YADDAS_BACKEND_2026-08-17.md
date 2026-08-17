@@ -140,7 +140,7 @@ Təsdiqlənməmiş faizlər serverə aktiv edilməməlidir.
 - Ayrıca `konvoy_texnologiya_inkisaf_inteqrasiya_testi.js` əlavə edildi və CI-də uğurla keçdi.
 - PR #104 main-ə merge edilib.
 
-### Tikinti İnkişaf körpüsü — növbəti PR
+### PR #105 — Tikinti İnkişaf körpüsü
 
 - `tikinti_inkisaf_korpu.js` əlavə edildi.
 - Tikinti sahəsinə təyin edilmiş, uyğun tamamlanmış binada olan İnkişaf qəhrəmanlarının yalnız təsdiqlənmiş `Tikinti sürəti` effektləri toplanır.
@@ -148,15 +148,26 @@ Təsdiqlənməmiş faizlər serverə aktiv edilməməlidir.
 - Mənfi və etibarsız modifier-lər 0 kimi qəbul edilir; təsdiqlənməmiş faiz yaratmır.
 - Kataloqda təsdiqlənmiş Tikinti İnkişaf qəhrəmanı olmadığı müddətdə İnkişaf modifier-i 0% qalır və gameplay dəyişmir.
 - `tikinti_inkisaf_korpu_testi.js` əlavə edildi və CI workflow-a daxil edildi.
-- Bu mərhələdə körpü ayrıca modul kimi qurulub; `server.js` daxilindəki mərkəzi `getAdjustedBuildDurationMs` funksiyasına faktiki inteqrasiya növbəti addımdır.
+- Körpü ayrıca modul kimi qurulub; `server.js` daxilindəki mərkəzi `getAdjustedBuildDurationMs` funksiyasına faktiki inteqrasiya hələ qalıb.
+
+### PR #106 — Qoşun təlimi İnkişaf körpüsü
+
+- `qosun_telimi_inkisaf_override.js` əlavə edildi.
+- Real təlim preview və training queue axınına yalnız təsdiqlənmiş `Təlim sürəti` İnkişaf modifier-i qoşulur.
+- Mövcud Texnologiya təlim sürəti və İnkişaf təlim sürəti vahid server formulunda toplanır: `müddət / (1 + ümumiFaiz/100)`.
+- Mənfi/etibarsız modifier 0 qəbul edilir, minimum qeyri-sıfır təlim müddəti 1 saniyə qorunur.
+- Queue daxilində `developmentTrainingSpeedPct`, `totalTrainingSpeedPct` və tətbiq olunan `developmentEffects` metadata-sı saxlanır.
+- Override `qosun_telimi_handler.js` require edilməzdən əvvəl yüklənir, buna görə handler patched funksiyaları götürür.
+- Təsdiqlənmiş Qoşun təlimi İnkişaf qəhrəmanı/faizi olmadığı üçün cari gameplay müddəti dəyişmir.
+- `qosun_telimi_inkisaf_override_testi.js` CI-yə əlavə edildi; yeni və bütün mövcud testlər uğurla keçirilməlidir.
 
 ## Növbəti təhlükəsiz backend addımları
 
-1. Tikinti İnkişaf körpüsü PR-nin CI/merge vəziyyətini yoxlamaq.
-2. `server.js` mərkəzi `getAdjustedBuildDurationMs` hesablamasına `tikinti_inkisaf_korpu.js` modifier-ini təhlükəsiz şəkildə qoşmaq; real Hero faizi olmadığı üçün hazırkı müddətlər dəyişməməlidir.
-3. Sonra Qoşun təlimi və Xəstəxana hesablamaları üçün İnkişaf modifier körpüləri qurmaq.
-4. Qəhrəman kataloqunda real İnkişaf qəhrəman ID-ləri və allowedBuildingIds mapping-i yalnız təsdiqlənəndə əlavə etmək.
-5. Konkret skill effect faizlərini yalnız təsdiqlənmiş data ilə kataloqa yazmaq.
-6. Green/Blue/Purple unlock material cədvəllərini etibarlı mənbə və ya oyun screenshot-u ilə tamamlamaq.
-7. Hero medal acquisition/conversion sistemi və Starter Wisdom məsələsini ayrıca bağlamaq.
+1. PR #106 CI nəticəsini yoxla; uğurludursa main-ə merge et və Koyeb deploy statusunu yoxla.
+2. `server.js` mərkəzi `getAdjustedBuildDurationMs` hesablamasına `tikinti_inkisaf_korpu.js` modifier-ini yalnız təhlükəsiz, kiçik patch yolu ilə qoş; 230KB-lıq `server.js`-i tam-fayl avtomatik əvəzləmə ilə riskə atma.
+3. Xəstəxana üçün İnkişaf modifier körpüsü qur: müalicə sürəti, müalicə xərci və tutum yalnız təsdiqlənmiş data ilə.
+4. Qəhrəman kataloqunda real İnkişaf qəhrəman ID-ləri və allowedBuildingIds mapping-i yalnız təsdiqlənəndə əlavə et.
+5. Konkret skill effect faizlərini yalnız təsdiqlənmiş data ilə kataloqa yaz.
+6. Green/Blue/Purple unlock material cədvəllərini etibarlı mənbə və ya oyun screenshot-u ilə tamamla.
+7. Hero medal acquisition/conversion sistemi və Starter Wisdom məsələsini ayrıca bağla.
 8. Konvoy üçün vahid mission state: idle → marching → gathering/battle → returning → idle.

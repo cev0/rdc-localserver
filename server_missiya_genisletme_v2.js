@@ -16,6 +16,7 @@ const { konvoyTexnologiyaMesajiniEmalEt } = require("./konvoy_texnologiya_handle
 const { konvoyMesajiniEmalEt } = require("./konvoy_handler");
 require("./konvoy_pvp_info_qayda_override");
 const { konvoyEmeliyyatMesajiniEmalEt } = require("./konvoy_emeliyyat_handler");
+require("./qosun_telimi_inkisaf_override");
 const { qosunTelimiMesajiniEmalEt } = require("./qosun_telimi_handler");
 const { dovletXeriteKataloqMesajiniEmalEt } = require("./dovlet_xerite_kataloq_handler");
 const { dovletXeriteLayerMesajiniEmalEt } = require("./dovlet_xerite_layer_handler");
