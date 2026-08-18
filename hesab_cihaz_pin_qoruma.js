@@ -9,7 +9,6 @@ const {
 const {
   emailNormallasdir,
   emailDuzgundur,
-  hesabEmailIleTap,
   sifreDuzgundur,
   clientHesabMelumati
 } = require("./hesab_yaddasi_postgres");
@@ -141,6 +140,47 @@ async function cihazEtibarlidir(hesabId, cihazId) {
   return true;
 }
 
+async function cihazEtibarlidirDaxili(
+  client,
+  hesabId,
+  cihazId
+) {
+  const temizHesabId = metnAl(hesabId, 128);
+  const cihazHash = cihazHashYarat(cihazId);
+
+  if (!temizHesabId || !cihazHash) {
+    return false;
+  }
+
+  const netice = await client.query(
+    `
+    SELECT id
+    FROM hesab_etibarli_cihazlar
+    WHERE hesab_id = $1
+      AND cihaz_hash = $2
+      AND legv_vaxti IS NULL
+    LIMIT 1
+    FOR UPDATE
+    `,
+    [temizHesabId, cihazHash]
+  );
+
+  if (!netice.rows || netice.rows.length !== 1) {
+    return false;
+  }
+
+  await client.query(
+    `
+    UPDATE hesab_etibarli_cihazlar
+    SET son_istifade_vaxti = NOW()
+    WHERE id = $1
+    `,
+    [netice.rows[0].id]
+  );
+
+  return true;
+}
+
 async function cihaziEtibarliEtHesabIdIle(hesabId, cihazId) {
   const temizHesabId = metnAl(hesabId, 128);
   const cihazHash = cihazHashYarat(cihazId);
@@ -152,6 +192,39 @@ async function cihaziEtibarliEtHesabIdIle(hesabId, cihazId) {
   const hovuz = proqramHovuzunuAl();
 
   await hovuz.query(
+    `
+    INSERT INTO hesab_etibarli_cihazlar (
+      hesab_id,
+      cihaz_hash,
+      ilk_tesdiq_vaxti,
+      son_istifade_vaxti,
+      legv_vaxti
+    )
+    VALUES ($1, $2, NOW(), NOW(), NULL)
+    ON CONFLICT (hesab_id, cihaz_hash)
+    DO UPDATE SET
+      son_istifade_vaxti = NOW(),
+      legv_vaxti = NULL
+    `,
+    [temizHesabId, cihazHash]
+  );
+
+  return true;
+}
+
+async function cihaziEtibarliEtHesabIdIleDaxili(
+  client,
+  hesabId,
+  cihazId
+) {
+  const temizHesabId = metnAl(hesabId, 128);
+  const cihazHash = cihazHashYarat(cihazId);
+
+  if (!temizHesabId || !cihazHash) {
+    return false;
+  }
+
+  await client.query(
     `
     INSERT INTO hesab_etibarli_cihazlar (
       hesab_id,
@@ -249,7 +322,12 @@ async function hesabUcunPinTelebiLazimdir(hesab, cihazId) {
   ));
 }
 
-async function cihazPinSorqusuYarat(hesab, cihazId, meqsed) {
+async function cihazPinSorqusuYarat(
+  hesab,
+  cihazId,
+  meqsed,
+  secimler = {}
+) {
   if (!hesab || !hesab.accountId || !hesab.playerId) {
     return {
       success: false,
@@ -275,11 +353,19 @@ async function cihazPinSorqusuYarat(hesab, cihazId, meqsed) {
 
   const sorquId = yeniSorquIdYarat();
   const bitmeVaxtiMs = Date.now() + PIN_SORQU_MUDDETI_MS;
-  const hovuz = proqramHovuzunuAl();
-  const client = await hovuz.connect();
+  const xariciClient =
+    secimler &&
+    secimler.client &&
+    typeof secimler.client.query === "function"
+      ? secimler.client
+      : null;
+  const hovuz = xariciClient ? null : proqramHovuzunuAl();
+  const client = xariciClient || await hovuz.connect();
 
   try {
-    await client.query("BEGIN");
+    if (!xariciClient) {
+      await client.query("BEGIN");
+    }
 
     await client.query(
       `
@@ -318,7 +404,9 @@ async function cihazPinSorqusuYarat(hesab, cihazId, meqsed) {
       ]
     );
 
-    await client.query("COMMIT");
+    if (!xariciClient) {
+      await client.query("COMMIT");
+    }
 
     return {
       success: true,
@@ -329,11 +417,15 @@ async function cihazPinSorqusuYarat(hesab, cihazId, meqsed) {
     };
   }
   catch (xeta) {
-    try { await client.query("ROLLBACK"); } catch {}
+    if (!xariciClient) {
+      try { await client.query("ROLLBACK"); } catch {}
+    }
     throw xeta;
   }
   finally {
-    client.release();
+    if (!xariciClient) {
+      client.release();
+    }
   }
 }
 
@@ -539,41 +631,116 @@ async function emailSifreIleDaxilOlCihazQorumali(
     };
   }
 
-  const hesab = await hesabEmailIleTap(temizEmail);
+  const hovuz = proqramHovuzunuAl();
+  const client = await hovuz.connect();
 
-  if (!hesab || !sifreDuzgundur(sifre, hesab.passwordHash)) {
-    return {
-      success: false,
-      message: "E-poçt və ya şifrə yanlışdır."
-    };
-  }
+  try {
+    await client.query("BEGIN");
 
-  if (hesab.status !== "aktiv") {
-    return {
-      success: false,
-      message: "Bu hesaba giriş hazırda mümkün deyil."
-    };
-  }
-
-  if (await hesabUcunPinTelebiLazimdir(hesab, cihazId)) {
-    const sorqu = await cihazPinSorqusuYarat(
-      hesab,
-      cihazId,
-      "login"
+    // Şifrə yoxlamasından sessiya/challenge qərarına qədər hesab kilidi
+    // saxlanılır. Paralel credential dəyişikliyi gecikmiş giriş yarada bilməz.
+    const hesabNeticesi = await client.query(
+      `
+      SELECT *
+      FROM hesablar
+      WHERE LOWER(esas_email) = $1
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [temizEmail]
     );
 
-    return {
-      success: true,
-      requiresPin: true,
-      account: clientHesabMelumati(hesab),
-      challenge: sorqu
-    };
-  }
+    if (
+      !hesabNeticesi.rows ||
+      hesabNeticesi.rows.length !== 1
+    ) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        message: "E-poçt və ya şifrə yanlışdır."
+      };
+    }
 
-  return await sessiyaYaratHesabUcun(
-    hesab,
-    cihazId
-  );
+    const hesab = dbSetriniHesabaCevir(
+      hesabNeticesi.rows[0]
+    );
+
+    if (
+      !hesab ||
+      !sifreDuzgundur(sifre, hesab.passwordHash)
+    ) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        message: "E-poçt və ya şifrə yanlışdır."
+      };
+    }
+
+    if (hesab.status !== "aktiv") {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        message: "Bu hesaba giriş hazırda mümkün deyil."
+      };
+    }
+
+    const cihazEtibarlidir = hesab.pinHash
+      ? await cihazEtibarlidirDaxili(
+          client,
+          hesab.accountId,
+          cihazId
+        )
+      : false;
+
+    if (hesab.pinHash && !cihazEtibarlidir) {
+      const sorqu = await cihazPinSorqusuYarat(
+        hesab,
+        cihazId,
+        "login",
+        { client }
+      );
+
+      if (!sorqu || sorqu.success !== true) {
+        await client.query("ROLLBACK");
+        return {
+          success: false,
+          message: sorqu && sorqu.message
+            ? sorqu.message
+            : "Cihaz PIN sorğusu yaradıla bilmədi."
+        };
+      }
+
+      await client.query("COMMIT");
+      return {
+        success: true,
+        requiresPin: true,
+        account: clientHesabMelumati(hesab),
+        challenge: sorqu
+      };
+    }
+
+    const sessiyaNeticesi =
+      await sessiyaYaratHesabUcunDaxili(
+        client,
+        hesab,
+        cihazId
+      );
+
+    if (!sessiyaNeticesi || sessiyaNeticesi.success !== true) {
+      await client.query("ROLLBACK");
+      return sessiyaNeticesi;
+    }
+
+    await client.query("COMMIT");
+    return sessiyaNeticesi;
+  }
+  catch (xeta) {
+    try { await client.query("ROLLBACK"); } catch {}
+    throw xeta;
+  }
+  finally {
+    client.release();
+  }
 }
 
 async function refreshCihazQorumasiniYoxla(
@@ -594,102 +761,151 @@ async function refreshCihazQorumasiniYoxla(
   const hovuzAl = typeof secimler.proqramHovuzunuAl === "function"
     ? secimler.proqramHovuzunuAl
     : proqramHovuzunuAl;
-  const cihazEtibarlidirFn =
+  const xariciCihazEtibarlidirFn =
     typeof secimler.cihazEtibarlidir === "function"
       ? secimler.cihazEtibarlidir
-      : cihazEtibarlidir;
-  const cihaziEtibarliEtFn =
+      : null;
+  const xariciCihaziEtibarliEtFn =
     typeof secimler.cihaziEtibarliEtHesabIdIle === "function"
       ? secimler.cihaziEtibarliEtHesabIdIle
-      : cihaziEtibarliEtHesabIdIle;
+      : null;
   const cihazPinSorqusuYaratFn =
     typeof secimler.cihazPinSorqusuYarat === "function"
       ? secimler.cihazPinSorqusuYarat
       : cihazPinSorqusuYarat;
 
   const hovuz = hovuzAl();
-  const netice = await hovuz.query(
-    `
-    SELECT
-      s.sessiya_id,
-      s.hesab_id,
-      s.cihaz_id,
-      h.*
-    FROM hesab_sessiyalari s
-    JOIN hesablar h
-      ON h.hesab_id = s.hesab_id
-    WHERE s.refresh_token_hash = $1
-      AND s.legv_vaxti IS NULL
-      AND s.bitme_vaxti > NOW()
-    LIMIT 1
-    `,
-    [tokenHashYarat(token)]
-  );
+  const client = await hovuz.connect();
+  const tokenHash = tokenHashYarat(token);
 
-  if (!netice.rows || netice.rows.length !== 1) {
-    return {
-      valid: false,
-      requiresPin: false
-    };
-  }
+  try {
+    await client.query("BEGIN");
 
-  const setr = netice.rows[0];
-  const hesab = dbSetriniHesabaCevir(setr);
-
-  if (!hesab || hesab.status !== "aktiv" || !hesab.pinHash) {
-    return {
-      valid: true,
-      requiresPin: false,
-      account: hesab
-    };
-  }
-
-  if (
-    metnAl(setr.cihaz_id, 128) === temizCihazId ||
-    await cihazEtibarlidirFn(hesab.accountId, temizCihazId)
-  ) {
-    await cihaziEtibarliEtFn(
-      hesab.accountId,
-      temizCihazId
+    const netice = await client.query(
+      `
+      SELECT
+        s.sessiya_id,
+        s.hesab_id,
+        s.cihaz_id,
+        h.*
+      FROM hesab_sessiyalari s
+      JOIN hesablar h
+        ON h.hesab_id = s.hesab_id
+      WHERE s.refresh_token_hash = $1
+        AND s.legv_vaxti IS NULL
+        AND s.bitme_vaxti > NOW()
+      LIMIT 1
+      FOR UPDATE OF s, h
+      `,
+      [tokenHash]
     );
 
+    if (!netice.rows || netice.rows.length !== 1) {
+      await client.query("ROLLBACK");
+      return {
+        valid: false,
+        requiresPin: false
+      };
+    }
+
+    const setr = netice.rows[0];
+    const hesab = dbSetriniHesabaCevir(setr);
+
+    if (!hesab || hesab.status !== "aktiv" || !hesab.pinHash) {
+      await client.query("COMMIT");
+      return {
+        valid: true,
+        requiresPin: false,
+        account: hesab
+      };
+    }
+
+    const eyniCihaz =
+      metnAl(setr.cihaz_id, 128) === temizCihazId;
+    const cihazEtibarlidirNeticesi = eyniCihaz
+      ? true
+      : xariciCihazEtibarlidirFn
+        ? await xariciCihazEtibarlidirFn(
+            hesab.accountId,
+            temizCihazId
+          )
+        : await cihazEtibarlidirDaxili(
+            client,
+            hesab.accountId,
+            temizCihazId
+          );
+
+    if (cihazEtibarlidirNeticesi) {
+      if (xariciCihaziEtibarliEtFn) {
+        await xariciCihaziEtibarliEtFn(
+          hesab.accountId,
+          temizCihazId
+        );
+      }
+      else {
+        await cihaziEtibarliEtHesabIdIleDaxili(
+          client,
+          hesab.accountId,
+          temizCihazId
+        );
+      }
+
+      await client.query("COMMIT");
+      return {
+        valid: true,
+        requiresPin: false,
+        account: hesab
+      };
+    }
+
+    const sorqu = await cihazPinSorqusuYaratFn(
+      hesab,
+      temizCihazId,
+      "refresh",
+      { client }
+    );
+
+    if (!sorqu || sorqu.success !== true) {
+      throw new Error(
+        sorqu && sorqu.message
+          ? sorqu.message
+          : "Cihaz PIN sorğusu yaradıla bilmədi."
+      );
+    }
+
+    const legvNeticesi = await client.query(
+      `
+      UPDATE hesab_sessiyalari
+      SET legv_vaxti = NOW()
+      WHERE sessiya_id = $1
+        AND legv_vaxti IS NULL
+      RETURNING sessiya_id
+      `,
+      [setr.sessiya_id]
+    );
+
+    if (
+      !legvNeticesi.rows ||
+      legvNeticesi.rows.length !== 1
+    ) {
+      throw new Error("Refresh sessiyası ləğv edilə bilmədi.");
+    }
+
+    await client.query("COMMIT");
     return {
       valid: true,
-      requiresPin: false,
-      account: hesab
+      requiresPin: true,
+      account: hesab,
+      challenge: sorqu
     };
   }
-
-  const sorqu = await cihazPinSorqusuYaratFn(
-    hesab,
-    temizCihazId,
-    "refresh"
-  );
-
-  if (!sorqu || sorqu.success !== true) {
-    throw new Error(
-      sorqu && sorqu.message
-        ? sorqu.message
-        : "Cihaz PIN sorğusu yaradıla bilmədi."
-    );
+  catch (xeta) {
+    try { await client.query("ROLLBACK"); } catch {}
+    throw xeta;
   }
-
-  await hovuz.query(
-    `
-    UPDATE hesab_sessiyalari
-    SET legv_vaxti = NOW()
-    WHERE refresh_token_hash = $1
-      AND legv_vaxti IS NULL
-    `,
-    [tokenHashYarat(token)]
-  );
-
-  return {
-    valid: true,
-    requiresPin: true,
-    account: hesab,
-    challenge: sorqu
-  };
+  finally {
+    client.release();
+  }
 }
 
 async function cihazPinSorqusunuYoxlaVeSessiyaYarat(
