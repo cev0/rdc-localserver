@@ -75,6 +75,7 @@ const UNIT_TESTLERI = [
   "server_client_state_qosun_compat_testi.js",
   "server_hessas_mesaj_log_qoruma_testi.js",
   "server_unity_mesaj_muqavilesi_testi.js",
+  "sifre_deyis_pin_atomiklik_testi.js",
   "texnologiya_inkisaf_korpu_testi.js",
   "texnologiya_inkisaf_xerc_runtime_testi.js",
   "texnologiya_inkisaf_xerc_testi.js",
