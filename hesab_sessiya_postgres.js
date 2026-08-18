@@ -279,7 +279,7 @@ async function sessiyaniYenile(refreshToken, cihazId = "") {
         AND s.legv_vaxti IS NULL
         AND s.bitme_vaxti > NOW()
       LIMIT 1
-      FOR UPDATE OF s
+      FOR UPDATE OF s, h
       `,
       [kohneHash]
     );
