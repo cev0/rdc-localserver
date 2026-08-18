@@ -23,6 +23,7 @@ const UNIT_TESTLERI = [
   "email_dev_log_qoruma_testi.js",
   "email_tesdiq_kodu_yaradilma_kilidi_testi.js",
   "email_tesdiq_kodu_yoxlama_kilidi_testi.js",
+  "hesab_berpa_kodu_yaradilma_kilidi_testi.js",
   "hesab_pin_icaze_atomiklik_testi.js",
   "hesab_provayder_cavab_uygunlugu_testi.js",
   "hesab_sifre_qaydalari_testi.js",
