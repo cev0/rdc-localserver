@@ -9,6 +9,8 @@ const {
 const UNIT_TESTLERI = [
   "baza_yerdeyisme_dovlet_kilidi_client_testi.js",
   "berpa_kodu_yaradilma_kilidi_testi.js",
+  "cihaz_pin_challenge_atomiklik_testi.js",
+  "cihaz_pin_refresh_fail_closed_testi.js",
   "dovlet_baza_birbasa_postgres_testi.js",
   "dovlet_konvoy_runtime_client_sync_testi.js",
   "dovlet_konvoy_runtime_pvp_status_testi.js",
@@ -21,6 +23,7 @@ const UNIT_TESTLERI = [
   "email_dev_log_qoruma_testi.js",
   "email_tesdiq_kodu_yaradilma_kilidi_testi.js",
   "email_tesdiq_kodu_yoxlama_kilidi_testi.js",
+  "hesab_berpa_kodu_yaradilma_kilidi_testi.js",
   "hesab_pin_deyisiklik_icaze_legv_testi.js",
   "hesab_pin_icaze_atomiklik_testi.js",
   "hesab_provayder_cavab_uygunlugu_testi.js",
