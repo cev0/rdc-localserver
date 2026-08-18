@@ -5,6 +5,9 @@ const {
   legacyTutumLeveliniAl,
   konvoyTutumHesabiniAl
 } = require("./konvoy_tutum_formulu");
+const {
+  canonicalUnitIdAl
+} = require("./qosun_telimi_sistemi");
 
 function metnAl(deyer, maksimum = 128) {
   return typeof deyer === "string"
@@ -41,6 +44,21 @@ function qosunObyektiniTemizle(raw) {
   return temiz;
 }
 
+function qosunlariCanonicalTopla(rawQosunlar) {
+  const temiz = qosunObyektiniTemizle(rawQosunlar);
+  const canonical = {};
+
+  for (const [unitId, say] of Object.entries(temiz)) {
+    const canonicalId = canonicalUnitIdAl(unitId);
+    if (!canonicalId) continue;
+
+    canonical[canonicalId] =
+      (canonical[canonicalId] || 0) + musbetTamEded(say);
+  }
+
+  return canonical;
+}
+
 function qosunSayiniHesabla(qosunlar) {
   return Object.values(qosunObyektiniTemizle(qosunlar))
     .reduce((cem, say) => cem + say, 0);
@@ -69,7 +87,9 @@ function digerKonvoylardaIstifadeOlunanlariAl(state, istisnaKonvoyId) {
   for (const konvoy of konvoylar.items) {
     if (!konvoy || konvoy.konvoyId === istisnaKonvoyId) continue;
 
-    for (const [unitId, say] of Object.entries(konvoy.qosunlar || {})) {
+    const canonicalQosunlar = qosunlariCanonicalTopla(konvoy.qosunlar);
+
+    for (const [unitId, say] of Object.entries(canonicalQosunlar)) {
       cem[unitId] = (cem[unitId] || 0) + musbetTamEded(say);
     }
   }
@@ -111,7 +131,17 @@ function konvoyQosunlariniTeyinEt(state, konvoyId, rawQosunlar) {
     return { success: false, message: "Konvoy hələ açıq deyil." };
   }
 
+  // Unity hazırda legacy ID-lər göndərir:
+  // fighter_lv1 / shooter_lv1 / vehicle_lv1 ...
+  // Serverin yeni qoşun kataloqu isə canonical ID-lər saxlayır:
+  // warrior_t1 / shooter_t1 / vehicle_t1 ...
+  //
+  // State-də və ya fərqli konvoylarda hər iki format ola bilər. Availability
+  // hesabında onları eyni qoşun kimi canonical ID altında toplamaq vacibdir.
+  // Konvoyun öz qosunlar obyekti isə compatibility üçün gələn ID formatında
+  // saxlanılır ki, mövcud Unity DTO-ları pozulmasın.
   const istenilen = qosunObyektiniTemizle(rawQosunlar);
+  const istenilenCanonical = qosunlariCanonicalTopla(istenilen);
   const istenilenCem = qosunSayiniHesabla(istenilen);
   const tutumHesabi = konvoyTutumHesabiniAl(state, id);
   const tutum = tutumHesabi.yekunTutum;
@@ -124,12 +154,12 @@ function konvoyQosunlariniTeyinEt(state, konvoyId, rawQosunlar) {
     };
   }
 
-  const ordu = orduQosunlariniAl(state);
-  const digerlerde = digerKonvoylardaIstifadeOlunanlariAl(state, id);
+  const orduCanonical = qosunlariCanonicalTopla(orduQosunlariniAl(state));
+  const digerlerdeCanonical = digerKonvoylardaIstifadeOlunanlariAl(state, id);
 
-  for (const [unitId, say] of Object.entries(istenilen)) {
-    const umumi = musbetTamEded(ordu[unitId]);
-    const rezerv = musbetTamEded(digerlerde[unitId]);
+  for (const [unitId, say] of Object.entries(istenilenCanonical)) {
+    const umumi = musbetTamEded(orduCanonical[unitId]);
+    const rezerv = musbetTamEded(digerlerdeCanonical[unitId]);
     const movcud = Math.max(0, umumi - rezerv);
 
     if (say > movcud) {
@@ -157,6 +187,7 @@ module.exports = {
   konvoyTutumLeveliniAl,
   konvoyTutumunuAl,
   qosunSayiniHesabla,
+  qosunlariCanonicalTopla,
   konvoyQosunStateTeminEt,
   konvoyQosunMelumatiniHazirla,
   konvoyQosunlariniTeyinEt
