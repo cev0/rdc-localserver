@@ -78,6 +78,31 @@ function pinHashDuzgundur(pin, saxlanmisHash) {
   return crypto.timingSafeEqual(saxlanmisBuffer, yeniBuffer);
 }
 
+async function kohnePinIcazeleriniLegvEt(client, hesabId) {
+  await client.query(
+    `
+    UPDATE hesab_pin_berpa_sorqulari
+    SET
+      istifade_vaxti = NOW(),
+      reset_token_hash = NULL,
+      reset_token_bitme_vaxti = NULL
+    WHERE hesab_id = $1
+      AND istifade_vaxti IS NULL
+    `,
+    [hesabId]
+  );
+
+  await client.query(
+    `
+    UPDATE hesab_pin_icazeleri
+    SET istifade_vaxti = NOW()
+    WHERE hesab_id = $1
+      AND istifade_vaxti IS NULL
+    `,
+    [hesabId]
+  );
+}
+
 function blokQaligiMs(setr) {
   if (!setr || !setr.pin_blok_vaxti) {
     return 0;
@@ -605,6 +630,11 @@ async function pinTeyinEt(playerId, cariPin, yeniPin) {
       [setr.hesab_id, yeniHash]
     );
 
+    await kohnePinIcazeleriniLegvEt(
+      client,
+      setr.hesab_id
+    );
+
     await client.query("COMMIT");
 
     return {
@@ -684,6 +714,11 @@ async function pinSil(playerId, cariPin) {
       WHERE hesab_id = $1
       `,
       [setr.hesab_id]
+    );
+
+    await kohnePinIcazeleriniLegvEt(
+      client,
+      setr.hesab_id
     );
 
     await client.query("COMMIT");
