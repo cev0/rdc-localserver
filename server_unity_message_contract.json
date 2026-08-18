@@ -50,7 +50,8 @@
     "train_unit_request",
     "troop_catalog_request",
     "troop_training_status_request",
-    "upgrade_request"
+    "upgrade_request",
+    "world_targets_info_request"
   ],
   "criticalFields": {
     "accountInfo": [
