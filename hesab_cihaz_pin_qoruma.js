@@ -811,7 +811,16 @@ async function refreshCihazQorumasiniYoxla(
     const setr = netice.rows[0];
     const hesab = dbSetriniHesabaCevir(setr);
 
-    if (!hesab || hesab.status !== "aktiv" || !hesab.pinHash) {
+    if (!hesab || hesab.status !== "aktiv") {
+      await client.query("ROLLBACK");
+      return {
+        valid: false,
+        requiresPin: false,
+        message: "Sessiya və ya hesab etibarsızdır."
+      };
+    }
+
+    if (!hesab.pinHash) {
       await client.query("COMMIT");
       return {
         valid: true,
