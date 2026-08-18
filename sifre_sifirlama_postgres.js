@@ -454,6 +454,28 @@ async function yeniSifreTeyinEtDaxili(
         [setr.hesab_id]
     );
 
+    // Şifrə dəyişəndən əvvəl yaradılmış qısa-müddətli həssas əməliyyat
+    // icazələri və yarımçıq cihaz-PIN girişləri artıq etibarlı deyil.
+    await client.query(
+        `
+        UPDATE hesab_pin_icazeleri
+        SET istifade_vaxti = NOW()
+        WHERE hesab_id = $1
+          AND istifade_vaxti IS NULL
+        `,
+        [setr.hesab_id]
+    );
+
+    await client.query(
+        `
+        UPDATE hesab_cihaz_pin_sorqulari
+        SET istifade_vaxti = NOW()
+        WHERE hesab_id = $1
+          AND istifade_vaxti IS NULL
+        `,
+        [setr.hesab_id]
+    );
+
     await client.query(
         `
         UPDATE sifre_sifirlama_sorqulari
