@@ -20,6 +20,7 @@ const UNIT_TESTLERI = [
   "doyus_qosun_stat_inteqrasiya_testi.js",
   "doyus_raport_pg_mutasiya_testi.js",
   "dusmen_movqeyi_pg_mutasiya_testi.js",
+  "email_sifre_login_atomiklik_testi.js",
   "email_dev_log_qoruma_testi.js",
   "email_tesdiq_kodu_yaradilma_kilidi_testi.js",
   "email_tesdiq_kodu_yoxlama_kilidi_testi.js",

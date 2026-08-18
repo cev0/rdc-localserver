@@ -11,12 +11,37 @@ async function testiIslet() {
   let sessiyaLegvSayi = 0;
   let challengeYaratmaSayi = 0;
   let challengeUgurludur = false;
+  let transactionAktivdir = false;
+  let forUpdateGoruldu = false;
+  let releaseSayi = 0;
 
-  const saxtaHovuz = {
+  const client = {
     async query(sql) {
       const emr = String(sql || "");
+      const yigcam = emr.trim().replace(/\s+/g, " ");
+
+      if (yigcam === "BEGIN") {
+        assert.strictEqual(transactionAktivdir, false);
+        transactionAktivdir = true;
+        return { rows: [] };
+      }
+
+      if (yigcam === "COMMIT" || yigcam === "ROLLBACK") {
+        assert.strictEqual(transactionAktivdir, true);
+        transactionAktivdir = false;
+        return { rows: [] };
+      }
+
+      assert.strictEqual(
+        transactionAktivdir,
+        true,
+        "Refresh yoxlaması transaction xaricinə çıxmamalıdır."
+      );
 
       if (emr.includes("FROM hesab_sessiyalari s")) {
+        assert.match(emr, /FOR UPDATE OF s, h/);
+        forUpdateGoruldu = true;
+
         return {
           rows: [
             {
@@ -42,11 +67,31 @@ async function testiIslet() {
         emr.includes("SET legv_vaxti = NOW()")
       ) {
         sessiyaLegvSayi++;
-        return { rows: [], rowCount: 1 };
+        return {
+          rows: [{ sessiya_id: "session-1" }],
+          rowCount: 1
+        };
       }
 
       throw new Error(
-        "Gözlənilməyən SQL: " + emr.trim().replace(/\s+/g, " ")
+        "Gözlənilməyən SQL: " + yigcam
+      );
+    },
+
+    release() {
+      assert.strictEqual(transactionAktivdir, false);
+      releaseSayi++;
+    }
+  };
+
+  const saxtaHovuz = {
+    async connect() {
+      return client;
+    },
+
+    async query() {
+      throw new Error(
+        "Refresh PIN qoruması pool.query işlətməməlidir."
       );
     }
   };
@@ -64,7 +109,14 @@ async function testiIslet() {
       throw new Error("Yeni cihaz əvvəlcədən etibarlı edilməməlidir.");
     },
 
-    async cihazPinSorqusuYarat() {
+    async cihazPinSorqusuYarat(
+      _hesab,
+      _cihazId,
+      _meqsed,
+      secimler
+    ) {
+      assert.strictEqual(transactionAktivdir, true);
+      assert.strictEqual(secimler.client, client);
       challengeYaratmaSayi++;
 
       if (!challengeUgurludur) {
@@ -117,6 +169,9 @@ async function testiIslet() {
     1,
     "Yalnız uğurlu challenge-dən sonra köhnə refresh sessiyası ləğv edilməlidir."
   );
+  assert.strictEqual(forUpdateGoruldu, true);
+  assert.strictEqual(releaseSayi, 2);
+  assert.strictEqual(transactionAktivdir, false);
 }
 
 testiIslet()
