@@ -5,7 +5,7 @@ const {
 } = require("./verilenler_bazasi");
 
 const {
-  pinIcazesiniIstifadeEt
+  pinIcazesiniKilidliHesabIleIstifadeEt
 } = require("./hesab_pin_icaze_postgres");
 
 function metnAl(deyer) {
@@ -25,22 +25,6 @@ async function hesabiSil(
     };
   }
 
-  const pinIcazesi = await pinIcazesiniIstifadeEt(
-    temizPlayerId,
-    "account_delete",
-    metnAl(pinAuthorizationToken)
-  );
-
-  if (!pinIcazesi || pinIcazesi.success !== true) {
-    return {
-      success: false,
-      pinRequired: true,
-      message: pinIcazesi && pinIcazesi.message
-        ? pinIcazesi.message
-        : "Hesabı silmək üçün PIN təsdiqi tələb olunur."
-    };
-  }
-
   const hovuz = proqramHovuzunuAl();
   const client = await hovuz.connect();
 
@@ -53,6 +37,7 @@ async function hesabiSil(
         hesab_id,
         oyuncu_id,
         esas_email,
+        pin_hash,
         status
       FROM hesablar
       WHERE oyuncu_id = $1
@@ -73,6 +58,37 @@ async function hesabiSil(
 
     const hesab = hesabNeticesi.rows[0];
     const hesabId = hesab.hesab_id;
+
+    // PIN icazəsi hesab kilidi və silmə ilə eyni transaction-da istifadə
+    // olunur. Silmə uğursuz olarsa token istifadəsi də rollback edilir.
+    const daxiliPinNeticesi =
+      await pinIcazesiniKilidliHesabIleIstifadeEt(
+        client,
+        hesab,
+        temizPlayerId,
+        "account_delete",
+        metnAl(pinAuthorizationToken)
+      );
+    const pinIcazesi = daxiliPinNeticesi.netice;
+
+    if (!pinIcazesi || pinIcazesi.success !== true) {
+      if (
+        daxiliPinNeticesi.ugursuzTransactionuCommitEt === true
+      ) {
+        await client.query("COMMIT");
+      }
+      else {
+        await client.query("ROLLBACK");
+      }
+
+      return {
+        success: false,
+        pinRequired: true,
+        message: pinIcazesi && pinIcazesi.message
+          ? pinIcazesi.message
+          : "Hesabı silmək üçün PIN təsdiqi tələb olunur."
+      };
+    }
 
     // Hesaba aid bütün giriş / təhlükəsizlik məlumatları silinir.
     // Gameplay playerId və oyun state-i silinmir.

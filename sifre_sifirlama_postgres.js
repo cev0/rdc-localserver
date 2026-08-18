@@ -422,6 +422,103 @@ async function sifreSifirlamaKodunuYoxla(email, kod) {
     }
 }
 
+// Caller açıq transaction və kilidlənmiş hesab/reset sətri verməlidir.
+// Bu hissə PIN-lə qorunan şifrə dəyişmə axınında da eyni mutasiyanı
+// ayrıca transaction açmadan işlətmək üçündür.
+async function yeniSifreTeyinEtDaxili(
+    client,
+    setr,
+    yeniSifre
+) {
+    const yeniHash = sifreHashYarat(yeniSifre);
+
+    await client.query(
+        `
+        UPDATE hesablar
+        SET
+            sifre_hash = $2,
+            yenilenme_vaxti = NOW()
+        WHERE hesab_id = $1
+        `,
+        [setr.hesab_id, yeniHash]
+    );
+
+    // Şifrə dəyişəndə bütün köhnə sessiyalar ləğv edilir.
+    await client.query(
+        `
+        UPDATE hesab_sessiyalari
+        SET legv_vaxti = NOW()
+        WHERE hesab_id = $1
+          AND legv_vaxti IS NULL
+        `,
+        [setr.hesab_id]
+    );
+
+    // Şifrə dəyişəndən əvvəl yaradılmış qısa-müddətli həssas əməliyyat
+    // icazələri və yarımçıq cihaz-PIN girişləri artıq etibarlı deyil.
+    await client.query(
+        `
+        UPDATE hesab_pin_icazeleri
+        SET istifade_vaxti = NOW()
+        WHERE hesab_id = $1
+          AND istifade_vaxti IS NULL
+        `,
+        [setr.hesab_id]
+    );
+
+    await client.query(
+        `
+        UPDATE hesab_cihaz_pin_sorqulari
+        SET istifade_vaxti = NOW()
+        WHERE hesab_id = $1
+          AND istifade_vaxti IS NULL
+        `,
+        [setr.hesab_id]
+    );
+
+    await client.query(
+        `
+        UPDATE sifre_sifirlama_sorqulari
+        SET
+            istifade_vaxti = NOW(),
+            reset_token_hash = NULL,
+            reset_token_bitme_vaxti = NULL
+        WHERE sorqu_id = $1
+        `,
+        [setr.sorqu_id]
+    );
+
+    await client.query(
+        `
+        UPDATE sifre_sifirlama_sorqulari
+        SET istifade_vaxti = NOW()
+        WHERE hesab_id = $1
+          AND sorqu_id <> $2
+          AND istifade_vaxti IS NULL
+        `,
+        [setr.hesab_id, setr.sorqu_id]
+    );
+
+    await client.query(
+        `
+        INSERT INTO hesab_audit_jurnali (
+            hesab_id,
+            oyuncu_id,
+            hadise_novu,
+            detallar
+        )
+        VALUES ($1, $2, 'sifre_sifirlandi', $3::jsonb)
+        `,
+        [
+            setr.hesab_id,
+            setr.oyuncu_id,
+            JSON.stringify({
+                email: setr.esas_email
+            })
+        ]
+    );
+}
+
 async function yeniSifreTeyinEt(resetToken, yeniSifre) {
     const temizToken = String(resetToken || "").trim();
 
@@ -493,70 +590,10 @@ async function yeniSifreTeyinEt(resetToken, yeniSifre) {
             };
         }
 
-        const yeniHash = sifreHashYarat(yeniSifre);
-
-        await client.query(
-            `
-            UPDATE hesablar
-            SET
-                sifre_hash = $2,
-                yenilenme_vaxti = NOW()
-            WHERE hesab_id = $1
-            `,
-            [setr.hesab_id, yeniHash]
-        );
-
-        // Şifrə dəyişəndə bütün köhnə sessiyalar ləğv edilir.
-        await client.query(
-            `
-            UPDATE hesab_sessiyalari
-            SET legv_vaxti = NOW()
-            WHERE hesab_id = $1
-              AND legv_vaxti IS NULL
-            `,
-            [setr.hesab_id]
-        );
-
-        await client.query(
-            `
-            UPDATE sifre_sifirlama_sorqulari
-            SET
-                istifade_vaxti = NOW(),
-                reset_token_hash = NULL,
-                reset_token_bitme_vaxti = NULL
-            WHERE sorqu_id = $1
-            `,
-            [setr.sorqu_id]
-        );
-
-        await client.query(
-            `
-            UPDATE sifre_sifirlama_sorqulari
-            SET istifade_vaxti = NOW()
-            WHERE hesab_id = $1
-              AND sorqu_id <> $2
-              AND istifade_vaxti IS NULL
-            `,
-            [setr.hesab_id, setr.sorqu_id]
-        );
-
-        await client.query(
-            `
-            INSERT INTO hesab_audit_jurnali (
-                hesab_id,
-                oyuncu_id,
-                hadise_novu,
-                detallar
-            )
-            VALUES ($1, $2, 'sifre_sifirlandi', $3::jsonb)
-            `,
-            [
-                setr.hesab_id,
-                setr.oyuncu_id,
-                JSON.stringify({
-                    email: setr.esas_email
-                })
-            ]
+        await yeniSifreTeyinEtDaxili(
+            client,
+            setr,
+            yeniSifre
         );
 
         await client.query("COMMIT");
@@ -594,5 +631,6 @@ module.exports = {
     sifreSifirlamaKodunuHazirla,
     sifreSifirlamaSorqusunuLegvEt,
     sifreSifirlamaKodunuYoxla,
-    yeniSifreTeyinEt
+    yeniSifreTeyinEt,
+    yeniSifreTeyinEtDaxili
 };
