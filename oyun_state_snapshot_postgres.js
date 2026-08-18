@@ -7,10 +7,32 @@ const {
 const SNAPSHOT_HADISE_NOVU = "oyun_state_snapshot_v1";
 const SAXLANILAN_SNAPSHOT_SAYI = 3;
 
+// Bu sahələr yalnız işləyən Node prosesi üçün runtime cache-dir.
+// Onları PostgreSQL snapshot-a yazmaq olmaz.
+// Məsələn Set JSON.stringify zamanı {} olur və restore-dan sonra
+// yol A* sistemi .has(...) çağıranda serveri çökdürə bilər.
+const RUNTIME_CACHE_ACARLARI = new Set([
+  "cachedBlockedCells"
+]);
+
 function metnAl(deyer, maksimum = 128) {
   return typeof deyer === "string"
     ? deyer.trim().slice(0, maksimum)
     : "";
+}
+
+function runtimeCacheleriniSil(state) {
+  if (!state || typeof state !== "object" || Array.isArray(state)) {
+    return state;
+  }
+
+  for (const acar of RUNTIME_CACHE_ACARLARI) {
+    if (Object.prototype.hasOwnProperty.call(state, acar)) {
+      delete state[acar];
+    }
+  }
+
+  return state;
 }
 
 function snapshotUcunKopyala(state) {
@@ -18,7 +40,15 @@ function snapshotUcunKopyala(state) {
     return null;
   }
 
-  return JSON.parse(JSON.stringify(state));
+  // Runtime cache-lər serializasiya olunmadan birbaşa buraxılır.
+  // Beləliklə Set -> {} korlanması snapshot-a düşmür.
+  const json = JSON.stringify(
+    state,
+    (acar, deyer) => RUNTIME_CACHE_ACARLARI.has(acar) ? undefined : deyer
+  );
+
+  const kopya = JSON.parse(json);
+  return runtimeCacheleriniSil(kopya);
 }
 
 function snapshotNeticesindenStateAl(netice) {
@@ -38,7 +68,11 @@ function snapshotNeticesindenStateAl(netice) {
     return null;
   }
 
-  return JSON.parse(JSON.stringify(state));
+  // Köhnə snapshot-larda cachedBlockedCells artıq {} kimi saxlanmış ola bilər.
+  // Restore-dan əvvəl onu silirik ki server növbəti yol hesabında cache-i
+  // düzgün Set kimi yenidən qursun.
+  const kopya = JSON.parse(JSON.stringify(state));
+  return runtimeCacheleriniSil(kopya);
 }
 
 async function snapshotiYazSorquIle(sorquEt, playerId, state) {
@@ -187,10 +221,16 @@ function snapshotiCariStateIleBirlesdir(cariState, snapshot) {
     delete cariState[acar];
   }
 
+  const temizSnapshot = snapshotUcunKopyala(snapshot);
+
   Object.assign(
     cariState,
-    JSON.parse(JSON.stringify(snapshot))
+    temizSnapshot || {}
   );
+
+  // Cari RAM state-də də runtime cache qalmamalıdır.
+  // Yol sistemi lazım olanda onu yenidən Set kimi yaradacaq.
+  runtimeCacheleriniSil(cariState);
 
   if (!cariState.playerId) {
     cariState.playerId = cariPlayerId;
@@ -202,6 +242,8 @@ function snapshotiCariStateIleBirlesdir(cariState, snapshot) {
 module.exports = {
   SNAPSHOT_HADISE_NOVU,
   SAXLANILAN_SNAPSHOT_SAYI,
+  runtimeCacheleriniSil,
+  snapshotUcunKopyala,
   oyunStateSnapshotiniYaz,
   oyunStateSnapshotiniYazClient,
   sonOyunStateSnapshotiniAl,
