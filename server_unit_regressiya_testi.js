@@ -25,6 +25,7 @@ const UNIT_TESTLERI = [
   "hesab_pin_icaze_atomiklik_testi.js",
   "hesab_provayder_cavab_uygunlugu_testi.js",
   "hesab_sifre_qaydalari_testi.js",
+  "hesab_silme_pin_atomiklik_testi.js",
   "iki_oyuncu_state_mutasiya_postgres_testi.js",
   "kesfiyyat_pg_mutasiya_testi.js",
   "konvoy_emeliyyat_pg_mutasiya_testi.js",
