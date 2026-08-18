@@ -34,6 +34,8 @@
     "convoy_hero_assign_request",
     "convoy_hero_remove_request",
     "convoy_info_request",
+    "convoy_operation_info_request",
+    "convoy_operation_start_request",
     "convoy_troops_set_request",
     "expand_area_request",
     "get_state",
