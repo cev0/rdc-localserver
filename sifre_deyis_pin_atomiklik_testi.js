@@ -171,11 +171,29 @@ function transactionQaydasiniYoxla(saxta) {
         sql.startsWith("UPDATE hesablar") &&
         sql.includes("sifre_hash = $2")
       );
+      const butunPinIcazelerininLegvi =
+        saxta.sorgular.findIndex((x, indeks) =>
+          indeks > pinIstifadesi &&
+          x.sql.startsWith("UPDATE hesab_pin_icazeleri") &&
+          x.sql.includes("hesab_id = $1") &&
+          x.sql.includes("istifade_vaxti IS NULL")
+        );
+      const cihazPinSorqularininLegvi = sorguIndeksi(
+        saxta,
+        sql =>
+          sql.startsWith("UPDATE hesab_cihaz_pin_sorqulari") &&
+          sql.includes("istifade_vaxti IS NULL")
+      );
 
       assert.ok(resetKilidi > 0);
       assert.ok(pinKilidi > resetKilidi);
       assert.ok(pinIstifadesi > pinKilidi);
       assert.ok(sifreMutasiyasi > pinIstifadesi);
+      assert.ok(butunPinIcazelerininLegvi > sifreMutasiyasi);
+      assert.ok(
+        cihazPinSorqularininLegvi >
+        butunPinIcazelerininLegvi
+      );
       assert.strictEqual(saxta.sorgular.at(-1).sql, "COMMIT");
     }
 
