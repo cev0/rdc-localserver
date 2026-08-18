@@ -787,6 +787,19 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
 
         return true;
       }
+
+      if (!cihazQoruma || cihazQoruma.valid !== true) {
+        send(ws, {
+          type: "account_session_refresh_result",
+          success: false,
+          message: cihazQoruma && cihazQoruma.message
+            ? cihazQoruma.message
+            : "Sessiya və ya cihaz məlumatı etibarsızdır.",
+          serverTimeUnixMs: nowMs()
+        });
+
+        return true;
+      }
     }
     catch (xeta) {
       console.error("[CIHAZ_PIN] Refresh cihaz yoxlaması xətası:", xeta);
