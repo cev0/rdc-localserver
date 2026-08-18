@@ -14,6 +14,7 @@ async function testiIslet() {
   let transactionAktivdir = false;
   let forUpdateGoruldu = false;
   let releaseSayi = 0;
+  let hesabStatusu = "aktiv";
 
   const client = {
     async query(sql) {
@@ -54,7 +55,7 @@ async function testiIslet() {
               email_tesdiqlenib: false,
               sifre_hash: "test",
               pin_hash: "pin-var",
-              status: "aktiv",
+              status: hesabStatusu,
               yaradilma_vaxti: new Date(),
               yenilenme_vaxti: new Date()
             }
@@ -171,6 +172,36 @@ async function testiIslet() {
   );
   assert.strictEqual(forUpdateGoruldu, true);
   assert.strictEqual(releaseSayi, 2);
+  assert.strictEqual(transactionAktivdir, false);
+
+  hesabStatusu = "deaktiv";
+
+  const deaktivNetice = await refreshCihazQorumasiniYoxla(
+    refreshToken,
+    "new-device",
+    secimler
+  );
+
+  assert.strictEqual(deaktivNetice.valid, false);
+  assert.strictEqual(deaktivNetice.requiresPin, false);
+  assert.strictEqual(challengeYaratmaSayi, 2);
+  assert.strictEqual(sessiyaLegvSayi, 1);
+  assert.strictEqual(releaseSayi, 3);
+
+  const cihazsizNetice = await refreshCihazQorumasiniYoxla(
+    refreshToken,
+    "",
+    {
+      proqramHovuzunuAl() {
+        throw new Error(
+          "Cihaz ID-si yoxdursa baza sorğusu edilməməlidir."
+        );
+      }
+    }
+  );
+
+  assert.strictEqual(cihazsizNetice.valid, false);
+  assert.strictEqual(cihazsizNetice.requiresPin, false);
   assert.strictEqual(transactionAktivdir, false);
 }
 
