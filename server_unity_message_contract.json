@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "description": "RDC Unity client -> server protocol contract",
   "clientOutboundTypes": [
     "account_bind_request",
@@ -42,10 +42,21 @@
     "get_state_local_map",
     "get_world_map",
     "hello",
+    "ittifaq_mesaj_gonder_request",
+    "ittifaq_mesaj_tarixcesi_request",
+    "mesaj_tercume_request",
     "mission_reward_claim_request",
     "move_request",
+    "olke_mesaj_gonder_request",
+    "olke_mesaj_tarixcesi_request",
+    "oyun_dili_deyis_request",
+    "oyun_dili_getir_request",
     "player_name_change_request",
     "research_start",
+    "sexsi_mesaj_gonder_request",
+    "sexsi_mesaj_oxundu_request",
+    "sexsi_mesaj_tarixcesi_request",
+    "sexsi_oxunmamis_say_request",
     "start_construction_request",
     "train_unit_request",
     "troop_catalog_request",
@@ -85,6 +96,25 @@
       "activeQueues",
       "tamamlananlar",
       "serverTimeUnixMs"
+    ],
+    "mesajlasma": [
+      "mesajId",
+      "kanalNovu",
+      "gonderenPlayerId",
+      "qebulEdenPlayerId",
+      "dovletId",
+      "ittifaqId",
+      "metn",
+      "gonderilmeVaxtiMs",
+      "payloadJson"
+    ],
+    "tercume": [
+      "mesajId",
+      "oyunDili",
+      "hedefDil",
+      "orijinalDil",
+      "orijinalMetn",
+      "tercumeMetni"
     ]
   },
   "buildingDefinitions": {
