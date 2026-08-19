@@ -1,0 +1,41 @@
+name: Mesajlasma Modul Testi
+
+on:
+  push:
+    paths:
+      - 'mesajlasma_handler.js'
+      - 'mesajlasma_postgres.js'
+      - 'oyun_dili_postgres.js'
+      - 'tercume_xidmeti.js'
+      - 'mesajlasma_modul_testi.js'
+      - 'server_missiya_genisletme_v2.js'
+      - 'miqrasiyalar/20260819_mesajlasma_ve_oyun_dili.sql'
+      - '.github/workflows/mesajlasma-modul-test.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Paketler
+        run: npm ci
+
+      - name: Sintaksis yoxlamasi
+        run: |
+          node --check mesajlasma_handler.js
+          node --check mesajlasma_postgres.js
+          node --check oyun_dili_postgres.js
+          node --check tercume_xidmeti.js
+          node --check server_missiya_genisletme_v2.js
+
+      - name: Mesajlasma modul testi
+        run: node mesajlasma_modul_testi.js
