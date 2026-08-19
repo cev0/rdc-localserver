@@ -1,6 +1,7 @@
 "use strict";
 
 const hesabLoginModulu = require("./hesab_login_handler");
+const { mesajlasmaMesajiniEmalEt } = require("./mesajlasma_handler");
 const { missiyaMesajiniEmalEt } = require("./missiya_handler");
 const {
   oyuncuMutasiyaKilidiIleIcraEt
@@ -97,6 +98,7 @@ function metnAl(v, max = 128) {
 }
 
 async function gameplayMesajZenciriniIcraEt(kontekst) {
+  if (await mesajlasmaMesajiniEmalEt(kontekst)) return true;
   if (await missiyaMesajiniEmalEt(kontekst)) return true;
   if (await qehremanRecruitMesajiniEmalEt(kontekst)) return true;
   if (await qehremanExpMesajiniEmalEt(kontekst)) return true;
