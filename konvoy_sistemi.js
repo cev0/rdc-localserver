@@ -285,12 +285,27 @@ function qehremaniKonvoyaYerlesdir(state, konvoyId, heroId) {
     return { success: false, message: "Konvoy hələ açıq deyil." };
   }
 
+  // Bir qəhrəman eyni anda yalnız bir konvoyda ola bilər.
+  // Eyni qəhrəman cari konvoyda idisə də əvvəl çıxarılır və aşağıda yenidən əlavə olunur;
+  // beləliklə eyni sorğu idempotent qalır və boş yer xətası vermir.
   for (const diger of konvoylar.items) {
     diger.qehremanIdleri = diger.qehremanIdleri.filter(x => x !== qehremanId);
   }
 
+  let evezlenenQehremanId = "";
+
   if (konvoy.qehremanIdleri.length >= konvoy.aciqQehremanYeri) {
-    return { success: false, message: "Konvoyda açıq qəhrəman yeri yoxdur." };
+    // Hazırkı Unity UI-də Konvoy 1 üçün bir aktiv qəhrəman slotu var.
+    // Oyunçu həmin slota başqa qəhrəman atanda "yer yoxdur" demək əvəzinə
+    // server köhnə qəhrəmanı atomik şəkildə yenisi ilə əvəz edir.
+    if (konvoy.aciqQehremanYeri === 1) {
+      evezlenenQehremanId = metnAl(konvoy.qehremanIdleri[0], 128);
+      konvoy.qehremanIdleri = [];
+    }
+    else {
+      // Gələcək çox-slotlu UI-də hansı slotun dəyişəcəyi ayrıca göstərilməlidir.
+      return { success: false, message: "Konvoyda açıq qəhrəman yeri yoxdur." };
+    }
   }
 
   konvoy.qehremanIdleri.push(qehremanId);
@@ -299,6 +314,7 @@ function qehremaniKonvoyaYerlesdir(state, konvoyId, heroId) {
     success: true,
     konvoyId: konvoy.konvoyId,
     heroId: qehremanId,
+    replacedHeroId: evezlenenQehremanId || undefined,
     info: konvoyMelumatiniHazirla(state)
   };
 }
