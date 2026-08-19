@@ -89,7 +89,7 @@ function binaMuqavilesiniYoxla(kok) {
   );
 }
 
-assert.strictEqual(manifest.version, 1);
+assert.strictEqual(manifest.version, 2);
 assert.ok(Array.isArray(manifest.clientOutboundTypes));
 
 const clientTipleri = manifest.clientOutboundTypes.slice();
