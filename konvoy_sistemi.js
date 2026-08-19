@@ -6,7 +6,8 @@ const {
 } = require("./konvoy_qaydalari");
 
 const {
-  qehremanKonvoyaYerleseBiler
+  qehremanKonvoyaYerleseBiler,
+  qehremaniTap
 } = require("./qehreman_kataloqu");
 
 const ESGER_KAMPI_IDLERI = Object.freeze([
@@ -17,10 +18,24 @@ const ESGER_KAMPI_IDLERI = Object.freeze([
 
 const IKINCI_KONVOY_UCUN_KAMP_SAYI = 2;
 
+// Unity-də köhnə HeroRecruitManager ownership-i bir müddət lokal saxlanılıb.
+// Local development serverində həmin test qəhrəmanlarını ilk konvoy drop-u zamanı
+// canonical state.heroes[]-a bir dəfə keçiririk. Production-da bu keçid bağlıdır.
+const LOKAL_LEGACY_QEHRAMAN_BOOTSTRAP_AKTIVDIR =
+  process.env.NODE_ENV !== "production" &&
+  String(process.env.RDC_DISABLE_LEGACY_HERO_BOOTSTRAP || "").trim() !== "1";
+
 function metnAl(deyer, maksimum = 128) {
   return typeof deyer === "string"
     ? deyer.trim().slice(0, maksimum).toLowerCase()
     : "";
+}
+
+function musbetTamEded(deyer) {
+  const say = Number(deyer);
+  return Number.isFinite(say)
+    ? Math.max(0, Math.trunc(say))
+    : 0;
 }
 
 function texnologiyaSeviyesiniAl(state, techId) {
@@ -118,6 +133,54 @@ function ownedQehremanIdSetiniAl(state) {
   return set;
 }
 
+function legacyLokalQehremanSahibliyiniTeminEt(state, heroId) {
+  if (!LOKAL_LEGACY_QEHRAMAN_BOOTSTRAP_AKTIVDIR) {
+    return false;
+  }
+
+  if (!state || typeof state !== "object") {
+    return false;
+  }
+
+  const id = metnAl(heroId, 128);
+  if (!id) {
+    return false;
+  }
+
+  if (!Array.isArray(state.heroes)) {
+    state.heroes = [];
+  }
+
+  const movcuddur = state.heroes.some(qehreman =>
+    metnAl(qehreman && qehreman.heroId, 128) === id
+  );
+
+  if (movcuddur) {
+    return true;
+  }
+
+  const definition = qehremaniTap(id);
+  if (!definition) {
+    return false;
+  }
+
+  state.heroes.push({
+    heroId: definition.heroId,
+    level: Math.max(1, musbetTamEded(definition.startingLevel) || 1),
+    exp: 0,
+    duplicateCopies: 0,
+    obtainedAtMs: Date.now(),
+    legacyLocalBootstrap: true
+  });
+
+  console.warn("[KONVOY_LEGACY_QEHRAMAN_BOOTSTRAP] Lokal qəhrəman server state-ə keçirildi.", {
+    playerId: metnAl(state.playerId, 128),
+    heroId: definition.heroId
+  });
+
+  return true;
+}
+
 function konvoyStateTeminEt(state) {
   if (!state || typeof state !== "object") {
     throw new Error("Konvoy üçün oyunçu state-i yoxdur.");
@@ -193,10 +256,17 @@ function konvoyMelumatiniHazirla(state) {
 }
 
 function qehremaniKonvoyaYerlesdir(state, konvoyId, heroId) {
-  const konvoylar = konvoyStateTeminEt(state);
   const id = metnAl(konvoyId, 64);
   const qehremanId = metnAl(heroId, 128);
-  const owned = ownedQehremanIdSetiniAl(state);
+
+  let owned = ownedQehremanIdSetiniAl(state);
+
+  // Keçid dövrü: köhnə Unity lokal ownership-i local development server state-inə
+  // ilk istifadə zamanı migrate edilir. Production-da bu blok heç vaxt işləmir.
+  if (!owned.has(qehremanId)) {
+    legacyLokalQehremanSahibliyiniTeminEt(state, qehremanId);
+    owned = ownedQehremanIdSetiniAl(state);
+  }
 
   if (!owned.has(qehremanId)) {
     return { success: false, message: "Qəhrəman oyunçuya məxsus deyil." };
@@ -206,7 +276,11 @@ function qehremaniKonvoyaYerlesdir(state, konvoyId, heroId) {
     return { success: false, message: "Bu qəhrəman döyüş konvoyuna yerləşdirilə bilməz." };
   }
 
+  // Ownership migrate ediləndən sonra konvoy state-i qurulur ki,
+  // normalization həmin qəhrəmanı etibarlı owned hero kimi görsün.
+  const konvoylar = konvoyStateTeminEt(state);
   const konvoy = konvoylar.items.find(x => x && x.konvoyId === id);
+
   if (!konvoy || konvoy.aciqdir !== true) {
     return { success: false, message: "Konvoy hələ açıq deyil." };
   }
