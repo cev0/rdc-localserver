@@ -1,0 +1,34 @@
+name: Tercume Xidmeti Testi
+
+on:
+  push:
+    paths:
+      - 'tercume_xidmeti.js'
+      - 'tercume_xidmeti_testi.js'
+      - 'oyun_dili_postgres.js'
+      - '.github/workflows/tercume-xidmeti-test.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Paketler
+        run: npm ci
+
+      - name: Sintaksis yoxlamasi
+        run: |
+          node --check tercume_xidmeti.js
+          node --check tercume_xidmeti_testi.js
+
+      - name: Tercume xidmeti testi
+        run: node tercume_xidmeti_testi.js
