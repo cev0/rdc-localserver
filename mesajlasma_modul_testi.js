@@ -5,7 +5,8 @@ const {
     DESTEKLENEN_MESAJ_NOVLERI,
     dovletIdAl,
     ittifaqIdAl,
-    mesajGoruntulemeIcazesi
+    mesajGoruntulemeIcazesi,
+    neticeTipiniAl
 } = require("./mesajlasma_handler");
 const {
     oyunDiliDesteklenir,
@@ -25,6 +26,12 @@ function saxtaState(playerId) {
             ittifaqId: "ittifaq-1"
         };
     }
+    if (playerId === "legacy") {
+        return {
+            worldPlacement: { stateId: 1 },
+            ittifaqAdi: "Qartal"
+        };
+    }
     return {
         worldPlacement: { stateId: 2 },
         ittifaqId: "ittifaq-2"
@@ -39,13 +46,20 @@ assert.strictEqual(oyunDiliDesteklenir("de"), false);
 assert.strictEqual(oyunDiliniNormallasdir("RU"), "ru");
 assert.strictEqual(oyunDiliniNormallasdir("xx"), "az");
 
+assert.strictEqual(neticeTipiniAl("sexsi_mesaj_gonder_request"), "sexsi_mesaj_gonder_result");
+assert.strictEqual(neticeTipiniAl("oyun_dili_getir_request"), "oyun_dili_getir_result");
+assert.strictEqual(neticeTipiniAl("MESAJ_TERCUME_REQUEST"), "mesaj_tercume_result");
+
 assert.strictEqual(DESTEKLENEN_MESAJ_NOVLERI.has("sexsi_mesaj_gonder_request"), true);
 assert.strictEqual(DESTEKLENEN_MESAJ_NOVLERI.has("olke_mesaj_gonder_request"), true);
 assert.strictEqual(DESTEKLENEN_MESAJ_NOVLERI.has("ittifaq_mesaj_gonder_request"), true);
 assert.strictEqual(DESTEKLENEN_MESAJ_NOVLERI.has("mesaj_tercume_request"), true);
 
 assert.strictEqual(dovletIdAl(saxtaState, "p1"), 1);
+assert.strictEqual(dovletIdAl(null, "p1"), null);
 assert.strictEqual(ittifaqIdAl(saxtaState, "p1"), "ittifaq-1");
+assert.strictEqual(ittifaqIdAl(saxtaState, "legacy"), "ad:qartal");
+assert.strictEqual(ittifaqIdAl(null, "p1"), "");
 
 const sexsiMesaj = {
     kanalNovu: "sexsi",
@@ -62,6 +76,7 @@ const olkeMesaji = {
 };
 assert.strictEqual(mesajGoruntulemeIcazesi(olkeMesaji, "p1", saxtaState), true);
 assert.strictEqual(mesajGoruntulemeIcazesi(olkeMesaji, "p3", saxtaState), false);
+assert.strictEqual(mesajGoruntulemeIcazesi(olkeMesaji, "p1", null), false);
 
 const ittifaqMesaji = {
     kanalNovu: "ittifaq",
@@ -69,5 +84,12 @@ const ittifaqMesaji = {
 };
 assert.strictEqual(mesajGoruntulemeIcazesi(ittifaqMesaji, "p2", saxtaState), true);
 assert.strictEqual(mesajGoruntulemeIcazesi(ittifaqMesaji, "p3", saxtaState), false);
+assert.strictEqual(mesajGoruntulemeIcazesi(ittifaqMesaji, "p1", null), false);
+
+const legacyIttifaqMesaji = {
+    kanalNovu: "ittifaq",
+    ittifaqId: "ad:qartal"
+};
+assert.strictEqual(mesajGoruntulemeIcazesi(legacyIttifaqMesaji, "legacy", saxtaState), true);
 
 console.log("[MESAJLASMA_TEST] OK");
