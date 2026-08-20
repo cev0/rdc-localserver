@@ -31,6 +31,21 @@ function clientStateQaydalariniTetbiqEt(serverYolu = path.join(__dirname, "serve
   }
 
   // ------------------------------------------------------------
+  // Resurs hesabatları ayrıca on-demand WebSocket endpoint-i ilə gəlir.
+  // PostgreSQL gameplay snapshot-da saxlanılır, amma tez-tez göndərilən
+  // ümumi state payload-ını və mobil trafiki şişirtməsin.
+  // ------------------------------------------------------------
+  if (!kod.includes("delete clientState.resursHesabatlari;")) {
+    const resursHesabatiKod = `\n  // Resurs hesabatları ayrıca sorğu ilə alınır.\n  delete clientState.resursHesabatlari;\n`;
+
+    const yeniCloneIndex = kod.indexOf(cloneSetri);
+    kod = kod.slice(0, yeniCloneIndex + cloneSetri.length) +
+      resursHesabatiKod +
+      kod.slice(yeniCloneIndex + cloneSetri.length);
+    deyisdi = true;
+  }
+
+  // ------------------------------------------------------------
   // Qoşun client compatibility.
   // Yeni server kataloqu canonical ID-lər saxlayır:
   //   warrior_t1, shooter_t1, vehicle_t1 ...
