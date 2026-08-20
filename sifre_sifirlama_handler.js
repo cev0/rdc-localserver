@@ -19,6 +19,10 @@ const {
     pinQorumaliSifreDeyis
 } = require("./sifre_deyis_pin_postgres");
 
+const {
+    resursHesabatiMesajiniEmalEt
+} = require("./resurs_hesabatlari");
+
 function metnAl(deyer) {
     return typeof deyer === "string" ? deyer.trim() : "";
 }
@@ -40,6 +44,16 @@ async function sifreSifirlamaMesajiniEmalEt(kontekst) {
         send,
         nowMs
     } = kontekst;
+
+    // Resurs hesabatı sorğusu ümumi WebSocket switch-ə çatmadan
+    // ayrıca modulda emal olunur. Modul öz autentifikasiya və
+    // playerId uyğunluğu yoxlamasını özü edir.
+    const resursHesabatiEmalOlundu =
+        await resursHesabatiMesajiniEmalEt(kontekst);
+
+    if (resursHesabatiEmalOlundu) {
+        return true;
+    }
 
     const pinEmalOlundu =
         await hesabPinMesajiniEmalEt(kontekst);
