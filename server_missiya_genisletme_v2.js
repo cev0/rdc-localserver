@@ -1,6 +1,7 @@
 "use strict";
 
 const hesabLoginModulu = require("./hesab_login_handler");
+const { qonaqAuthMesajiniEmalEt } = require("./qonaq_auth_handler");
 const { mesajlasmaMesajiniEmalEt } = require("./mesajlasma_handler");
 const { missiyaMesajiniEmalEt } = require("./missiya_handler");
 const {
@@ -98,6 +99,10 @@ function metnAl(v, max = 128) {
 }
 
 async function gameplayMesajZenciriniIcraEt(kontekst) {
+  // Qonaq auth bütün gameplay handler-lərindən əvvəl işləyir.
+  // Bağlı hesab playerId-si ilə guest giriş cəhdi burada bloklanır.
+  if (await qonaqAuthMesajiniEmalEt(kontekst)) return true;
+
   if (await mesajlasmaMesajiniEmalEt(kontekst)) return true;
   if (await missiyaMesajiniEmalEt(kontekst)) return true;
   if (await qehremanRecruitMesajiniEmalEt(kontekst)) return true;
