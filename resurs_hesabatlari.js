@@ -1,320 +1,327 @@
 "use strict";
 
-const crypto = require("crypto");
+const {
+  resursHesabatiStateTeminEt,
+  resursHesabatiSiyahisiniHazirla,
+  resursHesabatiDetaliHazirla,
+  resursHesabatiniOxunmusEt,
+  resursHesabatiniFavoritEt,
+  resursHesabatiniSil
+} = require("./resurs_hesabati_sistemi");
 
-// ============================================================
-// RESURS TOPLAMA HESABATLARI
-// ------------------------------------------------------------
-// Hesabatlar əsas player state-ə əlavə edilmir.
-// Məqsəd tez-tez göndərilən state paketini şişirtməməkdir.
-//
-// Hazır mərhələ:
-// - hər oyunçu üçün ayrıca hesabat siyahısı
-// - maksimum 100 hesabat
-// - server-authoritative list request
-// - Unity bağlantısını yoxlamaq üçün ilk sorğuda 3 test hesabatı
-//
-// TODO:
-// Real dünya-resurs toplama sistemi tamamlandıqda
-// TEST_HESABATLARINI_ILK_SORGUDA_YARAT false ediləcək və
-// resursHesabatiYarat(...) real toplama tamamlanma nöqtəsindən
-// çağırılacaq.
-// ============================================================
+const {
+  oyunStateIniBerpaEt,
+  oyuncuStateBerpaOlunub
+} = require("./oyun_state_daimilik_korpu");
 
-const MAKSIMUM_HESABAT_SAYI = 100;
-const TEST_HESABATLARINI_ILK_SORGUDA_YARAT = true;
+const {
+  oyuncuStateMutasiyasiniPostgresIleIcraEt
+} = require("./oyun_state_mutasiya_postgres");
 
-const oyuncuHesabatlari = new Map();
+const MESAJLAR = new Set([
+  "resurs_hesabatlari_getir_request",
+  "resurs_hesabati_detal_request",
+  "resurs_hesabati_oxu_request",
+  "resurs_hesabati_favorit_request",
+  "resurs_hesabati_sil_request"
+]);
 
-function metnAl(deyer) {
-  return typeof deyer === "string" ? deyer.trim() : "";
+function metnAl(deyer, maksimum = 220) {
+  return typeof deyer === "string"
+    ? deyer.trim().slice(0, maksimum)
+    : "";
 }
 
-function tamEdedAl(deyer, minimum = 0) {
-  const reqem = Number(deyer);
-
-  if (!Number.isFinite(reqem)) {
-    return minimum;
-  }
-
-  return Math.max(minimum, Math.trunc(reqem));
+function kopyala(deyer) {
+  return deyer == null
+    ? null
+    : JSON.parse(JSON.stringify(deyer));
 }
 
-function tarixSaatiFormatla(ms) {
-  const tarix = new Date(Number(ms) || Date.now());
-
-  if (Number.isNaN(tarix.getTime())) {
-    return "";
-  }
-
-  // Unity hazırda yyyy-MM-dd HH:mm:ss formatını gözləyir.
-  return tarix
-    .toISOString()
-    .slice(0, 19)
-    .replace("T", " ");
+function gonder(kontekst, type, data) {
+  kontekst.send(kontekst.ws, {
+    type,
+    ...data,
+    serverTimeUnixMs: kontekst.nowMs()
+  });
 }
 
-function yeniHesabatIdYarat() {
-  if (typeof crypto.randomUUID === "function") {
-    return `resurs_${crypto.randomUUID()}`;
-  }
-
-  return `resurs_${Date.now()}_${crypto.randomBytes(6).toString("hex")}`;
-}
-
-function oyuncuSiyahisiniAl(playerId) {
-  const temizPlayerId = metnAl(playerId);
-
-  if (!temizPlayerId) {
-    return null;
-  }
-
-  if (!oyuncuHesabatlari.has(temizPlayerId)) {
-    oyuncuHesabatlari.set(temizPlayerId, []);
-  }
-
-  return oyuncuHesabatlari.get(temizPlayerId);
-}
-
-function resursHesabatiYarat(playerId, melumat = {}) {
-  const temizPlayerId = metnAl(playerId);
-
-  if (!temizPlayerId) {
-    return null;
-  }
-
-  const siyahi = oyuncuSiyahisiniAl(temizPlayerId);
-
-  if (!siyahi) {
-    return null;
-  }
-
-  const yaradildiMs = Number(melumat.yaradildiMs) || Date.now();
-
-  const hesabat = {
-    hesabatId: metnAl(melumat.hesabatId) || yeniHesabatIdYarat(),
-    resursNovu: metnAl(melumat.resursNovu).toLowerCase() || "iron",
-    miqdar: tamEdedAl(melumat.miqdar, 0),
-    toplamaYeriAdi: metnAl(melumat.toplamaYeriAdi) || "Resurs nöqtəsi",
-    toplamaYeriSeviyesi: tamEdedAl(melumat.toplamaYeriSeviyesi, 1),
-    koordinatX: Math.trunc(Number(melumat.koordinatX) || 0),
-    koordinatY: Math.trunc(Number(melumat.koordinatY) || 0),
-    tarixSaat: metnAl(melumat.tarixSaat) || tarixSaatiFormatla(yaradildiMs),
-    oxunub: melumat.oxunub === true,
-    favoritdir: melumat.favoritdir === true,
-    yaradildiMs
+function saheniYedekle(state, acar) {
+  return {
+    varIdi: Object.prototype.hasOwnProperty.call(state, acar),
+    deyer: kopyala(state[acar])
   };
-
-  // Ən yeni hesabat həmişə siyahının əvvəlindədir.
-  siyahi.unshift(hesabat);
-
-  if (siyahi.length > MAKSIMUM_HESABAT_SAYI) {
-    siyahi.length = MAKSIMUM_HESABAT_SAYI;
-  }
-
-  return { ...hesabat };
 }
 
-function resursHesabatlariniGetir(playerId, limit = 50) {
-  const siyahi = oyuncuSiyahisiniAl(playerId);
-
-  if (!siyahi) {
-    return [];
+function saheniBerpaEt(state, acar, yedek) {
+  if (yedek && yedek.varIdi) {
+    state[acar] = kopyala(yedek.deyer);
   }
-
-  const temizLimit = Math.max(
-    1,
-    Math.min(100, tamEdedAl(limit, 50))
-  );
-
-  return siyahi
-    .slice(0, temizLimit)
-    .map((hesabat) => ({ ...hesabat }));
+  else {
+    delete state[acar];
+  }
 }
 
-function testHesabatlariniTeminEt(playerId, nowMs) {
-  if (!TEST_HESABATLARINI_ILK_SORGUDA_YARAT) {
-    return;
-  }
-
-  const siyahi = oyuncuSiyahisiniAl(playerId);
-
-  if (!siyahi || siyahi.length > 0) {
-    return;
-  }
-
-  const indi = typeof nowMs === "function"
-    ? Number(nowMs()) || Date.now()
-    : Date.now();
-
-  // Reverse sıra ilə yaradırıq, çünki resursHesabatiYarat
-  // yeni elementi siyahının əvvəlinə əlavə edir.
-  resursHesabatiYarat(playerId, {
-    hesabatId: `test_qida_${playerId}`,
-    resursNovu: "food",
-    miqdar: 32750,
-    toplamaYeriAdi: "Ferma",
-    toplamaYeriSeviyesi: 4,
-    koordinatX: 331,
-    koordinatY: 690,
-    yaradildiMs: indi - 4 * 60 * 1000,
-    oxunub: false,
-    favoritdir: false
-  });
-
-  resursHesabatiYarat(playerId, {
-    hesabatId: `test_neft_${playerId}`,
-    resursNovu: "fuel",
-    miqdar: 18400,
-    toplamaYeriAdi: "Neft Quyusu",
-    toplamaYeriSeviyesi: 3,
-    koordinatX: 518,
-    koordinatY: 402,
-    yaradildiMs: indi - 2 * 60 * 1000,
-    oxunub: true,
-    favoritdir: false
-  });
-
-  resursHesabatiYarat(playerId, {
-    hesabatId: `test_demir_${playerId}`,
-    resursNovu: "iron",
-    miqdar: 6250,
-    toplamaYeriAdi: "Dəmir Fabrikası",
-    toplamaYeriSeviyesi: 2,
-    koordinatX: 724,
-    koordinatY: 126,
-    yaradildiMs: indi,
-    oxunub: false,
-    favoritdir: false
-  });
-
-  console.log(
-    "[RESURS_HESABATI] Unity bağlantısı üçün 3 server test hesabatı yaradıldı:",
-    playerId
-  );
+function hesabatMutasiyaImzasi(state) {
+  return JSON.stringify(state && state.resursHesabatlari);
 }
 
-function neticeGonder(send, ws, playerId, nowMs, netice) {
-  const serverVaxti = typeof nowMs === "function"
-    ? Number(nowMs()) || Date.now()
-    : Date.now();
+function hesabatReadStateKopyasi(state) {
+  return kopyala(state) || {};
+}
 
-  send(ws, {
-    type: "resurs_hesabatlari_getir_result",
-    playerId: playerId || "",
-    serverTimeUnixMs: serverVaxti,
-    payloadJson: JSON.stringify(netice)
-  });
+function siyahiNeticesiniHazirla(state, limit = 50) {
+  const readState = hesabatReadStateKopyasi(state);
+  const hesabatState = resursHesabatiStateTeminEt(readState);
+  const hesabatlar = resursHesabatiSiyahisiniHazirla(readState, limit);
+  const umumiSay = Array.isArray(hesabatState.items)
+    ? hesabatState.items.length
+    : 0;
+  const oxunmamisSay = Array.isArray(hesabatState.items)
+    ? hesabatState.items.filter(x => x && x.oxunub !== true).length
+    : 0;
+
+  return {
+    success: true,
+    xetaKodu: "",
+    mesaj: "Resurs hesabatları gətirildi.",
+    umumiSay,
+    oxunmamisSay,
+    hesabatlar
+  };
+}
+
+function resursHesabatiMutasiyasiniTetbiqEt(
+  state,
+  type,
+  msg,
+  nowMs = Date.now()
+) {
+  const hesabatId = metnAl(msg && msg.hesabatId, 220);
+  const yedek = saheniYedekle(state, "resursHesabatlari");
+  const evvelkiImza = hesabatMutasiyaImzasi(state);
+  let result;
+
+  try {
+    if (type === "resurs_hesabati_oxu_request") {
+      result = resursHesabatiniOxunmusEt(
+        state,
+        hesabatId,
+        nowMs
+      );
+    }
+    else if (type === "resurs_hesabati_favorit_request") {
+      result = resursHesabatiniFavoritEt(
+        state,
+        hesabatId,
+        msg && msg.favoritdir === true,
+        nowMs
+      );
+    }
+    else if (type === "resurs_hesabati_sil_request") {
+      result = resursHesabatiniSil(
+        state,
+        hesabatId
+      );
+    }
+    else {
+      return {
+        success: false,
+        deyisdi: false,
+        message: "Naməlum resurs hesabatı mutation sorğusu."
+      };
+    }
+  }
+  catch (xeta) {
+    saheniBerpaEt(state, "resursHesabatlari", yedek);
+
+    return {
+      success: false,
+      deyisdi: false,
+      message: "Resurs hesabatı əməliyyatı hesablana bilmədi.",
+      daxiliXeta: xeta && xeta.message
+        ? xeta.message
+        : String(xeta)
+    };
+  }
+
+  if (!result || result.success !== true) {
+    saheniBerpaEt(state, "resursHesabatlari", yedek);
+
+    return {
+      success: false,
+      deyisdi: false,
+      result: result && typeof result === "object"
+        ? kopyala(result)
+        : null,
+      message: result && result.message
+        ? result.message
+        : "Resurs hesabatı əməliyyatı tamamlanmadı."
+    };
+  }
+
+  return {
+    success: true,
+    deyisdi: evvelkiImza !== hesabatMutasiyaImzasi(state),
+    result: kopyala(result)
+  };
 }
 
 async function resursHesabatiMesajiniEmalEt(kontekst) {
-  const {
-    type,
-    msg,
-    ws,
-    send,
-    nowMs
-  } = kontekst || {};
+  const type = metnAl(kontekst && kontekst.type, 128).toLowerCase();
+  if (!MESAJLAR.has(type)) return false;
 
-  if (type !== "resurs_hesabatlari_getir_request") {
-    return false;
-  }
+  const resultType = type.replace(/_request$/, "_result");
+  const playerId = metnAl(
+    kontekst && kontekst.ws && kontekst.ws._authedPlayerId,
+    128
+  ).toLowerCase();
 
-  const socketPlayerId = metnAl(ws && ws._authedPlayerId);
-
-  if (!socketPlayerId) {
-    neticeGonder(
-      send,
-      ws,
-      "",
-      nowMs,
-      {
+  if (!playerId) {
+    gonder(kontekst, resultType, {
+      success: false,
+      playerId: "",
+      payloadJson: JSON.stringify({
         success: false,
         xetaKodu: "AUTH_REQUIRED",
         mesaj: "Resurs hesabatları üçün autentifikasiya tələb olunur.",
         umumiSay: 0,
+        oxunmamisSay: 0,
         hesabatlar: []
-      }
-    );
-
+      })
+    });
     return true;
   }
 
-  const mesajPlayerId = metnAl(msg && msg.playerId);
+  const mesajPlayerId = metnAl(
+    kontekst && kontekst.msg && kontekst.msg.playerId,
+    128
+  ).toLowerCase();
 
-  if (mesajPlayerId && mesajPlayerId !== socketPlayerId) {
-    neticeGonder(
-      send,
-      ws,
-      socketPlayerId,
-      nowMs,
-      {
+  if (mesajPlayerId && mesajPlayerId !== playerId) {
+    gonder(kontekst, resultType, {
+      success: false,
+      playerId,
+      payloadJson: JSON.stringify({
         success: false,
         xetaKodu: "IDENTITY_MISMATCH",
         mesaj: "Sorğudakı oyunçu ID-si aktiv sessiya ilə uyğun deyil.",
         umumiSay: 0,
+        oxunmamisSay: 0,
         hesabatlar: []
-      }
-    );
-
-    console.warn(
-      "[RESURS_HESABATI] Başqa playerId ilə hesabat sorğusu bloklandı:",
-      {
-        socketPlayerId,
-        mesajPlayerId
-      }
-    );
-
+      })
+    });
     return true;
   }
 
-  testHesabatlariniTeminEt(socketPlayerId, nowMs);
+  try {
+    if (!oyuncuStateBerpaOlunub(playerId)) {
+      await oyunStateIniBerpaEt(kontekst, playerId);
+    }
 
-  const butunHesabatlar = oyuncuSiyahisiniAl(socketPlayerId) || [];
-  const hesabatlar = resursHesabatlariniGetir(
-    socketPlayerId,
-    msg && msg.limit
-  );
+    const state = kontekst.getOrCreatePlayerState(playerId);
 
-  neticeGonder(
-    send,
-    ws,
-    socketPlayerId,
-    nowMs,
-    {
+    if (type === "resurs_hesabatlari_getir_request") {
+      const netice = siyahiNeticesiniHazirla(
+        state,
+        kontekst.msg && kontekst.msg.limit
+      );
+
+      gonder(kontekst, resultType, {
+        success: true,
+        playerId,
+        payloadJson: JSON.stringify(netice)
+      });
+
+      console.log("[RESURS_HESABATI] Persistent hesabat siyahısı göndərildi:", {
+        playerId,
+        say: netice.hesabatlar.length,
+        umumiSay: netice.umumiSay,
+        oxunmamisSay: netice.oxunmamisSay
+      });
+
+      return true;
+    }
+
+    const hesabatId = metnAl(
+      kontekst.msg && kontekst.msg.hesabatId,
+      220
+    );
+
+    if (type === "resurs_hesabati_detal_request") {
+      const hesabat = resursHesabatiDetaliHazirla(
+        hesabatReadStateKopyasi(state),
+        hesabatId
+      );
+
+      gonder(kontekst, resultType, {
+        success: !!hesabat,
+        playerId,
+        hesabat,
+        message: hesabat ? "" : "Resurs hesabatı tapılmadı.",
+        payloadJson: JSON.stringify(hesabat)
+      });
+      return true;
+    }
+
+    const mutasiyaNeticesi = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
+      playerId,
+      state,
+      async kilidliState => {
+        return resursHesabatiMutasiyasiniTetbiqEt(
+          kilidliState,
+          type,
+          kontekst.msg,
+          kontekst.nowMs()
+        );
+      }
+    );
+
+    if (mutasiyaNeticesi && mutasiyaNeticesi.daxiliXeta) {
+      console.error("[RESURS_HESABATI] Mutation hesablanma xətası:", {
+        playerId,
+        message: mutasiyaNeticesi.daxiliXeta
+      });
+    }
+
+    if (!mutasiyaNeticesi || mutasiyaNeticesi.success !== true) {
+      gonder(kontekst, resultType, {
+        success: false,
+        playerId,
+        message: mutasiyaNeticesi && mutasiyaNeticesi.message
+          ? mutasiyaNeticesi.message
+          : "Resurs hesabatı əməliyyatı tamamlanmadı."
+      });
+      return true;
+    }
+
+    const result = mutasiyaNeticesi.result || {};
+    const siyahi = siyahiNeticesiniHazirla(state, 50);
+
+    gonder(kontekst, resultType, {
       success: true,
-      xetaKodu: "",
-      mesaj: "Resurs hesabatları gətirildi.",
-      umumiSay: butunHesabatlar.length,
-      hesabatlar
-    }
-  );
+      playerId,
+      ...result,
+      umumiSay: siyahi.umumiSay,
+      oxunmamisSay: siyahi.oxunmamisSay,
+      payloadJson: JSON.stringify(result)
+    });
+  }
+  catch (xeta) {
+    console.error("[RESURS_HESABATI]", xeta);
 
-  console.log(
-    "[RESURS_HESABATI] Hesabat siyahısı göndərildi:",
-    {
-      playerId: socketPlayerId,
-      say: hesabatlar.length,
-      umumiSay: butunHesabatlar.length
-    }
-  );
+    gonder(kontekst, resultType, {
+      success: false,
+      playerId,
+      message: "Resurs hesabatı əməliyyatı tamamlanmadı."
+    });
+  }
 
   return true;
 }
 
-function oyuncununResursHesabatlariniTemizle(playerId) {
-  const temizPlayerId = metnAl(playerId);
-
-  if (!temizPlayerId) {
-    return false;
-  }
-
-  return oyuncuHesabatlari.delete(temizPlayerId);
-}
-
 module.exports = {
-  resursHesabatiMesajiniEmalEt,
-  resursHesabatiYarat,
-  resursHesabatlariniGetir,
-  oyuncununResursHesabatlariniTemizle
+  MESAJLAR,
+  resursHesabatiMutasiyasiniTetbiqEt,
+  resursHesabatiMesajiniEmalEt
 };
