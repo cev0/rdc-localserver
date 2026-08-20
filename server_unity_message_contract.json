@@ -1,6 +1,6 @@
 {
-  "version": 2,
-  "description": "RDC Unity client -> server protocol contract",
+  "version": 3,
+  "description": "RDC Unity client <-> server protocol contract",
   "clientOutboundTypes": [
     "account_bind_request",
     "account_device_pin_verify_request",
@@ -63,6 +63,23 @@
     "troop_training_status_request",
     "upgrade_request",
     "world_targets_info_request"
+  ],
+  "serverInboundTypes": [
+    "oyun_dili_getir_result",
+    "oyun_dili_deyis_result",
+    "sexsi_mesaj_gonder_result",
+    "sexsi_mesaj_tarixcesi_result",
+    "sexsi_mesaj_oxundu_result",
+    "sexsi_oxunmamis_say_result",
+    "sexsi_mesaj_geldi",
+    "sexsi_mesajlar_oxundu",
+    "olke_mesaj_gonder_result",
+    "olke_mesaj_tarixcesi_result",
+    "olke_mesaj_geldi",
+    "ittifaq_mesaj_gonder_result",
+    "ittifaq_mesaj_tarixcesi_result",
+    "ittifaq_mesaj_geldi",
+    "mesaj_tercume_result"
   ],
   "criticalFields": {
     "accountInfo": [
