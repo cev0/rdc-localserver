@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("assert");
+const protokol = require("./server_unity_message_contract.json");
 const {
     DESTEKLENEN_MESAJ_NOVLERI,
     dovletIdAl,
@@ -58,6 +59,40 @@ assert.strictEqual(DESTEKLENEN_MESAJ_NOVLERI.has("sexsi_oxunmamis_say_request"),
 assert.strictEqual(DESTEKLENEN_MESAJ_NOVLERI.has("olke_mesaj_gonder_request"), true);
 assert.strictEqual(DESTEKLENEN_MESAJ_NOVLERI.has("ittifaq_mesaj_gonder_request"), true);
 assert.strictEqual(DESTEKLENEN_MESAJ_NOVLERI.has("mesaj_tercume_request"), true);
+
+assert.strictEqual(protokol.version >= 3, true);
+for (const requestType of DESTEKLENEN_MESAJ_NOVLERI) {
+    assert.strictEqual(
+        protokol.clientOutboundTypes.includes(requestType),
+        true,
+        `Müqavilədə client request yoxdur: ${requestType}`
+    );
+}
+
+const gozlenilenServerMesajlari = [
+    "oyun_dili_getir_result",
+    "oyun_dili_deyis_result",
+    "sexsi_mesaj_gonder_result",
+    "sexsi_mesaj_tarixcesi_result",
+    "sexsi_mesaj_oxundu_result",
+    "sexsi_oxunmamis_say_result",
+    "sexsi_mesaj_geldi",
+    "sexsi_mesajlar_oxundu",
+    "olke_mesaj_gonder_result",
+    "olke_mesaj_tarixcesi_result",
+    "olke_mesaj_geldi",
+    "ittifaq_mesaj_gonder_result",
+    "ittifaq_mesaj_tarixcesi_result",
+    "ittifaq_mesaj_geldi",
+    "mesaj_tercume_result"
+];
+for (const serverType of gozlenilenServerMesajlari) {
+    assert.strictEqual(
+        protokol.serverInboundTypes.includes(serverType),
+        true,
+        `Müqavilədə server cavabı/bildirisi yoxdur: ${serverType}`
+    );
+}
 
 assert.strictEqual(dovletIdAl(saxtaState, "p1"), 1);
 assert.strictEqual(dovletIdAl(null, "p1"), null);
