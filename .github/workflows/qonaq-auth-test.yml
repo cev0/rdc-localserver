@@ -1,0 +1,35 @@
+name: Qonaq Auth Testi
+
+on:
+  push:
+    paths:
+      - 'qonaq_auth_handler.js'
+      - 'qonaq_auth_modul_testi.js'
+      - 'server_missiya_genisletme_v2.js'
+      - '.github/workflows/qonaq-auth-test.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repo
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Paketlər
+        run: npm ci
+
+      - name: Sintaksis
+        run: |
+          node --check qonaq_auth_handler.js
+          node --check server_missiya_genisletme_v2.js
+
+      - name: Qonaq auth modul testi
+        run: node qonaq_auth_modul_testi.js
