@@ -25,6 +25,8 @@ const { metniTercumeEt } = require("./tercume_xidmeti");
 const MESAJ_MAX_UZUNLUQ = 500;
 const MESAJ_MIN_INTERVAL_MS = 600;
 const TERCUME_MIN_INTERVAL_MS = 1000;
+const RATE_LIMIT_TTL_MS = 15 * 60 * 1000;
+const RATE_LIMIT_MAX_ENTRIES = 10000;
 
 const sonMesajVaxtlari = new Map();
 const sonTercumeVaxtlari = new Map();
@@ -43,6 +45,12 @@ const DESTEKLENEN_MESAJ_NOVLERI = new Set([
     "mesaj_tercume_request"
 ]);
 
+const TEHLUKELI_OBYEKT_ACARLARI = new Set([
+    "__proto__",
+    "prototype",
+    "constructor"
+]);
+
 function metnAl(deyer, max = MESAJ_MAX_UZUNLUQ) {
     return typeof deyer === "string" ? deyer.trim().slice(0, max) : "";
 }
@@ -59,19 +67,32 @@ function mesajIdYarat() {
     return crypto.randomBytes(16).toString("hex");
 }
 
+function obyektSahələriniTehlukesizKopyala(hedef, menbe) {
+    if (!hedef || !menbe || typeof menbe !== "object" || Array.isArray(menbe)) {
+        return hedef;
+    }
+
+    for (const acar of Object.keys(menbe)) {
+        if (TEHLUKELI_OBYEKT_ACARLARI.has(acar)) continue;
+        hedef[acar] = menbe[acar];
+    }
+
+    return hedef;
+}
+
 function yukAl(msg) {
-    const netice = {};
+    const netice = Object.create(null);
+
     if (msg && typeof msg.payloadJson === "string" && msg.payloadJson.trim()) {
         try {
             const parse = JSON.parse(msg.payloadJson);
-            if (parse && typeof parse === "object" && !Array.isArray(parse)) {
-                Object.assign(netice, parse);
-            }
+            obyektSahələriniTehlukesizKopyala(netice, parse);
         } catch (_) {
             // Top-level müqavilə ilə davam et.
         }
     }
-    if (msg && typeof msg === "object") Object.assign(netice, msg);
+
+    obyektSahələriniTehlukesizKopyala(netice, msg);
     return netice;
 }
 
@@ -92,10 +113,31 @@ function xetaGonder(send, ws, type, playerId, kod, mesaj) {
     });
 }
 
+function rateLimitXeritesiniTemizle(map, indi) {
+    if (!map || map.size <= RATE_LIMIT_MAX_ENTRIES) return;
+
+    const kohneHedd = indi - RATE_LIMIT_TTL_MS;
+
+    for (const [acar, vaxt] of map.entries()) {
+        if (Number(vaxt) < kohneHedd) {
+            map.delete(acar);
+        }
+    }
+
+    while (map.size > RATE_LIMIT_MAX_ENTRIES) {
+        const ilk = map.keys().next();
+        if (ilk.done) break;
+        map.delete(ilk.value);
+    }
+}
+
 function intervalIcazesi(map, playerId, minimumMs) {
     const indi = Date.now();
+    rateLimitXeritesiniTemizle(map, indi);
+
     const evvel = Number(map.get(playerId) || 0);
     if (indi - evvel < minimumMs) return false;
+
     map.set(playerId, indi);
     return true;
 }
@@ -198,6 +240,19 @@ async function mesajlasmaMesajiniEmalEt(kontekst) {
     }
 
     const yuk = yukAl(msg);
+    const sorquPlayerId = metnAl(yuk.playerId, 128);
+
+    if (sorquPlayerId && sorquPlayerId !== playerId) {
+        xetaGonder(
+            send,
+            ws,
+            resultType,
+            playerId,
+            "IDENTITY_MISMATCH",
+            "Sorğudakı oyunçu ID-si aktiv sessiya ilə uyğun deyil."
+        );
+        return true;
+    }
 
     try {
         switch (type) {
@@ -278,8 +333,8 @@ async function mesajlasmaMesajiniEmalEt(kontekst) {
 
             case "sexsi_mesaj_oxundu_request": {
                 const digerPlayerId = metnAl(yuk.digerPlayerId || yuk.gonderenPlayerId, 128);
-                if (!digerPlayerId) {
-                    xetaGonder(send, ws, "sexsi_mesaj_oxundu_result", playerId, "DIGER_OYUNCU_BOSDUR", "Digər oyunçu ID-si tələb olunur.");
+                if (!digerPlayerId || digerPlayerId === playerId) {
+                    xetaGonder(send, ws, "sexsi_mesaj_oxundu_result", playerId, "DIGER_OYUNCU_SEHVDIR", "Digər oyunçu düzgün deyil.");
                     return true;
                 }
 
