@@ -7,6 +7,7 @@ on:
       - 'mesajlasma_postgres.js'
       - 'oyun_dili_postgres.js'
       - 'tercume_xidmeti.js'
+      - 'tercume_xidmeti_testi.js'
       - 'mesajlasma_modul_testi.js'
       - 'server_missiya_genisletme_v2.js'
       - 'miqrasiyalar/20260819_mesajlasma_ve_oyun_dili.sql'
@@ -35,7 +36,11 @@ jobs:
           node --check mesajlasma_postgres.js
           node --check oyun_dili_postgres.js
           node --check tercume_xidmeti.js
+          node --check tercume_xidmeti_testi.js
           node --check server_missiya_genisletme_v2.js
 
       - name: Mesajlasma modul testi
         run: node mesajlasma_modul_testi.js
+
+      - name: Tercume xidmeti testi
+        run: node tercume_xidmeti_testi.js
