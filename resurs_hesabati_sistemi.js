@@ -242,6 +242,16 @@ function resursHesabatiniSil(state, hesabatId) {
     return { success: false, message: "Resurs hesabatı tapılmadı." };
   }
 
+  const tapilan = legacyHesabatiYenile(hesabatlar.items[index]);
+  if (tapilan && tapilan.favoritdir === true) {
+    return {
+      success: false,
+      message: "Favorit hesabatı silmək üçün əvvəlcə favoritdən çıxarın.",
+      favoritdir: true,
+      hesabatId: id
+    };
+  }
+
   const [silinen] = hesabatlar.items.splice(index, 1);
 
   return {
