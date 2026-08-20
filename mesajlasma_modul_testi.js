@@ -47,10 +47,14 @@ assert.strictEqual(oyunDiliniNormallasdir("RU"), "ru");
 assert.strictEqual(oyunDiliniNormallasdir("xx"), "az");
 
 assert.strictEqual(neticeTipiniAl("sexsi_mesaj_gonder_request"), "sexsi_mesaj_gonder_result");
+assert.strictEqual(neticeTipiniAl("sexsi_mesaj_oxundu_request"), "sexsi_mesaj_oxundu_result");
+assert.strictEqual(neticeTipiniAl("sexsi_oxunmamis_say_request"), "sexsi_oxunmamis_say_result");
 assert.strictEqual(neticeTipiniAl("oyun_dili_getir_request"), "oyun_dili_getir_result");
 assert.strictEqual(neticeTipiniAl("MESAJ_TERCUME_REQUEST"), "mesaj_tercume_result");
 
 assert.strictEqual(DESTEKLENEN_MESAJ_NOVLERI.has("sexsi_mesaj_gonder_request"), true);
+assert.strictEqual(DESTEKLENEN_MESAJ_NOVLERI.has("sexsi_mesaj_oxundu_request"), true);
+assert.strictEqual(DESTEKLENEN_MESAJ_NOVLERI.has("sexsi_oxunmamis_say_request"), true);
 assert.strictEqual(DESTEKLENEN_MESAJ_NOVLERI.has("olke_mesaj_gonder_request"), true);
 assert.strictEqual(DESTEKLENEN_MESAJ_NOVLERI.has("ittifaq_mesaj_gonder_request"), true);
 assert.strictEqual(DESTEKLENEN_MESAJ_NOVLERI.has("mesaj_tercume_request"), true);
