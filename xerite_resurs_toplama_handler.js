@@ -5,7 +5,8 @@ const {
   toplamaniBaslat,
   bitmisToplamalariPendingEt,
   pendingMukafatiAl,
-  toplamaMelumatiniHazirla
+  toplamaMelumatiniHazirla,
+  nodeMelumatiniAl
 } = require("./xerite_resurs_toplama_sistemi");
 const {
   hereketMsPerXana,
@@ -19,6 +20,9 @@ const {
 const {
   oyuncuStateMutasiyasiniPostgresIleIcraEt
 } = require("./oyun_state_mutasiya_postgres");
+const {
+  resursHesabatiYarat
+} = require("./resurs_hesabati_sistemi");
 
 const MESAJLAR = new Set([
   "map_resource_info_request",
@@ -65,6 +69,54 @@ function bazaMovqeyiAl(state) {
     x: Number(state && state.worldPlacement && state.worldPlacement.baseX) || 0,
     z: Number(state && state.worldPlacement && state.worldPlacement.baseZ) || 0
   };
+}
+
+function resursToplamaYeriAdiAl(resourceId) {
+  switch (metnAl(resourceId, 64)) {
+    case "food":
+      return "Ferma";
+    case "water":
+      return "Su Məntəqəsi";
+    case "wood":
+      return "Meşə Sahəsi";
+    case "iron":
+      return "Dəmir Fabrikası";
+    case "fuel":
+      return "Neft Quyusu";
+    default:
+      return "Resurs nöqtəsi";
+  }
+}
+
+function toplamaMukafatindanHesabatTeminEt(state, reward, nowMs = Date.now()) {
+  if (!state || !reward || typeof reward !== "object") return null;
+
+  const rewardId = typeof reward.rewardId === "string"
+    ? reward.rewardId.trim()
+    : "";
+
+  if (!rewardId) return null;
+
+  const stateId = dovletIdAl(state);
+  const descriptor = nodeMelumatiniAl(stateId, reward.nodeId);
+  const movqe = descriptor
+    ? resursMovqeyiAl(stateId, descriptor.index)
+    : null;
+
+  return resursHesabatiYarat(
+    state,
+    {
+      menbeMukafatId: rewardId,
+      resursNovu: reward.resourceId,
+      miqdar: tamEded(reward.amount),
+      toplamaYeriAdi: resursToplamaYeriAdiAl(reward.resourceId),
+      toplamaYeriSeviyesi: descriptor ? tamEded(descriptor.level) : 1,
+      koordinatX: movqe ? Math.trunc(Number(movqe.x) || 0) : 0,
+      koordinatY: movqe ? Math.trunc(Number(movqe.z) || 0) : 0,
+      yaradildiMs: tamEded(reward.completedAtMs) || tamEded(nowMs) || Date.now()
+    },
+    nowMs
+  );
 }
 
 async function resursDetaliHazirla(state, playerId, nodeId, nowMs) {
@@ -143,7 +195,8 @@ function legacyToplamaYedeyiniAl(state) {
   return {
     xeriteToplama: saheniYedekle(state, "xeriteToplama"),
     resources: saheniYedekle(state, "resources"),
-    konvoylar: saheniYedekle(state, "konvoylar")
+    konvoylar: saheniYedekle(state, "konvoylar"),
+    resursHesabatlari: saheniYedekle(state, "resursHesabatlari")
   };
 }
 
@@ -152,6 +205,7 @@ function legacyToplamaYedeyiniBerpaEt(state, yedek) {
   saheniBerpaEt(state, "xeriteToplama", yedek.xeriteToplama);
   saheniBerpaEt(state, "resources", yedek.resources);
   saheniBerpaEt(state, "konvoylar", yedek.konvoylar);
+  saheniBerpaEt(state, "resursHesabatlari", yedek.resursHesabatlari);
 }
 
 async function legacyToplamaMutasiyasiniTetbiqEt(
@@ -175,6 +229,12 @@ async function legacyToplamaMutasiyasiniTetbiqEt(
 
   const tamamlananlar = bitmisToplamalariPendingEt(state, nowMs);
   const dueDeyisdi = Array.isArray(tamamlananlar) && tamamlananlar.length > 0;
+
+  if (dueDeyisdi) {
+    for (const reward of tamamlananlar) {
+      toplamaMukafatindanHesabatTeminEt(state, reward, nowMs);
+    }
+  }
 
   if (statusSorqusudur) {
     const info = toplamaMelumatiniHazirla(state, nowMs);
@@ -271,6 +331,10 @@ async function legacyToplamaMutasiyasiniTetbiqEt(
       info: kopyala(toplamaMelumatiniHazirla(state, nowMs))
     };
   }
+
+  // Köhnə snapshot-da pending reward olub hesabat yoxdursa,
+  // claim zamanı da idempotent şəkildə hesabatı təmin edirik.
+  toplamaMukafatindanHesabatTeminEt(state, result.reward, nowMs);
 
   return {
     success: true,
