@@ -7,6 +7,7 @@ on:
     paths:
       - 'dovlet_xerite_worldv2_*.js'
       - 'DOVLET_XERITESI_WORLDV2_*.md'
+      - 'server_unity_message_contract_worldv2.json'
       - 'package.json'
       - '.github/workflows/worldv2-xerite-test.yml'
   workflow_dispatch:
@@ -24,6 +25,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Unity mesaj müqaviləsi JSON sintaksisini yoxla
+        run: node -e "JSON.parse(require('fs').readFileSync('server_unity_message_contract_worldv2.json','utf8')); console.log('WorldV2 contract JSON OK')"
 
       - name: WorldV2 xəritə testlərini işə sal
         run: npm run xerite:worldv2-test
