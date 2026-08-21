@@ -105,6 +105,48 @@ async function run() {
     );
   });
 
+  await asyncTest('WorldV2 placement mənfi koordinatda fail-closed MOVQE_YOXDUR qaytarır', async () => {
+    const handler = worldV2HandleriYarat({ topologiyaXeritesi: topologiyaHazirla() });
+    const { kontekst, gonderilenler } = kontekstHazirla({
+      type: WORLDV2_MESAJ_NOVLERI.XERITE_MELUMATI_SORGU,
+      state: {
+        worldPlacement: {
+          stateId: 1,
+          baseX: -1,
+          baseZ: 600,
+        },
+      },
+    });
+
+    await handler(kontekst);
+    assert.strictEqual(gonderilenler[0].success, false);
+    assert.strictEqual(
+      gonderilenler[0].errorCode,
+      WORLDV2_XETA_KODLARI.MOVQE_YOXDUR,
+    );
+  });
+
+  await asyncTest('WorldV2 placement 1200 sərhədini aşdıqda fail-closed MOVQE_YOXDUR qaytarır', async () => {
+    const handler = worldV2HandleriYarat({ topologiyaXeritesi: topologiyaHazirla() });
+    const { kontekst, gonderilenler } = kontekstHazirla({
+      type: WORLDV2_MESAJ_NOVLERI.XERITE_MELUMATI_SORGU,
+      state: {
+        worldPlacement: {
+          stateId: 1,
+          baseX: 1200,
+          baseZ: 1200.01,
+        },
+      },
+    });
+
+    await handler(kontekst);
+    assert.strictEqual(gonderilenler[0].success, false);
+    assert.strictEqual(
+      gonderilenler[0].errorCode,
+      WORLDV2_XETA_KODLARI.MOVQE_YOXDUR,
+    );
+  });
+
   await asyncTest('WorldV2 info payload authoritative baza, qonşu və Prezident datasını qaytarır', async () => {
     await envIle(RELEASE_ISO, async () => {
       const handler = worldV2HandleriYarat({
