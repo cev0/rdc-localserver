@@ -1,0 +1,157 @@
+{
+  "contract": "rdc_state_map_worldv2",
+  "version": 2,
+  "status": "hazirliq_branch_only",
+  "productionConnected": false,
+  "coordinateSystem": {
+    "serverAxes": "x_y",
+    "unityAxes": "x_z",
+    "serverYMapsToUnityZ": true,
+    "minX": 0,
+    "maxX": 1200,
+    "minY": 0,
+    "maxY": 1200,
+    "centerX": 600,
+    "centerY": 600
+  },
+  "messages": {
+    "state_map_v2_info_request": {
+      "authRequired": true,
+      "requestFields": [],
+      "resultType": "state_map_v2_info_result",
+      "result": {
+        "success": "boolean",
+        "playerId": "string",
+        "info": {
+          "version": 2,
+          "stateId": "positive_integer",
+          "serverTimeUnixMs": "integer",
+          "map": {
+            "minX": 0,
+            "maxX": 1200,
+            "minY": 0,
+            "maxY": 1200,
+            "centerX": 600,
+            "centerY": 600
+          },
+          "playerBase": {
+            "x": "number_0_to_1200",
+            "y": "number_0_to_1200"
+          },
+          "presidentCenter": {
+            "x": 600,
+            "y": 600,
+            "unlockAfterDays": 30,
+            "defenseBuildingCount": 4,
+            "defenseDirections": ["simal", "serq", "cenub", "qerb"],
+            "defenseCoordinates": null,
+            "status": {
+              "unlocked": "boolean",
+              "active": "boolean",
+              "presidentPlayerId": "string_or_null",
+              "presidentAllianceId": "string_or_null",
+              "unlockAtUnixMs": "integer_or_null"
+            }
+          },
+          "neighbors": {
+            "simal": "neighbor_contract",
+            "serq": "neighbor_contract",
+            "cenub": "neighbor_contract",
+            "qerb": "neighbor_contract"
+          }
+        },
+        "payloadJson": "json_string"
+      }
+    },
+    "state_map_v2_border_transition_request": {
+      "authRequired": true,
+      "requestFields": ["direction"],
+      "directionEnum": ["simal", "serq", "cenub", "qerb"],
+      "resultType": "state_map_v2_border_transition_result",
+      "currentBehavior": "authoritative_check_only_no_state_mutation",
+      "result": {
+        "success": "boolean",
+        "checkedOnly": true,
+        "mutatedPlayerState": false,
+        "info": {
+          "version": 2,
+          "currentStateId": "positive_integer",
+          "direction": "direction_enum",
+          "neighborStateId": "positive_integer_or_null",
+          "neighborOpened": "boolean",
+          "status": "transition_status_enum",
+          "reason": "transition_reason_enum",
+          "transitionAllowed": "boolean",
+          "neighborOpensAtMs": "integer_or_null",
+          "neighborPresidentUnlockAtMs": "integer_or_null",
+          "entryCoordinate": null
+        }
+      }
+    },
+    "global_states_v2_request": {
+      "authRequired": true,
+      "requestFields": [],
+      "resultType": "global_states_v2_result",
+      "result": {
+        "success": "boolean",
+        "info": {
+          "version": 2,
+          "serverTimeUnixMs": "integer",
+          "onlyOpenedStates": true,
+          "states": "opened_state_summary_array"
+        }
+      }
+    },
+    "state_map_v2_objects_request": {
+      "authRequired": true,
+      "requestFields": [],
+      "resultType": "state_map_v2_objects_result",
+      "currentBehavior": "fail_closed_until_worldv2_placement_is_connected",
+      "errorCode": "WORLDV2_OBJECTS_NOT_CONNECTED"
+    }
+  },
+  "neighbor_contract": {
+    "istiqamet": "direction_enum",
+    "stateId": "positive_integer_or_null",
+    "status": "transition_status_enum",
+    "kecideIcazeVar": "boolean"
+  },
+  "transition_status_enum": [
+    "QONSU_YOXDUR",
+    "BAGLIDIR",
+    "ACILIB_KECID_BAGLIDIR",
+    "KECIDE_ACIQDIR"
+  ],
+  "transition_reason_enum": [
+    "ICAZE_VAR",
+    "QONSU_YOXDUR",
+    "QONSU_BAGLIDIR",
+    "QONSU_ACILIB_KECID_BAGLIDIR"
+  ],
+  "errorCodes": [
+    "WORLDV2_AUTH_REQUIRED",
+    "WORLDV2_STATE_MISSING",
+    "WORLDV2_PLACEMENT_MISSING",
+    "WORLDV2_TOPOLOGY_MISSING",
+    "WORLDV2_OBJECTS_NOT_CONNECTED",
+    "WORLDV2_INTERNAL_ERROR"
+  ],
+  "authoritativeRules": {
+    "stateLifecycleDays": 60,
+    "stateLifecycleSource": "PLAY_MARKET_RELEASE_TARIXI",
+    "presidentUnlockDaysAfterStateStart": 30,
+    "clientMayOpenFutureState": false,
+    "clientMayMutateBorderTransitionLocally": false,
+    "persistentBaseFieldsStayLegacy": ["baseX", "baseZ"],
+    "protocolBaseFields": ["x", "y"]
+  },
+  "intentionallyUnresolved": {
+    "realStateTopologyIds": true,
+    "borderEntryCoordinates": true,
+    "presidentDefenseCoordinates": true,
+    "globalMapNodeLayout": true,
+    "worldV2ResourcePlacement": true,
+    "worldV2EnemyPlacement": true,
+    "stableAllianceIdForBaseLodFiltering": true
+  }
+}
