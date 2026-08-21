@@ -1,7 +1,10 @@
 'use strict';
 
 const { lifecycleInfo } = require('./dovlet_lifecycle_handler');
-const { DOVLET_KECID_STATUSU } = require('./dovlet_xerite_worldv2_qaydalari');
+const {
+  DOVLET_XERITESI_V2,
+  DOVLET_KECID_STATUSU,
+} = require('./dovlet_xerite_worldv2_qaydalari');
 
 const GUN_MS = 24 * 60 * 60 * 1000;
 const DOVLET_DOVR_GUN = 60;
@@ -119,6 +122,42 @@ function qonsuDovletLifecycleStatusunuAl(stateId, nowMs = Date.now()) {
   };
 }
 
+/**
+ * Topologiya qatının verdiyi dörd qonşu ID-sini lifecycle statusları ilə doldurur.
+ *
+ * Nümunə giriş:
+ * {
+ *   simal: null,
+ *   serq: 2,
+ *   cenub: 4,
+ *   qerb: null
+ * }
+ *
+ * Buradakı rəqəmlər yalnız format nümunəsidir. Funksiya özü heç bir State ID
+ * seçmir və qonşuluq yaratmır.
+ */
+function qonsuTopologiyasiniLifecycleIleHazirla(topologiya, nowMs = Date.now()) {
+  if (!topologiya || typeof topologiya !== 'object' || Array.isArray(topologiya)) {
+    throw new Error('WorldV2 qonşu topologiyası tələb olunur.');
+  }
+
+  const netice = {};
+
+  for (const istiqamet of DOVLET_XERITESI_V2.serhedIstiqametleri) {
+    if (!Object.prototype.hasOwnProperty.call(topologiya, istiqamet)) {
+      throw new Error(`Qonşu topologiyasında istiqamət yoxdur: ${istiqamet}`);
+    }
+
+    const qonsu = qonsuDovletLifecycleStatusunuAl(topologiya[istiqamet], nowMs);
+    netice[istiqamet] = {
+      stateId: qonsu.stateId,
+      status: qonsu.status,
+    };
+  }
+
+  return netice;
+}
+
 function acilmisDovletIdleriniAl(nowMs = Date.now()) {
   const lifecycle = dovletLifecycleMelumatiniAl(nowMs);
   return Array.from(
@@ -138,5 +177,6 @@ module.exports = {
   dovletAcilibmi,
   dovletPlanliVaxtlariniAl,
   qonsuDovletLifecycleStatusunuAl,
+  qonsuTopologiyasiniLifecycleIleHazirla,
   acilmisDovletIdleriniAl,
 };
