@@ -285,9 +285,16 @@ async function resursHesabatiMesajiniEmalEt(kontekst) {
     }
 
     if (!mutasiyaNeticesi || mutasiyaNeticesi.success !== true) {
+      const ugursuzResult = mutasiyaNeticesi && mutasiyaNeticesi.result
+        ? mutasiyaNeticesi.result
+        : {};
+
       gonder(kontekst, resultType, {
         success: false,
         playerId,
+        ...ugursuzResult,
+        hesabatId: metnAl(ugursuzResult.hesabatId || hesabatId, 220),
+        favoritdir: ugursuzResult.favoritdir === true,
         message: mutasiyaNeticesi && mutasiyaNeticesi.message
           ? mutasiyaNeticesi.message
           : "Resurs hesabatı əməliyyatı tamamlanmadı."
@@ -296,12 +303,27 @@ async function resursHesabatiMesajiniEmalEt(kontekst) {
     }
 
     const result = mutasiyaNeticesi.result || {};
+    const cavabHesabat = result.hesabat && typeof result.hesabat === "object"
+      ? result.hesabat
+      : null;
+    const cavabHesabatId = metnAl(
+      result.hesabatId ||
+      (cavabHesabat && cavabHesabat.hesabatId) ||
+      hesabatId,
+      220
+    );
+    const cavabFavoritdir = cavabHesabat
+      ? cavabHesabat.favoritdir === true
+      : result.favoritdir === true;
+
     const siyahi = siyahiNeticesiniHazirla(state, 50);
 
     gonder(kontekst, resultType, {
       success: true,
       playerId,
       ...result,
+      hesabatId: cavabHesabatId,
+      favoritdir: cavabFavoritdir,
       umumiSay: siyahi.umumiSay,
       oxunmamisSay: siyahi.oxunmamisSay,
       payloadJson: JSON.stringify(result)
