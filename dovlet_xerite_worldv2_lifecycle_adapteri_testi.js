@@ -10,6 +10,7 @@ const {
   dovletAcilibmi,
   dovletPlanliVaxtlariniAl,
   qonsuDovletLifecycleStatusunuAl,
+  qonsuTopologiyasiniLifecycleIleHazirla,
   acilmisDovletIdleriniAl,
 } = require('./dovlet_xerite_worldv2_lifecycle_adapteri');
 
@@ -130,6 +131,45 @@ test('Qonşu Dövlət yoxdursa lifecycle heç bir ID uydurmur', () => {
     assert.strictEqual(qonsu.stateId, null);
     assert.strictEqual(qonsu.status, DOVLET_KECID_STATUSU.QONSU_YOXDUR);
     assert.strictEqual(qonsu.kecideIcazeVar, false);
+  });
+});
+
+test('Topologiya yalnız verilən qonşu ID-lərini lifecycle statusu ilə doldurur', () => {
+  envIle(RELEASE_ISO, () => {
+    const now = RELEASE_MS + DOVLET_DOVR_MS;
+    const qonsular = qonsuTopologiyasiniLifecycleIleHazirla({
+      simal: null,
+      serq: 2,
+      cenub: 3,
+      qerb: null,
+    }, now);
+
+    assert.deepStrictEqual(qonsular.simal, {
+      stateId: null,
+      status: DOVLET_KECID_STATUSU.QONSU_YOXDUR,
+    });
+    assert.deepStrictEqual(qonsular.serq, {
+      stateId: 2,
+      status: DOVLET_KECID_STATUSU.KECIDE_ACIQDIR,
+    });
+    assert.deepStrictEqual(qonsular.cenub, {
+      stateId: 3,
+      status: DOVLET_KECID_STATUSU.BAGLIDIR,
+    });
+    assert.deepStrictEqual(qonsular.qerb, {
+      stateId: null,
+      status: DOVLET_KECID_STATUSU.QONSU_YOXDUR,
+    });
+  });
+});
+
+test('Natamam topologiya səssiz qonşu fərziyyəsi etmir', () => {
+  envIle(RELEASE_ISO, () => {
+    assert.throws(() => qonsuTopologiyasiniLifecycleIleHazirla({
+      simal: null,
+      serq: 2,
+      cenub: 3,
+    }, RELEASE_MS));
   });
 });
 
