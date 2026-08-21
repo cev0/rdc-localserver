@@ -1,0 +1,29 @@
+name: WorldV2 Dövlət Xəritəsi Testləri
+
+on:
+  push:
+    branches:
+      - worldv2-server-hazirliq
+    paths:
+      - 'dovlet_xerite_worldv2_*.js'
+      - 'DOVLET_XERITESI_WORLDV2_*.md'
+      - 'package.json'
+      - '.github/workflows/worldv2-xerite-test.yml'
+  workflow_dispatch:
+
+jobs:
+  worldv2-xerite-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Reponu götür
+        uses: actions/checkout@v4
+
+      - name: Node.js hazırla
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: WorldV2 xəritə testlərini işə sal
+        run: npm run xerite:worldv2-test
