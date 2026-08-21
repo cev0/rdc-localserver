@@ -20,6 +20,30 @@ jobs:
     steps:
       - name: Reponu götür
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: WorldV2 diff izolyasiyasını yoxla
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          xeta=0
+          while IFS= read -r fayl; do
+            case "$fayl" in
+              dovlet_xerite_worldv2_*.js|DOVLET_XERITESI_WORLDV2_*.md|server_unity_message_contract_worldv2.json|package.json|.github/workflows/worldv2-xerite-test.yml)
+                ;;
+              *)
+                echo "WorldV2 allowlist xaricində dəyişiklik: $fayl"
+                xeta=1
+                ;;
+            esac
+          done < <(git diff --name-only origin/main...HEAD)
+          if [ "$xeta" -ne 0 ]; then
+            echo "Legacy/production fayla toxunulduğu üçün CI dayandırıldı."
+            exit 1
+          fi
+          echo "WorldV2 diff izolyasiyası OK"
 
       - name: Node.js hazırla
         uses: actions/setup-node@v4
