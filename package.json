@@ -58,7 +58,7 @@
     "range-parser": "^1.2.1",
     "raw-body": "^3.0.2",
     "router": "^2.2.0",
-    "safer-buffer": "^2.1.2",
+    "safer-buffer": "^1.2.2",
     "send": "^1.2.1",
     "serve-static": "^2.2.1",
     "setprototypeof": "^1.2.0",
@@ -122,7 +122,7 @@
     "server:google-account-contract-test": "node hesab_provayder_cavab_uygunlugu_testi.js",
     "server:unity-contract-test": "node server_unity_mesaj_muqavilesi_testi.js",
     "dusmen:movqe-pg-test": "node dusmen_movqeyi_pg_mutasiya_testi.js",
-    "xerite:worldv2-test": "node dovlet_xerite_worldv2_qaydalari_testi.js"
+    "xerite:worldv2-test": "node dovlet_xerite_worldv2_butun_testler.js"
   },
   "repository": {
     "type": "git",
