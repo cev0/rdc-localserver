@@ -1,8 +1,7 @@
 'use strict';
 
 const {
-  XERITE_OLCUSU,
-  XERITE_MERKEZI,
+  DOVLET_XERITESI_V2,
 } = require('./dovlet_xerite_worldv2_qaydalari');
 
 function metnAl(deyer, maksimum = 128) {
@@ -23,7 +22,10 @@ function musbetTamEded(deyer, ehtiyat = 0) {
 function koordinatiSaxla(deyer, ehtiyat) {
   const reqem = Number(deyer);
   if (!Number.isFinite(reqem)) return ehtiyat;
-  return Math.max(0, Math.min(XERITE_OLCUSU, reqem));
+  return Math.max(
+    DOVLET_XERITESI_V2.minimumKoordinat,
+    Math.min(DOVLET_XERITESI_V2.maksimumKoordinat, reqem),
+  );
 }
 
 /**
@@ -72,8 +74,8 @@ function prezidentMelumatiniHazirla(stateRuntime, nowMs = Date.now()) {
   return {
     stateId: Math.max(1, musbetTamEded(runtime.stateId, 1) || 1),
     merkez: {
-      x: koordinatiSaxla(merkez.x, XERITE_MERKEZI),
-      y: koordinatiSaxla(merkez.z, XERITE_MERKEZI),
+      x: koordinatiSaxla(merkez.x, DOVLET_XERITESI_V2.merkezX),
+      y: koordinatiSaxla(merkez.z, DOVLET_XERITESI_V2.merkezY),
     },
     unlockAtMs,
     acilib: vaxtlaAcilib,
