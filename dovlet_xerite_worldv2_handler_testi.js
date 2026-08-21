@@ -229,11 +229,8 @@ async function run() {
   });
 }
 
-run()
-  .then(() => {
-    console.log('\nWorldV2 handler testləri uğurla tamamlandı.');
-  })
-  .catch((xeta) => {
-    console.error(xeta);
-    process.exitCode = 1;
-  });
+const icra = run().then(() => {
+  console.log('\nWorldV2 handler testləri uğurla tamamlandı.');
+});
+
+module.exports = icra;
