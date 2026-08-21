@@ -11,6 +11,7 @@ async function run() {
   require('./dovlet_xerite_worldv2_serhed_xidmeti_testi');
   require('./dovlet_xerite_worldv2_lod_qaydalari_testi');
   require('./dovlet_xerite_worldv2_prezident_adapteri_testi');
+  require('./dovlet_xerite_worldv2_runtime_metadata_testi');
 
   await require('./dovlet_xerite_worldv2_handler_testi');
 
