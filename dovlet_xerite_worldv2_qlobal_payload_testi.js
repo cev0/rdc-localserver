@@ -80,14 +80,17 @@ test('Gələcək bağlı Dövlət metadata-da olsa belə Qlobal siyahıya salın
   });
 });
 
-test('Real metadata veriləndə Prezident, ittifaq, bayraq və node əlavə olunur', () => {
+test('Real metadata veriləndə Prezident, ittifaq, ad, bayraq və node əlavə olunur', () => {
   envIle(RELEASE_ISO, () => {
     const payload = qlobalDovletlerPayloadHazirla({
       nowMs: RELEASE_MS,
       metadata: [{
         stateId: 1,
+        displayName: 'Dövlət 1',
         presidentPlayerId: 'oyuncu_99',
         presidentAllianceId: 'ittifaq_7',
+        presidentUnlocked: true,
+        presidentOccupiedAtMs: RELEASE_MS + 5000,
         flagId: 'bayraq_1',
         globalNode: { nodeId: 'qlobal_node_01' },
       }],
@@ -98,21 +101,27 @@ test('Real metadata veriləndə Prezident, ittifaq, bayraq və node əlavə olun
       opened: true,
       stateOpenedAtMs: RELEASE_MS,
       presidentUnlockAtMs: RELEASE_MS + PREZIDENT_ACILMA_MS,
+      displayName: 'Dövlət 1',
       presidentPlayerId: 'oyuncu_99',
       presidentAllianceId: 'ittifaq_7',
+      presidentUnlocked: true,
+      presidentOccupiedAtMs: RELEASE_MS + 5000,
       flagId: 'bayraq_1',
       globalNode: { nodeId: 'qlobal_node_01' },
     });
   });
 });
 
-test('Metadata yoxdursa naməlum Prezident/bayraq/node uydurulmur', () => {
+test('Metadata yoxdursa naməlum Prezident/ad/bayraq/node uydurulmur', () => {
   envIle(RELEASE_ISO, () => {
     const payload = qlobalDovletlerPayloadHazirla({ nowMs: RELEASE_MS });
     const state = payload.states[0];
 
+    assert.strictEqual(state.displayName, null);
     assert.strictEqual(state.presidentPlayerId, null);
     assert.strictEqual(state.presidentAllianceId, null);
+    assert.strictEqual(state.presidentUnlocked, null);
+    assert.strictEqual(state.presidentOccupiedAtMs, null);
     assert.strictEqual(state.flagId, null);
     assert.strictEqual(state.globalNode, null);
   });
