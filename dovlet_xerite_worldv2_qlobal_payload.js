@@ -65,13 +65,23 @@ function qlobalNodeHazirla(xamNode) {
 function dovletMetadataHazirla(xam) {
   const metadata = xam && typeof xam === 'object' ? xam : {};
 
+  const displayName = metnAl(metadata.displayName, 100) || null;
   const presidentPlayerId = metnAl(metadata.presidentPlayerId, 128) || null;
   const presidentAllianceId = metnAl(metadata.presidentAllianceId, 128) || null;
   const flagId = metnAl(metadata.flagId, 128) || null;
+  const presidentUnlocked = typeof metadata.presidentUnlocked === 'boolean'
+    ? metadata.presidentUnlocked
+    : null;
+  const presidentOccupiedAtMs = Number.isFinite(Number(metadata.presidentOccupiedAtMs))
+    ? Math.max(0, Math.trunc(Number(metadata.presidentOccupiedAtMs)))
+    : null;
 
   return {
+    displayName,
     presidentPlayerId,
     presidentAllianceId,
+    presidentUnlocked,
+    presidentOccupiedAtMs,
     flagId,
     globalNode: qlobalNodeHazirla(metadata.globalNode),
   };
