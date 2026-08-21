@@ -2,6 +2,7 @@
 
 const {
   DOVLET_XERITESI_V2,
+  koordinatEtibarlidir,
 } = require('./dovlet_xerite_worldv2_qaydalari');
 
 const {
@@ -116,8 +117,10 @@ function worldPlacementAl(state) {
     throw xeta;
   }
 
-  if (!Number.isFinite(baseX) || !Number.isFinite(baseZ)) {
-    const xeta = new Error('Oyunçunun baza koordinatı etibarsızdır.');
+  if (!koordinatEtibarlidir(baseX, baseZ)) {
+    const xeta = new Error(
+      `Oyunçunun baza koordinatı WorldV2 sərhədindən kənardır: ${wp.baseX}:${wp.baseZ}`,
+    );
     xeta.code = WORLDV2_XETA_KODLARI.MOVQE_YOXDUR;
     throw xeta;
   }
