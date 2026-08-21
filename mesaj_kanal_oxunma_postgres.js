@@ -31,6 +31,27 @@ function kanalNovunuYoxla(kanalNovu) {
     }
 }
 
+async function ilkOxunmaBaselineIniTeminEt({
+    playerId,
+    kanalNovu,
+    kontekstId
+}) {
+    // Bu funksiya yeni notification sistemi deploy olunmazdan əvvəl yaranmış bütün
+    // tarixi ölkə/ittifaq mesajlarının birdən-birə "unread" sayılmasının qarşısını alır.
+    // Sətir artıq varsa heç nəyə toxunmur; reconnect zamanı mövcud watermark qorunur.
+    await sorguEt(
+        `INSERT INTO mesaj_kanal_oxunma_veziyyeti (
+            player_id,
+            kanal_novu,
+            kontekst_id,
+            son_oxunma_vaxti
+         ) VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (player_id, kanal_novu, kontekst_id)
+         DO NOTHING`,
+        [playerId, kanalNovu, String(kontekstId)]
+    );
+}
+
 async function kanalOxunmamisSayiniGetir({
     playerId,
     kanalNovu,
@@ -38,6 +59,11 @@ async function kanalOxunmamisSayiniGetir({
 }) {
     kanalNovunuYoxla(kanalNovu);
     await oxunmaCedveliniTeminEt();
+    await ilkOxunmaBaselineIniTeminEt({
+        playerId,
+        kanalNovu,
+        kontekstId
+    });
 
     const kontekstSerti = kanalNovu === "olke"
         ? "m.dovlet_id::text = $3"
@@ -49,16 +75,13 @@ async function kanalOxunmamisSayiniGetir({
           WHERE m.kanal_novu = $2
             AND ${kontekstSerti}
             AND m.gonderen_player_id <> $1
-            AND m.gonderilme_vaxti > COALESCE(
-                (
-                    SELECT o.son_oxunma_vaxti
-                      FROM mesaj_kanal_oxunma_veziyyeti o
-                     WHERE o.player_id = $1
-                       AND o.kanal_novu = $2
-                       AND o.kontekst_id = $3
-                     LIMIT 1
-                ),
-                '-infinity'::timestamptz
+            AND m.gonderilme_vaxti > (
+                SELECT o.son_oxunma_vaxti
+                  FROM mesaj_kanal_oxunma_veziyyeti o
+                 WHERE o.player_id = $1
+                   AND o.kanal_novu = $2
+                   AND o.kontekst_id = $3
+                 LIMIT 1
             )`,
         [playerId, kanalNovu, String(kontekstId)]
     );
