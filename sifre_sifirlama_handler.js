@@ -23,6 +23,10 @@ const {
     resursHesabatiMesajiniEmalEt
 } = require("./resurs_hesabatlari");
 
+const {
+    mesajKanalOxunmaMesajiniEmalEt
+} = require("./mesaj_kanal_oxunma_handler");
+
 function metnAl(deyer) {
     return typeof deyer === "string" ? deyer.trim() : "";
 }
@@ -52,6 +56,15 @@ async function sifreSifirlamaMesajiniEmalEt(kontekst) {
         await resursHesabatiMesajiniEmalEt(kontekst);
 
     if (resursHesabatiEmalOlundu) {
+        return true;
+    }
+
+    // Ölkə və ittifaq kanallarının persistent unread/read vəziyyəti
+    // ayrıca modulda server-authoritative idarə olunur.
+    const mesajKanalOxunmaEmalOlundu =
+        await mesajKanalOxunmaMesajiniEmalEt(kontekst);
+
+    if (mesajKanalOxunmaEmalOlundu) {
         return true;
     }
 
