@@ -36,12 +36,13 @@ const {
   assert.strictEqual(baza.allianceName, 'Test İttifaq');
   assert.strictEqual(baza.commanderName, 'Komandir 1');
   assert.strictEqual(baza.publicPower, 125430);
+  assert.strictEqual(baza.publicPowerKnown, true);
   assert.strictEqual(baza.hqLevel, 12);
   assert.strictEqual(baza.completedBuildingCount, 18);
   assert.strictEqual(baza.pvpShieldUntilMs, 1777777000123);
 })();
 
-(function testOlmayanPublicGucNullQalir() {
+(function testOlmayanPublicGucKnownFalseQalir() {
   const baza = bazaGirisiniHazirla(
     {
       playerId: 'p-null-power',
@@ -51,10 +52,26 @@ const {
     'p1',
   );
 
-  assert.strictEqual(baza.publicPower, null);
+  assert.strictEqual(baza.publicPower, 0);
+  assert.strictEqual(baza.publicPowerKnown, false);
   assert.strictEqual(baza.hqLevel, 0);
   assert.strictEqual(baza.completedBuildingCount, 0);
   assert.strictEqual(baza.pvpShieldUntilMs, 0);
+})();
+
+(function testHegiqiSifirPublicGucKnownTrueQalir() {
+  const baza = bazaGirisiniHazirla(
+    {
+      playerId: 'p-zero-power',
+      baseX: 101,
+      baseZ: 201,
+      publicPower: 0,
+    },
+    'p1',
+  );
+
+  assert.strictEqual(baza.publicPower, 0);
+  assert.strictEqual(baza.publicPowerKnown, true);
 })();
 
 (function testDuplicateBazalarTeklesdirilir() {
