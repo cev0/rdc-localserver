@@ -43,27 +43,49 @@ function envIle(releaseTarixi, funksiya) {
 const RELEASE_MS = Date.UTC(2026, 0, 1, 0, 0, 0, 0);
 const RELEASE_ISO = new Date(RELEASE_MS).toISOString();
 
-test('Release günü Qlobal xəritədə yalnız Dövlət #1 olur', () => {
+test('Release günü yalnız Dövlət #1 və Qlobal layout V1 gəlir', () => {
   envIle(RELEASE_ISO, () => {
     const payload = qlobalDovletlerPayloadHazirla({ nowMs: RELEASE_MS });
 
     assert.strictEqual(payload.version, 2);
     assert.strictEqual(payload.onlyOpenedStates, true);
     assert.deepStrictEqual(payload.states.map(x => x.stateId), [1]);
+    assert.deepStrictEqual(payload.layout, {
+      layoutVersion: 1,
+      coordinateSpace: 'normalized_0_1',
+      backgroundId: 'worldv2_qlobal_fon_v1',
+      capacity: 91,
+    });
+    assert.deepStrictEqual(payload.connections, []);
+
+    const node = payload.states[0].globalNode;
+    assert.ok(node);
+    assert.strictEqual(node.nodeId, 'qlobal_v1_node_001');
+    assert.ok(node.normalizedX >= 0 && node.normalizedX <= 1);
+    assert.ok(node.normalizedY >= 0 && node.normalizedY <= 1);
   });
 });
 
-test('60 gündən sonra Qlobal xəritədə Dövlət #1 və #2 olur', () => {
+test('60 gündən sonra Dövlət #1 və #2 server node-ları ilə gəlir', () => {
   envIle(RELEASE_ISO, () => {
     const now = RELEASE_MS + DOVLET_DOVR_MS;
     const payload = qlobalDovletlerPayloadHazirla({ nowMs: now });
 
     assert.deepStrictEqual(payload.states.map(x => x.stateId), [1, 2]);
     assert.strictEqual(payload.states.every(x => x.opened === true), true);
+    assert.strictEqual(payload.states.every(x => x.globalNode != null), true);
+    assert.strictEqual(payload.states.every(x => Number.isFinite(x.globalNode.normalizedX)), true);
+    assert.strictEqual(payload.states.every(x => Number.isFinite(x.globalNode.normalizedY)), true);
+
+    // Əlaqə yalnız açılmış Dövlətlər arasında ola bilər.
+    for (const elage of payload.connections) {
+      assert.ok([1, 2].includes(elage.fromStateId));
+      assert.ok([1, 2].includes(elage.toStateId));
+    }
   });
 });
 
-test('Gələcək bağlı Dövlət metadata-da olsa belə Qlobal siyahıya salınmır', () => {
+test('Gələcək bağlı Dövlət metadata-da olsa belə Qlobal siyahı və əlaqəyə salınmır', () => {
   envIle(RELEASE_ISO, () => {
     const now = RELEASE_MS + DOVLET_DOVR_MS;
     const payload = qlobalDovletlerPayloadHazirla({
@@ -77,10 +99,14 @@ test('Gələcək bağlı Dövlət metadata-da olsa belə Qlobal siyahıya salın
 
     assert.deepStrictEqual(payload.states.map(x => x.stateId), [1, 2]);
     assert.strictEqual(payload.states.some(x => x.stateId === 3), false);
+    assert.strictEqual(
+      payload.connections.some(x => x.fromStateId === 3 || x.toStateId === 3),
+      false,
+    );
   });
 });
 
-test('Real metadata veriləndə Prezident, ittifaq, ad, bayraq və node əlavə olunur', () => {
+test('Real metadata Prezident, ittifaq, ad və bayrağı əlavə edir; layout node serverdən qalır', () => {
   envIle(RELEASE_ISO, () => {
     const payload = qlobalDovletlerPayloadHazirla({
       nowMs: RELEASE_MS,
@@ -92,27 +118,29 @@ test('Real metadata veriləndə Prezident, ittifaq, ad, bayraq və node əlavə 
         presidentUnlocked: true,
         presidentOccupiedAtMs: RELEASE_MS + 5000,
         flagId: 'bayraq_1',
-        globalNode: { nodeId: 'qlobal_node_01' },
+        // Köhnə metadata node-u verilə bilər, lakin V1 statik layout üstün olmalıdır.
+        globalNode: { nodeId: 'kohne_node' },
       }],
     });
 
-    assert.deepStrictEqual(payload.states[0], {
-      stateId: 1,
-      opened: true,
-      stateOpenedAtMs: RELEASE_MS,
-      presidentUnlockAtMs: RELEASE_MS + PREZIDENT_ACILMA_MS,
-      displayName: 'Dövlət 1',
-      presidentPlayerId: 'oyuncu_99',
-      presidentAllianceId: 'ittifaq_7',
-      presidentUnlocked: true,
-      presidentOccupiedAtMs: RELEASE_MS + 5000,
-      flagId: 'bayraq_1',
-      globalNode: { nodeId: 'qlobal_node_01' },
-    });
+    const state = payload.states[0];
+    assert.strictEqual(state.stateId, 1);
+    assert.strictEqual(state.opened, true);
+    assert.strictEqual(state.stateOpenedAtMs, RELEASE_MS);
+    assert.strictEqual(state.presidentUnlockAtMs, RELEASE_MS + PREZIDENT_ACILMA_MS);
+    assert.strictEqual(state.displayName, 'Dövlət 1');
+    assert.strictEqual(state.presidentPlayerId, 'oyuncu_99');
+    assert.strictEqual(state.presidentAllianceId, 'ittifaq_7');
+    assert.strictEqual(state.presidentUnlocked, true);
+    assert.strictEqual(state.presidentOccupiedAtMs, RELEASE_MS + 5000);
+    assert.strictEqual(state.flagId, 'bayraq_1');
+    assert.strictEqual(state.globalNode.nodeId, 'qlobal_v1_node_001');
+    assert.ok(Number.isFinite(state.globalNode.normalizedX));
+    assert.ok(Number.isFinite(state.globalNode.normalizedY));
   });
 });
 
-test('Metadata yoxdursa naməlum Prezident/ad/bayraq/node uydurulmur', () => {
+test('Metadata yoxdursa Prezident/ad/bayraq uydurulmur, yalnız layout node verilir', () => {
   envIle(RELEASE_ISO, () => {
     const payload = qlobalDovletlerPayloadHazirla({ nowMs: RELEASE_MS });
     const state = payload.states[0];
@@ -123,17 +151,37 @@ test('Metadata yoxdursa naməlum Prezident/ad/bayraq/node uydurulmur', () => {
     assert.strictEqual(state.presidentUnlocked, null);
     assert.strictEqual(state.presidentOccupiedAtMs, null);
     assert.strictEqual(state.flagId, null);
-    assert.strictEqual(state.globalNode, null);
+    assert.ok(state.globalNode);
+    assert.strictEqual(state.globalNode.nodeId, 'qlobal_v1_node_001');
   });
 });
 
-test('Qlobal node üçün koordinat uydurulmur, stabil nodeId tələb olunur', () => {
+test('Metadata Qlobal node-u üçün yarımçıq normalized koordinat rədd edilir', () => {
   envIle(RELEASE_ISO, () => {
     assert.throws(() => qlobalDovletlerPayloadHazirla({
       nowMs: RELEASE_MS,
       metadata: [{
         stateId: 1,
-        globalNode: { x: 100, y: 200 },
+        globalNode: {
+          nodeId: 'metadata_node',
+          normalizedX: 0.5,
+        },
+      }],
+    }));
+  });
+});
+
+test('Metadata Qlobal node normalized koordinatı 0..1 xaricində ola bilməz', () => {
+  envIle(RELEASE_ISO, () => {
+    assert.throws(() => qlobalDovletlerPayloadHazirla({
+      nowMs: RELEASE_MS,
+      metadata: [{
+        stateId: 1,
+        globalNode: {
+          nodeId: 'metadata_node',
+          normalizedX: 1.5,
+          normalizedY: 0.5,
+        },
       }],
     }));
   });
@@ -151,13 +199,15 @@ test('Təkrarlanan State metadata-sı rədd edilir', () => {
   });
 });
 
-test('Release env yoxdursa legacy fallback Qlobal xəritədə yalnız Dövlət #1-dir', () => {
+test('Release env yoxdursa legacy fallback yalnız Dövlət #1-dir, layout yenə mövcuddur', () => {
   envIle(null, () => {
     const payload = qlobalDovletlerPayloadHazirla({ nowMs: RELEASE_MS });
 
     assert.deepStrictEqual(payload.states.map(x => x.stateId), [1]);
     assert.strictEqual(payload.states[0].stateOpenedAtMs, null);
     assert.strictEqual(payload.states[0].presidentUnlockAtMs, null);
+    assert.ok(payload.states[0].globalNode);
+    assert.strictEqual(payload.layout.layoutVersion, 1);
   });
 });
 
