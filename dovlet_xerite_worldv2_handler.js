@@ -11,6 +11,10 @@ const {
 } = require('./dovlet_xerite_worldv2_payload');
 
 const {
+  worldV2ObyektPayloadHazirla,
+} = require('./dovlet_xerite_worldv2_obyekt_payload');
+
+const {
   serhedKecidiniYoxla,
 } = require('./dovlet_xerite_worldv2_serhed_xidmeti');
 
@@ -194,12 +198,16 @@ function worldV2HandleriYarat({
   topologiyaXeritesi = null,
   stateRuntimeAl = async () => null,
   qlobalMetadataAl = async () => [],
+  dovletBazalariAl = null,
 } = {}) {
   if (typeof stateRuntimeAl !== 'function') {
     throw new Error('stateRuntimeAl funksiya olmalıdır.');
   }
   if (typeof qlobalMetadataAl !== 'function') {
     throw new Error('qlobalMetadataAl funksiya olmalıdır.');
+  }
+  if (dovletBazalariAl != null && typeof dovletBazalariAl !== 'function') {
+    throw new Error('dovletBazalariAl null və ya funksiya olmalıdır.');
   }
 
   return async function dovletXeriteWorldV2MesajiniEmalEt(kontekst) {
@@ -240,12 +248,36 @@ function worldV2HandleriYarat({
       const placement = worldPlacementAl(state);
 
       if (type === WORLDV2_MESAJ_NOVLERI.OBYEKTLER_SORGU) {
+        if (typeof dovletBazalariAl !== 'function') {
+          gonder(kontekst, resultType, {
+            success: false,
+            playerId,
+            stateId: placement.stateId,
+            errorCode: WORLDV2_XETA_KODLARI.OBYEKTLER_HAZIR_DEYIL,
+            message: 'WorldV2 obyekt layer-i hələ production placement sisteminə qoşulmayıb.',
+          });
+          return true;
+        }
+
+        const bazalar = await dovletBazalariAl(
+          placement.stateId,
+          nowMs,
+          kontekst,
+        );
+
+        const info = worldV2ObyektPayloadHazirla({
+          stateId: placement.stateId,
+          requestingPlayerId: playerId,
+          bases: bazalar,
+          serverTimeUnixMs: nowMs,
+        });
+
         gonder(kontekst, resultType, {
-          success: false,
+          success: true,
           playerId,
           stateId: placement.stateId,
-          errorCode: WORLDV2_XETA_KODLARI.OBYEKTLER_HAZIR_DEYIL,
-          message: 'WorldV2 obyekt layer-i hələ production placement sisteminə qoşulmayıb.',
+          info,
+          payloadJson: JSON.stringify(info),
         });
         return true;
       }
