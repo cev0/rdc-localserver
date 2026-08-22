@@ -83,9 +83,25 @@ test('Prezident müdafiə istiqamətləri dörd tərəfi saxlayır', () => {
   );
 });
 
-test('Dəqiq müdafiə top koordinatları hələ özbaşına yaradılmır', () => {
+test('Prezident müdafiə top koordinatları təsdiqlənmiş dörd sabit slotdur', () => {
+  const gozlenen = [
+    { slot: 'yuxari', x: 596, y: 596 },
+    { slot: 'sag', x: 605, y: 596 },
+    { slot: 'sol', x: 596, y: 605 },
+    { slot: 'asagi', x: 605, y: 605 },
+  ];
+
+  assert.deepStrictEqual(
+    DOVLET_XERITESI_V2.prezidentMerkezi.mudafieKoordinatlari.map(x => ({ ...x })),
+    gozlenen,
+  );
+
   const melumat = worldV2XeriteMelumatiYarat();
-  assert.strictEqual(melumat.prezidentMerkezi.mudafieKoordinatlari, null);
+  assert.deepStrictEqual(melumat.prezidentMerkezi.mudafieKoordinatlari, gozlenen);
+  assert.strictEqual(
+    melumat.prezidentMerkezi.mudafieKoordinatlari.every(x => koordinatEtibarlidir(x.x, x.y)),
+    true,
+  );
 });
 
 test('Sərhəd istiqaməti yalnız dörd qəbul edilən istiqamətdən biridir', () => {

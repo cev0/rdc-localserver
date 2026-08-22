@@ -40,7 +40,6 @@ const unresolved = contract.intentionallyUnresolved || {};
 for (const key of [
   'realStateTopologyIds',
   'borderEntryCoordinates',
-  'presidentDefenseCoordinates',
   'globalPresidentNameFlagMetadataSource',
   'worldV2ResourcePlacement',
   'worldV2EnemyPlacement',
@@ -80,6 +79,14 @@ assert.strictEqual(
   true,
 );
 
+// Prezident mərkəzinin dörd müdafiə topu artıq gameplay/Unity quruluşunda
+// təsdiqlənib və server müqaviləsində də authoritative saxlanılır.
+assert.strictEqual(unresolved.presidentDefenseCoordinates, false);
+assert.strictEqual(
+  contract.authoritativeRules.presidentDefenseCoordinatesAreServerAuthoritative,
+  true,
+);
+
 const qonsular = {
   simal: { stateId: null, status: DOVLET_KECID_STATUSU.QONSU_YOXDUR },
   serq: { stateId: 2, status: DOVLET_KECID_STATUSU.BAGLIDIR },
@@ -103,10 +110,15 @@ const baslangic = worldV2BaslangicPayloadHazirla({
   serverTimeUnixMs: 1,
 });
 
-assert.strictEqual(
+assert.deepStrictEqual(
   baslangic.presidentCenter.defenseCoordinates,
-  null,
-  'Prezident müdafiə koordinatları server müqaviləsinə ayrıca keçirilmədən payload-a yazılmamalıdır.',
+  [
+    { slot: 'yuxari', x: 596, y: 596 },
+    { slot: 'sag', x: 605, y: 596 },
+    { slot: 'sol', x: 596, y: 605 },
+    { slot: 'asagi', x: 605, y: 605 },
+  ],
+  'Prezident müdafiə koordinatları təsdiqlənmiş authoritative slotlarla gəlməlidir.',
 );
 
 const kecid = serhedKecidiPayloadHazirla({

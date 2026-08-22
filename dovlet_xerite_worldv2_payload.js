@@ -100,7 +100,7 @@ function prezidentStatusunuHazirla(prezident) {
  * Unity WorldV2 scene-i ilk dəfə açarkən istifadə ediləcək yığcam server payload-u.
  * Kamera fokusunun playerBase koordinatından açılması üçün playerBase məcburidir.
  *
- * Bu builder heç bir DB sorğusu etmir və production handler-ə qoşulmayıb.
+ * Bu builder heç bir DB sorğusu etmir.
  */
 function worldV2BaslangicPayloadHazirla({
   stateId,
@@ -141,7 +141,8 @@ function worldV2BaslangicPayloadHazirla({
       unlockAfterDays: xerite.prezidentMerkezi.acilmaGunSayi,
       defenseBuildingCount: xerite.prezidentMerkezi.mudafieTopSayi,
       defenseDirections: [...xerite.prezidentMerkezi.mudafieIstiqametleri],
-      defenseCoordinates: null,
+      defenseCoordinates: xerite.prezidentMerkezi.mudafieKoordinatlari
+        .map(koordinat => ({ ...koordinat })),
       status: prezidentStatusunuHazirla(prezident),
     },
     neighbors: qonsulariHazirla(qonsular),
@@ -172,7 +173,7 @@ function serhedKecidiPayloadHazirla({
     neighborStateId: melumat.stateId,
     transitionAllowed: melumat.kecideIcazeVar,
     status: melumat.status,
-    // Dəqiq giriş koordinatı istifadəçi qaydası təsdiqlənənədək null saxlanır.
+    // Dəqiq giriş koordinatı gameplay qaydası təsdiqlənənədək null saxlanır.
     entryCoordinate: null,
   };
 }
