@@ -5,8 +5,9 @@
  *
  * Bu layout statik fon şəkli üzərində Dövlət node-larının server-authoritative
  * yerləşimini müəyyən edir. Koordinatlar UI-dən asılı olmayan 0..1 normalized
- * sahədədir. V1 production-a çıxdıqdan sonra bu alqoritmin mövqeləri dəyişdirilməməlidir;
- * gələcək vizual dəyişiklik ayrıca layoutVersion ilə edilməlidir.
+ * sahədədir və mənşə sol-aşağıdır. V1 production-a çıxdıqdan sonra bu alqoritmin
+ * mövqeləri dəyişdirilməməlidir; gələcək vizual dəyişiklik ayrıca layoutVersion
+ * ilə edilməlidir.
  *
  * 7 x 13 = 91 stabil slot var. 60 günlük Dövlət açılış intervalı ilə bu,
  * təxminən 15 illik yeni Dövlət açılışına kifayət edir.
@@ -14,7 +15,9 @@
 
 const QLOBAL_LAYOUT_VERSION = 1;
 const QLOBAL_LAYOUT_KOORDINAT_SAHESI = 'normalized_0_1';
+const QLOBAL_LAYOUT_MENSEYI = 'bottom_left';
 const QLOBAL_LAYOUT_FON_ID = 'worldv2_qlobal_fon_v1';
+const QLOBAL_LAYOUT_FON_ASPEKT = 9 / 16;
 
 const SUTUN_SAYI = 7;
 const SETIR_SAYI = 13;
@@ -210,7 +213,9 @@ function qlobalLayoutMelumatiniHazirla() {
   return {
     layoutVersion: QLOBAL_LAYOUT_VERSION,
     coordinateSpace: QLOBAL_LAYOUT_KOORDINAT_SAHESI,
+    origin: QLOBAL_LAYOUT_MENSEYI,
     backgroundId: QLOBAL_LAYOUT_FON_ID,
+    backgroundAspectRatio: QLOBAL_LAYOUT_FON_ASPEKT,
     capacity: QLOBAL_LAYOUT_TUTUMU,
   };
 }
@@ -218,7 +223,9 @@ function qlobalLayoutMelumatiniHazirla() {
 module.exports = {
   QLOBAL_LAYOUT_VERSION,
   QLOBAL_LAYOUT_KOORDINAT_SAHESI,
+  QLOBAL_LAYOUT_MENSEYI,
   QLOBAL_LAYOUT_FON_ID,
+  QLOBAL_LAYOUT_FON_ASPEKT,
   QLOBAL_LAYOUT_TUTUMU,
   QLOBAL_LAYOUT_NODELARI,
   QLOBAL_LAYOUT_ELAQELERI,
