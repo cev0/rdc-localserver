@@ -134,6 +134,8 @@
     "WORLDV2_PLACEMENT_MISSING",
     "WORLDV2_TOPOLOGY_MISSING",
     "WORLDV2_OBJECTS_NOT_CONNECTED",
+    "WORLDV2_RUNTIME_INVALID",
+    "WORLDV2_RUNTIME_STATE_MISMATCH",
     "WORLDV2_INTERNAL_ERROR"
   ],
   "authoritativeRules": {
@@ -142,6 +144,8 @@
     "presidentUnlockDaysAfterStateStart": 30,
     "clientMayOpenFutureState": false,
     "clientMayMutateBorderTransitionLocally": false,
+    "runtimeStateIdMustMatchRequestedStateId": true,
+    "runtimeValidationIsFailClosed": true,
     "persistentBaseFieldsStayLegacy": ["baseX", "baseZ"],
     "protocolBaseFields": ["x", "y"]
   },
