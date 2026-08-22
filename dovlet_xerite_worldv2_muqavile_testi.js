@@ -21,6 +21,10 @@ const {
 } = require('./dovlet_xerite_worldv2_runtime_guard');
 
 const {
+  SERHED_KECID_XETA_KODLARI,
+} = require('./dovlet_xerite_worldv2_serhed_xidmeti');
+
+const {
   DOVLET_DOVR_GUN,
   PREZIDENT_ACILMA_GUN,
 } = require('./dovlet_xerite_worldv2_lifecycle_adapteri');
@@ -79,11 +83,12 @@ test('Bütün WorldV2 request/result mesaj adları JSON müqaviləsində var', (
   );
 });
 
-test('Handler və runtime guard error kodları JSON müqaviləsində tam siyahılanıb', () => {
+test('Server-side WorldV2 error kodları JSON müqaviləsində tam siyahılanıb', () => {
   const contractKodlari = new Set(contract.errorCodes || []);
   const serverKodlari = [
     ...Object.values(WORLDV2_XETA_KODLARI),
     ...Object.values(WORLDV2_RUNTIME_GUARD_XETALARI),
+    ...Object.values(SERHED_KECID_XETA_KODLARI),
   ];
 
   for (const kod of serverKodlari) {
@@ -94,6 +99,15 @@ test('Handler və runtime guard error kodları JSON müqaviləsində tam siyahı
 test('Runtime State ID uyğunluğu fail-closed qaydası contract-da açıq yazılıb', () => {
   assert.strictEqual(contract.authoritativeRules.runtimeStateIdMustMatchRequestedStateId, true);
   assert.strictEqual(contract.authoritativeRules.runtimeValidationIsFailClosed, true);
+});
+
+test('Border direction validation fail-closed qaydası contract-da açıq yazılıb', () => {
+  const border = contract.messages[WORLDV2_MESAJ_NOVLERI.SERHED_KECIDI_SORGU];
+  assert.strictEqual(
+    border.invalidDirectionErrorCode,
+    SERHED_KECID_XETA_KODLARI.ETIBARSIZ_ISTIQAMET,
+  );
+  assert.strictEqual(contract.authoritativeRules.invalidBorderDirectionFailsClosed, true);
 });
 
 test('60 günlük State və 30 günlük Prezident qaydası JSON müqaviləsi ilə eynidir', () => {
