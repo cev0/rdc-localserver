@@ -89,7 +89,11 @@ function binaMuqavilesiniYoxla(kok) {
   );
 }
 
-assert.strictEqual(manifest.version, 2);
+assert.strictEqual(
+  manifest.version,
+  3,
+  "Normal server/Unity protocol manifest versiyası gözlənilən 3 deyil."
+);
 assert.ok(Array.isArray(manifest.clientOutboundTypes));
 
 const clientTipleri = manifest.clientOutboundTypes.slice();
