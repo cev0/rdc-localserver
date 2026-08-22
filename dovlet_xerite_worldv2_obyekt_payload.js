@@ -75,6 +75,7 @@ function bazaGirisiniHazirla(xamBaza, requestingPlayerId) {
   const allianceId = metnAl(xamBaza.allianceId, 128) || null;
   const allianceName = metnAl(xamBaza.allianceName, 80) || null;
   const commanderName = metnAl(xamBaza.commanderName, 64) || null;
+  const publicPower = nullableMenfiOlmayanTamEdedAl(xamBaza.publicPower);
 
   return {
     playerId,
@@ -84,7 +85,8 @@ function bazaGirisiniHazirla(xamBaza, requestingPlayerId) {
     allianceId,
     allianceName,
     commanderName,
-    publicPower: nullableMenfiOlmayanTamEdedAl(xamBaza.publicPower),
+    publicPower: publicPower == null ? 0 : publicPower,
+    publicPowerKnown: publicPower != null,
     hqLevel: menfiOlmayanTamEdedAl(xamBaza.hqLevel, 0),
     completedBuildingCount: menfiOlmayanTamEdedAl(
       xamBaza.completedBuildingCount,
