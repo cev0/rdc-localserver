@@ -1,14 +1,5 @@
 'use strict';
 
-const {
-  oyunStateIniBerpaEt,
-  oyuncuStateBerpaOlunub,
-} = require('./oyun_state_daimilik_korpu');
-
-const {
-  oyuncuStateMutasiyasiniPostgresIleIcraEt,
-} = require('./oyun_state_mutasiya_postgres');
-
 const WORLDV2_ELFECIN_LIST = 'state_map_v2_elfecinler_request';
 const WORLDV2_ELFECIN_ADD = 'state_map_v2_elfecin_elave_request';
 const WORLDV2_ELFECIN_REMOVE = 'state_map_v2_elfecin_sil_request';
@@ -20,6 +11,30 @@ const MESAJLAR = new Set([
   WORLDV2_ELFECIN_ADD,
   WORLDV2_ELFECIN_REMOVE,
 ]);
+
+// WorldV2 izolyasiya testləri DB package-lərini quraşdırmadan işləyir.
+// Production persistence dependency-ləri yalnız real sorğu gələndə lazy yüklənir.
+function defaultStateBerpaOlunub(playerId) {
+  const { oyuncuStateBerpaOlunub } = require('./oyun_state_daimilik_korpu');
+  return oyuncuStateBerpaOlunub(playerId);
+}
+
+async function defaultStateBerpaEt(kontekst, playerId) {
+  const { oyunStateIniBerpaEt } = require('./oyun_state_daimilik_korpu');
+  return await oyunStateIniBerpaEt(kontekst, playerId);
+}
+
+async function defaultStateMutasiyaEt(playerId, state, emeliyyat) {
+  const {
+    oyuncuStateMutasiyasiniPostgresIleIcraEt,
+  } = require('./oyun_state_mutasiya_postgres');
+
+  return await oyuncuStateMutasiyasiniPostgresIleIcraEt(
+    playerId,
+    state,
+    emeliyyat,
+  );
+}
 
 function metnAl(deyer, maksimum = 128) {
   return typeof deyer === 'string'
@@ -200,7 +215,7 @@ function elfecinMutasiyasiniTetbiqEt(state, type, msg, playerId, nowMs) {
     };
   }
 
-  let index = movcudlar.findIndex(item => item.elfecinId === acar);
+  const index = movcudlar.findIndex(item => item.elfecinId === acar);
   if (index < 0 && movcudlar.length >= WORLDV2_ELFECIN_LIMIT) {
     return {
       success: false,
@@ -245,9 +260,9 @@ function elfecinMutasiyasiniTetbiqEt(state, type, msg, playerId, nowMs) {
 }
 
 function worldV2ElfecinHandleriYarat({
-  stateBerpaOlunub = oyuncuStateBerpaOlunub,
-  stateBerpaEt = oyunStateIniBerpaEt,
-  stateMutasiyaEt = oyuncuStateMutasiyasiniPostgresIleIcraEt,
+  stateBerpaOlunub = defaultStateBerpaOlunub,
+  stateBerpaEt = defaultStateBerpaEt,
+  stateMutasiyaEt = defaultStateMutasiyaEt,
 } = {}) {
   return async function dovletXeriteWorldV2ElfecinMesajiniEmalEt(kontekst) {
     const type = metnAl(kontekst && kontekst.type, 128).toLowerCase();
