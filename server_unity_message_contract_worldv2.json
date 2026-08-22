@@ -192,7 +192,13 @@
               "y": "number_0_to_1200",
               "isSelf": "boolean",
               "allianceId": "stable_string_or_null",
-              "allianceName": "string_or_null"
+              "allianceName": "string_or_null",
+              "commanderName": "string_or_null",
+              "publicPower": "non_negative_integer",
+              "publicPowerKnown": "boolean",
+              "hqLevel": "non_negative_integer",
+              "completedBuildingCount": "non_negative_integer",
+              "pvpShieldUntilMs": "non_negative_integer"
             }
           ],
           "resources": [],

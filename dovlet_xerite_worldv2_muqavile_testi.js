@@ -166,6 +166,26 @@ test('Obyekt layer-i production PostgreSQL baza mənbəyinə qoşulub', () => {
   );
 });
 
+test('WorldV2 baza public marker sahələri JSON müqaviləsində runtime payload-la uyğun saxlanır', () => {
+  const baza = contract.messages[WORLDV2_MESAJ_NOVLERI.OBYEKTLER_SORGU]
+    .resultWhenBaseDependencyConnected.info.bases[0];
+
+  assert.deepStrictEqual(baza, {
+    playerId: 'string',
+    x: 'number_0_to_1200',
+    y: 'number_0_to_1200',
+    isSelf: 'boolean',
+    allianceId: 'stable_string_or_null',
+    allianceName: 'string_or_null',
+    commanderName: 'string_or_null',
+    publicPower: 'non_negative_integer',
+    publicPowerKnown: 'boolean',
+    hqLevel: 'non_negative_integer',
+    completedBuildingCount: 'non_negative_integer',
+    pvpShieldUntilMs: 'non_negative_integer',
+  });
+});
+
 test('Qlobal Dövlət production müqaviləsi layout V1 ilə eynidir', () => {
   const qlobal = contract.messages[WORLDV2_MESAJ_NOVLERI.QLOBAL_DOVLETLER_SORGU];
   const layout = qlobal.result.info.layout;
