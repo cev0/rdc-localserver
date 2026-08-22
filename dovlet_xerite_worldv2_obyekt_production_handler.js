@@ -4,15 +4,6 @@ const {
   worldV2ObyektPayloadHazirla,
 } = require('./dovlet_xerite_worldv2_obyekt_payload');
 
-const {
-  dovletBazalariniAl: dovletBazalariniPostgresdenAl,
-} = require('./dovlet_baza_kataloqu_postgres');
-
-const {
-  oyunStateIniBerpaEt,
-  oyuncuStateBerpaOlunub,
-} = require('./oyun_state_daimilik_korpu');
-
 const WORLDV2_OBYEKT_SORGU = 'state_map_v2_objects_request';
 const WORLDV2_OBYEKT_CAVAB = 'state_map_v2_objects_result';
 
@@ -46,10 +37,36 @@ function stateIdAl(state) {
     : 0;
 }
 
+async function standartDovletBazalariniAl(stateId, nowMs) {
+  // PostgreSQL modulu yalnız həqiqi production sorğusu gələndə yüklənir.
+  // Unit test dependency inject etdikdə pg moduluna ehtiyac qalmır.
+  const {
+    dovletBazalariniAl,
+  } = require('./dovlet_baza_kataloqu_postgres');
+
+  return await dovletBazalariniAl(stateId, nowMs);
+}
+
+function standartStateBerpaOlunub(playerId) {
+  const {
+    oyuncuStateBerpaOlunub,
+  } = require('./oyun_state_daimilik_korpu');
+
+  return oyuncuStateBerpaOlunub(playerId);
+}
+
+async function standartStateBerpaEt(kontekst, playerId) {
+  const {
+    oyunStateIniBerpaEt,
+  } = require('./oyun_state_daimilik_korpu');
+
+  return await oyunStateIniBerpaEt(kontekst, playerId);
+}
+
 function worldV2ProductionObyektHandleriYarat({
-  dovletBazalariniAl = dovletBazalariniPostgresdenAl,
-  stateBerpaOlunub = oyuncuStateBerpaOlunub,
-  stateBerpaEt = oyunStateIniBerpaEt,
+  dovletBazalariniAl = standartDovletBazalariniAl,
+  stateBerpaOlunub = standartStateBerpaOlunub,
+  stateBerpaEt = standartStateBerpaEt,
 } = {}) {
   if (typeof dovletBazalariniAl !== 'function') {
     throw new Error('WorldV2 production handler üçün dovletBazalariniAl tələb olunur.');
@@ -144,6 +161,9 @@ module.exports = {
   WORLDV2_OBYEKT_CAVAB,
   metnAl,
   stateIdAl,
+  standartDovletBazalariniAl,
+  standartStateBerpaOlunub,
+  standartStateBerpaEt,
   worldV2ProductionObyektHandleriYarat,
   dovletXeriteWorldV2ObyektProductionMesajiniEmalEt,
 };
