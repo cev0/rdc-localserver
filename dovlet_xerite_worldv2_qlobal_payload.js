@@ -5,6 +5,12 @@ const {
   dovletPlanliVaxtlariniAl,
 } = require('./dovlet_xerite_worldv2_lifecycle_adapteri');
 
+const {
+  dovletUcunQlobalNodeAl,
+  acilmisDovletElageleriniHazirla,
+  qlobalLayoutMelumatiniHazirla,
+} = require('./dovlet_xerite_worldv2_qlobal_layout');
+
 function metnAl(deyer, maksimum = 128) {
   return typeof deyer === 'string'
     ? deyer.trim().slice(0, maksimum)
@@ -42,6 +48,14 @@ function metadataXeritesiHazirla(metadata) {
   return xerite;
 }
 
+function normalizedKoordinatAl(deyer, ad) {
+  const reqem = Number(deyer);
+  if (!Number.isFinite(reqem) || reqem < 0 || reqem > 1) {
+    throw new Error(`${ad} 0..1 aralığında olmalıdır: ${deyer}`);
+  }
+  return Number(reqem.toFixed(6));
+}
+
 function qlobalNodeHazirla(xamNode) {
   if (xamNode === null || xamNode === undefined) {
     return null;
@@ -51,15 +65,30 @@ function qlobalNodeHazirla(xamNode) {
     throw new Error('Qlobal xəritə node-u obyekt olmalıdır.');
   }
 
-  // Qlobal xəritənin konkret koordinat sistemi hələ final deyil.
-  // Buna görə yalnız serverdə əvvəlcədən müəyyən edilmiş stabil node/slot ID-si
-  // qəbul edilir; client üçün x/y rəqəmləri uydurulmur.
   const nodeId = metnAl(xamNode.nodeId, 128);
   if (!nodeId) {
     throw new Error('Qlobal xəritə node-u üçün nodeId tələb olunur.');
   }
 
-  return { nodeId };
+  // Köhnə yalnız-nodeId metadata-sı hələ qəbul olunur. Production V1 layout isə
+  // həmişə normalizedX/normalizedY verir. Beləliklə köhnə test/adapter contract-ı
+  // qırılmır, yeni client isə real server mövqeyindən istifadə edir.
+  const xVar = xamNode.normalizedX !== undefined && xamNode.normalizedX !== null;
+  const yVar = xamNode.normalizedY !== undefined && xamNode.normalizedY !== null;
+
+  if (xVar !== yVar) {
+    throw new Error('Qlobal node normalizedX və normalizedY-ni birlikdə verməlidir.');
+  }
+
+  if (!xVar) {
+    return { nodeId };
+  }
+
+  return {
+    nodeId,
+    normalizedX: normalizedKoordinatAl(xamNode.normalizedX, 'normalizedX'),
+    normalizedY: normalizedKoordinatAl(xamNode.normalizedY, 'normalizedY'),
+  };
 }
 
 function dovletMetadataHazirla(xam) {
@@ -88,11 +117,13 @@ function dovletMetadataHazirla(xam) {
 }
 
 /**
- * Qlobus düyməsi üçün açılmış Dövlətlərin yığcam siyahısını yaradır.
+ * Qlobus düyməsi üçün açılmış Dövlətlərin server-authoritative siyahısını yaradır.
  *
- * Authoritative açıq/bağlı status mövcud 60 günlük lifecycle-dan gəlir.
- * Metadata yalnız caller tərəfindən real server datası ilə verildikdə əlavə olunur.
- * Metadata verilməyən sahələr null qalır; builder heç nə uydurmur.
+ * - Açıq/bağlı status 60 günlük lifecycle-dan gəlir.
+ * - Qlobal node mövqeyi statik, versiyalanmış server layout-dan gəlir.
+ * - Əlaqələr yalnız hər iki ucu açılmış Dövlət olduqda payload-a daxil edilir.
+ * - Prezident/ad/bayraq yalnız caller real metadata verdikdə əlavə olunur;
+ *   bu sahələr üçün client və builder heç nə uydurmur.
  */
 function qlobalDovletlerPayloadHazirla({
   nowMs = Date.now(),
@@ -103,12 +134,18 @@ function qlobalDovletlerPayloadHazirla({
     throw new Error(`Etibarsız server vaxtı: ${nowMs}`);
   }
 
+  const tamVaxt = Math.trunc(vaxt);
   const metadataMap = metadataXeritesiHazirla(metadata);
-  const acilmisIdler = acilmisDovletIdleriniAl(Math.trunc(vaxt));
+  const acilmisIdler = acilmisDovletIdleriniAl(tamVaxt);
 
   const states = acilmisIdler.map((stateId) => {
-    const plan = dovletPlanliVaxtlariniAl(stateId, Math.trunc(vaxt));
+    const plan = dovletPlanliVaxtlariniAl(stateId, tamVaxt);
     const elave = dovletMetadataHazirla(metadataMap.get(stateId));
+
+    // V1 statik layout production üçün əsas authoritative mövqedir.
+    // Layout tutumundan kənar çox uzaq gələcək Dövlət olarsa yalnız həmin zaman
+    // real metadata-dakı node fallback kimi istifadə oluna bilər.
+    const layoutNode = qlobalNodeHazirla(dovletUcunQlobalNodeAl(stateId));
 
     return {
       stateId,
@@ -116,14 +153,17 @@ function qlobalDovletlerPayloadHazirla({
       stateOpenedAtMs: plan.stateOpensAtMs,
       presidentUnlockAtMs: plan.presidentUnlockAtMs,
       ...elave,
+      globalNode: layoutNode || elave.globalNode,
     };
   });
 
   return {
     version: 2,
-    serverTimeUnixMs: Math.trunc(vaxt),
+    serverTimeUnixMs: tamVaxt,
     onlyOpenedStates: true,
+    layout: qlobalLayoutMelumatiniHazirla(),
     states,
+    connections: acilmisDovletElageleriniHazirla(acilmisIdler),
   };
 }
 
