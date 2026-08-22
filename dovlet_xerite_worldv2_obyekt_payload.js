@@ -10,6 +10,28 @@ function metnAl(deyer, maksimum = 128) {
     : '';
 }
 
+function menfiOlmayanTamEdedAl(deyer, fallback = 0) {
+  const reqem = Number(deyer);
+  if (!Number.isFinite(reqem) || reqem < 0) {
+    return fallback;
+  }
+
+  return Math.trunc(reqem);
+}
+
+function nullableMenfiOlmayanTamEdedAl(deyer) {
+  if (deyer == null || deyer === '') {
+    return null;
+  }
+
+  const reqem = Number(deyer);
+  if (!Number.isFinite(reqem) || reqem < 0) {
+    return null;
+  }
+
+  return Math.trunc(reqem);
+}
+
 function dovletIdYoxla(stateId) {
   const reqem = Number(stateId);
   if (!Number.isInteger(reqem) || reqem <= 0) {
@@ -51,7 +73,9 @@ function bazaGirisiniHazirla(xamBaza, requestingPlayerId) {
   // ittifaq adı stable ID deyil. allianceId yalnız authoritative state-də
   // ayrıca, sabit identifikator həqiqətən mövcuddursa ötürülür.
   const allianceId = metnAl(xamBaza.allianceId, 128) || null;
-  const allianceName = metnAl(xamBaza.allianceName, 128) || null;
+  const allianceName = metnAl(xamBaza.allianceName, 80) || null;
+  const commanderName = metnAl(xamBaza.commanderName, 64) || null;
+  const publicPower = nullableMenfiOlmayanTamEdedAl(xamBaza.publicPower);
 
   return {
     playerId,
@@ -60,6 +84,15 @@ function bazaGirisiniHazirla(xamBaza, requestingPlayerId) {
     isSelf: playerId === requestingPlayerId,
     allianceId,
     allianceName,
+    commanderName,
+    publicPower: publicPower == null ? 0 : publicPower,
+    publicPowerKnown: publicPower != null,
+    hqLevel: menfiOlmayanTamEdedAl(xamBaza.hqLevel, 0),
+    completedBuildingCount: menfiOlmayanTamEdedAl(
+      xamBaza.completedBuildingCount,
+      0,
+    ),
+    pvpShieldUntilMs: menfiOlmayanTamEdedAl(xamBaza.pvpShieldUntilMs, 0),
   };
 }
 
@@ -120,6 +153,8 @@ function worldV2ObyektPayloadHazirla({
 
 module.exports = {
   metnAl,
+  menfiOlmayanTamEdedAl,
+  nullableMenfiOlmayanTamEdedAl,
   dovletIdYoxla,
   bazaGirisiniHazirla,
   worldV2ObyektPayloadHazirla,
