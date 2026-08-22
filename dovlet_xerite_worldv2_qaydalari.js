@@ -4,7 +4,6 @@
  * Dövlət Xəritəsi WorldV2 üçün ayrıca hazırlıq konfiqurasiyası.
  *
  * VACİB:
- * - Bu modul hələ production xəritə handler-lərinə qoşulmur.
  * - Legacy 1024x1024 sistemini dəyişmir.
  * - Server protokolunda koordinat (x, y) saxlanılır.
  * - Unity tərəfdə server y koordinatı Unity z oxuna çevriləcək.
@@ -32,6 +31,15 @@ const DOVLET_XERITESI_V2 = Object.freeze({
       'serq',
       'cenub',
       'qerb',
+    ]),
+    // WorldV2 Unity quruluşunda təsdiqlənmiş dörd sabit müdafiə top slotu.
+    // Slot adları ekran/isometrik yerləşim adlarıdır; onları kardinal istiqamətlə
+    // avtomatik eyniləşdirmək olmaz.
+    mudafieKoordinatlari: Object.freeze([
+      Object.freeze({ slot: 'yuxari', x: 596, y: 596 }),
+      Object.freeze({ slot: 'sag', x: 605, y: 596 }),
+      Object.freeze({ slot: 'sol', x: 596, y: 605 }),
+      Object.freeze({ slot: 'asagi', x: 605, y: 605 }),
     ]),
   }),
 
@@ -170,8 +178,8 @@ function worldV2XeriteMelumatiYarat() {
       acilmaGunSayi: DOVLET_XERITESI_V2.prezidentMerkezi.acilmaGunSayi,
       mudafieTopSayi: DOVLET_XERITESI_V2.prezidentMerkezi.mudafieTopSayi,
       mudafieIstiqametleri: [...DOVLET_XERITESI_V2.prezidentMerkezi.mudafieIstiqametleri],
-      // Dəqiq top koordinatları istifadəçi tərəfindən hələ müəyyən edilməyib.
-      mudafieKoordinatlari: null,
+      mudafieKoordinatlari: DOVLET_XERITESI_V2.prezidentMerkezi.mudafieKoordinatlari
+        .map(koordinat => ({ ...koordinat })),
     },
   };
 }
