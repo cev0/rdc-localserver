@@ -107,8 +107,40 @@
       "authRequired": true,
       "requestFields": [],
       "resultType": "state_map_v2_objects_result",
-      "currentBehavior": "fail_closed_until_worldv2_placement_is_connected",
-      "errorCode": "WORLDV2_OBJECTS_NOT_CONNECTED"
+      "currentBehavior": "handler_dependency_ready_but_server_js_not_connected",
+      "withoutDependencyErrorCode": "WORLDV2_OBJECTS_NOT_CONNECTED",
+      "resultWhenBaseDependencyConnected": {
+        "success": true,
+        "playerId": "string",
+        "stateId": "positive_integer",
+        "info": {
+          "version": 2,
+          "stateId": "positive_integer",
+          "serverTimeUnixMs": "integer",
+          "bases": [
+            {
+              "playerId": "string",
+              "x": "number_0_to_1200",
+              "y": "number_0_to_1200",
+              "isSelf": "boolean",
+              "allianceId": "stable_string_or_null",
+              "allianceName": "string_or_null"
+            }
+          ],
+          "resources": [],
+          "enemies": [],
+          "camps": [],
+          "convoys": [],
+          "layerStatus": {
+            "basesConnected": true,
+            "resourcesConnected": false,
+            "enemiesConnected": false,
+            "campsConnected": false,
+            "convoysConnected": false
+          }
+        },
+        "payloadJson": "json_string"
+      }
     }
   },
   "neighbor_contract": {
@@ -150,7 +182,8 @@
     "runtimeStateIdMustMatchRequestedStateId": true,
     "runtimeValidationIsFailClosed": true,
     "persistentBaseFieldsStayLegacy": ["baseX", "baseZ"],
-    "protocolBaseFields": ["x", "y"]
+    "protocolBaseFields": ["x", "y"],
+    "allianceNameMustNotBeUsedAsStableAllianceId": true
   },
   "intentionallyUnresolved": {
     "realStateTopologyIds": true,
