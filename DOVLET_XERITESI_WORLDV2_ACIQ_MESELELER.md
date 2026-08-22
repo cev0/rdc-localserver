@@ -1,175 +1,118 @@
 # Dövlət Xəritəsi WorldV2 — Açıq Məsələlər
 
-Bu sənəd WorldV2 hazırlığında qəsdən qərar verilməyən və istifadəçi qaydası / mövcud server sistemi dəqiqləşmədən production koduna çevrilməyəcək hissələri saxlayır.
+Bu sənəd yalnız hələ qərar verilməyən və ya production authoritative mənbəyi hazır olmayan WorldV2 hissələrini saxlayır. Artıq serverdə rəsmiləşdirilmiş qaydalar burada "açıq məsələ" kimi göstərilmir.
 
-## 1. Prezident müdafiə binalarının dəqiq koordinatları
+## Həll olunmuş əsas qaydalar
 
-Təsdiqlənən qayda:
+Aşağıdakılar artıq server-authoritative qaydadır və yenidən gameplay qərarı tələb etmir:
 
-- Prezident binası: `600:600`
-- dörd müdafiə/top binası:
-  - Şimal
-  - Şərq
-  - Cənub
-  - Qərb
-
-Hələ müəyyən edilməyib:
-
-- Prezident binasından neçə koordinat uzaqda olacaqlar;
-- hər müdafiə binasının footprint ölçüsü;
-- həmin sahəyə başqa obyektlərin nə qədər yaxınlaşa biləcəyi.
-
-WorldV2 payload-da `defenseCoordinates` buna görə hazırda `null` saxlanır.
+- xəritə koordinat domeni: `0..1200` × `0..1200`;
+- Dövlət mərkəzi: `600:600`;
+- Dövlət lifecycle: 60 gün;
+- Prezident mərkəzinin açılması: Dövlət başladıqdan 30 gün sonra;
+- Prezident mərkəzi müdafiə slotları:
+  - `yuxari` → `596:596`
+  - `sag` → `605:596`
+  - `sol` → `596:605`
+  - `asagi` → `605:605`
+- Qlobal xəritə layout V1:
+  - `normalized_0_1` koordinat sahəsi;
+  - origin `bottom_left`;
+  - fon `worldv2_qlobal_fon_v1`;
+  - 91 stabil Dövlət node tutumu;
+  - yalnız açılmış Dövlətlər və hər iki ucu açılmış əlaqələr client payload-a daxil edilir;
+- WorldV2 baza layer-i PostgreSQL baza kataloqundan production payload-a qoşulub;
+- WorldV2 əlfəcinləri serverdə persistent player-state mutasiyası ilə list/add/remove olunur, koordinat və limit yoxlamaları serverdə edilir.
 
 ---
 
-## 2. Real Dövlət qonşuluq topologiyası
+## 1. Real Dövlət qonşuluq topologiyası
 
 Hazırdır:
 
 - dörd sərhəd istiqaməti: `simal`, `serq`, `cenub`, `qerb`;
 - qonşu yoxdursa `null`;
-- açıq/bağlı State statusu mövcud 60 günlük lifecycle-dan hesablanır;
-- qarşılıqlı qonşuluğu yoxlayan `dovlet_xerite_worldv2_topologiya.js` validatoru.
+- açıq/bağlı State statusu 60 günlük lifecycle-dan hesablanır;
+- qarşılıqlı qonşuluğu yoxlayan validator mövcuddur.
 
 Hələ müəyyən edilməyib:
 
-- State #1-in konkret qonşuları;
-- sonrakı Dövlətlərin konkret coğrafi/topoloji yerləşməsi;
-- Dövlət sayı artdıqca qlobal topologiyanın necə genişlənəcəyi.
+- State #1-in real qonşu State ID-ləri;
+- sonrakı Dövlətlərin real local-State sərhəd topologiyası.
 
-Test fayllarındakı State `1..4` əlaqələri yalnız test fixture-idir və oyun qaydası deyil.
+Test fixture-lərindəki State `1..4` əlaqələri gameplay qaydası deyil.
 
 ---
 
-## 3. Qonşu Dövlətə keçəndə giriş koordinatı
+## 2. Qonşu Dövlətə keçəndə giriş koordinatı
 
 Təsdiqlənən qayda:
 
 - bağlı qonşuya keçid yoxdur;
-- açıq qonşu Dövlətə sərhədi sürüşdürməklə keçmək mümkündür;
-- keçid server-authoritative olmalıdır.
+- açıq qonşuya keçid server-authoritative yoxlanır;
+- client keçidi lokal olaraq məcbur edə bilməz.
 
 Hələ müəyyən edilməyib:
 
-- məsələn şərq sərhədindən çıxan `y=742` oyunçusu qonşu Dövlətdə hansı dəqiq `x/y` koordinatında açılacaq;
-- kənardan təhlükəsizlik payı neçə vahid olacaq;
-- qarşı sərhəddə eyni ox koordinatı qorunacaqmı.
+- çıxış sərhədindəki koordinatın qonşu xəritədə hansı dəqiq `x/y` nöqtəsinə çevriləcəyi;
+- sərhəddən təhlükəsizlik payı;
+- qarşı sərhəddə paralel ox koordinatının qorunub-qorunmayacağı.
 
-Buna görə `entryCoordinate` hazırda `null` saxlanır.
+Buna görə `entryCoordinate` hazırda `null` saxlanır və bu dəyər özbaşına doldurulmamalıdır.
 
 ---
 
-## 4. İttifaq identifikatoru — uzaq zoom üçün bloklayıcı məsələ
+## 3. Stabil ittifaq identifikatoru — uzaq zoom filtri üçün blocker
 
 Təsdiqlənən gameplay qaydası:
 
-Daha uzaq local-State zoom səviyyəsində:
+Daha uzaq local-State zoom səviyyəsində öz baza və eyni ittifaqdakı bazalar görünə bilər; resurslar və adi düşmənlər gizlənə bilər.
 
-- öz baza görünür;
-- eyni ittifaqdakı bazalar görünür;
-- resurslar və adi düşmənlər gizlənir.
-
-Server auditinin nəticəsi:
-
-`dovlet_baza_kataloqu_postgres.js` public baza elementində hazırda:
-
-```text
-allianceName
-```
-
-var, lakin stabil:
-
-```text
-allianceId
-```
-
-yoxdur.
-
-`server.js` oyunçu profilində də hazırda server-authoritative olaraq əsasən:
-
-```text
-ittifaqAdi
-```
-
-saxlayır.
+Hazır production baza kataloqunda `allianceName` mövcuddur, lakin stabil server-authoritative `allianceId` mənbəyi hələ yoxdur.
 
 ### Qərar
 
-WorldV2 eyni ittifaq filtri **ittifaq adına görə yazılmayacaq**.
-
-Səbəblər:
-
-- eyni adlı iki ittifaq ola bilər;
-- ittifaq adı dəyişə bilər;
-- localization/display adı stabil texniki identifikator deyil.
-
-Uzaq zoom ittifaq filtri üçün gələcək ittifaq sistemində stabil `allianceId` authoritative sahəsi olmalıdır. Bu sahə hazır olduqdan sonra WorldV2 baza payload-ına əlavə ediləcək.
-
-`allianceId` hazır deyilsə fail-closed yanaşması üstün tutulacaq: client başqa oyunçunu yalnız ada görə eyni ittifaq saymayacaq.
+WorldV2 eyni ittifaq filtrini ada görə qurmayacaq. İttifaq adı texniki ID kimi istifadə edilmir. Stabil `allianceId` mənbəyi gələnə qədər bu müqayisə fail-closed qalır.
 
 ---
 
-## 5. Müharibə hədəfi və yer imi markerləri
+## 4. Müharibə hədəfi markerləri
 
-Təsdiqlənən vizual qayda:
-
-uzaq zoom-da uyğun olduqda:
-
-- yer imləri;
-- müharibə hədəfləri
-
-qala bilər.
+Əlfəcinlərin authoritative saxlanması artıq həll olunub. Açıq qalan hissə müharibə hədəfi sistemidir.
 
 Hələ müəyyən edilməyib:
 
-- bookmark authoritative saxlanma modeli;
-- war-target identifikatoru;
+- war-target üçün stabil authoritative identifikator və storage mənbəyi;
 - marker priority;
-- eyni obyekt həm alliance, həm war/bookmark olduqda hansı markerin üstün olması.
+- eyni obyekt həm alliance, həm war-target, həm də bookmark olduqda vizual prioritet.
 
-Bunlar hazır olmadan WorldV2 server filtri yazılmır.
+War-target qaydası təsdiqlənmədən server filtri və ya saxta identifikator yaradılmamalıdır.
 
 ---
 
-## 6. Resurs və düşmənlərin yeni WorldV2 placement qaydası
+## 5. Resurs və düşmənlərin WorldV2 placement qaydası
 
-Legacy serverdə hazırda:
-
-```text
-1024×1024
-center 512:512
-innerRadius 140
-middleRadius 280
-outerRadius 460
-18 resurs
-17 düşmən
-```
-
-və köhnə level band-ləri var.
-
-Yeni `1200×1200` xəritəyə bunlar avtomatik scale edilməyəcək.
+Legacy xəritədə olan `1024×1024` radius və spawn sayları yeni `1200×1200` xəritəyə avtomatik scale edilmir.
 
 Hələ müəyyən edilməlidir:
 
-- yeni terrain/biom gameplay zonalarının dəqiq sərhədləri;
-- hər zonada resurs sıxlığı;
-- resurs sayı;
-- düşmən sayı;
+- terrain/biom gameplay zonalarının dəqiq sərhədləri;
+- hər zonada resurs sıxlığı və sayı;
+- düşmən sayı və səviyyə bölgüsü;
 - spawn məsafələri;
-- Prezident mərkəzində resurs/düşmən qaydası;
-- baza ilə minimum məsafə.
+- Prezident mərkəzi ətrafında resurs/düşmən qaydası;
+- bazalardan minimum məsafə.
 
-Mövcud PostgreSQL respawn/runtime mexanizmini saxlamaq, yalnız placement qatını V2 etmək planlanır.
+Mövcud PostgreSQL respawn/runtime mexanizmi saxlanıla bilər, lakin V2 placement qaydası ayrıca qərar tələb edir.
 
 ---
 
-## 7. State Overview vizual forması
+## 6. State Overview vizual forması
 
 Server üçün təsdiqlənən qayda:
 
 - Overview eyni `0..1200` koordinat domenindən istifadə edir;
-- client klik koordinatını local State koordinatına çevirir;
+- client klik koordinatını local-State koordinatına çevirir;
 - 3D xəritəyə həmin koordinatda qayıdır.
 
 Client vizualı üçün hələ müəyyən edilməyib:
@@ -177,77 +120,38 @@ Client vizualı üçün hələ müəyyən edilməyib:
 - konkret State konturu;
 - coğrafi xəritə teksturası;
 - biom konturlarının final forması;
-- overview-da hansı strateji obyektlərin marker qalacağı.
+- overview-da hansı strateji markerlərin qalacağı.
 
-Bunlar server koordinat sistemini dəyişməməlidir.
+Bunlar server coordinate contract-ını dəyişməməlidir.
 
 ---
 
-## 8. Qlobal xəritə metadata-sı
+## 7. Qlobal xəritə Prezident/ad/bayraq metadata mənbəyi
 
-Hazırdır:
-
-- `dovlet_xerite_worldv2_qlobal_payload.js`
-- yalnız lifecycle-a görə açılmış Dövlətlər daxil edilir;
-- future/bağlı Dövlət metadata-da olsa belə siyahıya daxil edilmir;
-- metadata yoxdursa sahələr uydurulmur.
-
-Hazırda metadata üçün nəzərdə tutulan optional sahələr:
-
-```text
-presidentPlayerId
-presidentAllianceId
-flagId
-globalNode.nodeId
-```
+Qlobal node layout artıq həll olunub və server-authoritative V1-dən gəlir. Açıq qalan məsələ Dövlət metadata-sının real production mənbəyidir.
 
 Hələ müəyyən edilməyib:
 
 - real Prezident capture datasının hansı stabil storage modelindən gələcəyi;
-- bayraq ID qaydası;
-- qlobal node/slot siyahısı;
-- qlobal xəritədə Dövlətlərin konkret coğrafi yerləşməsi;
-- bağlı Dövlətlərin ümumiyyətlə görünüb-görünməyəcəyi.
+- Dövlət display adının authoritative mənbəyi;
+- `flagId` üçün stabil qayda/mənbə.
 
-Qlobal node üçün hazır builder qəsdən `x/y` uydurmur, yalnız gələcəkdə serverdə təyin edilmiş `nodeId` qəbul edir.
+Mənbə hazır deyilsə `displayName`, Prezident və bayraq sahələri uydurulmur və `null` qala bilər.
 
 ---
 
-## 9. CI statusu
+## 8. CI və test prinsipi
 
-Branch-də:
-
-```text
-.github/workflows/worldv2-xerite-test.yml
-```
-
-əlavə edilib və `npm run xerite:worldv2-test` çalışdırmaq üçün hazırlanıb.
-
-Cari GitHub connector push-trigger workflow run siyahısını göstərmədiyi üçün CI-nin keçdiyi təsdiqlənməyib. Buna görə sənəddə və cavablarda testlər GitHub Actions-da keçib kimi təqdim edilməməlidir.
-
-Sabah kompüter açıldıqda lokal olaraq da:
+WorldV2 test runner:
 
 ```bash
 npm run xerite:worldv2-test
 ```
 
-çalışdırılmalıdır.
+GitHub Actions workflow-u bu runner-i PR-lərdə işlətmək üçün mövcuddur. Production `main`-ə WorldV2 dəyişiklikləri yalnız uyğun CI yoxlamaları uğurla tamamlandıqdan sonra merge edilməlidir.
 
 ---
 
-## 10. Sabah Unity açıldıqda ilk inteqrasiya sırası
+## Unity inteqrasiyası üçün dəyişməyən server prinsipi
 
-1. Mövcud `WorldV2` scene və scriptləri yoxla.
-2. Legacy `1024` Grid dəyərlərini birbaşa production sistemə yaymadan yeni Grid-i `0..1200` müqaviləsinə uyğunlaşdır.
-3. `600:600` mərkəz çevirməsini test et.
-4. Küncləri test et:
-   - `0:0`
-   - `1200:0`
-   - `0:1200`
-   - `1200:1200`
-5. Test baza koordinatı serverdən alındıqda kamera həmin koordinatda açılsın.
-6. Yalnız bundan sonra sərhəd clamp və qara arakəsmə sistemi qurulsun.
-7. Qonşu Dövlət transition-u real topologiya təsdiqlənəndən sonra qoşulsun.
-8. Resurs/düşmən V2 placement ayrıca mərhələdə edilsin.
-
-Əsas prinsip: vizual sistem server coordinate contract-ına uyğunlaşdırılır; server shared-world koordinatının authoritative mənbəyi olaraq qalır.
+Unity vizualı server coordinate contract-ına uyğunlaşdırılır. Server shared-world vəziyyətinin authoritative mənbəyi olaraq qalır. Client bağlı Dövlət, saxta qlobal node, saxta ittifaq ID-si, sərhəd giriş koordinatı və ya placement balansı icad etməməlidir.
