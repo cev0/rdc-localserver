@@ -1,8 +1,22 @@
 {
   "contract": "rdc_state_map_worldv2",
   "version": 2,
-  "status": "hazirliq_branch_only",
+  "status": "partial_production_connected",
   "productionConnected": false,
+  "productionConnections": {
+    "state_map_v2_objects_request": {
+      "connected": true,
+      "source": "dovlet_baza_kataloqu_postgres",
+      "layers": {
+        "bases": true,
+        "resources": false,
+        "enemies": false,
+        "camps": false,
+        "convoys": false
+      },
+      "note": "Persistent baseX/baseZ sahələri saxlanılır və WorldV2 protocol x/y sahələrinə çevrilir. Final 1200-lük placement migration ayrıca mərhələdir."
+    }
+  },
   "coordinateSystem": {
     "serverAxes": "x_y",
     "unityAxes": "x_z",
@@ -107,8 +121,9 @@
       "authRequired": true,
       "requestFields": [],
       "resultType": "state_map_v2_objects_result",
-      "currentBehavior": "handler_dependency_ready_but_server_js_not_connected",
-      "withoutDependencyErrorCode": "WORLDV2_OBJECTS_NOT_CONNECTED",
+      "currentBehavior": "production_postgres_bases_connected",
+      "productionSource": "dovlet_baza_kataloqu_postgres",
+      "readFailureErrorCode": "WORLDV2_OBJECTS_READ_FAILED",
       "resultWhenBaseDependencyConnected": {
         "success": true,
         "playerId": "string",
@@ -167,6 +182,7 @@
     "WORLDV2_PLACEMENT_MISSING",
     "WORLDV2_TOPOLOGY_MISSING",
     "WORLDV2_OBJECTS_NOT_CONNECTED",
+    "WORLDV2_OBJECTS_READ_FAILED",
     "WORLDV2_RUNTIME_INVALID",
     "WORLDV2_RUNTIME_STATE_MISMATCH",
     "WORLDV2_INVALID_DIRECTION",
