@@ -53,7 +53,9 @@ test('Release günü yalnız Dövlət #1 və Qlobal layout V1 gəlir', () => {
     assert.deepStrictEqual(payload.layout, {
       layoutVersion: 1,
       coordinateSpace: 'normalized_0_1',
+      origin: 'bottom_left',
       backgroundId: 'worldv2_qlobal_fon_v1',
+      backgroundAspectRatio: 9 / 16,
       capacity: 91,
     });
     assert.deepStrictEqual(payload.connections, []);
@@ -77,7 +79,6 @@ test('60 gündən sonra Dövlət #1 və #2 server node-ları ilə gəlir', () =>
     assert.strictEqual(payload.states.every(x => Number.isFinite(x.globalNode.normalizedX)), true);
     assert.strictEqual(payload.states.every(x => Number.isFinite(x.globalNode.normalizedY)), true);
 
-    // Əlaqə yalnız açılmış Dövlətlər arasında ola bilər.
     for (const elage of payload.connections) {
       assert.ok([1, 2].includes(elage.fromStateId));
       assert.ok([1, 2].includes(elage.toStateId));
@@ -118,7 +119,6 @@ test('Real metadata Prezident, ittifaq, ad və bayrağı əlavə edir; layout no
         presidentUnlocked: true,
         presidentOccupiedAtMs: RELEASE_MS + 5000,
         flagId: 'bayraq_1',
-        // Köhnə metadata node-u verilə bilər, lakin V1 statik layout üstün olmalıdır.
         globalNode: { nodeId: 'kohne_node' },
       }],
     });
@@ -208,6 +208,8 @@ test('Release env yoxdursa legacy fallback yalnız Dövlət #1-dir, layout yenə
     assert.strictEqual(payload.states[0].presidentUnlockAtMs, null);
     assert.ok(payload.states[0].globalNode);
     assert.strictEqual(payload.layout.layoutVersion, 1);
+    assert.strictEqual(payload.layout.origin, 'bottom_left');
+    assert.strictEqual(payload.layout.backgroundAspectRatio, 9 / 16);
   });
 });
 
