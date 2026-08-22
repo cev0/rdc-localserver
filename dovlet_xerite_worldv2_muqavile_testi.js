@@ -125,6 +125,21 @@ test('60 günlük State və 30 günlük Prezident qaydası JSON müqaviləsi il�
   );
 });
 
+test('Prezident müdafiə koordinatları server və JSON müqaviləsində eynidir', () => {
+  const info = contract.messages[WORLDV2_MESAJ_NOVLERI.XERITE_MELUMATI_SORGU]
+    .result.info.presidentCenter;
+  const qaydaKoordinatlari = DOVLET_XERITESI_V2.prezidentMerkezi.mudafieKoordinatlari
+    .map(x => ({ ...x }));
+
+  assert.deepStrictEqual(info.defenseCoordinates, qaydaKoordinatlari);
+  assert.strictEqual(info.defenseBuildingCount, qaydaKoordinatlari.length);
+  assert.strictEqual(
+    contract.authoritativeRules.presidentDefenseCoordinatesAreServerAuthoritative,
+    true,
+  );
+  assert.strictEqual(contract.intentionallyUnresolved.presidentDefenseCoordinates, false);
+});
+
 test('Border transition contract hazırda yalnız check olduğunu açıq saxlayır', () => {
   const border = contract.messages[WORLDV2_MESAJ_NOVLERI.SERHED_KECIDI_SORGU];
   assert.strictEqual(
