@@ -26,6 +26,10 @@ const {
   dovletPlanliVaxtlariniAl,
 } = require('./dovlet_xerite_worldv2_lifecycle_adapteri');
 
+const {
+  stateRuntimeUyğunluğunuYoxla,
+} = require('./dovlet_xerite_worldv2_runtime_guard');
+
 const WORLDV2_XETA_KODLARI = Object.freeze({
   AUTH_TELEB_OLUNUR: 'WORLDV2_AUTH_REQUIRED',
   STATE_YOXDUR: 'WORLDV2_STATE_MISSING',
@@ -278,10 +282,17 @@ function worldV2HandleriYarat({
         nowMs,
       );
 
-      const stateRuntime = await stateRuntimeAl(
+      const xamStateRuntime = await stateRuntimeAl(
         placement.stateId,
         nowMs,
         kontekst,
+      );
+
+      // Dependency başqa Dövlətin runtime-ını qaytararsa Prezident və digər
+      // authoritative metadata client payload-ına qarışmamalıdır.
+      const stateRuntime = stateRuntimeUyğunluğunuYoxla(
+        xamStateRuntime,
+        placement.stateId,
       );
 
       const prezident = prezidentPayloadGirisiniHazirla(
