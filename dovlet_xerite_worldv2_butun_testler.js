@@ -18,6 +18,7 @@ async function run() {
   require('./dovlet_xerite_worldv2_hazirliq_guard_testi');
 
   await require('./dovlet_xerite_worldv2_handler_testi');
+  await require('./dovlet_xerite_worldv2_invalid_direction_testi');
 
   console.log('\n=== WorldV2 Dövlət xəritəsi bütün testləri tamamlandı ===');
 }
