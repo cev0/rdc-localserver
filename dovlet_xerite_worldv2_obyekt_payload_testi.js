@@ -11,7 +11,7 @@ const {
   worldV2BazalariniPlayersMapDanAl,
 } = require('./dovlet_xerite_worldv2_baza_adapteri');
 
-(function testBazaGirisininKoordinatCevrilmesi() {
+(function testBazaGirisininKoordinatVePublicMelumatCevrilmesi() {
   const baza = bazaGirisiniHazirla(
     {
       playerId: 'p1',
@@ -19,6 +19,11 @@ const {
       baseZ: 856,
       allianceId: 'a-1',
       allianceName: 'Test İttifaq',
+      commanderName: 'Komandir 1',
+      publicPower: 125430,
+      hqLevel: 12,
+      completedBuildingCount: 18,
+      pvpShieldUntilMs: 1777777000123,
     },
     'p1',
   );
@@ -28,6 +33,28 @@ const {
   assert.strictEqual(baza.y, 856);
   assert.strictEqual(baza.isSelf, true);
   assert.strictEqual(baza.allianceId, 'a-1');
+  assert.strictEqual(baza.allianceName, 'Test İttifaq');
+  assert.strictEqual(baza.commanderName, 'Komandir 1');
+  assert.strictEqual(baza.publicPower, 125430);
+  assert.strictEqual(baza.hqLevel, 12);
+  assert.strictEqual(baza.completedBuildingCount, 18);
+  assert.strictEqual(baza.pvpShieldUntilMs, 1777777000123);
+})();
+
+(function testOlmayanPublicGucNullQalir() {
+  const baza = bazaGirisiniHazirla(
+    {
+      playerId: 'p-null-power',
+      baseX: 100,
+      baseZ: 200,
+    },
+    'p1',
+  );
+
+  assert.strictEqual(baza.publicPower, null);
+  assert.strictEqual(baza.hqLevel, 0);
+  assert.strictEqual(baza.completedBuildingCount, 0);
+  assert.strictEqual(baza.pvpShieldUntilMs, 0);
 })();
 
 (function testDuplicateBazalarTeklesdirilir() {
