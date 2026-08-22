@@ -18,6 +18,10 @@ const ICAZELI_XARICI_LOCAL_REQUIRE = Object.freeze({
     './dovlet_baza_kataloqu_postgres',
     './oyun_state_daimilik_korpu',
   ]),
+  'dovlet_xerite_worldv2_elfecin_handler.js': new Set([
+    './oyun_state_daimilik_korpu',
+    './oyun_state_mutasiya_postgres',
+  ]),
 });
 
 function istehsalWorldV2FayllariniTap() {
