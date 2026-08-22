@@ -12,6 +12,7 @@ async function run() {
   require('./dovlet_xerite_worldv2_lod_qaydalari_testi');
   require('./dovlet_xerite_worldv2_prezident_adapteri_testi');
   require('./dovlet_xerite_worldv2_runtime_metadata_testi');
+  require('./dovlet_xerite_worldv2_runtime_guard_testi');
   require('./dovlet_xerite_worldv2_muqavile_testi');
   require('./dovlet_xerite_worldv2_izolyasiya_testi');
 
