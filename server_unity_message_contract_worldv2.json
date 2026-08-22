@@ -15,6 +15,18 @@
         "convoys": false
       },
       "note": "Persistent baseX/baseZ sahələri saxlanılır və WorldV2 protocol x/y sahələrinə çevrilir. Final 1200-lük placement migration ayrıca mərhələdir."
+    },
+    "global_states_v2_request": {
+      "connected": true,
+      "stateLifecycleSource": "dovlet_xerite_worldv2_lifecycle_adapteri",
+      "layoutSource": "dovlet_xerite_worldv2_qlobal_layout",
+      "layoutVersion": 1,
+      "coordinateSpace": "normalized_0_1",
+      "origin": "bottom_left",
+      "backgroundId": "worldv2_qlobal_fon_v1",
+      "backgroundAspectRatio": 0.5625,
+      "capacity": 91,
+      "note": "Yalnız açılmış Dövlətlər qaytarılır. Node mövqeləri serverdə versiyalanmış statik layout-dan gəlir; Prezident/ad/bayraq yalnız real metadata mənbəyi olduqda doldurulur."
     }
   },
   "coordinateSystem": {
@@ -107,13 +119,49 @@
       "authRequired": true,
       "requestFields": [],
       "resultType": "global_states_v2_result",
+      "currentBehavior": "production_lifecycle_and_layout_connected",
       "result": {
         "success": "boolean",
         "info": {
           "version": 2,
           "serverTimeUnixMs": "integer",
           "onlyOpenedStates": true,
-          "states": "opened_state_summary_array"
+          "layout": {
+            "layoutVersion": 1,
+            "coordinateSpace": "normalized_0_1",
+            "origin": "bottom_left",
+            "backgroundId": "worldv2_qlobal_fon_v1",
+            "backgroundAspectRatio": 0.5625,
+            "capacity": 91
+          },
+          "states": [
+            {
+              "stateId": "positive_integer",
+              "opened": true,
+              "stateOpenedAtMs": "integer_or_null",
+              "presidentUnlockAtMs": "integer_or_null",
+              "displayName": "string_or_null",
+              "presidentPlayerId": "string_or_null",
+              "presidentAllianceId": "string_or_null",
+              "presidentUnlocked": "boolean_or_null",
+              "presidentOccupiedAtMs": "integer_or_null",
+              "flagId": "string_or_null",
+              "globalNode": {
+                "nodeId": "stable_string",
+                "normalizedX": "number_0_to_1",
+                "normalizedY": "number_0_to_1"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "connectionId": "stable_string",
+              "fromStateId": "positive_integer",
+              "toStateId": "positive_integer",
+              "fromNodeId": "stable_string",
+              "toNodeId": "stable_string"
+            }
+          ]
         }
       }
     },
@@ -199,13 +247,17 @@
     "runtimeValidationIsFailClosed": true,
     "persistentBaseFieldsStayLegacy": ["baseX", "baseZ"],
     "protocolBaseFields": ["x", "y"],
-    "allianceNameMustNotBeUsedAsStableAllianceId": true
+    "allianceNameMustNotBeUsedAsStableAllianceId": true,
+    "globalNodeLayoutIsServerAuthoritative": true,
+    "globalConnectionRequiresBothStatesOpened": true,
+    "globalClientMayInventLockedStatesOrNodes": false
   },
   "intentionallyUnresolved": {
     "realStateTopologyIds": true,
     "borderEntryCoordinates": true,
     "presidentDefenseCoordinates": true,
-    "globalMapNodeLayout": true,
+    "globalMapNodeLayout": false,
+    "globalPresidentNameFlagMetadataSource": true,
     "worldV2ResourcePlacement": true,
     "worldV2EnemyPlacement": true,
     "stableAllianceIdForBaseLodFiltering": true

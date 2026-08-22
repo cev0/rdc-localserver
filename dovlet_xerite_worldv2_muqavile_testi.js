@@ -29,6 +29,13 @@ const {
   PREZIDENT_ACILMA_GUN,
 } = require('./dovlet_xerite_worldv2_lifecycle_adapteri');
 
+const {
+  QLOBAL_LAYOUT_VERSION,
+  QLOBAL_LAYOUT_KOORDINAT_SAHESI,
+  QLOBAL_LAYOUT_FON_ID,
+  QLOBAL_LAYOUT_TUTUMU,
+} = require('./dovlet_xerite_worldv2_qlobal_layout');
+
 function test(basliq, funksiya) {
   try {
     funksiya();
@@ -141,6 +148,35 @@ test('Obyekt layer-i production PostgreSQL baza mənbəyinə qoşulub', () => {
   assert.strictEqual(
     objects.resultWhenBaseDependencyConnected.info.layerStatus.resourcesConnected,
     false,
+  );
+});
+
+test('Qlobal Dövlət production müqaviləsi layout V1 ilə eynidir', () => {
+  const qlobal = contract.messages[WORLDV2_MESAJ_NOVLERI.QLOBAL_DOVLETLER_SORGU];
+  const layout = qlobal.result.info.layout;
+  const production = contract.productionConnections.global_states_v2_request;
+
+  assert.strictEqual(qlobal.currentBehavior, 'production_lifecycle_and_layout_connected');
+  assert.strictEqual(layout.layoutVersion, QLOBAL_LAYOUT_VERSION);
+  assert.strictEqual(layout.coordinateSpace, QLOBAL_LAYOUT_KOORDINAT_SAHESI);
+  assert.strictEqual(layout.backgroundId, QLOBAL_LAYOUT_FON_ID);
+  assert.strictEqual(layout.capacity, QLOBAL_LAYOUT_TUTUMU);
+
+  assert.strictEqual(production.connected, true);
+  assert.strictEqual(production.layoutVersion, QLOBAL_LAYOUT_VERSION);
+  assert.strictEqual(production.coordinateSpace, QLOBAL_LAYOUT_KOORDINAT_SAHESI);
+  assert.strictEqual(production.backgroundId, QLOBAL_LAYOUT_FON_ID);
+  assert.strictEqual(production.capacity, QLOBAL_LAYOUT_TUTUMU);
+});
+
+test('Qlobal node və əlaqə qaydaları server-authoritative kimi rəsmiləşdirilib', () => {
+  assert.strictEqual(contract.authoritativeRules.globalNodeLayoutIsServerAuthoritative, true);
+  assert.strictEqual(contract.authoritativeRules.globalConnectionRequiresBothStatesOpened, true);
+  assert.strictEqual(contract.authoritativeRules.globalClientMayInventLockedStatesOrNodes, false);
+  assert.strictEqual(contract.intentionallyUnresolved.globalMapNodeLayout, false);
+  assert.strictEqual(
+    contract.intentionallyUnresolved.globalPresidentNameFlagMetadataSource,
+    true,
   );
 });
 

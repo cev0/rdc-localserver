@@ -7,6 +7,7 @@ async function run() {
   require('./dovlet_xerite_worldv2_payload_testi');
   require('./dovlet_xerite_worldv2_obyekt_payload_testi');
   require('./dovlet_xerite_worldv2_lifecycle_adapteri_testi');
+  require('./dovlet_xerite_worldv2_qlobal_layout_testi');
   require('./dovlet_xerite_worldv2_qlobal_payload_testi');
   require('./dovlet_xerite_worldv2_topologiya_testi');
   require('./dovlet_xerite_worldv2_serhed_xidmeti_testi');

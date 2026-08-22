@@ -41,7 +41,7 @@ for (const key of [
   'realStateTopologyIds',
   'borderEntryCoordinates',
   'presidentDefenseCoordinates',
-  'globalMapNodeLayout',
+  'globalPresidentNameFlagMetadataSource',
   'worldV2ResourcePlacement',
   'worldV2EnemyPlacement',
   'stableAllianceIdForBaseLodFiltering',
@@ -52,6 +52,33 @@ for (const key of [
     `Hazırlıq mərhələsində unresolved qayda false edilməməlidir: ${key}`,
   );
 }
+
+// Qlobal node layout artıq ayrıca server-authoritative V1 kimi həll olunub.
+assert.strictEqual(
+  unresolved.globalMapNodeLayout,
+  false,
+  'Qlobal node layout V1 rəsmiləşdirildiyi üçün unresolved qala bilməz.',
+);
+assert.strictEqual(
+  contract.productionConnections.global_states_v2_request.connected,
+  true,
+);
+assert.strictEqual(
+  contract.productionConnections.global_states_v2_request.layoutVersion,
+  1,
+);
+assert.strictEqual(
+  contract.productionConnections.global_states_v2_request.coordinateSpace,
+  'normalized_0_1',
+);
+assert.strictEqual(
+  contract.authoritativeRules.globalNodeLayoutIsServerAuthoritative,
+  true,
+);
+assert.strictEqual(
+  contract.authoritativeRules.globalConnectionRequiresBothStatesOpened,
+  true,
+);
 
 const qonsular = {
   simal: { stateId: null, status: DOVLET_KECID_STATUSU.QONSU_YOXDUR },
