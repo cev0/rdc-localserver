@@ -70,7 +70,12 @@
             "unlockAfterDays": 30,
             "defenseBuildingCount": 4,
             "defenseDirections": ["simal", "serq", "cenub", "qerb"],
-            "defenseCoordinates": null,
+            "defenseCoordinates": [
+              { "slot": "yuxari", "x": 596, "y": 596 },
+              { "slot": "sag", "x": 605, "y": 596 },
+              { "slot": "sol", "x": 596, "y": 605 },
+              { "slot": "asagi", "x": 605, "y": 605 }
+            ],
             "status": {
               "unlocked": "boolean",
               "active": "boolean",
@@ -240,6 +245,7 @@
     "stateLifecycleDays": 60,
     "stateLifecycleSource": "PLAY_MARKET_RELEASE_TARIXI",
     "presidentUnlockDaysAfterStateStart": 30,
+    "presidentDefenseCoordinatesAreServerAuthoritative": true,
     "clientMayOpenFutureState": false,
     "clientMayMutateBorderTransitionLocally": false,
     "invalidBorderDirectionFailsClosed": true,
@@ -255,7 +261,7 @@
   "intentionallyUnresolved": {
     "realStateTopologyIds": true,
     "borderEntryCoordinates": true,
-    "presidentDefenseCoordinates": true,
+    "presidentDefenseCoordinates": false,
     "globalMapNodeLayout": false,
     "globalPresidentNameFlagMetadataSource": true,
     "worldV2ResourcePlacement": true,
