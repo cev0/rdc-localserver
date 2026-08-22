@@ -15,6 +15,7 @@ async function run() {
   require('./dovlet_xerite_worldv2_runtime_guard_testi');
   require('./dovlet_xerite_worldv2_muqavile_testi');
   require('./dovlet_xerite_worldv2_izolyasiya_testi');
+  require('./dovlet_xerite_worldv2_hazirliq_guard_testi');
 
   await require('./dovlet_xerite_worldv2_handler_testi');
 
