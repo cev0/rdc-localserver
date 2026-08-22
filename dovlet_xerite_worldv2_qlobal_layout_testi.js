@@ -5,7 +5,9 @@ const assert = require('assert');
 const {
   QLOBAL_LAYOUT_VERSION,
   QLOBAL_LAYOUT_KOORDINAT_SAHESI,
+  QLOBAL_LAYOUT_MENSEYI,
   QLOBAL_LAYOUT_FON_ID,
+  QLOBAL_LAYOUT_FON_ASPEKT,
   QLOBAL_LAYOUT_TUTUMU,
   QLOBAL_LAYOUT_NODELARI,
   QLOBAL_LAYOUT_ELAQELERI,
@@ -24,12 +26,14 @@ function test(basliq, funksiya) {
   }
 }
 
-test('Qlobal layout V1 91 stabil slot verir', () => {
+test('Qlobal layout V1 91 stabil slot və 9:16 fon müqaviləsi verir', () => {
   assert.strictEqual(QLOBAL_LAYOUT_VERSION, 1);
   assert.strictEqual(QLOBAL_LAYOUT_TUTUMU, 91);
   assert.strictEqual(QLOBAL_LAYOUT_NODELARI.length, 91);
   assert.strictEqual(QLOBAL_LAYOUT_KOORDINAT_SAHESI, 'normalized_0_1');
+  assert.strictEqual(QLOBAL_LAYOUT_MENSEYI, 'bottom_left');
   assert.strictEqual(QLOBAL_LAYOUT_FON_ID, 'worldv2_qlobal_fon_v1');
+  assert.strictEqual(QLOBAL_LAYOUT_FON_ASPEKT, 9 / 16);
 });
 
 test('Bütün node ID və normalized koordinatlar etibarlı və unikaldır', () => {
@@ -60,12 +64,8 @@ test('Dövlət #1 xəritənin mərkəzinə yaxın sabit node alır', () => {
 });
 
 test('Layout tutumundan kənar uzaq gələcək Dövlət üçün node uydurulmur', () => {
-  assert.strictEqual(dovletUcunQlobalNodeAl(QLobaldanKenarId()), null);
+  assert.strictEqual(dovletUcunQlobalNodeAl(QLOBAL_LAYOUT_TUTUMU + 1), null);
 });
-
-function QLobaldanKenarId() {
-  return QLOBAL_LAYOUT_TUTUMU + 1;
-}
 
 test('Əlaqə qrafında self/duplicate və etibarsız endpoint yoxdur', () => {
   const gorulen = new Set();
@@ -80,14 +80,8 @@ test('Əlaqə qrafında self/duplicate və etibarsız endpoint yoxdur', () => {
     assert.strictEqual(gorulen.has(acar), false, `Təkrar əlaqə: ${acar}`);
     gorulen.add(acar);
 
-    assert.strictEqual(
-      elage.fromNodeId,
-      dovletUcunQlobalNodeAl(elage.fromStateId).nodeId,
-    );
-    assert.strictEqual(
-      elage.toNodeId,
-      dovletUcunQlobalNodeAl(elage.toStateId).nodeId,
-    );
+    assert.strictEqual(elage.fromNodeId, dovletUcunQlobalNodeAl(elage.fromStateId).nodeId);
+    assert.strictEqual(elage.toNodeId, dovletUcunQlobalNodeAl(elage.toStateId).nodeId);
   }
 });
 
@@ -105,11 +99,13 @@ test('Filtered əlaqələrdə yalnız hər iki ucu açılmış Dövlət qalır',
   assert.deepStrictEqual(acilmisDovletElageleriniHazirla([1]), []);
 });
 
-test('Layout metadata client üçün versiya, fon və tutumu verir', () => {
+test('Layout metadata client üçün mənşə və fon aspektini də verir', () => {
   assert.deepStrictEqual(qlobalLayoutMelumatiniHazirla(), {
     layoutVersion: 1,
     coordinateSpace: 'normalized_0_1',
+    origin: 'bottom_left',
     backgroundId: 'worldv2_qlobal_fon_v1',
+    backgroundAspectRatio: 9 / 16,
     capacity: 91,
   });
 });
