@@ -20,13 +20,19 @@ const SERHED_KECID_SEBEBI = Object.freeze({
   QONSU_ACILIB_KECID_BAGLIDIR: 'QONSU_ACILIB_KECID_BAGLIDIR',
 });
 
+const SERHED_KECID_XETA_KODLARI = Object.freeze({
+  ETIBARSIZ_ISTIQAMET: 'WORLDV2_INVALID_DIRECTION',
+});
+
 function istiqametiYoxla(istiqamet) {
   const deyer = typeof istiqamet === 'string'
     ? istiqamet.trim().toLowerCase()
     : '';
 
   if (!DOVLET_XERITESI_V2.serhedIstiqametleri.includes(deyer)) {
-    throw new Error(`Etibarsız sərhəd istiqaməti: ${istiqamet}`);
+    const xeta = new Error(`Etibarsız sərhəd istiqaməti: ${istiqamet}`);
+    xeta.code = SERHED_KECID_XETA_KODLARI.ETIBARSIZ_ISTIQAMET;
+    throw xeta;
   }
 
   return deyer;
@@ -90,6 +96,7 @@ function serhedKecidiniYoxla({
 
 module.exports = {
   SERHED_KECID_SEBEBI,
+  SERHED_KECID_XETA_KODLARI,
   istiqametiYoxla,
   sebebiHesabla,
   serhedKecidiniYoxla,
