@@ -4,6 +4,10 @@ const {
   worldV2ObyektPayloadHazirla,
 } = require('./dovlet_xerite_worldv2_obyekt_payload');
 
+const {
+  dovletXeriteWorldV2QlobalProductionMesajiniEmalEt,
+} = require('./dovlet_xerite_worldv2_qlobal_production_handler');
+
 const WORLDV2_OBYEKT_SORGU = 'state_map_v2_objects_request';
 const WORLDV2_OBYEKT_CAVAB = 'state_map_v2_objects_result';
 
@@ -73,6 +77,11 @@ function worldV2ProductionObyektHandleriYarat({
   }
 
   return async function dovletXeriteWorldV2ObyektProductionMesajiniEmalEt(kontekst) {
+    // Qlobal Dövlət siyahısı da eyni WorldV2 production routing nöqtəsindən keçir.
+    // Qlobal handler aid olmayan mesajda false qaytarır və baza məntiqi dəyişmədən davam edir.
+    if (await dovletXeriteWorldV2QlobalProductionMesajiniEmalEt(kontekst))
+      return true;
+
     const type = metnAl(kontekst && kontekst.type, 128).toLowerCase();
     if (type !== WORLDV2_OBYEKT_SORGU) return false;
 
