@@ -10,6 +10,10 @@ const {
 } = require('./dovlet_xerite_worldv2_payload');
 
 const {
+  WORLDV2_RUNTIME_GUARD_XETALARI,
+} = require('./dovlet_xerite_worldv2_runtime_guard');
+
+const {
   WORLDV2_XETA_KODLARI,
   worldV2HandleriYarat,
 } = require('./dovlet_xerite_worldv2_handler');
@@ -188,6 +192,55 @@ async function run() {
         'alliance_9',
       );
       assert.strictEqual(cavab.info.presidentCenter.status.unlocked, true);
+    });
+  });
+
+  await asyncTest('WorldV2 info başqa Dövlət runtime-ı gələndə fail-closed olur', async () => {
+    await envIle(RELEASE_ISO, async () => {
+      const handler = worldV2HandleriYarat({
+        topologiyaXeritesi: topologiyaHazirla(),
+        stateRuntimeAl: async () => ({
+          stateId: 2,
+          presidentPlayerId: 'wrong_state_president',
+        }),
+      });
+
+      const { kontekst, gonderilenler } = kontekstHazirla({
+        type: WORLDV2_MESAJ_NOVLERI.XERITE_MELUMATI_SORGU,
+      });
+
+      await handler(kontekst);
+      const cavab = gonderilenler[0];
+
+      assert.strictEqual(cavab.success, false);
+      assert.strictEqual(
+        cavab.errorCode,
+        WORLDV2_RUNTIME_GUARD_XETALARI.RUNTIME_STATE_ID_UYGUN_DEYIL,
+      );
+      assert.strictEqual(cavab.info, undefined);
+      assert.ok(!JSON.stringify(cavab).includes('wrong_state_president'));
+    });
+  });
+
+  await asyncTest('WorldV2 info stateId-siz runtime gələndə fail-closed olur', async () => {
+    await envIle(RELEASE_ISO, async () => {
+      const handler = worldV2HandleriYarat({
+        topologiyaXeritesi: topologiyaHazirla(),
+        stateRuntimeAl: async () => ({
+          centerBuilding: { x: 600, z: 600 },
+        }),
+      });
+
+      const { kontekst, gonderilenler } = kontekstHazirla({
+        type: WORLDV2_MESAJ_NOVLERI.XERITE_MELUMATI_SORGU,
+      });
+
+      await handler(kontekst);
+      assert.strictEqual(gonderilenler[0].success, false);
+      assert.strictEqual(
+        gonderilenler[0].errorCode,
+        WORLDV2_RUNTIME_GUARD_XETALARI.RUNTIME_STATE_ID_UYGUN_DEYIL,
+      );
     });
   });
 
