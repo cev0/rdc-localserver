@@ -11,8 +11,30 @@ const {
 console.log('WorldV2 hazırlıq guard testləri...');
 
 assert.strictEqual(contract.version, 2);
-assert.strictEqual(contract.status, 'hazirliq_branch_only');
-assert.strictEqual(contract.productionConnected, false);
+assert.strictEqual(contract.status, 'partial_production_connected');
+assert.strictEqual(
+  contract.productionConnected,
+  false,
+  'Bütöv WorldV2 hələ tam production-connected sayılmamalıdır.',
+);
+
+assert.ok(contract.productionConnections);
+assert.strictEqual(
+  contract.productionConnections.state_map_v2_objects_request.connected,
+  true,
+);
+assert.strictEqual(
+  contract.productionConnections.state_map_v2_objects_request.source,
+  'dovlet_baza_kataloqu_postgres',
+);
+assert.strictEqual(
+  contract.productionConnections.state_map_v2_objects_request.layers.bases,
+  true,
+);
+assert.strictEqual(
+  contract.productionConnections.state_map_v2_objects_request.layers.resources,
+  false,
+);
 
 const unresolved = contract.intentionallyUnresolved || {};
 for (const key of [
@@ -57,7 +79,7 @@ const baslangic = worldV2BaslangicPayloadHazirla({
 assert.strictEqual(
   baslangic.presidentCenter.defenseCoordinates,
   null,
-  'Prezident müdafiə koordinatları qərar verilmədən payload-a yazılmamalıdır.',
+  'Prezident müdafiə koordinatları server müqaviləsinə ayrıca keçirilmədən payload-a yazılmamalıdır.',
 );
 
 const kecid = serhedKecidiPayloadHazirla({
@@ -75,13 +97,26 @@ assert.strictEqual(
   'Sərhəd giriş koordinatı gameplay qaydası təsdiqlənmədən uydurulmamalıdır.',
 );
 
+const obyektMesaji = contract.messages.state_map_v2_objects_request;
 assert.strictEqual(
-  contract.messages.state_map_v2_objects_request.currentBehavior,
-  'fail_closed_until_worldv2_placement_is_connected',
+  obyektMesaji.currentBehavior,
+  'production_postgres_bases_connected',
 );
 assert.strictEqual(
-  contract.messages.state_map_v2_objects_request.errorCode,
-  'WORLDV2_OBJECTS_NOT_CONNECTED',
+  obyektMesaji.productionSource,
+  'dovlet_baza_kataloqu_postgres',
+);
+assert.strictEqual(
+  obyektMesaji.readFailureErrorCode,
+  'WORLDV2_OBJECTS_READ_FAILED',
+);
+assert.strictEqual(
+  obyektMesaji.resultWhenBaseDependencyConnected.info.layerStatus.basesConnected,
+  true,
+);
+assert.strictEqual(
+  obyektMesaji.resultWhenBaseDependencyConnected.info.layerStatus.resourcesConnected,
+  false,
 );
 
 console.log('WorldV2 hazırlıq guard testləri uğurla tamamlandı.');
