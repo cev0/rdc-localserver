@@ -17,10 +17,10 @@ async function run() {
   require('./dovlet_xerite_worldv2_muqavile_testi');
   require('./dovlet_xerite_worldv2_izolyasiya_testi');
   require('./dovlet_xerite_worldv2_hazirliq_guard_testi');
-  require('./dovlet_xerite_worldv2_server_launcher_testi');
 
   await require('./dovlet_xerite_worldv2_handler_testi');
   await require('./dovlet_xerite_worldv2_obyekt_handler_testi');
+  await require('./dovlet_xerite_worldv2_obyekt_production_handler_testi');
   await require('./dovlet_xerite_worldv2_invalid_direction_testi');
 
   console.log('\n=== WorldV2 Dövlət xəritəsi bütün testləri tamamlandı ===');
