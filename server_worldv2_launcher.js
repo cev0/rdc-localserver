@@ -96,17 +96,46 @@ function worldV2ServerMenbesiniHazirla(xamMenbe) {
 }
 
 function worldV2ServeriBaslat() {
-  const serverYolu = path.join(__dirname, 'server.js');
-  const xamMenbe = fs.readFileSync(serverYolu, 'utf8');
-  const hazirMenbe = worldV2ServerMenbesiniHazirla(xamMenbe);
+  const serverYolu = path.resolve(__dirname, 'server.js');
+  const esasStartYolu = path.resolve(__dirname, 'server_missiya_genisletme.js');
+  const esasJsYukleyicisi = Module._extensions['.js'];
+  let serverTransformOlundu = false;
 
-  console.log('[WORLDV2 LAUNCHER] Eyni server.js WorldV2 mesaj handler-i ilə başladılır.');
-  console.log('[WORLDV2 LAUNCHER] Ayrı WebSocket və ya ikinci players state-i yaradılmır.');
+  if (typeof esasJsYukleyicisi !== 'function') {
+    throw new Error('[WORLDV2 LAUNCHER] Node .js module yükləyicisi tapılmadı.');
+  }
 
-  const serverModulu = new Module(serverYolu, module);
-  serverModulu.filename = serverYolu;
-  serverModulu.paths = Module._nodeModulePaths(path.dirname(serverYolu));
-  serverModulu._compile(hazirMenbe, serverYolu);
+  Module._extensions['.js'] = function worldV2JsYukleyicisi(modul, faylAdi) {
+    if (path.resolve(faylAdi) !== serverYolu) {
+      return esasJsYukleyicisi(modul, faylAdi);
+    }
+
+    if (serverTransformOlundu) {
+      throw new Error('[WORLDV2 LAUNCHER] server.js ikinci dəfə transform edilməyə cəhd etdi.');
+    }
+
+    const xamMenbe = fs.readFileSync(serverYolu, 'utf8');
+    const hazirMenbe = worldV2ServerMenbesiniHazirla(xamMenbe);
+    serverTransformOlundu = true;
+
+    console.log('[WORLDV2 LAUNCHER] server.js mövcud start zənciri daxilində WorldV2 ilə genişləndirildi.');
+    return modul._compile(hazirMenbe, faylAdi);
+  };
+
+  try {
+    console.log('[WORLDV2 LAUNCHER] Mövcud server_missiya_genisletme.js start zənciri başladılır.');
+    console.log('[WORLDV2 LAUNCHER] Ayrı WebSocket və ya ikinci players state-i yaradılmır.');
+
+    require(esasStartYolu);
+
+    if (!serverTransformOlundu) {
+      throw new Error(
+        '[WORLDV2 LAUNCHER] Mövcud start zənciri server.js-i yükləmədi; təhlükəsizlik üçün dayandırıldı.'
+      );
+    }
+  } finally {
+    Module._extensions['.js'] = esasJsYukleyicisi;
+  }
 }
 
 if (require.main === module) {
