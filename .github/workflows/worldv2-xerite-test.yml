@@ -6,7 +6,17 @@ on:
       - worldv2-server-hazirliq
     paths:
       - 'dovlet_xerite_worldv2_*.js'
-      - 'server_worldv2_launcher.js'
+      - 'server_missiya_genisletme_v2.js'
+      - 'DOVLET_XERITESI_WORLDV2_*.md'
+      - 'server_unity_message_contract_worldv2.json'
+      - 'package.json'
+      - '.github/workflows/worldv2-xerite-test.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'dovlet_xerite_worldv2_*.js'
+      - 'server_missiya_genisletme_v2.js'
       - 'DOVLET_XERITESI_WORLDV2_*.md'
       - 'server_unity_message_contract_worldv2.json'
       - 'package.json'
@@ -32,7 +42,7 @@ jobs:
           xeta=0
           while IFS= read -r fayl; do
             case "$fayl" in
-              dovlet_xerite_worldv2_*.js|server_worldv2_launcher.js|DOVLET_XERITESI_WORLDV2_*.md|server_unity_message_contract_worldv2.json|package.json|.github/workflows/worldv2-xerite-test.yml)
+              dovlet_xerite_worldv2_*.js|server_missiya_genisletme_v2.js|DOVLET_XERITESI_WORLDV2_*.md|server_unity_message_contract_worldv2.json|package.json|.github/workflows/worldv2-xerite-test.yml)
                 ;;
               *)
                 echo "WorldV2 allowlist xaricində dəyişiklik: $fayl"
@@ -41,7 +51,7 @@ jobs:
             esac
           done < <(git diff --name-only origin/main...HEAD)
           if [ "$xeta" -ne 0 ]; then
-            echo "Legacy/production fayla toxunulduğu üçün CI dayandırıldı."
+            echo "WorldV2 allowlist xaricində production/legacy fayla toxunulduğu üçün CI dayandırıldı."
             exit 1
           fi
           echo "WorldV2 diff izolyasiyası OK"
