@@ -67,6 +67,7 @@
       "authRequired": true,
       "requestFields": ["direction"],
       "directionEnum": ["simal", "serq", "cenub", "qerb"],
+      "invalidDirectionErrorCode": "WORLDV2_INVALID_DIRECTION",
       "resultType": "state_map_v2_border_transition_result",
       "currentBehavior": "authoritative_check_only_no_state_mutation",
       "result": {
@@ -136,6 +137,7 @@
     "WORLDV2_OBJECTS_NOT_CONNECTED",
     "WORLDV2_RUNTIME_INVALID",
     "WORLDV2_RUNTIME_STATE_MISMATCH",
+    "WORLDV2_INVALID_DIRECTION",
     "WORLDV2_INTERNAL_ERROR"
   ],
   "authoritativeRules": {
@@ -144,6 +146,7 @@
     "presidentUnlockDaysAfterStateStart": 30,
     "clientMayOpenFutureState": false,
     "clientMayMutateBorderTransitionLocally": false,
+    "invalidBorderDirectionFailsClosed": true,
     "runtimeStateIdMustMatchRequestedStateId": true,
     "runtimeValidationIsFailClosed": true,
     "persistentBaseFieldsStayLegacy": ["baseX", "baseZ"],
