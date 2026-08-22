@@ -22,7 +22,9 @@
       "layoutSource": "dovlet_xerite_worldv2_qlobal_layout",
       "layoutVersion": 1,
       "coordinateSpace": "normalized_0_1",
+      "origin": "bottom_left",
       "backgroundId": "worldv2_qlobal_fon_v1",
+      "backgroundAspectRatio": 0.5625,
       "capacity": 91,
       "note": "Yalnız açılmış Dövlətlər qaytarılır. Node mövqeləri serverdə versiyalanmış statik layout-dan gəlir; Prezident/ad/bayraq yalnız real metadata mənbəyi olduqda doldurulur."
     }
@@ -127,7 +129,9 @@
           "layout": {
             "layoutVersion": 1,
             "coordinateSpace": "normalized_0_1",
+            "origin": "bottom_left",
             "backgroundId": "worldv2_qlobal_fon_v1",
+            "backgroundAspectRatio": 0.5625,
             "capacity": 91
           },
           "states": [
