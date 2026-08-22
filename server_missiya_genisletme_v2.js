@@ -21,6 +21,7 @@ const { konvoyEmeliyyatMesajiniEmalEt } = require("./konvoy_emeliyyat_handler");
 require("./qosun_telimi_inkisaf_override");
 const { qosunTelimiMesajiniEmalEt } = require("./qosun_telimi_handler");
 const { dovletXeriteKataloqMesajiniEmalEt } = require("./dovlet_xerite_kataloq_handler");
+const { dovletXeriteWorldV2ObyektProductionMesajiniEmalEt } = require("./dovlet_xerite_worldv2_obyekt_production_handler");
 const { dovletXeriteLayerMesajiniEmalEt } = require("./dovlet_xerite_layer_handler");
 const { pvpBazaReportStatusMesajiniEmalEt } = require("./pvp_baza_report_status_handler");
 const { pvpShieldMesajiniEmalEt } = require("./pvp_shield_handler");
@@ -118,6 +119,7 @@ async function gameplayMesajZenciriniIcraEt(kontekst) {
   if (await konvoyEmeliyyatMesajiniEmalEt(kontekst)) return true;
   if (await qosunTelimiMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteKataloqMesajiniEmalEt(kontekst)) return true;
+  if (await dovletXeriteWorldV2ObyektProductionMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteLayerMesajiniEmalEt(kontekst)) return true;
   if (await pvpShieldMesajiniEmalEt(kontekst)) return true;
   if (await pvpBazaReportStatusMesajiniEmalEt(kontekst)) return true;
