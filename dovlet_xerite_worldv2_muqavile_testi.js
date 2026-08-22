@@ -126,11 +126,21 @@ test('Border transition contract hazırda yalnız check olduğunu açıq saxlay�
   );
 });
 
-test('Obyekt layer-i qoşulmamış vəziyyətdə fail-closed contract saxlanılır', () => {
+test('Obyekt layer-i production PostgreSQL baza mənbəyinə qoşulub', () => {
   const objects = contract.messages[WORLDV2_MESAJ_NOVLERI.OBYEKTLER_SORGU];
   assert.strictEqual(
-    objects.errorCode,
-    WORLDV2_XETA_KODLARI.OBYEKTLER_HAZIR_DEYIL,
+    objects.currentBehavior,
+    'production_postgres_bases_connected',
+  );
+  assert.strictEqual(objects.productionSource, 'dovlet_baza_kataloqu_postgres');
+  assert.strictEqual(objects.readFailureErrorCode, 'WORLDV2_OBJECTS_READ_FAILED');
+  assert.strictEqual(
+    objects.resultWhenBaseDependencyConnected.info.layerStatus.basesConnected,
+    true,
+  );
+  assert.strictEqual(
+    objects.resultWhenBaseDependencyConnected.info.layerStatus.resourcesConnected,
+    false,
   );
 });
 
