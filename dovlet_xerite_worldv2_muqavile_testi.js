@@ -17,6 +17,10 @@ const {
 } = require('./dovlet_xerite_worldv2_handler');
 
 const {
+  WORLDV2_RUNTIME_GUARD_XETALARI,
+} = require('./dovlet_xerite_worldv2_runtime_guard');
+
+const {
   DOVLET_DOVR_GUN,
   PREZIDENT_ACILMA_GUN,
 } = require('./dovlet_xerite_worldv2_lifecycle_adapteri');
@@ -75,11 +79,21 @@ test('Bütün WorldV2 request/result mesaj adları JSON müqaviləsində var', (
   );
 });
 
-test('Handler error kodları JSON müqaviləsində tam siyahılanıb', () => {
+test('Handler və runtime guard error kodları JSON müqaviləsində tam siyahılanıb', () => {
   const contractKodlari = new Set(contract.errorCodes || []);
-  for (const kod of Object.values(WORLDV2_XETA_KODLARI)) {
+  const serverKodlari = [
+    ...Object.values(WORLDV2_XETA_KODLARI),
+    ...Object.values(WORLDV2_RUNTIME_GUARD_XETALARI),
+  ];
+
+  for (const kod of serverKodlari) {
     assert.strictEqual(contractKodlari.has(kod), true, `Contract-da errorCode yoxdur: ${kod}`);
   }
+});
+
+test('Runtime State ID uyğunluğu fail-closed qaydası contract-da açıq yazılıb', () => {
+  assert.strictEqual(contract.authoritativeRules.runtimeStateIdMustMatchRequestedStateId, true);
+  assert.strictEqual(contract.authoritativeRules.runtimeValidationIsFailClosed, true);
 });
 
 test('60 günlük State və 30 günlük Prezident qaydası JSON müqaviləsi ilə eynidir', () => {
