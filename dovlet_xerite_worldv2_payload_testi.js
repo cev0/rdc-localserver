@@ -135,7 +135,7 @@ test('Başlanğıc payload 1200×1200 koordinat domenini və 600:600 mərkəzi v
   assert.strictEqual(payload.presidentCenter.defenseBuildingCount, 4);
 });
 
-test('Prezident müdafiə top koordinatları hələ uydurulmur', () => {
+test('Prezident müdafiə top koordinatları payload-da təsdiqlənmiş slotlarla gəlir', () => {
   const payload = worldV2BaslangicPayloadHazirla({
     stateId: 1,
     playerId: 'oyuncu_1',
@@ -144,7 +144,12 @@ test('Prezident müdafiə top koordinatları hələ uydurulmur', () => {
     qonsular: numuneQonsular(),
   });
 
-  assert.strictEqual(payload.presidentCenter.defenseCoordinates, null);
+  assert.deepStrictEqual(payload.presidentCenter.defenseCoordinates, [
+    { slot: 'yuxari', x: 596, y: 596 },
+    { slot: 'sag', x: 605, y: 596 },
+    { slot: 'sol', x: 596, y: 605 },
+    { slot: 'asagi', x: 605, y: 605 },
+  ]);
 });
 
 test('Bağlı Dövlət sərhəd keçidinə icazə vermir', () => {
