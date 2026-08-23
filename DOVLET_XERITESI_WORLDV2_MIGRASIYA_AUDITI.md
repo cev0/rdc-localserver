@@ -1,78 +1,50 @@
 # Dövlət Xəritəsi WorldV2 — Server Migrasiya Auditi
 
-Bu sənəd `rdc-localserver` daxilində mövcud Dövlət xəritəsi kodunun WorldV2 `1200×1200` sisteminə keçidi üçün audit nəticəsidir.
+Bu sənəd `rdc-localserver` daxilində Dövlət xəritəsinin legacy `1024×1024` sistemindən WorldV2 `1200×1200` sisteminə keçid statusunu izləyir. Buradakı məqsəd gameplay qaydası yaratmaq deyil; artıq serverdə rəsmiləşdirilmiş və hələ qəsdən açıq saxlanılan hissələri ayırmaqdır.
 
 ## Təhlükəsizlik qaydası
 
-Hazırda production `main` branch-də işləyən legacy xəritə birbaşa dəyişdirilmir.
-
-WorldV2 hazırlığı yalnız:
-
-```text
-worldv2-server-hazirliq
-```
-
-branch-ində aparılır.
-
-Unity WorldV2 tərəfi hazır və test edilənə qədər legacy handler-lərin `1024 → 1200` kimi birbaşa dəyişdirilməsi qadağandır.
+Legacy xəritə endpoint-ləri birbaşa `1024 → 1200` çevrilmir. WorldV2 ayrıca versiyalı contract və handler-lərlə işləyir. WorldV2 üçün production-a qoşulan hissələr yalnız server-authoritative mənbədən gəlir; həll olunmamış gameplay qərarları `null`/unresolved saxlanılır və client tərəfindən uydurulmur.
 
 ---
 
-# 1. Əsas legacy asılılıqlar
+# 1. Hazırda server-authoritative və production-a qoşulmuş hissələr
 
-## `dovlet_xerite_kataloq_handler.js`
+Aşağıdakılar artıq yalnız hazırlıq branch-ində deyil, `main` daxilində versiyalanmış WorldV2 server sistemidir:
 
-Cari rolu:
+- koordinat domeni `0..1200` × `0..1200`;
+- mərkəz `600:600`;
+- persistent baza sahələri `baseX/baseZ`, protokolda `x/y`, Unity-də `x/z` çevirməsi;
+- WorldV2 başlanğıc/map info contract-ı;
+- WorldV2 baza obyekt layer-i PostgreSQL `dovlet_baza_kataloqu_postgres` mənbəyindən production payload-a qoşulub;
+- baza marker public sahələri server↔Unity müqaviləsində rəsmiləşdirilib;
+- 60 günlük Dövlət lifecycle və Dövlət başladıqdan 30 gün sonra Prezident mərkəzinin açılması;
+- Prezident mərkəzi `600:600` və dörd server-authoritative müdafiə slotu:
+  - `yuxari` → `596:596`
+  - `sag` → `605:596`
+  - `sol` → `596:605`
+  - `asagi` → `605:605`
+- `global_states_v2_request/result` production handler-i;
+- Qlobal xəritə Layout V1:
+  - `normalized_0_1`;
+  - origin `bottom_left`;
+  - fon ID `worldv2_qlobal_fon_v1`;
+  - fon aspekti `9:16`;
+  - 91 stabil Dövlət node tutumu;
+  - yalnız açılmış Dövlətlər və hər iki ucu açılmış əlaqələr payload-a daxil edilir;
+- WorldV2 əlfəcin list/add/remove əməliyyatları persistent player-state üzərində saxlanılır.
 
-- `state_map_objects_request`
-- `state_map_objects_result`
-- `state_base_detail_request`
-- bazaları, resursları, düşmənləri, konvoyları və PvP kamplarını bir payload-da yığır.
-
-Cari map metadata:
-
-```text
-width   = 1024
-height  = 1024
-centerX = 512
-centerZ = 512
-```
-
-### WorldV2-də dəyişəcək
-
-Birbaşa rəqəmlər yazılmayacaq. V2 config-dən gələcək:
-
-```text
-0..1200
-mərkəz 600:600
-```
-
-### Risk
-
-YÜKSƏK.
-
-Bu handler Unity-nin hazırda istifadə edə biləcəyi əsas obyekt payload-larından biridir. Erkən dəyişiklik köhnə client xəritəsini poza bilər.
-
-### Migrasiya qaydası
-
-Legacy `state_map_objects_request` saxlanılır.
-WorldV2 üçün əvvəl ayrıca versiyalı contract/handler hazırlanır. Unity WorldV2 yeni mesaj tipinə qoşulduqdan sonra köhnə endpoint mərhələli ləğv edilə bilər.
+Legacy endpoint-lərin saxlanması hələ də vacibdir; WorldV2 production handler-lərinin mövcud olması legacy sistemin avtomatik ləğvi demək deyil.
 
 ---
 
-# 2. `xerite_movqe_sistemi.js`
+# 2. Legacy placement sistemləri
 
-Cari rolu:
+## `xerite_movqe_sistemi.js`
 
-- resursların deterministic mövqelərini yaradır;
-- düşmənlərin deterministic mövqelərini yaradır;
-- radius/halqa əsasında zone seçir.
-
-Legacy config:
+Legacy sistem resurs/düşmən deterministic mövqelərini `1024×1024` xəritə və köhnə radiuslarla yaradır:
 
 ```text
-width        = 1024
-height       = 1024
 centerX      = 512
 centerZ      = 512
 innerRadius  = 140
@@ -80,306 +52,120 @@ middleRadius = 280
 outerRadius  = 460
 ```
 
-Clamp:
+Bu rəqəmlər WorldV2-yə avtomatik scale edilmir. Seed/RNG çağırış ardıcıllığını dəyişmək köhnə deterministic mövqeləri dəyişə biləcəyi üçün legacy generatora toxunmaq yüksək risklidir.
 
-```text
-0 .. width - 1
-0 .. height - 1
-```
+### WorldV2 statusu
 
-yəni faktiki maksimum `1023`.
-
-### WorldV2-də dəyişəcək
-
-Yeni xəritə koordinat domeni `0..1200` daxil olmaqla qəbul edilir.
-
-Ancaq köhnə radiuslar və resurs/düşmən halqaları avtomatik olaraq miqyaslanmayacaq. Yeni terrain/biom gameplay zonaları istifadəçi tərəfindən dəqiqləşdirildikdən sonra ayrıca V2 placement qaydası yaradılacaq.
-
-### Risk
-
-ÇOX YÜKSƏK.
-
-Bu faylın seed/RNG çağırış ardıcıllığı resursların və düşmənlərin restartdan sonra eyni koordinatda qalmasına təsir edir. Mövcud faylı dəyişmək bütün köhnə deterministic mövqeləri dəyişə bilər.
-
-### Migrasiya qaydası
-
-Bu fayla toxunmaq əvəzinə ayrıca:
-
-```text
-dovlet_xerite_worldv2_movqe_sistemi.js
-```
-
-hazırlanmalıdır.
-
-Legacy seed generatoru yalnız lazım olduğu qədər referans kimi istifadə ediləcək.
+`worldV2ResourcePlacement` və `worldV2EnemyPlacement` hələ qəsdən unresolved-dur. Yeni terrain/biom zonaları, spawn sıxlığı, say və level band-ləri təsdiqlənmədən ayrıca V2 placement generatoru yazılmır.
 
 ---
 
-# 3. `xerite_resurs_toplama_sistemi.js`
+# 3. Resurs runtime
 
-Cari rolu:
+`xerite_resurs_toplama_sistemi.js` legacy xəritədə 18 node və köhnə zone bölgüsündən istifadə edir. PostgreSQL occupied/respawn/toplama transaction mexanizmi placement-dan ayrılıb saxlanıla bilər, amma WorldV2 resurs sayı və yerləşimi hələ final gameplay qaydası deyil.
 
-- 18 resurs node-u yaradır;
-- node ID və level qaydasını saxlayır;
-- toplama/runtime/respawn əməliyyatlarını PostgreSQL runtime ilə idarə edir.
+Açıq qalan qərarlar:
 
-Cari hard-coded gameplay bölgüsü:
-
-```text
-1..10  -> outer
-11..15 -> middle
-16..17 -> inner_green
-18     -> president_center
-```
-
-Cari node sayı:
-
-```text
-RESURS_SAYI = 18
-```
-
-### WorldV2 qərarı
-
-Bu rəqəmlər yeni xəritə dizaynı üçün final sayılmır.
-
-Xüsusilə:
-
-- resurs sayı;
-- hər zonadakı resurs sayı;
-- level aralıqları;
-- Prezident mərkəzində resurs olub-olmaması
-
-istifadəçi tərəfindən yeni xəritə qaydaları tam dəqiqləşdirilmədən dəyişdirilməyəcək.
-
-### Saxlanıla biləcək hissə
-
-PostgreSQL runtime, occupied/respawn və toplama transaction məntiqi böyük ehtimalla saxlanıla bilər. Placement/descriptor qatından ayrılmalıdır.
-
-### Risk
-
-ORTA/YÜKSƏK.
+- V2 resurs sayı və sıxlığı;
+- zone/biom sərhədləri;
+- level bölgüsü;
+- Prezident mərkəzi ətrafında resurs qaydası;
+- bazalardan minimum spawn məsafəsi.
 
 ---
 
-# 4. `xerite_dusmen_sistemi.js`
+# 4. Düşmən runtime
 
-Cari rolu:
-
-- 17 düşmən descriptor-u yaradır;
-- zone və level seçir;
-- defeat/respawn state-ni PostgreSQL-də saxlayır.
-
-Cari bölgü:
-
-```text
-1..10  -> outer
-11..15 -> middle
-16..17 -> inner_green
-```
-
-Cari say:
-
-```text
-DUSMEN_SAYI = 17
-```
-
-### WorldV2 qərarı
-
-Düşmən sayı və zone/level bölgüsü hələ yeni xəritə üçün final deyil. Köhnə rəqəmlər WorldV2-yə avtomatik daşınmır.
-
-### Saxlanıla biləcək hissə
-
-Düşmənin server-authoritative defeat/respawn runtime mexanizmi saxlanıla bilər. Yeni placement və descriptor qatına bağlanacaq.
-
-### Risk
-
-ORTA/YÜKSƏK.
+`xerite_dusmen_sistemi.js` legacy xəritədə 17 düşmən və köhnə zone/level bölgüsündən istifadə edir. Server-authoritative defeat/respawn runtime saxlanıla bilər, lakin WorldV2 placement və descriptor qaydası ayrıca qərar tələb edir.
 
 ---
 
-# 5. `dovlet_baza_kataloqu_postgres.js`
+# 5. Baza kataloqu və persistent koordinatlar
 
-Cari rolu:
-
-- offline və online oyunçu bazalarının son snapshot-larını Dövlət xəritəsi üçün oxuyur;
-- baza `worldPlacement` koordinatını public map elementinə çevirir;
-- mərkəzə məsafə və zone hesablayır;
-- qısa cache istifadə edir.
-
-Cari kritik asılılıq:
-
-```js
-const { XERITE } = require("./xerite_movqe_sistemi");
-```
-
-və:
-
-- `XERITE.centerX`
-- `XERITE.centerZ`
-- `XERITE.innerRadius`
-- `XERITE.middleRadius`
-
-ilə zone/distance hesablanır.
-
-### WorldV2-də dəyişəcək
-
-Baza koordinatı WorldV2-də ayrıca V2 validator/config tərəfindən yoxlanmalıdır.
-
-Yeni Dövlət xəritəsində oyunçu daxil olanda kamera məhz bu authoritative baza koordinatından açılacaq.
-
-### Vacib data problemi
-
-Mövcud `worldPlacement` sahələri əsasən:
+`dovlet_baza_kataloqu_postgres.js` WorldV2 baza obyekt payload-ının production mənbəyidir. Persistent sahələr birbaşa rename edilmir:
 
 ```text
-baseX
-baseZ
+persistent baseX -> protocol x -> Unity x
+persistent baseZ -> protocol y -> Unity z
 ```
 
-şəklindədir.
+Bu adapter qaydası server↔Unity contract-da qorunur.
 
-Yeni server müqaviləsi xaricə `(x,y)` Dövlət koordinatı deyə bilər, amma mövcud persistent data bir dəfəyə rename edilməməlidir. Təhlükəsiz adapter qatında:
+### Stabil ittifaq ID-si blocker-i
 
-```text
-server persistent baseZ <-> protocol y <-> Unity world z
+Baza kataloqunda `allianceName` mövcuddur, lakin stabil server-authoritative `allianceId` mənbəyi hələ yoxdur. İttifaq adı texniki ID kimi istifadə edilmir. Uzaq zoom alliance filtri üçün `stableAllianceIdForBaseLodFiltering` unresolved qalır və fail-closed davranış qorunur.
+
+---
+
+# 6. Konvoy runtime
+
+`dovlet_konvoy_runtime_postgres.js` shared convoy/PvP kamp runtime və server-vaxtı interpolasiyasını saxlayır. Runtime mexanizmi xəritə ölçüsündən əsasən müstəqildir.
+
+WorldV2 üçün yeni əməliyyatların koordinat girişləri V2 validatorundan keçməlidir. Bu, sərhəd keçidi üçün `entryCoordinate` gameplay qaydasının həll edildiyi mənasına gəlmir.
+
+---
+
+# 7. Sərhəd və real Dövlət topologiyası
+
+Hazır server qaydaları:
+
+- istiqamətlər yalnız `simal`, `serq`, `cenub`, `qerb`;
+- qonşu statusu fail-closed yoxlanır;
+- client sərhəd keçidini lokal olaraq məcbur edə bilməz;
+- açılmamış Dövlətə keçid yoxdur.
+
+Hələ qəsdən unresolved:
+
+- real State qonşuluq ID-ləri (`realStateTopologyIds`);
+- qonşu Dövlətə keçiddə dəqiq giriş koordinatı (`borderEntryCoordinates`).
+
+`entryCoordinate` gameplay qaydası təsdiqlənənə qədər `null` qalır.
+
+---
+
+# 8. Qlobal xəritə
+
+Qlobal node layout artıq unresolved deyil. Layout V1 server-authoritative olaraq Dövlət node mövqelərini və açılmış Dövlətlər arasındakı əlaqə qrafını verir.
+
+Hələ açıq qalan hissə Qlobal Dövlət metadata-sının real production mənbəyidir:
+
+- Dövlət display adı;
+- Prezident capture datası;
+- Prezident ittifaq ID-si;
+- `flagId`.
+
+Bu mənbələr hazır olmayanda `displayName`, Prezident və bayraq sahələri uydurulmur və `null` qala bilər.
+
+Qlobal xəritədə future/bağlı Dövlətlərin client tərəfindən yaradılması qadağandır; server yalnız açılmış Dövlətləri qaytarır.
+
+---
+
+# 9. Test və merge qaydası
+
+WorldV2 server test runner:
+
+```bash
+npm run xerite:worldv2-test
 ```
 
-çevrilməsi edilməlidir.
+WorldV2 dəyişiklikləri ayrıca branch/PR üzərindən aparılır və uyğun GitHub Actions yoxlamaları uğurla keçmədən production `main`-ə merge edilmir.
 
-### Risk
-
-YÜKSƏK.
-
-Persist edilmiş oyunçu mövqelərinə toxunduğu üçün migration ayrıca versiyalanmalıdır.
-
----
-
-# 6. `dovlet_konvoy_runtime_postgres.js`
-
-Cari rolu:
-
-- shared active convoy runtime saxlayır;
-- PvP kamp statusunu saxlayır;
-- hərəkətdə olan konvoyun `fromX/fromZ -> targetX/targetZ` interpolasiyasını server vaxtına görə hesablayır.
-
-### WorldV2 təsiri
-
-Konvoyun runtime/transaction mexanizmi xəritə ölçüsündən əsasən müstəqildir.
-
-Ancaq yeni əməliyyat başlananda verilən:
-
-```text
-fromX/fromZ
-targetX/targetZ
-```
-
-koordinatlarının V2 xəritə sərhədinə uyğun validator-dan keçməsi tələb olunacaq.
-
-### Risk
-
-ORTA.
-
-Runtime mexanizmini dəyişmək lazım deyil; giriş koordinatlarının mənbəyi dəyişəcək.
-
----
-
-# 7. `dovlet_xerite_layer_handler.js`
-
-Cari rolu:
-
-- `state_map_static_request`
-- `state_map_dynamic_request`
-
-layer-lərini qaytarır.
-
-Legacy map metadata `1024×1024 / 512` sisteminə bağlıdır.
-
-Prezident mərkəzi üçün 30 günlük aktivləşmə məntiqi burada da mövcuddur.
-
-### WorldV2 qərarı
-
-30 günlük qayda saxlanır, koordinat `600:600` olur.
-
-Köhnə static/dynamic layer endpoint-ləri birbaşa dəyişdirilməməlidir; onların nə qədərinin WorldV2 client-də lazım olacağı Unity inteqrasiyası zamanı müəyyən ediləcək.
-
-### Risk
-
-ORTA/YÜKSƏK.
-
----
-
-# 8. Server tərəfindən saxlanmalı əsas sistemlər
-
-WorldV2 yeni xəritə ölçüsü deməkdir; aşağıdakı işlək server mexanizmlərinin sıfırdan yazılması tələb olunmur:
-
-- PostgreSQL runtime transaction pattern;
-- Dövlət üzrə `stateId` ayrımı;
-- offline baza snapshot oxuma;
-- convoy shared runtime;
-- resource occupied/respawn runtime;
-- enemy defeated/respawn runtime;
-- server-authoritative vaxt;
-- Prezidentin 30 günlük vaxt qaydası.
-
-Dəyişməli əsas qatlar:
-
-- map config;
-- coordinate validator;
-- placement generator;
-- zone/terrain gameplay bölgüsü;
-- client payload contract;
-- neighbor/border contract;
-- Global State summary contract.
-
----
-
-# 9. Tövsiyə olunan migrasiya sırası
-
-## Mərhələ A — hazırda təhlükəsiz görülə bilər
-
-1. WorldV2 müqaviləsi
-2. `0..1200` validator
-3. Prezident mərkəzi `600:600`
-4. qonşu Dövlət status modeli
-5. unit testlər
-6. payload builder-lər
-
-Production handler-ə qoşulmur.
-
-## Mərhələ B — Unity WorldV2 açılanda
-
-1. Unity `DovletXeriteGridSistemi` 1200 sisteminə keçirilir
-2. server `(x,y)` ↔ Unity `(x,z)` çevirməsi test edilir
-3. test oyunçunun baza koordinatında kamera açılır
-4. ayrıca WorldV2 map info endpoint qoşulur
-5. sərhəd/qonşu Dövlət transition-u test edilir
-
-## Mərhələ C — gameplay obyektləri
-
-1. yeni V2 resurs placement
-2. yeni V2 düşmən placement
-3. bazaların V2 validation/migration qaydası
-4. konvoy coordinate validation
-5. kamplar
-
-## Mərhələ D — strateji görünüşlər
-
-1. Alliance/war marker server contract
-2. State Overview payload
-3. Global States payload
+Contract, guard, production handler və sənəd consistency testləri server-authoritative qaydaların drift etməməsini yoxlayır.
 
 ---
 
 # 10. Hazırda qəsdən edilməyən dəyişikliklər
 
-Aşağıdakılar final gameplay qaydası verilmədən yazılmır:
+Aşağıdakılar istifadəçi/gameplay qərarı və ya real authoritative data mənbəyi olmadan yazılmır:
 
-- yeni biom radiusları;
-- yeni resurs node sayı;
-- yeni düşmən sayı;
+- yeni biom/zone radiusları;
+- WorldV2 resurs sayı və placement;
+- WorldV2 düşmən sayı və placement;
 - resource/enemy level band-ləri;
-- Prezident müdafiə toplarının dəqiq offset-ləri;
-- konkret State qonşuluq ID-ləri;
-- locked State-in Global xəritədə görünüş qaydası.
+- real State qonşuluq ID-ləri;
+- sərhəd giriş koordinatı;
+- `allianceName`-dən saxta stabil ittifaq ID-si;
+- war-target identifikator/storage qaydası;
+- Qlobal Prezident/ad/bayraq metadata mənbəyi.
 
-Bu yanaşma serverdə yanlış fərziyyələri production qaydasına çevirməmək üçündür.
+Prezident müdafiə koordinatları və Qlobal Layout V1 artıq bu siyahıya daxil deyil; onlar server-authoritative olaraq həll olunub.

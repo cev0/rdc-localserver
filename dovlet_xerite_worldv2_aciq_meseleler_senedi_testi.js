@@ -10,8 +10,12 @@ const sened = fs.readFileSync(
   path.join(__dirname, 'DOVLET_XERITESI_WORLDV2_ACIQ_MESELELER.md'),
   'utf8',
 );
+const migrasiyaAuditi = fs.readFileSync(
+  path.join(__dirname, 'DOVLET_XERITESI_WORLDV2_MIGRASIYA_AUDITI.md'),
+  'utf8',
+);
 
-console.log('WorldV2 açıq məsələlər sənədi consistency testləri...');
+console.log('WorldV2 sənəd consistency testləri...');
 
 assert.strictEqual(contract.intentionallyUnresolved.presidentDefenseCoordinates, false);
 assert.ok(sened.includes('`yuxari` → `596:596`'));
@@ -43,4 +47,26 @@ assert.ok(sened.includes('Qlobal xəritə Prezident/ad/bayraq metadata mənbəyi
 assert.ok(sened.includes('Əlfəcinlərin authoritative saxlanması artıq həll olunub'));
 assert.ok(sened.includes('npm run xerite:worldv2-test'));
 
-console.log('WorldV2 açıq məsələlər sənədi contract-la uyğundur.');
+// Migrasiya auditinin də cari production contract-dan geri qalmamasını qoruyur.
+assert.ok(migrasiyaAuditi.includes('production-a qoşulmuş hissələr'));
+assert.ok(migrasiyaAuditi.includes('WorldV2 baza obyekt layer-i PostgreSQL'));
+assert.ok(migrasiyaAuditi.includes('`global_states_v2_request/result` production handler-i'));
+assert.ok(migrasiyaAuditi.includes('Qlobal xəritə Layout V1'));
+assert.ok(migrasiyaAuditi.includes('`yuxari` → `596:596`'));
+assert.ok(migrasiyaAuditi.includes('`asagi` → `605:605`'));
+assert.ok(migrasiyaAuditi.includes('WorldV2 əlfəcin list/add/remove'));
+assert.ok(!migrasiyaAuditi.includes('WorldV2 hazırlığı yalnız:'));
+assert.ok(!migrasiyaAuditi.includes('Production handler-ə qoşulmur.'));
+assert.ok(!migrasiyaAuditi.includes('Prezident müdafiə toplarının dəqiq offset-ləri;'));
+assert.ok(!migrasiyaAuditi.includes('locked State-in Global xəritədə görünüş qaydası.'));
+
+assert.strictEqual(contract.intentionallyUnresolved.realStateTopologyIds, true);
+assert.ok(migrasiyaAuditi.includes('real State qonşuluq ID-ləri'));
+assert.strictEqual(contract.intentionallyUnresolved.borderEntryCoordinates, true);
+assert.ok(migrasiyaAuditi.includes('`borderEntryCoordinates`'));
+assert.strictEqual(contract.intentionallyUnresolved.stableAllianceIdForBaseLodFiltering, true);
+assert.ok(migrasiyaAuditi.includes('`stableAllianceIdForBaseLodFiltering`'));
+assert.strictEqual(contract.intentionallyUnresolved.globalPresidentNameFlagMetadataSource, true);
+assert.ok(migrasiyaAuditi.includes('Qlobal Prezident/ad/bayraq metadata mənbəyi'));
+
+console.log('WorldV2 sənədləri contract-la uyğundur.');
