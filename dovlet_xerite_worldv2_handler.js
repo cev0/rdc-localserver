@@ -233,7 +233,11 @@ function worldV2HandleriYarat({
 
       if (type === WORLDV2_MESAJ_NOVLERI.QLOBAL_DOVLETLER_SORGU) {
         const metadata = await qlobalMetadataAl(nowMs, kontekst);
-        const info = qlobalDovletlerPayloadHazirla({ nowMs, metadata });
+        const info = qlobalDovletlerPayloadHazirla({
+          nowMs,
+          metadata,
+          topologiyaXeritesi,
+        });
 
         gonder(kontekst, resultType, {
           success: true,
