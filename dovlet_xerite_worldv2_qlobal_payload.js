@@ -11,6 +11,10 @@ const {
   qlobalLayoutMelumatiniHazirla,
 } = require('./dovlet_xerite_worldv2_qlobal_layout');
 
+const {
+  topologiyadanQlobalElaqeleriHazirla,
+} = require('./dovlet_xerite_worldv2_topologiya');
+
 function metnAl(deyer, maksimum = 128) {
   return typeof deyer === 'string'
     ? deyer.trim().slice(0, maksimum)
@@ -70,9 +74,6 @@ function qlobalNodeHazirla(xamNode) {
     throw new Error('Qlobal xəritə node-u üçün nodeId tələb olunur.');
   }
 
-  // Köhnə yalnız-nodeId metadata-sı hələ qəbul olunur. Production V1 layout isə
-  // həmişə normalizedX/normalizedY verir. Beləliklə köhnə test/adapter contract-ı
-  // qırılmır, yeni client isə real server mövqeyindən istifadə edir.
   const xVar = xamNode.normalizedX !== undefined && xamNode.normalizedX !== null;
   const yVar = xamNode.normalizedY !== undefined && xamNode.normalizedY !== null;
 
@@ -96,6 +97,7 @@ function dovletMetadataHazirla(xam) {
 
   const displayName = metnAl(metadata.displayName, 100) || null;
   const presidentPlayerId = metnAl(metadata.presidentPlayerId, 128) || null;
+  const presidentDisplayName = metnAl(metadata.presidentDisplayName, 100) || null;
   const presidentAllianceId = metnAl(metadata.presidentAllianceId, 128) || null;
   const flagId = metnAl(metadata.flagId, 128) || null;
   const presidentUnlocked = typeof metadata.presidentUnlocked === 'boolean'
@@ -108,6 +110,7 @@ function dovletMetadataHazirla(xam) {
   return {
     displayName,
     presidentPlayerId,
+    presidentDisplayName,
     presidentAllianceId,
     presidentUnlocked,
     presidentOccupiedAtMs,
@@ -116,18 +119,24 @@ function dovletMetadataHazirla(xam) {
   };
 }
 
+function qlobalElaqeleriHazirla(acilmisIdler, topologiyaXeritesi) {
+  if (topologiyaXeritesi instanceof Map) {
+    return topologiyadanQlobalElaqeleriHazirla(topologiyaXeritesi, acilmisIdler);
+  }
+
+  // Backward compatibility: production wiring authoritative topologiyanı verənədək
+  // köhnə layout əlaqələri saxlanılır. Yeni wiring Map verdikdə avtomatik eyni
+  // topologiya Near/Far/Global üçün istifadə olunur.
+  return acilmisDovletElageleriniHazirla(acilmisIdler);
+}
+
 /**
  * Qlobus düyməsi üçün açılmış Dövlətlərin server-authoritative siyahısını yaradır.
- *
- * - Açıq/bağlı status 60 günlük lifecycle-dan gəlir.
- * - Qlobal node mövqeyi statik, versiyalanmış server layout-dan gəlir.
- * - Əlaqələr yalnız hər iki ucu açılmış Dövlət olduqda payload-a daxil edilir.
- * - Prezident/ad/bayraq yalnız caller real metadata verdikdə əlavə olunur;
- *   bu sahələr üçün client və builder heç nə uydurmur.
  */
 function qlobalDovletlerPayloadHazirla({
   nowMs = Date.now(),
   metadata = [],
+  topologiyaXeritesi = null,
 } = {}) {
   const vaxt = Number(nowMs);
   if (!Number.isFinite(vaxt) || vaxt < 0) {
@@ -141,10 +150,6 @@ function qlobalDovletlerPayloadHazirla({
   const states = acilmisIdler.map((stateId) => {
     const plan = dovletPlanliVaxtlariniAl(stateId, tamVaxt);
     const elave = dovletMetadataHazirla(metadataMap.get(stateId));
-
-    // V1 statik layout production üçün əsas authoritative mövqedir.
-    // Layout tutumundan kənar çox uzaq gələcək Dövlət olarsa yalnız həmin zaman
-    // real metadata-dakı node fallback kimi istifadə oluna bilər.
     const layoutNode = qlobalNodeHazirla(dovletUcunQlobalNodeAl(stateId));
 
     return {
@@ -163,7 +168,7 @@ function qlobalDovletlerPayloadHazirla({
     onlyOpenedStates: true,
     layout: qlobalLayoutMelumatiniHazirla(),
     states,
-    connections: acilmisDovletElageleriniHazirla(acilmisIdler),
+    connections: qlobalElaqeleriHazirla(acilmisIdler, topologiyaXeritesi),
   };
 }
 
@@ -171,5 +176,6 @@ module.exports = {
   metadataXeritesiHazirla,
   qlobalNodeHazirla,
   dovletMetadataHazirla,
+  qlobalElaqeleriHazirla,
   qlobalDovletlerPayloadHazirla,
 };
