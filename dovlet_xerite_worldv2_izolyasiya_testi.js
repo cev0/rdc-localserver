@@ -14,6 +14,9 @@ const ICAZELI_XARICI_LOCAL_REQUIRE = Object.freeze({
   'dovlet_xerite_worldv2_lifecycle_adapteri.js': new Set([
     './dovlet_lifecycle_handler',
   ]),
+  'dovlet_xerite_worldv2_info_production_handler.js': new Set([
+    './oyun_state_daimilik_korpu',
+  ]),
   'dovlet_xerite_worldv2_obyekt_production_handler.js': new Set([
     './dovlet_baza_kataloqu_postgres',
     './oyun_state_daimilik_korpu',

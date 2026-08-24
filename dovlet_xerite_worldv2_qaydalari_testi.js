@@ -119,6 +119,29 @@ test('Keçid statusları yalnız müəyyən edilmiş enum-dan qəbul edilir', ()
   assert.strictEqual(kecidStatusuEtibarlidir('ACIQ'), false);
 });
 
+test('Topologiya müəyyən deyil statusu State ID uydurmadan fail-closed qalır', () => {
+  const qonsu = qonsuDovletMelumatiYarat({
+    istiqamet: 'simal',
+    stateId: null,
+    status: DOVLET_KECID_STATUSU.TOPOLOGIYA_MUEYYEN_DEYIL,
+  });
+
+  assert.deepStrictEqual(qonsu, {
+    istiqamet: 'simal',
+    stateId: null,
+    status: DOVLET_KECID_STATUSU.TOPOLOGIYA_MUEYYEN_DEYIL,
+    kecideIcazeVar: false,
+  });
+
+  assert.throws(() => {
+    qonsuDovletMelumatiYarat({
+      istiqamet: 'simal',
+      stateId: 2,
+      status: DOVLET_KECID_STATUSU.TOPOLOGIYA_MUEYYEN_DEYIL,
+    });
+  });
+});
+
 test('Açıq qonşu Dövlət keçid icazəsi yaradır', () => {
   const qonsu = qonsuDovletMelumatiYarat({
     istiqamet: 'serq',
