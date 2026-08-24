@@ -125,10 +125,58 @@ function dovletTopologiyasiniAl(topologiyaXeritesi, stateId) {
   };
 }
 
+/**
+ * Eyni authoritative topologiyadan Qlobal xəritə üçün unikal əlaqə cütləri yaradır.
+ * Near sərhədləri, Far qonşu oxları və Global əlaqə xətləri bununla eyni mənbədən
+ * qidalana bilər. Yalnız açılmış Dövlətlərin hər iki ucu payload-a daxil edilir.
+ */
+function topologiyadanQlobalElaqeleriHazirla(topologiyaXeritesi, acilmisStateIdler) {
+  if (!(topologiyaXeritesi instanceof Map)) {
+    throw new Error('Qlobal əlaqələr üçün hazırlanmış WorldV2 topologiya Map-i tələb olunur.');
+  }
+  if (!Array.isArray(acilmisStateIdler)) {
+    throw new Error('Açılmış Dövlət ID-ləri massiv olmalıdır.');
+  }
+
+  const aciq = new Set(acilmisStateIdler.map(x => dovletIdAl(x, 'açılmış stateId')));
+  const gorulen = new Set();
+  const netice = [];
+
+  for (const stateId of [...aciq].sort((a, b) => a - b)) {
+    const setr = topologiyaXeritesi.get(stateId);
+    if (!setr) continue;
+
+    for (const istiqamet of DOVLET_XERITESI_V2.serhedIstiqametleri) {
+      const qonsuId = setr[istiqamet];
+      if (qonsuId === null || !aciq.has(qonsuId)) continue;
+
+      const fromStateId = Math.min(stateId, qonsuId);
+      const toStateId = Math.max(stateId, qonsuId);
+      const acar = `${fromStateId}:${toStateId}`;
+      if (gorulen.has(acar)) continue;
+      gorulen.add(acar);
+
+      netice.push({
+        connectionId: `topologiya_${fromStateId}_${toStateId}`,
+        fromStateId,
+        toStateId,
+      });
+    }
+  }
+
+  netice.sort((a, b) => {
+    if (a.fromStateId !== b.fromStateId) return a.fromStateId - b.fromStateId;
+    return a.toStateId - b.toStateId;
+  });
+
+  return netice;
+}
+
 module.exports = {
   EKS_ISTIQAMET,
   dovletIdAl,
   topologiyaSetriniHazirla,
   topologiyaniYoxlaVeHazirla,
   dovletTopologiyasiniAl,
+  topologiyadanQlobalElaqeleriHazirla,
 };
