@@ -5,6 +5,7 @@ const assert = require('assert');
 const {
   topologiyaniYoxlaVeHazirla,
   dovletTopologiyasiniAl,
+  topologiyadanQlobalElaqeleriHazirla,
 } = require('./dovlet_xerite_worldv2_topologiya');
 
 function test(basliq, funksiya) {
@@ -36,6 +37,29 @@ test('Qarşılıqlı dörd istiqamətli topologiya qəbul edilir', () => {
     cenub: 3,
     qerb: null,
   });
+});
+
+test('Qlobal əlaqələr eyni authoritative topologiyadan unikal hazırlanır', () => {
+  const xerite = topologiyaniYoxlaVeHazirla(duzgunNumune());
+  const elaqeler = topologiyadanQlobalElaqeleriHazirla(xerite, [1, 2, 3, 4]);
+
+  assert.deepStrictEqual(elaqeler.map(x => [x.fromStateId, x.toStateId]), [
+    [1, 2],
+    [1, 3],
+    [2, 4],
+    [3, 4],
+  ]);
+  assert.strictEqual(new Set(elaqeler.map(x => x.connectionId)).size, 4);
+});
+
+test('Qlobal əlaqə yalnız hər iki Dövlət açıqdırsa gəlir', () => {
+  const xerite = topologiyaniYoxlaVeHazirla(duzgunNumune());
+  const elaqeler = topologiyadanQlobalElaqeleriHazirla(xerite, [1, 2, 3]);
+
+  assert.deepStrictEqual(elaqeler.map(x => [x.fromStateId, x.toStateId]), [
+    [1, 2],
+    [1, 3],
+  ]);
 });
 
 test('Dövlət özünə qonşu ola bilməz', () => {
