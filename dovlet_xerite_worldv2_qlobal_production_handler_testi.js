@@ -7,6 +7,10 @@ const {
 } = require('./dovlet_xerite_worldv2_lifecycle_adapteri');
 
 const {
+  topologiyaniYoxlaVeHazirla,
+} = require('./dovlet_xerite_worldv2_topologiya');
+
+const {
   WORLDV2_QLOBAL_SORGU,
   WORLDV2_QLOBAL_CAVAB,
   worldV2QlobalProductionHandleriYarat,
@@ -15,26 +19,34 @@ const {
 async function run() {
   const cavablar = [];
   const send = (_ws, payload) => cavablar.push(payload);
+  const topologiyaXeritesi = topologiyaniYoxlaVeHazirla([
+    { stateId: 1, simal: null, serq: 2, cenub: null, qerb: null },
+    { stateId: 2, simal: null, serq: null, cenub: null, qerb: 1 },
+  ]);
 
   // Dependency injection testi handler-in read-only/auth davranışını ayrı yoxlayır.
   const handler = worldV2QlobalProductionHandleriYarat({
     metadataAl: async () => [],
-    payloadHazirla: ({ nowMs, metadata }) => ({
-      version: 2,
-      serverTimeUnixMs: nowMs,
-      onlyOpenedStates: true,
-      metadataCount: metadata.length,
-      states: [
-        {
-          stateId: 1,
-          opened: true,
-          displayName: null,
-          presidentPlayerId: null,
-          flagId: null,
-          globalNode: null,
-        },
-      ],
-    }),
+    topologiyaXeritesi,
+    payloadHazirla: ({ nowMs, metadata, topologiyaXeritesi: gelenTopologiya }) => {
+      assert.strictEqual(gelenTopologiya, topologiyaXeritesi);
+      return {
+        version: 2,
+        serverTimeUnixMs: nowMs,
+        onlyOpenedStates: true,
+        metadataCount: metadata.length,
+        states: [
+          {
+            stateId: 1,
+            opened: true,
+            displayName: null,
+            presidentPlayerId: null,
+            flagId: null,
+            globalNode: null,
+          },
+        ],
+      };
+    },
   });
 
   const aidDeyil = await handler({
@@ -83,6 +95,11 @@ async function run() {
   assert.strictEqual(cavab.info.serverTimeUnixMs, 987654321);
   assert.strictEqual(cavab.payloadJson, JSON.stringify(cavab.info));
 
+  assert.throws(
+    () => worldV2QlobalProductionHandleriYarat({ topologiyaXeritesi: {} }),
+    /null və ya Map/,
+  );
+
   // İndi production handler + real qlobal payload builder inteqrasiyasını yoxlayırıq.
   const evvelkiRelease = process.env.PLAY_MARKET_RELEASE_TARIXI;
   const releaseMs = Date.UTC(2026, 0, 1, 0, 0, 0, 0);
@@ -92,6 +109,7 @@ async function run() {
     const realCavablar = [];
     const realHandler = worldV2QlobalProductionHandleriYarat({
       metadataAl: async () => [],
+      topologiyaXeritesi,
     });
 
     const emalOlundu = await realHandler({
@@ -118,10 +136,13 @@ async function run() {
       assert.ok(Number.isFinite(dovlet.globalNode.normalizedY));
     }
 
-    for (const elage of real.info.connections) {
-      assert.ok([1, 2].includes(elage.fromStateId));
-      assert.ok([1, 2].includes(elage.toStateId));
-    }
+    assert.deepStrictEqual(real.info.connections, [
+      {
+        connectionId: 'topologiya_1_2',
+        fromStateId: 1,
+        toStateId: 2,
+      },
+    ]);
 
     assert.strictEqual(real.payloadJson, JSON.stringify(real.info));
   } finally {
@@ -132,7 +153,7 @@ async function run() {
     }
   }
 
-  console.log('✓ WorldV2 Qlobal production handler read-only/auth/layout testləri keçdi.');
+  console.log('✓ WorldV2 Qlobal production handler read-only/auth/layout/topologiya testləri keçdi.');
 }
 
 module.exports = run();
