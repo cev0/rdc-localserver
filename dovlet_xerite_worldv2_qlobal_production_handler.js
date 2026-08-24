@@ -35,11 +35,14 @@ function cavabGonder(kontekst, melumat) {
  * - yalnız autentifikasiya olunmuş socket qəbul edir;
  * - açıq Dövlətlər 60 günlük authoritative lifecycle-dan gəlir;
  * - metadata real mənbə verilməyibsə boş saxlanılır, heç nə uydurulmur;
+ * - topologiya veriləndə Near/Far/Global eyni authoritative qonşuluq mənbəyini
+ *   paylaşa bilir; verilməyəndə payload builder köhnə layout fallback-ını saxlayır;
  * - player state mutasiya edilmir.
  */
 function worldV2QlobalProductionHandleriYarat({
   payloadHazirla = qlobalDovletlerPayloadHazirla,
   metadataAl = async () => [],
+  topologiyaXeritesi = null,
 } = {}) {
   if (typeof payloadHazirla !== 'function') {
     throw new Error('WorldV2 Qlobal payloadHazirla funksiya olmalıdır.');
@@ -47,6 +50,10 @@ function worldV2QlobalProductionHandleriYarat({
 
   if (typeof metadataAl !== 'function') {
     throw new Error('WorldV2 Qlobal metadataAl funksiya olmalıdır.');
+  }
+
+  if (topologiyaXeritesi !== null && !(topologiyaXeritesi instanceof Map)) {
+    throw new Error('WorldV2 Qlobal topologiyaXeritesi null və ya Map olmalıdır.');
   }
 
   return async function dovletXeriteWorldV2QlobalProductionMesajiniEmalEt(kontekst) {
@@ -73,7 +80,7 @@ function worldV2QlobalProductionHandleriYarat({
         : Date.now();
 
       const metadata = await metadataAl(nowMs, kontekst);
-      const info = payloadHazirla({ nowMs, metadata });
+      const info = payloadHazirla({ nowMs, metadata, topologiyaXeritesi });
 
       cavabGonder(kontekst, {
         success: true,
