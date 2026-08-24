@@ -8,6 +8,7 @@
       "connected": true,
       "stateSource": "oyun_state_daimilik_korpu",
       "playerBaseSource": "worldPlacement.baseX/baseZ",
+      "topologySource": "dovlet_xerite_worldv2_topologiya",
       "topologyStatusWhenUnconfigured": "TOPOLOGIYA_MUEYYEN_DEYIL",
       "note": "Real State qonşuluq ID-ləri müəyyən edilməyənədək dörd sərhəd istiqaməti explicit fail-closed status alır; State ID uydurulmur və keçid icazəsi verilmir."
     },
@@ -27,13 +28,25 @@
       "connected": true,
       "stateLifecycleSource": "dovlet_xerite_worldv2_lifecycle_adapteri",
       "layoutSource": "dovlet_xerite_worldv2_qlobal_layout",
+      "topologySource": "dovlet_xerite_worldv2_topologiya",
       "layoutVersion": 1,
       "coordinateSpace": "normalized_0_1",
       "origin": "bottom_left",
       "backgroundId": "worldv2_qlobal_fon_v1",
       "backgroundAspectRatio": 0.5625,
       "capacity": 91,
-      "note": "Yalnız açılmış Dövlətlər qaytarılır. Node mövqeləri serverdə versiyalanmış statik layout-dan gəlir; Prezident/ad/bayraq yalnız real metadata mənbəyi olduqda doldurulur."
+      "note": "Yalnız açılmış Dövlətlər qaytarılır. Node mövqeləri serverdə versiyalanmış statik layout-dan gəlir; əlaqələr authoritative topology-dən gəlir, topology verilmədikdə legacy layout fallback saxlanılır. Prezident/ad/bayraq yalnız real metadata mənbəyi olduqda doldurulur."
+    },
+    "global_states_v2_search_request": {
+      "connected": true,
+      "source": "global_states_v2_request payload",
+      "readOnly": true,
+      "acceptedStateCodeFormats": [
+        "1434",
+        "State#1434",
+        "state 1434"
+      ],
+      "note": "Axtarış yalnız authoritative lifecycle payload-da olan açıq Dövlətlər içində dəqiq State ID tapır; player worldPlacement mutasiya edilmir."
     }
   },
   "coordinateSystem": {
@@ -77,12 +90,33 @@
             "y": 600,
             "unlockAfterDays": 30,
             "defenseBuildingCount": 4,
-            "defenseDirections": ["simal", "serq", "cenub", "qerb"],
+            "defenseDirections": [
+              "simal",
+              "serq",
+              "cenub",
+              "qerb"
+            ],
             "defenseCoordinates": [
-              { "slot": "yuxari", "x": 596, "y": 596 },
-              { "slot": "sag", "x": 605, "y": 596 },
-              { "slot": "sol", "x": 596, "y": 605 },
-              { "slot": "asagi", "x": 605, "y": 605 }
+              {
+                "slot": "yuxari",
+                "x": 596,
+                "y": 596
+              },
+              {
+                "slot": "sag",
+                "x": 605,
+                "y": 596
+              },
+              {
+                "slot": "sol",
+                "x": 596,
+                "y": 605
+              },
+              {
+                "slot": "asagi",
+                "x": 605,
+                "y": 605
+              }
             ],
             "status": {
               "unlocked": "boolean",
@@ -104,8 +138,15 @@
     },
     "state_map_v2_border_transition_request": {
       "authRequired": true,
-      "requestFields": ["direction"],
-      "directionEnum": ["simal", "serq", "cenub", "qerb"],
+      "requestFields": [
+        "direction"
+      ],
+      "directionEnum": [
+        "simal",
+        "serq",
+        "cenub",
+        "qerb"
+      ],
       "invalidDirectionErrorCode": "WORLDV2_INVALID_DIRECTION",
       "resultType": "state_map_v2_border_transition_result",
       "currentBehavior": "authoritative_check_only_no_state_mutation",
@@ -132,9 +173,10 @@
       "authRequired": true,
       "requestFields": [],
       "resultType": "global_states_v2_result",
-      "currentBehavior": "production_lifecycle_and_layout_connected",
+      "currentBehavior": "production_lifecycle_layout_and_authoritative_topology_connected",
       "result": {
         "success": "boolean",
+        "playerId": "string",
         "info": {
           "version": 2,
           "serverTimeUnixMs": "integer",
@@ -156,6 +198,7 @@
               "displayName": "string_or_null",
               "presidentPlayerId": "string_or_null",
               "presidentAllianceId": "string_or_null",
+              "presidentDisplayName": "string_or_null",
               "presidentUnlocked": "boolean_or_null",
               "presidentOccupiedAtMs": "integer_or_null",
               "flagId": "string_or_null",
@@ -175,7 +218,30 @@
               "toNodeId": "stable_string"
             }
           ]
-        }
+        },
+        "payloadJson": "json_string"
+      }
+    },
+    "global_states_v2_search_request": {
+      "authRequired": true,
+      "requestFields": [
+        "stateCode"
+      ],
+      "resultType": "global_states_v2_search_result",
+      "currentBehavior": "read_only_exact_state_id_search_inside_opened_global_payload",
+      "invalidSearchErrorCode": "WORLDV2_GLOBAL_SEARCH_INVALID",
+      "result": {
+        "success": "boolean",
+        "playerId": "string",
+        "info": {
+          "version": 2,
+          "stateId": "positive_integer",
+          "found": "boolean",
+          "opened": "boolean",
+          "globalNode": "global_node_or_null",
+          "state": "global_state_metadata_or_null"
+        },
+        "payloadJson": "json_string"
       }
     },
     "state_map_v2_objects_request": {
@@ -255,6 +321,7 @@
     "WORLDV2_RUNTIME_INVALID",
     "WORLDV2_RUNTIME_STATE_MISMATCH",
     "WORLDV2_INVALID_DIRECTION",
+    "WORLDV2_GLOBAL_SEARCH_INVALID",
     "WORLDV2_INTERNAL_ERROR"
   ],
   "authoritativeRules": {
@@ -268,12 +335,23 @@
     "unconfiguredTopologyFailsClosedWithoutInventingStateIds": true,
     "runtimeStateIdMustMatchRequestedStateId": true,
     "runtimeValidationIsFailClosed": true,
-    "persistentBaseFieldsStayLegacy": ["baseX", "baseZ"],
-    "protocolBaseFields": ["x", "y"],
+    "persistentBaseFieldsStayLegacy": [
+      "baseX",
+      "baseZ"
+    ],
+    "protocolBaseFields": [
+      "x",
+      "y"
+    ],
     "allianceNameMustNotBeUsedAsStableAllianceId": true,
+    "homeStatePlacementIsAuthoritative": true,
+    "viewedStateNavigationMustNotMutateWorldPlacement": true,
     "globalNodeLayoutIsServerAuthoritative": true,
+    "globalConnectionsUseAuthoritativeTopologyWhenAvailable": true,
+    "globalTopologyFallbackKeepsLegacyLayoutCompatibility": true,
     "globalConnectionRequiresBothStatesOpened": true,
-    "globalClientMayInventLockedStatesOrNodes": false
+    "globalClientMayInventLockedStatesOrNodes": false,
+    "globalSearchIsReadOnly": true
   },
   "intentionallyUnresolved": {
     "realStateTopologyIds": true,
@@ -283,6 +361,7 @@
     "globalPresidentNameFlagMetadataSource": true,
     "worldV2ResourcePlacement": true,
     "worldV2EnemyPlacement": true,
-    "stableAllianceIdForBaseLodFiltering": true
+    "stableAllianceIdForBaseLodFiltering": true,
+    "viewedStateWebSocketNavigation": true
   }
 }
