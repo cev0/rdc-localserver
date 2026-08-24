@@ -13,6 +13,8 @@ const {
 const {
   WORLDV2_QLOBAL_SORGU,
   WORLDV2_QLOBAL_CAVAB,
+  WORLDV2_QLOBAL_AXTARIS_SORGU,
+  WORLDV2_QLOBAL_AXTARIS_CAVAB,
   worldV2QlobalProductionHandleriYarat,
 } = require('./dovlet_xerite_worldv2_qlobal_production_handler');
 
@@ -24,7 +26,6 @@ async function run() {
     { stateId: 2, simal: null, serq: null, cenub: null, qerb: 1 },
   ]);
 
-  // Dependency injection testi handler-in read-only/auth davranışını ayrı yoxlayır.
   const handler = worldV2QlobalProductionHandleriYarat({
     metadataAl: async () => [],
     topologiyaXeritesi,
@@ -42,7 +43,7 @@ async function run() {
             displayName: null,
             presidentPlayerId: null,
             flagId: null,
-            globalNode: null,
+            globalNode: { nodeId: 'state_1', normalizedX: 0.2, normalizedY: 0.3 },
           },
         ],
       };
@@ -89,18 +90,60 @@ async function run() {
   assert.strictEqual(cavab.info.onlyOpenedStates, true);
   assert.strictEqual(cavab.info.states.length, 1);
   assert.strictEqual(cavab.info.states[0].stateId, 1);
-  assert.strictEqual(cavab.info.states[0].displayName, null);
-  assert.strictEqual(cavab.info.states[0].globalNode, null);
+  assert.strictEqual(cavab.info.displayName, undefined);
   assert.strictEqual(cavab.info.metadataCount, 0);
   assert.strictEqual(cavab.info.serverTimeUnixMs, 987654321);
   assert.strictEqual(cavab.payloadJson, JSON.stringify(cavab.info));
+
+  cavablar.length = 0;
+
+  const axtaris = await handler({
+    type: WORLDV2_QLOBAL_AXTARIS_SORGU,
+    msg: { stateCode: 'State#1' },
+    ws: { _authedPlayerId: 'Oyuncu-1' },
+    send,
+    nowMs: () => 987654322,
+  });
+
+  assert.strictEqual(axtaris, true);
+  assert.strictEqual(cavablar.length, 1);
+  assert.strictEqual(cavablar[0].type, WORLDV2_QLOBAL_AXTARIS_CAVAB);
+  assert.strictEqual(cavablar[0].success, true);
+  assert.strictEqual(cavablar[0].info.found, true);
+  assert.strictEqual(cavablar[0].info.stateId, 1);
+  assert.strictEqual(cavablar[0].info.globalNode.nodeId, 'state_1');
+  assert.strictEqual(cavablar[0].payloadJson, JSON.stringify(cavablar[0].info));
+
+  cavablar.length = 0;
+
+  await handler({
+    type: WORLDV2_QLOBAL_AXTARIS_SORGU,
+    msg: { stateCode: '999' },
+    ws: { _authedPlayerId: 'Oyuncu-1' },
+    send,
+    nowMs: () => 987654323,
+  });
+  assert.strictEqual(cavablar[0].success, true);
+  assert.strictEqual(cavablar[0].info.found, false);
+  assert.strictEqual(cavablar[0].info.stateId, 999);
+
+  cavablar.length = 0;
+
+  await handler({
+    type: WORLDV2_QLOBAL_AXTARIS_SORGU,
+    msg: { stateCode: 'abc' },
+    ws: { _authedPlayerId: 'Oyuncu-1' },
+    send,
+    nowMs: () => 987654324,
+  });
+  assert.strictEqual(cavablar[0].success, false);
+  assert.strictEqual(cavablar[0].errorCode, 'WORLDV2_GLOBAL_SEARCH_INVALID');
 
   assert.throws(
     () => worldV2QlobalProductionHandleriYarat({ topologiyaXeritesi: {} }),
     /null və ya Map/,
   );
 
-  // İndi production handler + real qlobal payload builder inteqrasiyasını yoxlayırıq.
   const evvelkiRelease = process.env.PLAY_MARKET_RELEASE_TARIXI;
   const releaseMs = Date.UTC(2026, 0, 1, 0, 0, 0, 0);
   process.env.PLAY_MARKET_RELEASE_TARIXI = new Date(releaseMs).toISOString();
@@ -153,7 +196,7 @@ async function run() {
     }
   }
 
-  console.log('✓ WorldV2 Qlobal production handler read-only/auth/layout/topologiya testləri keçdi.');
+  console.log('✓ WorldV2 Qlobal production handler read-only/auth/layout/topologiya/axtarış testləri keçdi.');
 }
 
 module.exports = run();
