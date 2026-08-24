@@ -4,6 +4,13 @@
   "status": "partial_production_connected",
   "productionConnected": false,
   "productionConnections": {
+    "state_map_v2_info_request": {
+      "connected": true,
+      "stateSource": "oyun_state_daimilik_korpu",
+      "playerBaseSource": "worldPlacement.baseX/baseZ",
+      "topologyStatusWhenUnconfigured": "TOPOLOGIYA_MUEYYEN_DEYIL",
+      "note": "Real State qonşuluq ID-ləri müəyyən edilməyənədək dörd sərhəd istiqaməti explicit fail-closed status alır; State ID uydurulmur və keçid icazəsi verilmir."
+    },
     "state_map_v2_objects_request": {
       "connected": true,
       "source": "dovlet_baza_kataloqu_postgres",
@@ -45,6 +52,7 @@
       "authRequired": true,
       "requestFields": [],
       "resultType": "state_map_v2_info_result",
+      "currentBehavior": "production_player_state_connected_topology_fail_closed_until_configured",
       "result": {
         "success": "boolean",
         "playerId": "string",
@@ -224,6 +232,7 @@
     "kecideIcazeVar": "boolean"
   },
   "transition_status_enum": [
+    "TOPOLOGIYA_MUEYYEN_DEYIL",
     "QONSU_YOXDUR",
     "BAGLIDIR",
     "ACILIB_KECID_BAGLIDIR",
@@ -240,6 +249,7 @@
     "WORLDV2_STATE_MISSING",
     "WORLDV2_PLACEMENT_MISSING",
     "WORLDV2_TOPOLOGY_MISSING",
+    "WORLDV2_INFO_READ_FAILED",
     "WORLDV2_OBJECTS_NOT_CONNECTED",
     "WORLDV2_OBJECTS_READ_FAILED",
     "WORLDV2_RUNTIME_INVALID",
@@ -255,6 +265,7 @@
     "clientMayOpenFutureState": false,
     "clientMayMutateBorderTransitionLocally": false,
     "invalidBorderDirectionFailsClosed": true,
+    "unconfiguredTopologyFailsClosedWithoutInventingStateIds": true,
     "runtimeStateIdMustMatchRequestedStateId": true,
     "runtimeValidationIsFailClosed": true,
     "persistentBaseFieldsStayLegacy": ["baseX", "baseZ"],
