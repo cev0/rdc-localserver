@@ -11,6 +11,10 @@ const {
   qlobalDovletlerPayloadHazirla,
 } = require('./dovlet_xerite_worldv2_qlobal_payload');
 
+const {
+  topologiyaniYoxlaVeHazirla,
+} = require('./dovlet_xerite_worldv2_topologiya');
+
 function test(basliq, funksiya) {
   try {
     funksiya();
@@ -38,6 +42,13 @@ function envIle(releaseTarixi, funksiya) {
       process.env.PLAY_MARKET_RELEASE_TARIXI = evvelki;
     }
   }
+}
+
+function ikiDovletTopologiyasi() {
+  return topologiyaniYoxlaVeHazirla([
+    { stateId: 1, simal: null, serq: 2, cenub: null, qerb: null },
+    { stateId: 2, simal: null, serq: null, cenub: null, qerb: 1 },
+  ]);
 }
 
 const RELEASE_MS = Date.UTC(2026, 0, 1, 0, 0, 0, 0);
@@ -78,11 +89,22 @@ test('60 gündən sonra Dövlət #1 və #2 server node-ları ilə gəlir', () =>
     assert.strictEqual(payload.states.every(x => x.globalNode != null), true);
     assert.strictEqual(payload.states.every(x => Number.isFinite(x.globalNode.normalizedX)), true);
     assert.strictEqual(payload.states.every(x => Number.isFinite(x.globalNode.normalizedY)), true);
+  });
+});
 
-    for (const elage of payload.connections) {
-      assert.ok([1, 2].includes(elage.fromStateId));
-      assert.ok([1, 2].includes(elage.toStateId));
-    }
+test('Authoritative topologiya veriləndə Qlobal əlaqələr layout-dan yox, həmin topologiyadan gəlir', () => {
+  envIle(RELEASE_ISO, () => {
+    const now = RELEASE_MS + DOVLET_DOVR_MS;
+    const payload = qlobalDovletlerPayloadHazirla({
+      nowMs: now,
+      topologiyaXeritesi: ikiDovletTopologiyasi(),
+    });
+
+    assert.deepStrictEqual(payload.connections, [{
+      connectionId: 'topologiya_1_2',
+      fromStateId: 1,
+      toStateId: 2,
+    }]);
   });
 });
 
@@ -107,7 +129,7 @@ test('Gələcək bağlı Dövlət metadata-da olsa belə Qlobal siyahı və əla
   });
 });
 
-test('Real metadata Prezident, ittifaq, ad və bayrağı əlavə edir; layout node serverdən qalır', () => {
+test('Real metadata Prezident adı, ittifaq, Dövlət adı və bayrağı əlavə edir; layout node serverdən qalır', () => {
   envIle(RELEASE_ISO, () => {
     const payload = qlobalDovletlerPayloadHazirla({
       nowMs: RELEASE_MS,
@@ -115,6 +137,7 @@ test('Real metadata Prezident, ittifaq, ad və bayrağı əlavə edir; layout no
         stateId: 1,
         displayName: 'Dövlət 1',
         presidentPlayerId: 'oyuncu_99',
+        presidentDisplayName: 'Prezident Cavidan',
         presidentAllianceId: 'ittifaq_7',
         presidentUnlocked: true,
         presidentOccupiedAtMs: RELEASE_MS + 5000,
@@ -130,6 +153,7 @@ test('Real metadata Prezident, ittifaq, ad və bayrağı əlavə edir; layout no
     assert.strictEqual(state.presidentUnlockAtMs, RELEASE_MS + PREZIDENT_ACILMA_MS);
     assert.strictEqual(state.displayName, 'Dövlət 1');
     assert.strictEqual(state.presidentPlayerId, 'oyuncu_99');
+    assert.strictEqual(state.presidentDisplayName, 'Prezident Cavidan');
     assert.strictEqual(state.presidentAllianceId, 'ittifaq_7');
     assert.strictEqual(state.presidentUnlocked, true);
     assert.strictEqual(state.presidentOccupiedAtMs, RELEASE_MS + 5000);
@@ -147,6 +171,7 @@ test('Metadata yoxdursa Prezident/ad/bayraq uydurulmur, yalnız layout node veri
 
     assert.strictEqual(state.displayName, null);
     assert.strictEqual(state.presidentPlayerId, null);
+    assert.strictEqual(state.presidentDisplayName, null);
     assert.strictEqual(state.presidentAllianceId, null);
     assert.strictEqual(state.presidentUnlocked, null);
     assert.strictEqual(state.presidentOccupiedAtMs, null);
