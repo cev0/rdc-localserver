@@ -52,6 +52,10 @@ const DOVLET_XERITESI_V2 = Object.freeze({
 });
 
 const DOVLET_KECID_STATUSU = Object.freeze({
+  // Real Dövlət qonşuluq ID-ləri hələ production-da müəyyən edilməyəndə
+  // fail-closed vəziyyət. Bu status heç vaxt keçid icazəsi vermir və
+  // qonşu State ID-si tələb etmir.
+  TOPOLOGIYA_MUEYYEN_DEYIL: 'TOPOLOGIYA_MUEYYEN_DEYIL',
   QONSU_YOXDUR: 'QONSU_YOXDUR',
   BAGLIDIR: 'BAGLIDIR',
   ACILIB_KECID_BAGLIDIR: 'ACILIB_KECID_BAGLIDIR',
@@ -143,11 +147,15 @@ function qonsuDovletMelumatiYarat({ istiqamet, stateId = null, status }) {
     stateId = stateReqem;
   }
 
-  if (status === DOVLET_KECID_STATUSU.QONSU_YOXDUR && stateId !== null) {
-    throw new Error('QONSU_YOXDUR statusunda stateId null olmalıdır.');
+  const stateIdsizStatusdur =
+    status === DOVLET_KECID_STATUSU.QONSU_YOXDUR ||
+    status === DOVLET_KECID_STATUSU.TOPOLOGIYA_MUEYYEN_DEYIL;
+
+  if (stateIdsizStatusdur && stateId !== null) {
+    throw new Error(`${status} statusunda stateId null olmalıdır.`);
   }
 
-  if (status !== DOVLET_KECID_STATUSU.QONSU_YOXDUR && stateId === null) {
+  if (!stateIdsizStatusdur && stateId === null) {
     throw new Error(`${status} statusunda qonşu stateId tələb olunur.`);
   }
 
