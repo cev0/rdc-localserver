@@ -18,6 +18,7 @@ Aşağıdakılar artıq yalnız hazırlıq branch-ində deyil, `main` daxilində
 - WorldV2 başlanğıc/map info contract-ı;
 - WorldV2 baza obyekt layer-i PostgreSQL `dovlet_baza_kataloqu_postgres` mənbəyindən production payload-a qoşulub;
 - baza marker public sahələri server↔Unity müqaviləsində rəsmiləşdirilib;
+- Yaxın LOD sərhəd push keçidi production routing-ə qoşulub: authoritative topology/lifecycle yoxlaması, read-only `viewedStateId`, qarşı sərhəddə 24 vahid içəri giriş koordinatı və persistent Ev Dövlət placement qoruması;
 - 60 günlük Dövlət lifecycle və Dövlət başladıqdan 30 gün sonra Prezident mərkəzinin açılması;
 - Prezident mərkəzi `600:600` və dörd server-authoritative müdafiə slotu:
   - `yuxari` → `596:596`
@@ -101,7 +102,7 @@ Baza kataloqunda `allianceName` mövcuddur, lakin stabil server-authoritative `a
 
 `dovlet_konvoy_runtime_postgres.js` shared convoy/PvP kamp runtime və server-vaxtı interpolasiyasını saxlayır. Runtime mexanizmi xəritə ölçüsündən əsasən müstəqildir.
 
-WorldV2 üçün yeni əməliyyatların koordinat girişləri V2 validatorundan keçməlidir. Bu, sərhəd keçidi üçün `entryCoordinate` gameplay qaydasının həll edildiyi mənasına gəlmir.
+WorldV2 üçün yeni əməliyyatların koordinat girişləri V2 validatorundan keçməlidir. Sərhəd keçidi üçün giriş koordinatı isə ayrıca WorldV2 sərhəd production handler-i tərəfindən authoritative hesablanır.
 
 ---
 
@@ -112,14 +113,21 @@ Hazır server qaydaları:
 - istiqamətlər yalnız `simal`, `serq`, `cenub`, `qerb`;
 - qonşu statusu fail-closed yoxlanır;
 - client sərhəd keçidini lokal olaraq məcbur edə bilməz;
-- açılmamış Dövlətə keçid yoxdur.
+- açılmamış Dövlətə keçid yoxdur;
+- sərhəd keçidi `state_map_v2_border_transition_request/result` ilə production routing-də read-only işləyir;
+- Ev Dövlət `worldPlacement` mutasiya edilmir;
+- server keçid icazəsi varsa qarşı sərhəddə `24` vahid təhlükəsizlik payı ilə `entryCoordinate` qaytarır;
+- paralel ox koordinatı saxlanılır:
+  - Şimal → `y=1176`;
+  - Cənub → `y=24`;
+  - Şərq → `x=24`;
+  - Qərb → `x=1176`.
 
 Hələ qəsdən unresolved:
 
-- real State qonşuluq ID-ləri (`realStateTopologyIds`);
-- qonşu Dövlətə keçiddə dəqiq giriş koordinatı (`borderEntryCoordinates`).
+- real State qonşuluq ID-ləri (`realStateTopologyIds`).
 
-`entryCoordinate` gameplay qaydası təsdiqlənənə qədər `null` qalır.
+`borderEntryCoordinates` artıq unresolved deyil.
 
 ---
 
@@ -163,9 +171,8 @@ Aşağıdakılar istifadəçi/gameplay qərarı və ya real authoritative data m
 - WorldV2 düşmən sayı və placement;
 - resource/enemy level band-ləri;
 - real State qonşuluq ID-ləri;
-- sərhəd giriş koordinatı;
 - `allianceName`-dən saxta stabil ittifaq ID-si;
 - war-target identifikator/storage qaydası;
 - Qlobal Prezident/ad/bayraq metadata mənbəyi.
 
-Prezident müdafiə koordinatları və Qlobal Layout V1 artıq bu siyahıya daxil deyil; onlar server-authoritative olaraq həll olunub.
+Prezident müdafiə koordinatları, sərhəd giriş koordinatı və Qlobal Layout V1 artıq bu siyahıya daxil deyil; onlar server-authoritative olaraq həll olunub.
