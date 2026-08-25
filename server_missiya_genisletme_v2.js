@@ -21,14 +21,29 @@ const { konvoyEmeliyyatMesajiniEmalEt } = require("./konvoy_emeliyyat_handler");
 require("./qosun_telimi_inkisaf_override");
 const { qosunTelimiMesajiniEmalEt } = require("./qosun_telimi_handler");
 const { dovletXeriteKataloqMesajiniEmalEt } = require("./dovlet_xerite_kataloq_handler");
-const { dovletXeriteWorldV2InfoProductionMesajiniEmalEt } = require("./dovlet_xerite_worldv2_info_production_handler");
+const { worldV2InfoProductionHandleriYarat } = require("./dovlet_xerite_worldv2_info_production_handler");
 const { dovletXeriteWorldV2ObyektProductionMesajiniEmalEt } = require("./dovlet_xerite_worldv2_obyekt_production_handler");
-const { dovletXeriteWorldV2BaxisProductionMesajiniEmalEt } = require("./dovlet_xerite_worldv2_baxis_production_handler");
-const { dovletXeriteWorldV2QlobalProductionMesajiniEmalEt } = require("./dovlet_xerite_worldv2_qlobal_production_handler");
+const { worldV2BaxisProductionHandleriYarat } = require("./dovlet_xerite_worldv2_baxis_production_handler");
+const { worldV2QlobalProductionHandleriYarat } = require("./dovlet_xerite_worldv2_qlobal_production_handler");
+const { runtimeTopologiyaXeritesiniAl } = require("./dovlet_xerite_worldv2_topologiya_provider");
 const { dovletXeriteWorldV2ElfecinMesajiniEmalEt } = require("./dovlet_xerite_worldv2_elfecin_handler");
 const { dovletXeriteLayerMesajiniEmalEt } = require("./dovlet_xerite_layer_handler");
 const { pvpBazaReportStatusMesajiniEmalEt } = require("./pvp_baza_report_status_handler");
 const { pvpShieldMesajiniEmalEt } = require("./pvp_shield_handler");
+
+// Near info, Far/foreign baxış və Global Dövlətlər xəritəsi eyni Map obyektini
+// paylaşır. Real topologiya konfiqi verilməyibsə null qalır və handler-lərin
+// əvvəlki fail-closed/fallback davranışı dəyişmir.
+const worldV2RuntimeTopologiyaXeritesi = runtimeTopologiyaXeritesiniAl();
+const dovletXeriteWorldV2InfoProductionMesajiniEmalEt = worldV2InfoProductionHandleriYarat({
+  topologiyaXeritesi: worldV2RuntimeTopologiyaXeritesi,
+});
+const dovletXeriteWorldV2BaxisProductionMesajiniEmalEt = worldV2BaxisProductionHandleriYarat({
+  topologiyaXeritesi: worldV2RuntimeTopologiyaXeritesi,
+});
+const dovletXeriteWorldV2QlobalProductionMesajiniEmalEt = worldV2QlobalProductionHandleriYarat({
+  topologiyaXeritesi: worldV2RuntimeTopologiyaXeritesi,
+});
 
 require("./pvp_settlement_live_override");
 const { pvpBazaLiveMesajiniEmalEt } = require("./pvp_baza_live_handler");
