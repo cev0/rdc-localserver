@@ -5,6 +5,10 @@ const {
   DOVLET_XERITESI_V2,
   DOVLET_KECID_STATUSU,
 } = require('./dovlet_xerite_worldv2_qaydalari');
+const {
+  ikiDovletTestRejimiAktivdir,
+  WORLDV2_IKI_DOVLET_TEST_AKTIV_STATE_ID,
+} = require('./dovlet_xerite_worldv2_iki_dovlet_test_rejimi');
 
 const GUN_MS = 24 * 60 * 60 * 1000;
 const DOVLET_DOVR_GUN = 60;
@@ -27,7 +31,18 @@ function dovletLifecycleMelumatiniAl(nowMs = Date.now()) {
   }
 
   const info = lifecycleInfo(Math.trunc(now));
-  const aktivStateId = musbetTamDovletIdAl(info && info.calculatedActiveStateId) || 1;
+  let aktivStateId = musbetTamDovletIdAl(info && info.calculatedActiveStateId) || 1;
+
+  // MÜVƏQQƏTİ Koyeb/inteqrasiya testi:
+  // server runtime prosesi iki Dövlət test rejimindədirsə Dövlət #2 açıq saxlanılır.
+  // Unit-test runner-lərində ikiDovletTestRejimiAktivdir() false qaytarır.
+  const ikiDovletTesti = ikiDovletTestRejimiAktivdir(process.env, process.argv);
+  if (ikiDovletTesti) {
+    aktivStateId = Math.max(
+      aktivStateId,
+      WORLDV2_IKI_DOVLET_TEST_AKTIV_STATE_ID,
+    );
+  }
 
   return {
     releaseConfigured: info && info.releaseConfigured === true,
@@ -36,6 +51,7 @@ function dovletLifecycleMelumatiniAl(nowMs = Date.now()) {
     releaseAtMs: Math.max(0, Math.trunc(Number(info && info.releaseAtMs) || 0)),
     currentPeriodStartMs: Math.max(0, Math.trunc(Number(info && info.currentPeriodStartMs) || 0)),
     nextStateOpensAtMs: Math.max(0, Math.trunc(Number(info && info.nextStateOpensAtMs) || 0)),
+    ikiDovletTesti,
   };
 }
 
@@ -46,8 +62,7 @@ function dovletLifecycleMelumatiniAl(nowMs = Date.now()) {
  * - Dövlət ID-ləri 1-dən başlayır.
  * - Cari aktiv Dövlət və ondan əvvəlkilər açıq sayılır.
  * - Gələcək State ID-ləri bağlıdır.
- * - Release tarixi konfiqurasiya edilməyibsə mövcud legacy lifecycle State #1-i
- *   aktiv hesab edir; adapter də həmin davranışı dəyişmir.
+ * - Müvəqqəti iki Dövlət inteqrasiya testində State #2 açıq saxlanılır.
  */
 function dovletAcilibmi(stateId, nowMs = Date.now()) {
   const id = musbetTamDovletIdAl(stateId);
@@ -66,8 +81,8 @@ function dovletPlanliVaxtlariniAl(stateId, nowMs = Date.now()) {
   const lifecycle = dovletLifecycleMelumatiniAl(nowMs);
   const opened = id <= lifecycle.activeStateId;
 
-  // Mövcud lifecycle release tarixi olmadan yalnız State #1-i fallback kimi aktiv
-  // hesab edir. Belə halda planlı tarix uydurmuruq.
+  // Release tarixi olmadan planlı tarix uydurmuruq.
+  // Test rejimində Dövlət #2 yalnız opened=true olur; schedule yenə saxtalaşdırılmır.
   if (!lifecycle.releaseConfigured || lifecycle.releaseAtMs <= 0) {
     return {
       stateId: id,
@@ -124,17 +139,6 @@ function qonsuDovletLifecycleStatusunuAl(stateId, nowMs = Date.now()) {
 
 /**
  * Topologiya qatının verdiyi dörd qonşu ID-sini lifecycle statusları ilə doldurur.
- *
- * Nümunə giriş:
- * {
- *   simal: null,
- *   serq: 2,
- *   cenub: 4,
- *   qerb: null
- * }
- *
- * Buradakı rəqəmlər yalnız format nümunəsidir. Funksiya özü heç bir State ID
- * seçmir və qonşuluq yaratmır.
  */
 function qonsuTopologiyasiniLifecycleIleHazirla(topologiya, nowMs = Date.now()) {
   if (!topologiya || typeof topologiya !== 'object' || Array.isArray(topologiya)) {
