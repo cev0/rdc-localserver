@@ -131,6 +131,58 @@ function qlobalElaqeleriHazirla(acilmisIdler, topologiyaXeritesi) {
 }
 
 /**
+ * Topologiya əlaqələri gameplay baxımından yalnız State ID cütlərini bilməlidir.
+ * Qlobal UI müqaviləsi isə həmin əlaqənin hər iki nodeId-sini də tələb edir.
+ * Buna görə nodeId-lər burada, artıq final State/globalNode siyahısı hazır olduqdan
+ * sonra əlavə edilir. Beləliklə explicit metadata globalNode-u istifadə olunanda da
+ * connection nodeId-ləri həmin real node-larla tam uyğun qalır.
+ */
+function qlobalElaqelereNodeIdleriniElaveEt(states, elaqeler) {
+  if (!Array.isArray(states) || !Array.isArray(elaqeler)) {
+    throw new Error('Qlobal əlaqə node-ları üçün State və əlaqə massivləri tələb olunur.');
+  }
+
+  const nodeXeritesi = new Map();
+
+  for (const dovlet of states) {
+    if (!dovlet || !Number.isInteger(dovlet.stateId) || dovlet.stateId <= 0) {
+      throw new Error('Qlobal State məlumatında etibarsız stateId var.');
+    }
+
+    const node = dovlet.globalNode;
+    const nodeId = metnAl(node && node.nodeId, 128);
+    if (!nodeId) {
+      throw new Error(`State #${dovlet.stateId} üçün Qlobal nodeId yoxdur.`);
+    }
+
+    nodeXeritesi.set(dovlet.stateId, nodeId);
+  }
+
+  return elaqeler.map((elaqe) => {
+    if (!elaqe || typeof elaqe !== 'object' || Array.isArray(elaqe)) {
+      throw new Error('Qlobal əlaqə elementi obyekt olmalıdır.');
+    }
+
+    const fromStateId = Number(elaqe.fromStateId);
+    const toStateId = Number(elaqe.toStateId);
+    const fromNodeId = nodeXeritesi.get(fromStateId);
+    const toNodeId = nodeXeritesi.get(toStateId);
+
+    if (!fromNodeId || !toNodeId) {
+      throw new Error(
+        `Qlobal əlaqə üçün node tapılmadı: ${fromStateId} -> ${toStateId}.`,
+      );
+    }
+
+    return {
+      ...elaqe,
+      fromNodeId,
+      toNodeId,
+    };
+  });
+}
+
+/**
  * Qlobus düyməsi üçün açılmış Dövlətlərin server-authoritative siyahısını yaradır.
  */
 function qlobalDovletlerPayloadHazirla({
@@ -164,13 +216,16 @@ function qlobalDovletlerPayloadHazirla({
     };
   });
 
+  const xamElaqeler = qlobalElaqeleriHazirla(acilmisIdler, topologiyaXeritesi);
+  const connections = qlobalElaqelereNodeIdleriniElaveEt(states, xamElaqeler);
+
   return {
     version: 2,
     serverTimeUnixMs: tamVaxt,
     onlyOpenedStates: true,
     layout: qlobalLayoutMelumatiniHazirla(),
     states,
-    connections: qlobalElaqeleriHazirla(acilmisIdler, topologiyaXeritesi),
+    connections,
   };
 }
 
@@ -179,5 +234,6 @@ module.exports = {
   qlobalNodeHazirla,
   dovletMetadataHazirla,
   qlobalElaqeleriHazirla,
+  qlobalElaqelereNodeIdleriniElaveEt,
   qlobalDovletlerPayloadHazirla,
 };
