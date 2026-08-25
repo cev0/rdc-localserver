@@ -8,6 +8,10 @@ const {
   qlobalDovletAxtar,
 } = require('./dovlet_xerite_worldv2_qlobal_axtaris');
 
+const {
+  runtimeTopologiyaXeritesiniAl,
+} = require('./dovlet_xerite_worldv2_topologiya_provider');
+
 const WORLDV2_QLOBAL_SORGU = 'global_states_v2_request';
 const WORLDV2_QLOBAL_CAVAB = 'global_states_v2_result';
 const WORLDV2_QLOBAL_AXTARIS_SORGU = 'global_states_v2_search_request';
@@ -42,8 +46,8 @@ function cavabGonder(kontekst, type, melumat) {
  * - yalnız autentifikasiya olunmuş socket qəbul edir;
  * - açıq Dövlətlər 60 günlük authoritative lifecycle-dan gəlir;
  * - metadata real mənbə verilməyibsə boş saxlanılır, heç nə uydurulmur;
- * - topologiya veriləndə Near/Far/Global eyni authoritative qonşuluq mənbəyini
- *   paylaşa bilir; verilməyəndə payload builder köhnə layout fallback-ını saxlayır;
+ * - Near/Far/Global eyni runtime authoritative topologiya Map-ini paylaşır;
+ * - topologiya verilməyəndə payload builder yalnız layout fallback-ını saxlayır;
  * - axtarış yalnız açıq Dövlət payload-u daxilində dəqiq State ID tapır;
  * - player state və worldPlacement heç vaxt mutasiya edilmir.
  */
@@ -128,7 +132,9 @@ function worldV2QlobalProductionHandleriYarat({
 }
 
 const dovletXeriteWorldV2QlobalProductionMesajiniEmalEt =
-  worldV2QlobalProductionHandleriYarat();
+  worldV2QlobalProductionHandleriYarat({
+    topologiyaXeritesi: runtimeTopologiyaXeritesiniAl(),
+  });
 
 module.exports = {
   WORLDV2_QLOBAL_SORGU,
