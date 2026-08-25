@@ -57,8 +57,10 @@ function run() {
     'state_map_v2_info_request',
     'state_map_v2_objects_request',
     'state_map_v2_view_request',
+    'state_map_v2_view_objects_request',
     'state_map_v2_president_focus_request',
     'state_map_v2_home_request',
+    'state_map_v2_border_transition_request',
     'global_states_v2_request',
     'global_states_v2_search_request',
   ];
