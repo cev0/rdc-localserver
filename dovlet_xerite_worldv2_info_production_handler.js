@@ -11,7 +11,12 @@ const {
 
 const {
   dovletPlanliVaxtlariniAl,
+  qonsuDovletLifecycleStatusunuAl,
 } = require('./dovlet_xerite_worldv2_lifecycle_adapteri');
+
+const {
+  dovletTopologiyasiniAl,
+} = require('./dovlet_xerite_worldv2_topologiya');
 
 const WORLDV2_INFO_SORGU = 'state_map_v2_info_request';
 const WORLDV2_INFO_CAVAB = 'state_map_v2_info_result';
@@ -63,6 +68,25 @@ function topologiyaHazirOlmayandaQonsulariHazirla() {
   return netice;
 }
 
+function topologiyadanQonsulariHazirla(topologiyaXeritesi, stateId, nowMs) {
+  if (!(topologiyaXeritesi instanceof Map)) {
+    return topologiyaHazirOlmayandaQonsulariHazirla();
+  }
+
+  const topologiya = dovletTopologiyasiniAl(topologiyaXeritesi, stateId);
+  const netice = {};
+
+  for (const istiqamet of DOVLET_XERITESI_V2.serhedIstiqametleri) {
+    const status = qonsuDovletLifecycleStatusunuAl(topologiya[istiqamet], nowMs);
+    netice[istiqamet] = {
+      stateId: status.stateId,
+      status: status.status,
+    };
+  }
+
+  return netice;
+}
+
 function prezidentStatusunuLifecycleIleHazirla(stateId, nowMs) {
   const plan = dovletPlanliVaxtlariniAl(stateId, nowMs);
   const unlockAt = Number.isFinite(Number(plan && plan.presidentUnlockAtMs))
@@ -99,7 +123,12 @@ async function standartStateBerpaEt(kontekst, playerId) {
 function worldV2InfoProductionHandleriYarat({
   stateBerpaOlunub = standartStateBerpaOlunub,
   stateBerpaEt = standartStateBerpaEt,
+  topologiyaXeritesi = null,
 } = {}) {
+  if (topologiyaXeritesi !== null && !(topologiyaXeritesi instanceof Map)) {
+    throw new Error('WorldV2 info topologiyaXeritesi null və ya Map olmalıdır.');
+  }
+
   return async function dovletXeriteWorldV2InfoProductionMesajiniEmalEt(kontekst) {
     const type = metnAl(kontekst && kontekst.type, 128).toLowerCase();
     if (type !== WORLDV2_INFO_SORGU) return false;
@@ -146,12 +175,14 @@ function worldV2InfoProductionHandleriYarat({
         ? Math.max(0, Math.trunc(Number(kontekst.nowMs()) || 0))
         : Date.now();
 
-      // Real local-State qonşuluq ID-ləri hələ gameplay qaydası kimi
-      // müəyyən edilməyib. Onları uydurmaq əvəzinə bütün istiqamətlərdə
-      // explicit fail-closed status göndəririk. Bu status xəritə info-sunun
-      // digər authoritative hissələrinin (playerBase, Prezident, müdafiə)
-      // işləməsinə mane olmur və heç bir sərhəd keçidinə icazə vermir.
-      const qonsular = topologiyaHazirOlmayandaQonsulariHazirla();
+      // Real topology Map verilibsə Near info həmin authoritative mənbədən
+      // qonşuları alır. Hələ real topology konfiqi yoxdursa əvvəlki fail-closed
+      // davranış saxlanılır və heç bir Dövlət ID-si uydurulmur.
+      const qonsular = topologiyadanQonsulariHazirla(
+        topologiyaXeritesi,
+        placement.stateId,
+        nowMs,
+      );
       const prezident = prezidentStatusunuLifecycleIleHazirla(
         placement.stateId,
         nowMs,
@@ -198,6 +229,7 @@ module.exports = {
   metnAl,
   worldPlacementAl,
   topologiyaHazirOlmayandaQonsulariHazirla,
+  topologiyadanQonsulariHazirla,
   prezidentStatusunuLifecycleIleHazirla,
   standartStateBerpaOlunub,
   standartStateBerpaEt,
