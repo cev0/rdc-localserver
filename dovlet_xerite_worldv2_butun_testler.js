@@ -28,6 +28,7 @@ async function run() {
   await require('./dovlet_xerite_worldv2_info_production_handler_testi');
   await require('./dovlet_xerite_worldv2_obyekt_production_handler_testi');
   await require('./dovlet_xerite_worldv2_qlobal_production_handler_testi');
+  await require('./dovlet_xerite_worldv2_baxis_production_handler_testi');
   await require('./dovlet_xerite_worldv2_elfecin_handler_testi');
   await require('./dovlet_xerite_worldv2_invalid_direction_testi');
 
