@@ -140,11 +140,26 @@ test('Prezident müdafiə koordinatları server və JSON müqaviləsində eynidi
   assert.strictEqual(contract.intentionallyUnresolved.presidentDefenseCoordinates, false);
 });
 
-test('Border transition contract hazırda yalnız check olduğunu açıq saxlayır', () => {
+test('Border transition production read-only və server entry koordinatlıdır', () => {
   const border = contract.messages[WORLDV2_MESAJ_NOVLERI.SERHED_KECIDI_SORGU];
   assert.strictEqual(
     border.currentBehavior,
-    'authoritative_check_only_no_state_mutation',
+    'production_read_only_authoritative_neighbor_and_entry_coordinate',
+  );
+  assert.deepStrictEqual(
+    border.requestFields,
+    ['viewedStateId', 'direction', 'x', 'y'],
+  );
+  assert.strictEqual(contract.authoritativeRules.borderEntryCoordinateIsServerAuthoritative, true);
+  assert.strictEqual(contract.authoritativeRules.clientMayMutateBorderTransitionLocally, false);
+  assert.strictEqual(contract.intentionallyUnresolved.borderEntryCoordinates, false);
+  assert.strictEqual(
+    contract.productionConnections.state_map_v2_border_transition_request.connected,
+    true,
+  );
+  assert.strictEqual(
+    contract.productionConnections.state_map_v2_border_transition_request.readOnly,
+    true,
   );
 });
 
@@ -186,12 +201,15 @@ test('WorldV2 baza public marker sahələri JSON müqaviləsində runtime payloa
   });
 });
 
-test('Qlobal Dövlət production müqaviləsi layout V1 ilə eynidir', () => {
+test('Qlobal Dövlət production müqaviləsi layout V1 və authoritative topology ilə eynidir', () => {
   const qlobal = contract.messages[WORLDV2_MESAJ_NOVLERI.QLOBAL_DOVLETLER_SORGU];
   const layout = qlobal.result.info.layout;
   const production = contract.productionConnections.global_states_v2_request;
 
-  assert.strictEqual(qlobal.currentBehavior, 'production_lifecycle_and_layout_connected');
+  assert.strictEqual(
+    qlobal.currentBehavior,
+    'production_lifecycle_layout_and_authoritative_topology_connected',
+  );
   assert.strictEqual(layout.layoutVersion, QLOBAL_LAYOUT_VERSION);
   assert.strictEqual(layout.coordinateSpace, QLOBAL_LAYOUT_KOORDINAT_SAHESI);
   assert.strictEqual(layout.backgroundId, QLOBAL_LAYOUT_FON_ID);
