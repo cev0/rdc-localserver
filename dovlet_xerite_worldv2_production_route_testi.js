@@ -33,6 +33,11 @@ function run() {
   assert.ok(routeMetni.includes('worldV2RuntimeTopologiyaXeritesi = runtimeTopologiyaXeritesiniAl()'),
     'WorldV2 runtime topologiyası bir dəfə alınmalı və paylaşılmalıdır.');
 
+  assert.ok(routeMetni.includes('runtimeDovletMetadatasiniAl'),
+    'Production route WorldV2 Dövlət metadata provider-i istifadə etməlidir.');
+  assert.ok(routeMetni.includes('metadataAl: runtimeDovletMetadatasiniAl'),
+    'Global handler explicit runtime metadata provider-i almalıdır.');
+
   const factoryler = [
     'worldV2InfoProductionHandleriYarat',
     'worldV2BaxisProductionHandleriYarat',

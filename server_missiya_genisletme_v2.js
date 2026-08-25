@@ -26,6 +26,7 @@ const { dovletXeriteWorldV2ObyektProductionMesajiniEmalEt } = require("./dovlet_
 const { worldV2BaxisProductionHandleriYarat } = require("./dovlet_xerite_worldv2_baxis_production_handler");
 const { worldV2QlobalProductionHandleriYarat } = require("./dovlet_xerite_worldv2_qlobal_production_handler");
 const { runtimeTopologiyaXeritesiniAl } = require("./dovlet_xerite_worldv2_topologiya_provider");
+const { runtimeDovletMetadatasiniAl } = require("./dovlet_xerite_worldv2_metadata_provider");
 const { dovletXeriteWorldV2ElfecinMesajiniEmalEt } = require("./dovlet_xerite_worldv2_elfecin_handler");
 const { dovletXeriteLayerMesajiniEmalEt } = require("./dovlet_xerite_layer_handler");
 const { pvpBazaReportStatusMesajiniEmalEt } = require("./pvp_baza_report_status_handler");
@@ -42,6 +43,7 @@ const dovletXeriteWorldV2BaxisProductionMesajiniEmalEt = worldV2BaxisProductionH
   topologiyaXeritesi: worldV2RuntimeTopologiyaXeritesi,
 });
 const dovletXeriteWorldV2QlobalProductionMesajiniEmalEt = worldV2QlobalProductionHandleriYarat({
+  metadataAl: runtimeDovletMetadatasiniAl,
   topologiyaXeritesi: worldV2RuntimeTopologiyaXeritesi,
 });
 
