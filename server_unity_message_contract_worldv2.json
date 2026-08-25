@@ -24,6 +24,15 @@
       },
       "note": "Persistent baseX/baseZ sahələri saxlanılır və WorldV2 protocol x/y sahələrinə çevrilir. Final 1200-lük placement migration ayrıca mərhələdir."
     },
+    "state_map_v2_border_transition_request": {
+      "connected": true,
+      "readOnly": true,
+      "topologySource": "dovlet_xerite_worldv2_topologiya",
+      "lifecycleSource": "dovlet_xerite_worldv2_lifecycle_adapteri",
+      "entryCoordinateSource": "dovlet_xerite_worldv2_serhed_production_handler",
+      "persistentPlacementMutated": false,
+      "note": "Yalnız Yaxın LOD push keçidi üçün authoritative qonşu/icazə yoxlaması və qarşı sərhəddə server giriş koordinatı qaytarılır; Ev Dövlət worldPlacement dəyişdirilmir."
+    },
     "global_states_v2_request": {
       "connected": true,
       "stateLifecycleSource": "dovlet_xerite_worldv2_lifecycle_adapteri",
@@ -139,7 +148,10 @@
     "state_map_v2_border_transition_request": {
       "authRequired": true,
       "requestFields": [
-        "direction"
+        "viewedStateId",
+        "direction",
+        "x",
+        "y"
       ],
       "directionEnum": [
         "simal",
@@ -149,13 +161,15 @@
       ],
       "invalidDirectionErrorCode": "WORLDV2_INVALID_DIRECTION",
       "resultType": "state_map_v2_border_transition_result",
-      "currentBehavior": "authoritative_check_only_no_state_mutation",
+      "currentBehavior": "production_read_only_authoritative_neighbor_and_entry_coordinate",
       "result": {
         "success": "boolean",
         "checkedOnly": true,
         "mutatedPlayerState": false,
         "info": {
           "version": 2,
+          "homeStateId": "positive_integer",
+          "viewedStateId": "positive_integer",
           "currentStateId": "positive_integer",
           "direction": "direction_enum",
           "neighborStateId": "positive_integer_or_null",
@@ -165,7 +179,12 @@
           "transitionAllowed": "boolean",
           "neighborOpensAtMs": "integer_or_null",
           "neighborPresidentUnlockAtMs": "integer_or_null",
-          "entryCoordinate": null
+          "readOnlyView": true,
+          "persistentPlacementMutated": false,
+          "entryCoordinate": {
+            "x": "number_0_to_1200_or_null",
+            "y": "number_0_to_1200_or_null"
+          }
         }
       }
     },
@@ -321,6 +340,9 @@
     "WORLDV2_RUNTIME_INVALID",
     "WORLDV2_RUNTIME_STATE_MISMATCH",
     "WORLDV2_INVALID_DIRECTION",
+    "WORLDV2_VIEW_INVALID",
+    "WORLDV2_VIEW_STATE_LOCKED",
+    "WORLDV2_BORDER_TRANSITION_FAILED",
     "WORLDV2_GLOBAL_SEARCH_INVALID",
     "WORLDV2_INTERNAL_ERROR"
   ],
@@ -333,6 +355,7 @@
     "clientMayMutateBorderTransitionLocally": false,
     "invalidBorderDirectionFailsClosed": true,
     "unconfiguredTopologyFailsClosedWithoutInventingStateIds": true,
+    "borderEntryCoordinateIsServerAuthoritative": true,
     "runtimeStateIdMustMatchRequestedStateId": true,
     "runtimeValidationIsFailClosed": true,
     "persistentBaseFieldsStayLegacy": [
@@ -355,13 +378,13 @@
   },
   "intentionallyUnresolved": {
     "realStateTopologyIds": true,
-    "borderEntryCoordinates": true,
+    "borderEntryCoordinates": false,
     "presidentDefenseCoordinates": false,
     "globalMapNodeLayout": false,
     "globalPresidentNameFlagMetadataSource": true,
     "worldV2ResourcePlacement": true,
     "worldV2EnemyPlacement": true,
     "stableAllianceIdForBaseLodFiltering": true,
-    "viewedStateWebSocketNavigation": true
+    "viewedStateWebSocketNavigation": false
   }
 }
