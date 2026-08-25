@@ -23,6 +23,8 @@ const { qosunTelimiMesajiniEmalEt } = require("./qosun_telimi_handler");
 const { dovletXeriteKataloqMesajiniEmalEt } = require("./dovlet_xerite_kataloq_handler");
 const { dovletXeriteWorldV2InfoProductionMesajiniEmalEt } = require("./dovlet_xerite_worldv2_info_production_handler");
 const { dovletXeriteWorldV2ObyektProductionMesajiniEmalEt } = require("./dovlet_xerite_worldv2_obyekt_production_handler");
+const { dovletXeriteWorldV2BaxisProductionMesajiniEmalEt } = require("./dovlet_xerite_worldv2_baxis_production_handler");
+const { dovletXeriteWorldV2QlobalProductionMesajiniEmalEt } = require("./dovlet_xerite_worldv2_qlobal_production_handler");
 const { dovletXeriteWorldV2ElfecinMesajiniEmalEt } = require("./dovlet_xerite_worldv2_elfecin_handler");
 const { dovletXeriteLayerMesajiniEmalEt } = require("./dovlet_xerite_layer_handler");
 const { pvpBazaReportStatusMesajiniEmalEt } = require("./pvp_baza_report_status_handler");
@@ -125,6 +127,8 @@ async function gameplayMesajZenciriniIcraEt(kontekst) {
   if (await dovletXeriteKataloqMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteWorldV2InfoProductionMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteWorldV2ObyektProductionMesajiniEmalEt(kontekst)) return true;
+  if (await dovletXeriteWorldV2BaxisProductionMesajiniEmalEt(kontekst)) return true;
+  if (await dovletXeriteWorldV2QlobalProductionMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteWorldV2ElfecinMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteLayerMesajiniEmalEt(kontekst)) return true;
   if (await pvpShieldMesajiniEmalEt(kontekst)) return true;
