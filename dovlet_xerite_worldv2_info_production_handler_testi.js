@@ -9,6 +9,9 @@ const {
   WORLDV2_INFO_CAVAB,
   worldV2InfoProductionHandleriYarat,
 } = require('./dovlet_xerite_worldv2_info_production_handler');
+const {
+  topologiyaniYoxlaVeHazirla,
+} = require('./dovlet_xerite_worldv2_topologiya');
 
 const TOPOLOGIYA_STATUSU = 'TOPOLOGIYA_MUEYYEN_DEYIL';
 
@@ -80,6 +83,36 @@ async function run() {
     assert.strictEqual(qonsu.kecideIcazeVar, false, 'Topologiya müəyyən deyil statusu fail-closed olmalıdır.');
   }
 
+  // Authoritative topology verildikdə Near info eyni mənbədən real qonşu ID-sini
+  // götürməlidir. Lifecycle həmin Dövlətin açıq/bağlı statusunu ayrıca hesablayır;
+  // test real deployment tarixindən asılı olmamaq üçün statusun konkret dəyərini
+  // yox, topology ID-sinin qorunmasını və fallback statusunun itməsini yoxlayır.
+  const topologiya = topologiyaniYoxlaVeHazirla([
+    { stateId: 1, simal: null, serq: 2, cenub: null, qerb: null },
+    { stateId: 2, simal: null, serq: null, cenub: null, qerb: 1 },
+  ]);
+  const topologiyaCavablari = [];
+  const topologiyaHandler = worldV2InfoProductionHandleriYarat({
+    stateBerpaOlunub: () => true,
+    stateBerpaEt: async () => true,
+    topologiyaXeritesi: topologiya,
+  });
+
+  await topologiyaHandler({
+    ...kontekst,
+    send: (_ws, payload) => topologiyaCavablari.push(payload),
+  });
+
+  assert.strictEqual(topologiyaCavablari.length, 1);
+  assert.strictEqual(topologiyaCavablari[0].success, true);
+  assert.strictEqual(topologiyaCavablari[0].info.neighbors.serq.stateId, 2);
+  assert.notStrictEqual(
+    topologiyaCavablari[0].info.neighbors.serq.status,
+    TOPOLOGIYA_STATUSU,
+    'Authoritative topology veriləndə Near info fallback topology statusunda qalmamalıdır.',
+  );
+  assert.strictEqual(topologiyaCavablari[0].info.neighbors.qerb.stateId, null);
+
   assert.doesNotThrow(() => JSON.parse(cavab.payloadJson));
 
   const unrelated = await handler({
@@ -97,6 +130,12 @@ async function run() {
   assert.strictEqual(authNeticesi, true);
   assert.strictEqual(authCavablari[0].success, false);
   assert.strictEqual(authCavablari[0].errorCode, 'WORLDV2_AUTH_REQUIRED');
+
+  assert.throws(
+    () => worldV2InfoProductionHandleriYarat({ topologiyaXeritesi: {} }),
+    /null və ya Map/,
+    'Info handler yanlış topology dependency-sini fail-fast rədd etməlidir.',
+  );
 
   const routeMetni = fs.readFileSync(
     path.join(__dirname, 'server_missiya_genisletme_v2.js'),
