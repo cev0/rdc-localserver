@@ -39,7 +39,6 @@ assert.strictEqual(
 const unresolved = contract.intentionallyUnresolved || {};
 for (const key of [
   'realStateTopologyIds',
-  'borderEntryCoordinates',
   'globalPresidentNameFlagMetadataSource',
   'worldV2ResourcePlacement',
   'worldV2EnemyPlacement',
@@ -51,6 +50,25 @@ for (const key of [
     `Hazırlıq mərhələsində unresolved qayda false edilməməlidir: ${key}`,
   );
 }
+
+// Sərhəd giriş koordinatı artıq production server qaydasıdır.
+assert.strictEqual(unresolved.borderEntryCoordinates, false);
+assert.strictEqual(
+  contract.productionConnections.state_map_v2_border_transition_request.connected,
+  true,
+);
+assert.strictEqual(
+  contract.productionConnections.state_map_v2_border_transition_request.readOnly,
+  true,
+);
+assert.strictEqual(
+  contract.authoritativeRules.borderEntryCoordinateIsServerAuthoritative,
+  true,
+);
+assert.strictEqual(
+  contract.authoritativeRules.clientMayMutateBorderTransitionLocally,
+  false,
+);
 
 // Qlobal node layout artıq ayrıca server-authoritative V1 kimi həll olunub.
 assert.strictEqual(
@@ -121,6 +139,8 @@ assert.deepStrictEqual(
   'Prezident müdafiə koordinatları təsdiqlənmiş authoritative slotlarla gəlməlidir.',
 );
 
+// Köhnə pure payload helper hələ giriş koordinatı yaratmır. Production handler
+// onu ayrıca topologiya/lifecycle yoxlamasından sonra authoritative doldurur.
 const kecid = serhedKecidiPayloadHazirla({
   currentStateId: 1,
   istiqamet: 'serq',
@@ -133,7 +153,7 @@ const kecid = serhedKecidiPayloadHazirla({
 assert.strictEqual(
   kecid.entryCoordinate,
   null,
-  'Sərhəd giriş koordinatı gameplay qaydası təsdiqlənmədən uydurulmamalıdır.',
+  'Pure payload helper production sərhəd giriş koordinatını özü uydurmamalıdır.',
 );
 
 const obyektMesaji = contract.messages.state_map_v2_objects_request;
