@@ -20,13 +20,33 @@ function run() {
   for (const handlerAdi of telebOlunanHandlerler) {
     assert.ok(
       routeMetni.includes(handlerAdi),
-      `Production gameplay zəncirində ${handlerAdi} import olunmalıdır.`,
+      `Production gameplay zəncirində ${handlerAdi} mövcud olmalıdır.`,
     );
     assert.ok(
       routeMetni.includes(`await ${handlerAdi}(kontekst)`),
       `Production gameplay zəncirində ${handlerAdi} çağırılmalıdır.`,
     );
   }
+
+  assert.ok(routeMetni.includes('runtimeTopologiyaXeritesiniAl'),
+    'Production route vahid WorldV2 runtime topologiya provider-i istifadə etməlidir.');
+  assert.ok(routeMetni.includes('worldV2RuntimeTopologiyaXeritesi = runtimeTopologiyaXeritesiniAl()'),
+    'WorldV2 runtime topologiyası bir dəfə alınmalı və paylaşılmalıdır.');
+
+  const factoryler = [
+    'worldV2InfoProductionHandleriYarat',
+    'worldV2BaxisProductionHandleriYarat',
+    'worldV2QlobalProductionHandleriYarat',
+  ];
+  for (const factoryAdi of factoryler) {
+    assert.ok(routeMetni.includes(factoryAdi), `${factoryAdi} production route-da istifadə olunmalıdır.`);
+  }
+
+  const topologyInjectionCount = (
+    routeMetni.match(/topologiyaXeritesi:\s*worldV2RuntimeTopologiyaXeritesi/g) || []
+  ).length;
+  assert.strictEqual(topologyInjectionCount, 3,
+    'Near, Far/View və Global handler-lərinin üçü də eyni runtime topology Map-i almalıdır.');
 
   const readOnlyMesajlar = [
     'state_map_v2_info_request',
