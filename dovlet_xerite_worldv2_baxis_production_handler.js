@@ -16,6 +16,9 @@ const {
 const {
   dovletTopologiyasiniAl,
 } = require('./dovlet_xerite_worldv2_topologiya');
+const {
+  worldV2SerhedProductionHandleriYarat,
+} = require('./dovlet_xerite_worldv2_serhed_production_handler');
 
 const WORLDV2_BAXIS_SORGU = 'state_map_v2_view_request';
 const WORLDV2_BAXIS_CAVAB = 'state_map_v2_view_result';
@@ -93,7 +96,16 @@ function worldV2BaxisProductionHandleriYarat({
     throw new Error('WorldV2 baxış topologiyaXeritesi null və ya Map olmalıdır.');
   }
 
+  // Sərhəd keçidi də eyni authoritative topologiyanı və lifecycle qaydasını
+  // istifadə edir. Handler read-only eligibility + giriş koordinatı qaytarır.
+  const serhedProductionHandler = worldV2SerhedProductionHandleriYarat({
+    topologiyaXeritesi,
+    dovletAcilibmiFn,
+  });
+
   return async function dovletXeriteWorldV2BaxisProductionMesajiniEmalEt(kontekst) {
+    if (await serhedProductionHandler(kontekst)) return true;
+
     const type = metnAl(kontekst && kontekst.type, 128).toLowerCase();
     const emalOlunur = type === WORLDV2_BAXIS_SORGU ||
       type === WORLDV2_PREZIDENT_FOKUS_SORGU ||
