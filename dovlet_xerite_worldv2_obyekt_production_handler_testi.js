@@ -8,31 +8,38 @@ const {
 async function run() {
   const gonderilenler = [];
   const sabitVaxt = 1770000000000;
+  const oxunanStateIdleri = [];
 
   const handler = worldV2ProductionObyektHandleriYarat({
-    dovletBazalariniAl: async (stateId) => ({
-      stateId,
-      bases: [
-        {
-          playerId: 'oyuncu_1',
-          baseX: 321,
-          baseZ: 856,
-          allianceName: 'Qartal',
-        },
-        {
-          playerId: 'oyuncu_2',
-          baseX: 600,
-          baseZ: 500,
-          allianceName: '',
-        },
-      ],
-    }),
+    dovletBazalariniAl: async (stateId) => {
+      oxunanStateIdleri.push(stateId);
+
+      return {
+        stateId,
+        bases: [
+          {
+            playerId: stateId === 1 ? 'oyuncu_1' : 'oyuncu_2',
+            baseX: stateId === 1 ? 321 : 700,
+            baseZ: stateId === 1 ? 856 : 400,
+            allianceName: stateId === 1 ? 'Qartal' : 'Şimal',
+          },
+          {
+            playerId: stateId === 1 ? 'oyuncu_2' : 'oyuncu_3',
+            baseX: 600,
+            baseZ: 500,
+            allianceName: '',
+          },
+        ],
+      };
+    },
     stateBerpaOlunub: () => true,
     stateBerpaEt: async () => {},
+    dovletAcilibmiFn: (stateId) => stateId <= 2,
   });
 
   const esasKontekst = {
     type: 'state_map_v2_objects_request',
+    msg: {},
     ws: { _authedPlayerId: 'oyuncu_1' },
     nowMs: () => sabitVaxt,
     getOrCreatePlayerState: () => ({
@@ -45,6 +52,7 @@ async function run() {
     send: (_ws, payload) => gonderilenler.push(payload),
   };
 
+  // 1) Köhnə obyekt request geriyə uyğun qalmalıdır və yalnız Ev Dövlətini oxumalıdır.
   const emalOlundu = await handler(esasKontekst);
   assert.strictEqual(emalOlundu, true);
   assert.strictEqual(gonderilenler.length, 1);
@@ -53,6 +61,10 @@ async function run() {
   assert.strictEqual(cavab.type, 'state_map_v2_objects_result');
   assert.strictEqual(cavab.success, true);
   assert.strictEqual(cavab.stateId, 1);
+  assert.strictEqual(cavab.homeStateId, 1);
+  assert.strictEqual(cavab.viewedStateId, 1);
+  assert.strictEqual(cavab.readOnlyView, false);
+  assert.strictEqual(cavab.persistentPlacementMutated, false);
   assert.ok(cavab.info);
   assert.strictEqual(cavab.info.version, 2);
   assert.strictEqual(cavab.info.stateId, 1);
@@ -67,6 +79,68 @@ async function run() {
   assert.strictEqual(cavab.info.layerStatus.basesConnected, true);
   assert.strictEqual(cavab.info.layerStatus.resourcesConnected, false);
   assert.strictEqual(cavab.serverTimeUnixMs, sabitVaxt);
+  assert.deepStrictEqual(oxunanStateIdleri, [1]);
+
+  // 2) Read-only baxış başqa açıq Dövlətin obyektlərini oxumalı,
+  // amma oyunçunun persistent State yerləşməsini dəyişməməlidir.
+  const baxilanCavablar = [];
+  const baxilanNetice = await handler({
+    ...esasKontekst,
+    type: 'state_map_v2_view_objects_request',
+    msg: { viewedStateId: 2 },
+    send: (_ws, payload) => baxilanCavablar.push(payload),
+  });
+
+  assert.strictEqual(baxilanNetice, true);
+  assert.strictEqual(baxilanCavablar.length, 1);
+
+  const baxilanCavab = baxilanCavablar[0];
+  assert.strictEqual(baxilanCavab.type, 'state_map_v2_view_objects_result');
+  assert.strictEqual(baxilanCavab.success, true);
+  assert.strictEqual(baxilanCavab.homeStateId, 1);
+  assert.strictEqual(baxilanCavab.viewedStateId, 2);
+  assert.strictEqual(baxilanCavab.stateId, 2);
+  assert.strictEqual(baxilanCavab.readOnlyView, true);
+  assert.strictEqual(baxilanCavab.persistentPlacementMutated, false);
+  assert.strictEqual(baxilanCavab.info.stateId, 2);
+  assert.strictEqual(baxilanCavab.info.bases[0].x, 700);
+  assert.strictEqual(baxilanCavab.info.bases[0].y, 400);
+  assert.strictEqual(baxilanCavab.info.bases[0].isSelf, false);
+  assert.deepStrictEqual(oxunanStateIdleri, [1, 2]);
+
+  // 3) Bağlı Dövlət read-only feed verməməlidir.
+  const bagliCavablar = [];
+  const bagliNetice = await handler({
+    ...esasKontekst,
+    type: 'state_map_v2_view_objects_request',
+    msg: { viewedStateId: 3 },
+    send: (_ws, payload) => bagliCavablar.push(payload),
+  });
+
+  assert.strictEqual(bagliNetice, true);
+  assert.strictEqual(bagliCavablar.length, 1);
+  assert.strictEqual(bagliCavablar[0].success, false);
+  assert.strictEqual(bagliCavablar[0].errorCode, 'WORLDV2_VIEW_STATE_LOCKED');
+  assert.strictEqual(bagliCavablar[0].homeStateId, 1);
+  assert.strictEqual(bagliCavablar[0].viewedStateId, 3);
+  assert.strictEqual(bagliCavablar[0].readOnlyView, true);
+  assert.strictEqual(bagliCavablar[0].persistentPlacementMutated, false);
+  assert.deepStrictEqual(oxunanStateIdleri, [1, 2]);
+
+  // 4) Etibarsız viewedStateId fail-closed olmalıdır.
+  const etibarsizCavablar = [];
+  const etibarsizNetice = await handler({
+    ...esasKontekst,
+    type: 'state_map_v2_view_objects_request',
+    msg: { viewedStateId: 0 },
+    send: (_ws, payload) => etibarsizCavablar.push(payload),
+  });
+
+  assert.strictEqual(etibarsizNetice, true);
+  assert.strictEqual(etibarsizCavablar.length, 1);
+  assert.strictEqual(etibarsizCavablar[0].success, false);
+  assert.strictEqual(etibarsizCavablar[0].errorCode, 'WORLDV2_VIEW_INVALID');
+  assert.strictEqual(etibarsizCavablar[0].persistentPlacementMutated, false);
 
   const aidiyyetsiz = await handler({
     ...esasKontekst,
@@ -92,6 +166,7 @@ async function run() {
     },
     stateBerpaOlunub: () => true,
     stateBerpaEt: async () => {},
+    dovletAcilibmiFn: () => true,
   });
 
   const dbNetice = await dbXetaHandler({
