@@ -129,7 +129,7 @@ test('Gələcək bağlı Dövlət metadata-da olsa belə Qlobal siyahı və əla
   });
 });
 
-test('Real metadata Prezident adı, ittifaq, Dövlət adı və bayrağı əlavə edir; layout node serverdən qalır', () => {
+test('Real metadata Prezident adı, ittifaq, Dövlət adı, bayraq və stabil Qlobal node-u əlavə edir', () => {
   envIle(RELEASE_ISO, () => {
     const payload = qlobalDovletlerPayloadHazirla({
       nowMs: RELEASE_MS,
@@ -142,7 +142,11 @@ test('Real metadata Prezident adı, ittifaq, Dövlət adı və bayrağı əlavə
         presidentUnlocked: true,
         presidentOccupiedAtMs: RELEASE_MS + 5000,
         flagId: 'bayraq_1',
-        globalNode: { nodeId: 'kohne_node' },
+        globalNode: {
+          nodeId: 'metadata_node_001',
+          normalizedX: 0.321,
+          normalizedY: 0.654,
+        },
       }],
     });
 
@@ -158,6 +162,24 @@ test('Real metadata Prezident adı, ittifaq, Dövlət adı və bayrağı əlavə
     assert.strictEqual(state.presidentUnlocked, true);
     assert.strictEqual(state.presidentOccupiedAtMs, RELEASE_MS + 5000);
     assert.strictEqual(state.flagId, 'bayraq_1');
+    assert.deepStrictEqual(state.globalNode, {
+      nodeId: 'metadata_node_001',
+      normalizedX: 0.321,
+      normalizedY: 0.654,
+    });
+  });
+});
+
+test('Metadata-da Qlobal node yoxdursa built-in stabil layout fallback saxlanılır', () => {
+  envIle(RELEASE_ISO, () => {
+    const payload = qlobalDovletlerPayloadHazirla({
+      nowMs: RELEASE_MS,
+      metadata: [{ stateId: 1, flagId: 'bayraq_1' }],
+    });
+    const state = payload.states[0];
+
+    assert.strictEqual(state.flagId, 'bayraq_1');
+    assert.ok(state.globalNode);
     assert.strictEqual(state.globalNode.nodeId, 'qlobal_v1_node_001');
     assert.ok(Number.isFinite(state.globalNode.normalizedX));
     assert.ok(Number.isFinite(state.globalNode.normalizedY));

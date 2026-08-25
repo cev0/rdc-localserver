@@ -158,7 +158,9 @@ function qlobalDovletlerPayloadHazirla({
       stateOpenedAtMs: plan.stateOpensAtMs,
       presidentUnlockAtMs: plan.presidentUnlockAtMs,
       ...elave,
-      globalNode: layoutNode || elave.globalNode,
+      // Explicit metadata node-u server operatorunun/persistence qatının stabil
+      // vizual yerləşmə qərarıdır. Verilməyibsə əvvəlki built-in layout fallback qalır.
+      globalNode: elave.globalNode || layoutNode,
     };
   });
 
