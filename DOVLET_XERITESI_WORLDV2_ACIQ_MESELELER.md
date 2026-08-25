@@ -15,6 +15,12 @@ Aşağıdakılar artıq server-authoritative qaydadır və yenidən gameplay qə
   - `sag` → `605:596`
   - `sol` → `596:605`
   - `asagi` → `605:605`
+- Yaxın LOD sərhəd keçidi:
+  - yalnız server-authoritative qonşu topologiyası istifadə olunur;
+  - keçid yalnız açıq qonşuya mümkündür;
+  - qarşı Dövlətə giriş nöqtəsi sərhəddən `24` world/server vahidi içəridədir;
+  - sərhədə paralel koordinat qorunur;
+  - keçid read-only baxışdır və Ev Dövlət `worldPlacement` mutasiya edilmir;
 - Qlobal xəritə layout V1:
   - `normalized_0_1` koordinat sahəsi;
   - origin `bottom_left`;
@@ -46,19 +52,20 @@ Test fixture-lərindəki State `1..4` əlaqələri gameplay qaydası deyil.
 
 ## 2. Qonşu Dövlətə keçəndə giriş koordinatı
 
-Təsdiqlənən qayda:
+Bu hissə həll olunub və artıq açıq gameplay məsələsi deyil.
 
-- bağlı qonşuya keçid yoxdur;
-- açıq qonşuya keçid server-authoritative yoxlanır;
-- client keçidi lokal olaraq məcbur edə bilməz.
+Server qaydası:
 
-Hələ müəyyən edilməyib:
-
-- çıxış sərhədindəki koordinatın qonşu xəritədə hansı dəqiq `x/y` nöqtəsinə çevriləcəyi;
-- sərhəddən təhlükəsizlik payı;
-- qarşı sərhəddə paralel ox koordinatının qorunub-qorunmayacağı.
-
-Buna görə `entryCoordinate` hazırda `null` saxlanır və bu dəyər özbaşına doldurulmamalıdır.
+- bağlı və ya mövcud olmayan qonşuya keçid yoxdur;
+- açıq qonşuya keçid server-authoritative topologiya/lifecycle yoxlamasından keçir;
+- client `neighborStateId` və giriş koordinatını özü yarada bilməz;
+- Şimala çıxış → qonşunun Cənub kənarından `y = 1176`;
+- Cənuba çıxış → qonşunun Şimal kənarından `y = 24`;
+- Şərqə çıxış → qonşunun Qərb kənarından `x = 24`;
+- Qərbə çıxış → qonşunun Şərq kənarından `x = 1176`;
+- digər ox üzrə çıxış koordinatı qorunur;
+- `entryCoordinate` yalnız keçidə icazə varsa server tərəfindən qaytarılır;
+- sərhəd keçidi Ev Dövlət `worldPlacement` sahələrini dəyişdirmir.
 
 ---
 
@@ -154,4 +161,4 @@ GitHub Actions workflow-u bu runner-i PR-lərdə işlətmək üçün mövcuddur.
 
 ## Unity inteqrasiyası üçün dəyişməyən server prinsipi
 
-Unity vizualı server coordinate contract-ına uyğunlaşdırılır. Server shared-world vəziyyətinin authoritative mənbəyi olaraq qalır. Client bağlı Dövlət, saxta qlobal node, saxta ittifaq ID-si, sərhəd giriş koordinatı və ya placement balansı icad etməməlidir.
+Unity vizualı server coordinate contract-ına uyğunlaşdırılır. Server shared-world vəziyyətinin authoritative mənbəyi olaraq qalır. Client bağlı Dövlət, saxta qlobal node, saxta ittifaq ID-si və ya placement balansı icad etməməlidir. Sərhəd giriş koordinatı server tərəfindən hesablanır; client onu yalnız təqdimat/naviqasiya üçün istifadə edir.
