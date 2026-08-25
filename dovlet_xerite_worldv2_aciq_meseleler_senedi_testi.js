@@ -30,8 +30,10 @@ assert.ok(sened.includes('`normalized_0_1`'));
 assert.ok(sened.includes('`worldv2_qlobal_fon_v1`'));
 assert.ok(!sened.includes('qlobal node/slot siyahısı;'));
 
-assert.strictEqual(contract.intentionallyUnresolved.borderEntryCoordinates, true);
-assert.ok(sened.includes('`entryCoordinate` hazırda `null`'));
+assert.strictEqual(contract.intentionallyUnresolved.borderEntryCoordinates, false);
+assert.ok(sened.includes('qarşı Dövlətə giriş nöqtəsi sərhəddən `24` world/server vahidi içəridədir'));
+assert.ok(sened.includes('Şimala çıxış → qonşunun Cənub kənarından `y = 1176`'));
+assert.ok(!sened.includes('`entryCoordinate` hazırda `null`'));
 
 assert.strictEqual(contract.intentionallyUnresolved.stableAllianceIdForBaseLodFiltering, true);
 assert.ok(sened.includes('stabil server-authoritative `allianceId` mənbəyi hələ yoxdur'));
@@ -62,8 +64,9 @@ assert.ok(!migrasiyaAuditi.includes('locked State-in Global xəritədə görün�
 
 assert.strictEqual(contract.intentionallyUnresolved.realStateTopologyIds, true);
 assert.ok(migrasiyaAuditi.includes('real State qonşuluq ID-ləri'));
-assert.strictEqual(contract.intentionallyUnresolved.borderEntryCoordinates, true);
-assert.ok(migrasiyaAuditi.includes('`borderEntryCoordinates`'));
+assert.strictEqual(contract.intentionallyUnresolved.borderEntryCoordinates, false);
+assert.ok(migrasiyaAuditi.includes('`borderEntryCoordinates` artıq unresolved deyil'));
+assert.ok(migrasiyaAuditi.includes('Şimal → `y=1176`'));
 assert.strictEqual(contract.intentionallyUnresolved.stableAllianceIdForBaseLodFiltering, true);
 assert.ok(migrasiyaAuditi.includes('`stableAllianceIdForBaseLodFiltering`'));
 assert.strictEqual(contract.intentionallyUnresolved.globalPresidentNameFlagMetadataSource, true);
