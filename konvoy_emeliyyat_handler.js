@@ -1,10 +1,16 @@
 "use strict";
 
+require("./konvoy_emeliyyat_worldv2_override");
+
 const {
   emeliyyatiBaslat,
   emeliyyatlariYenile,
   emeliyyatMelumatiniHazirla
 } = require("./konvoy_emeliyyat_sistemi");
+const {
+  worldV2ResursTargetIdDirmi,
+  worldV2ResursHedefiniAlClient
+} = require("./dovlet_xerite_worldv2_resurs_emeliyyat_sistemi");
 const {
   oyuncuKonvoylariniSinxronEtClient
 } = require("./dovlet_konvoy_runtime_postgres");
@@ -149,7 +155,57 @@ function startPayloadiniAl(msg) {
   return {
     convoyId: metnAl(msg && msg.convoyId, 64),
     targetType: metnAl(msg && msg.targetType, 32),
-    targetId: metnAl(msg && msg.targetId, 128)
+    targetId: metnAl(msg && msg.targetId, 220)
+  };
+}
+
+async function worldV2HedefOverrideAl(state, requestPayload, nowMs, client) {
+  if (!requestPayload ||
+      requestPayload.targetType !== "resource" ||
+      !worldV2ResursTargetIdDirmi(requestPayload.targetId)) {
+    return { success: true, hedefOverride: null };
+  }
+
+  if (!client || typeof client.query !== "function") {
+    return {
+      success: false,
+      errorCode: "WORLDV2_RESOURCE_TRANSACTION_REQUIRED",
+      message: "WorldV2 resurs əməliyyatı üçün server transaction-u yoxdur."
+    };
+  }
+
+  const netice = await worldV2ResursHedefiniAlClient(
+    client,
+    dovletIdAl(state),
+    requestPayload.targetId,
+    nowMs
+  );
+
+  if (!netice || netice.success !== true || !netice.hedef) {
+    return {
+      success: false,
+      errorCode: netice && netice.errorCode
+        ? netice.errorCode
+        : "WORLDV2_RESOURCE_NOT_FOUND",
+      message: netice && netice.message
+        ? netice.message
+        : "WorldV2 resurs hədəfi tapılmadı."
+    };
+  }
+
+  if (netice.hedef.available === false &&
+      netice.hedef.occupiedByPlayerId &&
+      netice.hedef.occupiedByConvoyId) {
+    return {
+      success: false,
+      errorCode: "WORLDV2_RESOURCE_OCCUPIED",
+      message: "Resurs hazırda başqa konvoy tərəfindən tutulub."
+    };
+  }
+
+  return {
+    success: true,
+    hedefOverride: netice.hedef
   };
 }
 
@@ -161,7 +217,12 @@ async function konvoyEmeliyyatMutasiyasiniTetbiqEt(
   nowMs,
   client
 ) {
-  const yenileme = await emeliyyatlariYenile(state, playerId, nowMs);
+  const yenileme = await emeliyyatlariYenile(
+    state,
+    playerId,
+    nowMs,
+    { client }
+  );
   const yenilemeDeyisdi = !!(yenileme && yenileme.changed === true);
 
   if (type === "convoy_operation_info_request") {
@@ -233,11 +294,41 @@ async function konvoyEmeliyyatMutasiyasiniTetbiqEt(
     };
   }
 
-  // `emeliyyatiBaslat()` stateTeminEt() və readiness normalizasiyası ilə
-  // validation zamanı state-ə toxuna bilər. Uğursuz start cəhdi time-based
-  // `emeliyyatlariYenile()` nəticələrini silməməlidir, ona görə backup məhz
-  // yeniləmədən və idempotency yoxlamasından SONRA götürülür.
   const startdanEvvel = stateYedeyiniAl(state);
+
+  const worldV2Hedef = await worldV2HedefOverrideAl(
+    state,
+    requestPayload,
+    nowMs,
+    client
+  );
+
+  if (!worldV2Hedef || worldV2Hedef.success !== true) {
+    stateRollbackEt(state, startdanEvvel);
+
+    if (yenilemeDeyisdi) {
+      await sharedKonvoylariTransactiondaSinxronEt(
+        client,
+        state,
+        playerId,
+        nowMs
+      );
+    }
+
+    return {
+      success: false,
+      deyisdi: yenilemeDeyisdi,
+      requestId,
+      idempotentReplay: false,
+      errorCode: worldV2Hedef && worldV2Hedef.errorCode
+        ? worldV2Hedef.errorCode
+        : undefined,
+      message: worldV2Hedef && worldV2Hedef.message
+        ? worldV2Hedef.message
+        : "WorldV2 resurs hədəfi tapılmadı.",
+      info: emeliyyatMelumatiniHazirla(state, nowMs)
+    };
+  }
 
   const result = emeliyyatiBaslat(
     state,
@@ -245,7 +336,10 @@ async function konvoyEmeliyyatMutasiyasiniTetbiqEt(
     requestPayload.convoyId,
     requestPayload.targetType,
     requestPayload.targetId,
-    nowMs
+    nowMs,
+    worldV2Hedef.hedefOverride
+      ? { hedefOverride: worldV2Hedef.hedefOverride }
+      : null
   );
 
   if (!result || result.success !== true) {
@@ -380,6 +474,9 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
             ? netice.requestId
             : requestIdAl(kontekst.msg && kontekst.msg.requestId),
           idempotentReplay: false,
+          errorCode: netice && netice.errorCode
+            ? netice.errorCode
+            : undefined,
           message: netice && netice.message
             ? netice.message
             : "Konvoy əməliyyatı başlaya bilmədi.",
@@ -433,6 +530,7 @@ module.exports = {
   startPayloadiniAl,
   stateYedeyiniAl,
   stateRollbackEt,
+  worldV2HedefOverrideAl,
   konvoyEmeliyyatMutasiyasiniTetbiqEt,
   konvoyEmeliyyatMesajiniEmalEt
 };
