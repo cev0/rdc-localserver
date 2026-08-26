@@ -9,10 +9,10 @@ const {
 } = require('./xerite_resurs_qaydalari');
 
 const HADISE_NOVU = 'dovlet_worldv2_resurs_runtime_v2';
-const RESURS_SAYI = 120;
-const COL_SON_INDEX = 48;
-const ORTA_SON_INDEX = 92;
-const DAXILI_SON_INDEX = 116;
+const RESURS_SAYI = 600;
+const COL_SON_INDEX = 300;
+const ORTA_SON_INDEX = 490;
+const DAXILI_SON_INDEX = 590;
 const XERITE_MIN = 0;
 const XERITE_MAX = 1200;
 const XERITE_MERKEZI = 600;
@@ -440,8 +440,8 @@ async function worldV2ResurslariniAl(stateId, bases = [], nowMs = Date.now()) {
         continue;
       }
 
-      // 20-lik test dövründən qalan node-lar yeni 120-lik zona bölgüsünə
-      // uyğun deyilsə dərhal authoritative yeni koordinata köçürülür.
+      // Əvvəlki test saylarından qalan node yeni 600-lük zona bölgüsünə
+      // uyğun deyilsə authoritative yeni koordinata köçürülür.
       if (!koordinatZonayaUyğundur(node.x, node.y, zona)) {
         runtime.nodes[descriptor.nodeId] = yeniSpawnQur(
           runtime,
