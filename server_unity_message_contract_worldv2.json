@@ -14,15 +14,29 @@
     },
     "state_map_v2_objects_request": {
       "connected": true,
-      "source": "dovlet_baza_kataloqu_postgres",
+      "source": "dovlet_baza_kataloqu_postgres + dovlet_xerite_worldv2_resurs_provider",
       "layers": {
         "bases": true,
-        "resources": false,
+        "resources": true,
         "enemies": false,
         "camps": false,
         "convoys": false
       },
-      "note": "Persistent baseX/baseZ sahələri saxlanılır və WorldV2 protocol x/y sahələrinə çevrilir. Final 1200-lük placement migration ayrıca mərhələdir."
+      "note": "Bazalar PostgreSQL kataloqundan, dinamik WorldV2 resursları server runtime provider-dən gəlir. Resurs koordinatı, level, tutum, targetId/spawnSerial və respawn server-authoritative-dir."
+    },
+    "state_map_v2_resource_detail_request": {
+      "connected": true,
+      "source": "dovlet_xerite_worldv2_resurs_emeliyyat_sistemi",
+      "readOnly": true,
+      "persistentPlacementMutated": false,
+      "note": "Cari dinamik resurs spawn-ının tutum, level, koordinat, məşğulluq və timer məlumatını authoritative runtime-dan qaytarır; köhnə targetId fail-closed rədd edilir."
+    },
+    "convoy_operation_start_request_worldv2_resource": {
+      "connected": true,
+      "source": "konvoy_emeliyyat_handler + konvoy_emeliyyat_worldv2_override",
+      "transactional": true,
+      "resourceRuntimeSource": "dovlet_xerite_worldv2_resurs_emeliyyat_sistemi",
+      "note": "WorldV2 resurs targetId üçün konvoy dispatch, server reservation, toplama, tutum azalması, tükənmə/respawn və baza mükafatı mövcud konvoy əməliyyat sistemi ilə eyni PostgreSQL player transaction-u daxilində körpülənir."
     },
     "state_map_v2_border_transition_request": {
       "connected": true,
@@ -267,10 +281,10 @@
       "authRequired": true,
       "requestFields": [],
       "resultType": "state_map_v2_objects_result",
-      "currentBehavior": "production_postgres_bases_connected",
-      "productionSource": "dovlet_baza_kataloqu_postgres",
+      "currentBehavior": "production_postgres_bases_and_dynamic_resources_connected",
+      "productionSource": "dovlet_baza_kataloqu_postgres + dovlet_xerite_worldv2_resurs_provider",
       "readFailureErrorCode": "WORLDV2_OBJECTS_READ_FAILED",
-      "resultWhenBaseDependencyConnected": {
+      "resultWhenDependenciesConnected": {
         "success": true,
         "playerId": "string",
         "stateId": "positive_integer",
@@ -294,16 +308,87 @@
               "pvpShieldUntilMs": "non_negative_integer"
             }
           ],
-          "resources": [],
+          "resources": [
+            {
+              "targetType": "resource",
+              "targetId": "stable_spawn_string",
+              "nodeId": "stable_node_string",
+              "stateId": "positive_integer",
+              "index": "positive_integer",
+              "zoneId": "worldv2_resource_zone",
+              "resourceId": "food|water|wood|iron|fuel",
+              "level": "integer_1_to_10",
+              "x": "number_0_to_1200",
+              "y": "number_0_to_1200",
+              "fullAmount": "positive_integer",
+              "remainingAmount": "positive_integer",
+              "gatherSeconds": "non_negative_integer",
+              "available": true,
+              "occupiedByPlayerId": "string_or_empty",
+              "occupiedByConvoyId": "string_or_empty",
+              "occupiedUntilMs": "non_negative_integer",
+              "respawnAtMs": 0,
+              "presidentCenter": "boolean",
+              "spawnSerial": "positive_integer"
+            }
+          ],
           "enemies": [],
           "camps": [],
           "convoys": [],
           "layerStatus": {
             "basesConnected": true,
-            "resourcesConnected": false,
+            "resourcesConnected": true,
             "enemiesConnected": false,
             "campsConnected": false,
             "convoysConnected": false
+          }
+        },
+        "payloadJson": "json_string"
+      }
+    },
+    "state_map_v2_resource_detail_request": {
+      "authRequired": true,
+      "requestFields": [
+        "stateId",
+        "targetId"
+      ],
+      "resultType": "state_map_v2_resource_detail_result",
+      "currentBehavior": "production_authoritative_dynamic_resource_detail",
+      "result": {
+        "success": "boolean",
+        "playerId": "string",
+        "homeStateId": "positive_integer",
+        "stateId": "positive_integer",
+        "targetId": "stable_spawn_string",
+        "info": {
+          "version": 2,
+          "homeStateId": "positive_integer",
+          "stateId": "positive_integer",
+          "readOnlyView": "boolean",
+          "persistentPlacementMutated": false,
+          "resource": {
+            "targetType": "resource",
+            "targetId": "stable_spawn_string",
+            "nodeId": "stable_node_string",
+            "resourceSystem": "worldv2",
+            "stateId": "positive_integer",
+            "index": "positive_integer",
+            "zoneId": "worldv2_resource_zone",
+            "resourceId": "food|water|wood|iron|fuel",
+            "level": "integer_1_to_10",
+            "x": "number_0_to_1200",
+            "y": "number_0_to_1200",
+            "z": "number_0_to_1200",
+            "fullAmount": "positive_integer",
+            "remainingAmount": "positive_integer",
+            "gatherSeconds": "non_negative_integer",
+            "actionDurationMs": "positive_integer",
+            "available": "boolean",
+            "occupiedByPlayerId": "string_or_empty",
+            "occupiedByConvoyId": "string_or_empty",
+            "occupiedUntilMs": "non_negative_integer",
+            "respawnAtMs": "non_negative_integer",
+            "spawnSerial": "positive_integer"
           }
         },
         "payloadJson": "json_string"
@@ -329,6 +414,12 @@
     "QONSU_BAGLIDIR",
     "QONSU_ACILIB_KECID_BAGLIDIR"
   ],
+  "worldv2_resource_zone": [
+    "outer",
+    "middle",
+    "inner_green",
+    "president_center"
+  ],
   "errorCodes": [
     "WORLDV2_AUTH_REQUIRED",
     "WORLDV2_STATE_MISSING",
@@ -344,6 +435,17 @@
     "WORLDV2_VIEW_STATE_LOCKED",
     "WORLDV2_BORDER_TRANSITION_FAILED",
     "WORLDV2_GLOBAL_SEARCH_INVALID",
+    "WORLDV2_RESOURCE_DETAIL_INVALID",
+    "WORLDV2_RESOURCE_DETAIL_FAILED",
+    "WORLDV2_RESOURCE_TARGET_INVALID",
+    "WORLDV2_RESOURCE_STALE_TARGET",
+    "WORLDV2_RESOURCE_DEPLETED",
+    "WORLDV2_RESOURCE_OCCUPIED",
+    "WORLDV2_RESOURCE_NOT_OWNED",
+    "WORLDV2_RESOURCE_RESERVE_INVALID",
+    "WORLDV2_RESOURCE_GATHER_INVALID",
+    "WORLDV2_RESOURCE_NOT_FOUND",
+    "WORLDV2_RESOURCE_TRANSACTION_REQUIRED",
     "WORLDV2_INTERNAL_ERROR"
   ],
   "authoritativeRules": {
@@ -374,7 +476,13 @@
     "globalTopologyFallbackKeepsLegacyLayoutCompatibility": true,
     "globalConnectionRequiresBothStatesOpened": true,
     "globalClientMayInventLockedStatesOrNodes": false,
-    "globalSearchIsReadOnly": true
+    "globalSearchIsReadOnly": true,
+    "resourceCoordinatesAreServerAuthoritative": true,
+    "resourceTargetIdChangesOnRespawn": true,
+    "resourceDepletionRemovesNodeFromObjectFeed": true,
+    "resourceRespawnChoosesNewServerCoordinate": true,
+    "resourceReservationAndGatherAreTransactional": true,
+    "resourceClientMayNotChooseCoordinatesOrRemainingAmount": true
   },
   "intentionallyUnresolved": {
     "realStateTopologyIds": true,
@@ -382,9 +490,10 @@
     "presidentDefenseCoordinates": false,
     "globalMapNodeLayout": false,
     "globalPresidentNameFlagMetadataSource": true,
-    "worldV2ResourcePlacement": true,
+    "worldV2ResourcePlacement": false,
     "worldV2EnemyPlacement": true,
     "stableAllianceIdForBaseLodFiltering": true,
-    "viewedStateWebSocketNavigation": false
+    "viewedStateWebSocketNavigation": false,
+    "worldV2ResourceConvoyCargoCapacity": true
   }
 }
