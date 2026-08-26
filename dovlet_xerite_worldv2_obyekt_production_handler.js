@@ -15,7 +15,6 @@ const {
 const WORLDV2_OBYEKT_SORGU = "state_map_v2_objects_request";
 const WORLDV2_OBYEKT_CAVAB = "state_map_v2_objects_result";
 
-// YENİ: başqa Dövlətə read-only baxış zamanı həmin Dövlətin obyekt feed-i.
 const WORLDV2_BAXILAN_OBYEKT_SORGU = "state_map_v2_view_objects_request";
 const WORLDV2_BAXILAN_OBYEKT_CAVAB = "state_map_v2_view_objects_result";
 
@@ -65,12 +64,19 @@ function baxilanStateIdAl(kontekst) {
 }
 
 async function standartDovletBazalariniAl(stateId, nowMs) {
-  // PostgreSQL modulu yalnız həqiqi production sorğusu gələndə yüklənir.
   const {
     dovletBazalariniAl,
   } = require("./dovlet_baza_kataloqu_postgres");
 
   return await dovletBazalariniAl(stateId, nowMs);
+}
+
+async function standartDovletResurslariniAl(stateId, bases, nowMs) {
+  const {
+    worldV2ResurslariniAl,
+  } = require("./dovlet_xerite_worldv2_resurs_provider");
+
+  return await worldV2ResurslariniAl(stateId, bases, nowMs);
 }
 
 function standartStateBerpaOlunub(playerId) {
@@ -91,6 +97,7 @@ async function standartStateBerpaEt(kontekst, playerId) {
 
 function worldV2ProductionObyektHandleriYarat({
   dovletBazalariniAl = standartDovletBazalariniAl,
+  dovletResurslariniAl = standartDovletResurslariniAl,
   stateBerpaOlunub = standartStateBerpaOlunub,
   stateBerpaEt = standartStateBerpaEt,
   dovletAcilibmiFn = dovletAcilibmi,
@@ -98,6 +105,12 @@ function worldV2ProductionObyektHandleriYarat({
   if (typeof dovletBazalariniAl !== "function") {
     throw new Error(
       "WorldV2 production handler üçün dovletBazalariniAl tələb olunur.",
+    );
+  }
+
+  if (typeof dovletResurslariniAl !== "function") {
+    throw new Error(
+      "WorldV2 production handler üçün dovletResurslariniAl tələb olunur.",
     );
   }
 
@@ -110,7 +123,6 @@ function worldV2ProductionObyektHandleriYarat({
   return async function dovletXeriteWorldV2ObyektProductionMesajiniEmalEt(
     kontekst,
   ) {
-    // Qlobal Dövlət siyahısı da eyni WorldV2 production routing nöqtəsindən keçir.
     if (
       await dovletXeriteWorldV2QlobalProductionMesajiniEmalEt(kontekst)
     ) {
@@ -173,7 +185,6 @@ function worldV2ProductionObyektHandleriYarat({
       const state =
         kontekst.getOrCreatePlayerState(playerId);
 
-      // Persistent authoritative Ev Dövlət.
       const homeStateId = stateIdAl(state);
 
       if (homeStateId <= 0) {
@@ -192,8 +203,6 @@ function worldV2ProductionObyektHandleriYarat({
           ? kontekst.nowMs()
           : Date.now();
 
-      // Normal obyekt request əvvəlki kimi yalnız Ev Dövlət üçündür.
-      // Read-only request isə serverin təsdiqlədiyi başqa Dövlət üçün ola bilər.
       let viewedStateId = homeStateId;
 
       if (baxilanObyektSorqusudur) {
@@ -213,8 +222,6 @@ function worldV2ProductionObyektHandleriYarat({
           return true;
         }
 
-        // Öz Dövlət həmişə oxuna bilər.
-        // Başqa Dövlət isə yalnız lifecycle-a görə açıqdırsa oxunur.
         if (
           viewedStateId !== homeStateId &&
           !dovletAcilibmiFn(viewedStateId, nowMs)
@@ -246,29 +253,35 @@ function worldV2ProductionObyektHandleriYarat({
           ? kataloqNeticesi.bases
           : [];
 
+      const resursNeticesi =
+        await dovletResurslariniAl(
+          viewedStateId,
+          bazalar,
+          nowMs,
+        );
+
+      const resurslar =
+        resursNeticesi &&
+        Array.isArray(resursNeticesi.resources)
+          ? resursNeticesi.resources
+          : [];
+
       const info = worldV2ObyektPayloadHazirla({
         stateId: viewedStateId,
         requestingPlayerId: playerId,
         bases: bazalar,
+        resources: resurslar,
         serverTimeUnixMs: nowMs,
       });
 
       gonder(kontekst, cavabType, {
         success: true,
         playerId,
-
-        // Persistent yerləşmə.
         homeStateId,
-
-        // Hazırda render üçün oxunan Dövlət.
         viewedStateId,
-
-        // Köhnə client üçün stateId saxlanılır.
         stateId: viewedStateId,
-
         readOnlyView: baxilanObyektSorqusudur,
         persistentPlacementMutated: false,
-
         info,
         payloadJson: JSON.stringify(info),
       });
@@ -284,7 +297,7 @@ function worldV2ProductionObyektHandleriYarat({
         playerId,
         errorCode: "WORLDV2_OBJECTS_READ_FAILED",
         message:
-          "WorldV2 baza layer-i serverdən alına bilmədi.",
+          "WorldV2 obyekt layer-i serverdən alına bilmədi.",
         readOnlyView: baxilanObyektSorqusudur,
         persistentPlacementMutated: false,
       });
@@ -300,18 +313,15 @@ const dovletXeriteWorldV2ObyektProductionMesajiniEmalEt =
 module.exports = {
   WORLDV2_OBYEKT_SORGU,
   WORLDV2_OBYEKT_CAVAB,
-
   WORLDV2_BAXILAN_OBYEKT_SORGU,
   WORLDV2_BAXILAN_OBYEKT_CAVAB,
-
   metnAl,
   stateIdAl,
   baxilanStateIdAl,
-
   standartDovletBazalariniAl,
+  standartDovletResurslariniAl,
   standartStateBerpaOlunub,
   standartStateBerpaEt,
-
   worldV2ProductionObyektHandleriYarat,
   dovletXeriteWorldV2ObyektProductionMesajiniEmalEt,
 };
