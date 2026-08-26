@@ -6,7 +6,6 @@ const {
 
 const {
   HADISE_NOVU,
-  RESURS_SAYI,
   worldV2ResursDescriptoruAl,
 } = require('./dovlet_xerite_worldv2_resurs_provider');
 
@@ -54,7 +53,8 @@ function worldV2ResursTargetiniParcala(targetId) {
   const index = tamEdedAl(match[2]);
   const spawnSerial = tamEdedAl(match[3]);
 
-  if (stateId <= 0 || index <= 0 || index > RESURS_SAYI || spawnSerial <= 0) {
+  // 600-lük köhnə hard-cap çıxarılıb. İstənilən müsbət indeks qəbul olunur.
+  if (stateId <= 0 || index <= 0 || spawnSerial <= 0) {
     return null;
   }
 
@@ -69,7 +69,7 @@ function worldV2ResursTargetiniParcala(targetId) {
 
 function bosRuntime(stateId) {
   return {
-    version: 2,
+    version: 3,
     stateId: sidAl(stateId),
     nodes: {},
   };
@@ -82,7 +82,7 @@ function runtimeNeticesiniHazirla(stateId, netice) {
     ? kopyala(detallar.runtime)
     : bosRuntime(sid);
 
-  runtime.version = 2;
+  runtime.version = 3;
   runtime.stateId = sid;
   if (!runtime.nodes || typeof runtime.nodes !== 'object' || Array.isArray(runtime.nodes)) {
     runtime.nodes = {};
@@ -118,7 +118,7 @@ async function runtimeYazClient(client, stateId, runtime) {
   await client.query(
     `INSERT INTO hesab_audit_jurnali (hesab_id, oyuncu_id, hadise_novu, detallar)
      VALUES (NULL, $1, $2, $3::jsonb)`,
-    [acar, HADISE_NOVU, JSON.stringify({ version: 2, runtime: kopyala(runtime) })],
+    [acar, HADISE_NOVU, JSON.stringify({ version: 3, runtime: kopyala(runtime) })],
   );
 
   await client.query(
@@ -172,7 +172,7 @@ async function ozTransactionIleIcraEt(stateId, emeliyyat) {
   }
 }
 
-function nodeCariSpawnIleUyğundur(node, parcalanmis) {
+function nodeCariSpawnIleUygundur(node, parcalanmis) {
   if (!node || typeof node !== 'object' || Array.isArray(node) || !parcalanmis) {
     return false;
   }
@@ -244,7 +244,7 @@ async function worldV2ResursHedefiniAlClient(client, stateId, targetId, nowMs = 
     const descriptor = worldV2ResursDescriptoruAl(sid, parcalanmis.index);
     const node = runtime.nodes && runtime.nodes[parcalanmis.nodeId];
 
-    if (!nodeCariSpawnIleUyğundur(node, parcalanmis)) {
+    if (!nodeCariSpawnIleUygundur(node, parcalanmis)) {
       return { deyisdi: false, success: false, errorCode: 'WORLDV2_RESOURCE_STALE_TARGET', message: 'Resurs artıq dəyişib və ya yeni koordinatda yaranıb.' };
     }
 
@@ -269,7 +269,7 @@ async function worldV2ResursHedefiniAl(stateId, targetId, nowMs = Date.now()) {
 
     const descriptor = worldV2ResursDescriptoruAl(sid, parcalanmis.index);
     const node = runtime.nodes && runtime.nodes[parcalanmis.nodeId];
-    if (!nodeCariSpawnIleUyğundur(node, parcalanmis)) {
+    if (!nodeCariSpawnIleUygundur(node, parcalanmis)) {
       return { deyisdi: false, success: false, errorCode: 'WORLDV2_RESOURCE_STALE_TARGET', message: 'Resurs artıq dəyişib və ya yeni koordinatda yaranıb.' };
     }
 
@@ -280,6 +280,53 @@ async function worldV2ResursHedefiniAl(stateId, targetId, nowMs = Date.now()) {
 
     return { deyisdi: false, success: true, hedef };
   });
+}
+
+async function worldV2ResursDaxilOlmaVeziyyetiniAlClient(client, {
+  stateId,
+  targetId,
+  playerId,
+  convoyId,
+  nowMs = Date.now(),
+}) {
+  const netice = await worldV2ResursHedefiniAlClient(client, stateId, targetId, nowMs);
+  if (!netice || netice.success !== true || !netice.hedef) return netice;
+
+  const oyuncuId = metnAl(playerId, 128);
+  const konvoyId = metnAl(convoyId, 64);
+  const hedef = netice.hedef;
+
+  if (!hedef.occupiedByPlayerId || !hedef.occupiedByConvoyId) {
+    return {
+      success: true,
+      veziyyet: 'bos',
+      hedef,
+    };
+  }
+
+  if (hedef.occupiedByPlayerId === oyuncuId && hedef.occupiedByConvoyId === konvoyId) {
+    return {
+      success: true,
+      veziyyet: 'oz_konvoyu',
+      hedef,
+    };
+  }
+
+  if (hedef.occupiedByPlayerId === oyuncuId) {
+    return {
+      success: true,
+      veziyyet: 'oz_diger_konvoyu',
+      hedef,
+    };
+  }
+
+  return {
+    success: true,
+    veziyyet: 'basqa_oyuncu',
+    hedef,
+    defenderPlayerId: hedef.occupiedByPlayerId,
+    defenderConvoyId: hedef.occupiedByConvoyId,
+  };
 }
 
 async function worldV2ResursuRezervEtClient(client, {
@@ -305,7 +352,7 @@ async function worldV2ResursuRezervEtClient(client, {
     const descriptor = worldV2ResursDescriptoruAl(sid, parcalanmis.index);
     const node = runtime.nodes && runtime.nodes[parcalanmis.nodeId];
 
-    if (!nodeCariSpawnIleUyğundur(node, parcalanmis)) {
+    if (!nodeCariSpawnIleUygundur(node, parcalanmis)) {
       return { deyisdi: false, success: false, errorCode: 'WORLDV2_RESOURCE_STALE_TARGET', message: 'Resurs artıq yeni spawn-a keçib.' };
     }
 
@@ -320,7 +367,15 @@ async function worldV2ResursuRezervEtClient(client, {
     const mesgulluq = effektivMesgulluq(node, indi);
     if (mesgulluq.aktivdir &&
         (mesgulluq.occupiedByPlayerId !== oyuncuId || mesgulluq.occupiedByConvoyId !== konvoyId)) {
-      return { deyisdi: false, success: false, errorCode: 'WORLDV2_RESOURCE_OCCUPIED', message: 'Resurs başqa konvoy tərəfindən tutulub.' };
+      return {
+        deyisdi: false,
+        success: false,
+        errorCode: 'WORLDV2_RESOURCE_OCCUPIED',
+        message: 'Resurs başqa konvoy tərəfindən tutulub.',
+        occupiedByPlayerId: mesgulluq.occupiedByPlayerId,
+        occupiedByConvoyId: mesgulluq.occupiedByConvoyId,
+        occupiedUntilMs: mesgulluq.occupiedUntilMs,
+      };
     }
 
     node.occupiedByPlayerId = oyuncuId;
@@ -332,6 +387,76 @@ async function worldV2ResursuRezervEtClient(client, {
       success: true,
       targetId: parcalanmis.targetId,
       remainingAmount,
+      occupiedUntilMs: bitir,
+    };
+  });
+}
+
+/**
+ * Yalnız server-side resource PvP settlement üçün istifadə olunur.
+ * Cari owner əvvəlcədən gözlənilən defender ilə uyğun gəlmirsə transfer fail-closed olur.
+ */
+async function worldV2ResursSahibliyiniKocurClient(client, {
+  stateId,
+  targetId,
+  gozlenilenDefenderPlayerId,
+  gozlenilenDefenderConvoyId,
+  yeniPlayerId,
+  yeniConvoyId,
+  occupiedUntilMs,
+  nowMs = Date.now(),
+}) {
+  const sid = sidAl(stateId);
+  const parcalanmis = worldV2ResursTargetiniParcala(targetId);
+  const defenderPlayerId = metnAl(gozlenilenDefenderPlayerId, 128);
+  const defenderConvoyId = metnAl(gozlenilenDefenderConvoyId, 64);
+  const playerId = metnAl(yeniPlayerId, 128);
+  const convoyId = metnAl(yeniConvoyId, 64);
+  const indi = menfiOlmayanTamEdedAl(nowMs, Date.now());
+  const bitir = Math.max(indi + 1, menfiOlmayanTamEdedAl(occupiedUntilMs, indi + 1));
+
+  if (!parcalanmis || parcalanmis.stateId !== sid || !defenderPlayerId || !defenderConvoyId || !playerId || !convoyId) {
+    return { success: false, errorCode: 'WORLDV2_RESOURCE_TRANSFER_INVALID', message: 'Resurs sahibliyi transfer məlumatı natamamdır.' };
+  }
+
+  return runtimeEmeliyyatiClient(client, sid, async runtime => {
+    const descriptor = worldV2ResursDescriptoruAl(sid, parcalanmis.index);
+    const node = runtime.nodes && runtime.nodes[parcalanmis.nodeId];
+    if (!nodeCariSpawnIleUygundur(node, parcalanmis)) {
+      return { deyisdi: false, success: false, errorCode: 'WORLDV2_RESOURCE_STALE_TARGET', message: 'Resurs artıq yeni spawn-a keçib.' };
+    }
+
+    const remainingAmount = Math.min(
+      menfiOlmayanTamEdedAl(node.remainingAmount, descriptor.fullAmount),
+      descriptor.fullAmount,
+    );
+    if (remainingAmount <= 0 || menfiOlmayanTamEdedAl(node.respawnAtMs) > 0) {
+      return { deyisdi: false, success: false, errorCode: 'WORLDV2_RESOURCE_DEPLETED', message: 'Resurs artıq tükənib.' };
+    }
+
+    const mesgulluq = effektivMesgulluq(node, indi);
+    if (!mesgulluq.aktivdir ||
+        mesgulluq.occupiedByPlayerId !== defenderPlayerId ||
+        mesgulluq.occupiedByConvoyId !== defenderConvoyId) {
+      return {
+        deyisdi: false,
+        success: false,
+        errorCode: 'WORLDV2_RESOURCE_OWNER_CHANGED',
+        message: 'Resursun cari işğalçısı artıq dəyişib.',
+      };
+    }
+
+    node.occupiedByPlayerId = playerId;
+    node.occupiedByConvoyId = convoyId;
+    node.occupiedUntilMs = bitir;
+
+    return {
+      deyisdi: true,
+      success: true,
+      targetId: parcalanmis.targetId,
+      remainingAmount,
+      occupiedByPlayerId: playerId,
+      occupiedByConvoyId: convoyId,
       occupiedUntilMs: bitir,
     };
   });
@@ -355,7 +480,7 @@ async function worldV2ResursRezerviniBuraxClient(client, {
 
   return runtimeEmeliyyatiClient(client, sid, async runtime => {
     const node = runtime.nodes && runtime.nodes[parcalanmis.nodeId];
-    if (!nodeCariSpawnIleUyğundur(node, parcalanmis)) {
+    if (!nodeCariSpawnIleUygundur(node, parcalanmis)) {
       return { deyisdi: false, success: true, released: false };
     }
 
@@ -402,7 +527,7 @@ async function worldV2ResursToplamaniBitirClient(client, {
     const descriptor = worldV2ResursDescriptoruAl(sid, parcalanmis.index);
     const node = runtime.nodes && runtime.nodes[parcalanmis.nodeId];
 
-    if (!nodeCariSpawnIleUyğundur(node, parcalanmis)) {
+    if (!nodeCariSpawnIleUygundur(node, parcalanmis)) {
       return { deyisdi: false, success: false, errorCode: 'WORLDV2_RESOURCE_STALE_TARGET', message: 'Resurs artıq yeni spawn-a keçib.' };
     }
 
@@ -458,9 +583,12 @@ module.exports = {
   worldV2ResursTargetIdDirmi,
   worldV2ResursTargetiniParcala,
   runtimeEmeliyyatiClient,
+  effektivMesgulluq,
   worldV2ResursHedefiniAlClient,
   worldV2ResursHedefiniAl,
+  worldV2ResursDaxilOlmaVeziyyetiniAlClient,
   worldV2ResursuRezervEtClient,
+  worldV2ResursSahibliyiniKocurClient,
   worldV2ResursRezerviniBuraxClient,
   worldV2ResursToplamaniBitirClient,
 };
