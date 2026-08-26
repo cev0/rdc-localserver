@@ -37,11 +37,12 @@ function mesafeKvadrati(a, b) {
     assert.ok(['food', 'water', 'wood', 'iron', 'fuel'].includes(d.resourceId));
   }
 
+  assert.strictEqual(RESURS_SAYI, 120);
   assert.deepStrictEqual(saylar, {
-    outer: 8,
-    middle: 6,
-    inner_green: 4,
-    president_center: 2,
+    outer: 48,
+    middle: 44,
+    inner_green: 24,
+    president_center: 4,
   });
 })();
 
