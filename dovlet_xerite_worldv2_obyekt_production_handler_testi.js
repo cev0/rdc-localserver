@@ -9,6 +9,7 @@ async function run() {
   const gonderilenler = [];
   const sabitVaxt = 1770000000000;
   const oxunanStateIdleri = [];
+  const oxunanResursStateIdleri = [];
 
   const handler = worldV2ProductionObyektHandleriYarat({
     dovletBazalariniAl: async (stateId) => {
@@ -28,6 +29,37 @@ async function run() {
             baseX: 600,
             baseZ: 500,
             allianceName: '',
+          },
+        ],
+      };
+    },
+    dovletResurslariniAl: async (stateId, bases) => {
+      oxunanResursStateIdleri.push(stateId);
+      assert.ok(Array.isArray(bases));
+      return {
+        stateId,
+        resources: [
+          {
+            targetType: 'resource',
+            targetId: `state_${stateId}_worldv2_resource_1_spawn_1`,
+            nodeId: `state_${stateId}_worldv2_resource_1`,
+            stateId,
+            index: 1,
+            zoneId: 'outer',
+            resourceId: 'food',
+            level: 3,
+            x: stateId === 1 ? 1100 : 100,
+            y: stateId === 1 ? 600 : 700,
+            fullAmount: 30000,
+            remainingAmount: 30000,
+            gatherSeconds: 1200,
+            available: true,
+            occupiedByPlayerId: '',
+            occupiedByConvoyId: '',
+            occupiedUntilMs: 0,
+            respawnAtMs: 0,
+            presidentCenter: false,
+            spawnSerial: 1,
           },
         ],
       };
@@ -52,7 +84,6 @@ async function run() {
     send: (_ws, payload) => gonderilenler.push(payload),
   };
 
-  // 1) Köhnə obyekt request geriyə uyğun qalmalıdır və yalnız Ev Dövlətini oxumalıdır.
   const emalOlundu = await handler(esasKontekst);
   assert.strictEqual(emalOlundu, true);
   assert.strictEqual(gonderilenler.length, 1);
@@ -77,12 +108,14 @@ async function run() {
   assert.strictEqual(cavab.info.bases[0].allianceName, 'Qartal');
   assert.strictEqual(cavab.info.bases[1].isSelf, false);
   assert.strictEqual(cavab.info.layerStatus.basesConnected, true);
-  assert.strictEqual(cavab.info.layerStatus.resourcesConnected, false);
+  assert.strictEqual(cavab.info.layerStatus.resourcesConnected, true);
+  assert.strictEqual(cavab.info.resources.length, 1);
+  assert.strictEqual(cavab.info.resources[0].resourceId, 'food');
+  assert.strictEqual(cavab.info.resources[0].remainingAmount, 30000);
   assert.strictEqual(cavab.serverTimeUnixMs, sabitVaxt);
   assert.deepStrictEqual(oxunanStateIdleri, [1]);
+  assert.deepStrictEqual(oxunanResursStateIdleri, [1]);
 
-  // 2) Read-only baxış başqa açıq Dövlətin obyektlərini oxumalı,
-  // amma oyunçunun persistent State yerləşməsini dəyişməməlidir.
   const baxilanCavablar = [];
   const baxilanNetice = await handler({
     ...esasKontekst,
@@ -106,9 +139,11 @@ async function run() {
   assert.strictEqual(baxilanCavab.info.bases[0].x, 700);
   assert.strictEqual(baxilanCavab.info.bases[0].y, 400);
   assert.strictEqual(baxilanCavab.info.bases[0].isSelf, false);
+  assert.strictEqual(baxilanCavab.info.resources.length, 1);
+  assert.strictEqual(baxilanCavab.info.resources[0].stateId, 2);
   assert.deepStrictEqual(oxunanStateIdleri, [1, 2]);
+  assert.deepStrictEqual(oxunanResursStateIdleri, [1, 2]);
 
-  // 3) Bağlı Dövlət read-only feed verməməlidir.
   const bagliCavablar = [];
   const bagliNetice = await handler({
     ...esasKontekst,
@@ -126,8 +161,8 @@ async function run() {
   assert.strictEqual(bagliCavablar[0].readOnlyView, true);
   assert.strictEqual(bagliCavablar[0].persistentPlacementMutated, false);
   assert.deepStrictEqual(oxunanStateIdleri, [1, 2]);
+  assert.deepStrictEqual(oxunanResursStateIdleri, [1, 2]);
 
-  // 4) Etibarsız viewedStateId fail-closed olmalıdır.
   const etibarsizCavablar = [];
   const etibarsizNetice = await handler({
     ...esasKontekst,
@@ -164,6 +199,7 @@ async function run() {
     dovletBazalariniAl: async () => {
       throw new Error('DB test xətası');
     },
+    dovletResurslariniAl: async () => ({ resources: [] }),
     stateBerpaOlunub: () => true,
     stateBerpaEt: async () => {},
     dovletAcilibmiFn: () => true,
