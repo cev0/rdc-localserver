@@ -23,6 +23,7 @@ const { qosunTelimiMesajiniEmalEt } = require("./qosun_telimi_handler");
 const { dovletXeriteKataloqMesajiniEmalEt } = require("./dovlet_xerite_kataloq_handler");
 const { worldV2InfoProductionHandleriYarat } = require("./dovlet_xerite_worldv2_info_production_handler");
 const { dovletXeriteWorldV2ObyektProductionMesajiniEmalEt } = require("./dovlet_xerite_worldv2_obyekt_production_handler");
+const { dovletXeriteWorldV2ResursMesajiniEmalEt } = require("./dovlet_xerite_worldv2_resurs_handler");
 const { worldV2BaxisProductionHandleriYarat } = require("./dovlet_xerite_worldv2_baxis_production_handler");
 const { worldV2QlobalProductionHandleriYarat } = require("./dovlet_xerite_worldv2_qlobal_production_handler");
 const { runtimeTopologiyaXeritesiniAl } = require("./dovlet_xerite_worldv2_topologiya_provider");
@@ -32,9 +33,6 @@ const { dovletXeriteLayerMesajiniEmalEt } = require("./dovlet_xerite_layer_handl
 const { pvpBazaReportStatusMesajiniEmalEt } = require("./pvp_baza_report_status_handler");
 const { pvpShieldMesajiniEmalEt } = require("./pvp_shield_handler");
 
-// Near info, Far/foreign baxış və Global Dövlətlər xəritəsi eyni Map obyektini
-// paylaşır. Real topologiya konfiqi verilməyibsə null qalır və handler-lərin
-// əvvəlki fail-closed/fallback davranışı dəyişmir.
 const worldV2RuntimeTopologiyaXeritesi = runtimeTopologiyaXeritesiniAl();
 const dovletXeriteWorldV2InfoProductionMesajiniEmalEt = worldV2InfoProductionHandleriYarat({
   topologiyaXeritesi: worldV2RuntimeTopologiyaXeritesi,
@@ -127,8 +125,6 @@ function metnAl(v, max = 128) {
 }
 
 async function gameplayMesajZenciriniIcraEt(kontekst) {
-  // Qonaq auth bütün gameplay handler-lərindən əvvəl işləyir.
-  // Bağlı hesab playerId-si ilə guest giriş cəhdi burada bloklanır.
   if (await qonaqAuthMesajiniEmalEt(kontekst)) return true;
 
   if (await mesajlasmaMesajiniEmalEt(kontekst)) return true;
@@ -144,6 +140,7 @@ async function gameplayMesajZenciriniIcraEt(kontekst) {
   if (await dovletXeriteKataloqMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteWorldV2InfoProductionMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteWorldV2ObyektProductionMesajiniEmalEt(kontekst)) return true;
+  if (await dovletXeriteWorldV2ResursMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteWorldV2BaxisProductionMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteWorldV2QlobalProductionMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteWorldV2ElfecinMesajiniEmalEt(kontekst)) return true;
