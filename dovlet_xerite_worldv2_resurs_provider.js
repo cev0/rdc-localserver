@@ -1,7 +1,6 @@
 'use strict';
 
 const {
-  sorguEt,
   proqramHovuzunuAl,
 } = require('./verilenler_bazasi');
 
@@ -10,7 +9,10 @@ const {
 } = require('./xerite_resurs_qaydalari');
 
 const HADISE_NOVU = 'dovlet_worldv2_resurs_runtime_v2';
-const RESURS_SAYI = 20;
+const RESURS_SAYI = 120;
+const COL_SON_INDEX = 48;
+const ORTA_SON_INDEX = 92;
+const DAXILI_SON_INDEX = 116;
 const XERITE_MIN = 0;
 const XERITE_MAX = 1200;
 const XERITE_MERKEZI = 600;
@@ -77,29 +79,29 @@ function merkezeKvadratMesafe(x, y) {
 function zonaTesviriAl(index) {
   const i = Math.max(1, Math.min(RESURS_SAYI, tamEdedAl(index, 1)));
 
-  if (i <= 8) {
+  if (i <= COL_SON_INDEX) {
     return {
       zoneId: 'outer',
       minimumMerkezMesafesi: 445,
       maksimumMerkezMesafesi: 576,
       minimumLevel: 3,
-      maksimumLevel: 5,
+      maksimumLevel: 6,
       presidentCenter: false,
     };
   }
 
-  if (i <= 14) {
+  if (i <= ORTA_SON_INDEX) {
     return {
       zoneId: 'middle',
       minimumMerkezMesafesi: 270,
       maksimumMerkezMesafesi: 445,
       minimumLevel: 5,
-      maksimumLevel: 7,
+      maksimumLevel: 8,
       presidentCenter: false,
     };
   }
 
-  if (i <= 18) {
+  if (i <= DAXILI_SON_INDEX) {
     return {
       zoneId: 'inner_green',
       minimumMerkezMesafesi: 115,
@@ -235,7 +237,6 @@ function worldV2ResursMovqeyiSec({
     }
   }
 
-  // Çox sıx xəritədə RNG uyğun nöqtə tapmasa deterministik scan fallback.
   const baslangic = SERHED_PAYI + ((sid * 31 + i * 17 + serial * 13) % 19);
   for (let y = baslangic; y <= XERITE_MAX - SERHED_PAYI; y += 7) {
     for (let x = baslangic; x <= XERITE_MAX - SERHED_PAYI; x += 7) {
@@ -353,7 +354,6 @@ async function runtimeEmeliyyati(stateId, emeliyyat) {
         await client.query('ROLLBACK');
       }
       catch (_) {
-        // Əsas xəta saxlanılır.
       }
       throw xeta;
     }
@@ -430,6 +430,7 @@ async function worldV2ResurslariniAl(stateId, bases = [], nowMs = Date.now()) {
 
     for (let i = 1; i <= RESURS_SAYI; i++) {
       const descriptor = worldV2ResursDescriptoruAl(sid, i);
+      const zona = zonaTesviriAl(i);
       let node = runtime.nodes[descriptor.nodeId];
 
       if (!node || typeof node !== 'object' || Array.isArray(node)) {
@@ -439,10 +440,24 @@ async function worldV2ResurslariniAl(stateId, bases = [], nowMs = Date.now()) {
         continue;
       }
 
-      const remainingAmount = menfiOlmayanTamEdedAl(node.remainingAmount, descriptor.fullAmount);
-      node.remainingAmount = remainingAmount;
+      // 20-lik test dövründən qalan node-lar yeni 120-lik zona bölgüsünə
+      // uyğun deyilsə dərhal authoritative yeni koordinata köçürülür.
+      if (!koordinatZonayaUyğundur(node.x, node.y, zona)) {
+        runtime.nodes[descriptor.nodeId] = yeniSpawnQur(
+          runtime,
+          descriptor,
+          bases,
+          indi,
+          node,
+        );
+        deyisdi = true;
+        continue;
+      }
 
-      if (remainingAmount > 0) continue;
+      const remainingAmount = menfiOlmayanTamEdedAl(node.remainingAmount, descriptor.fullAmount);
+      node.remainingAmount = Math.min(remainingAmount, descriptor.fullAmount);
+
+      if (node.remainingAmount > 0) continue;
 
       const respawnAtMs = menfiOlmayanTamEdedAl(node.respawnAtMs);
       if (respawnAtMs <= 0) {
@@ -473,7 +488,6 @@ async function worldV2ResurslariniAl(stateId, bases = [], nowMs = Date.now()) {
       if (!node) continue;
 
       const payload = nodePayloadHazirla(node, descriptor);
-      // Tutumu bitmiş resurs bina kimi xəritədə saxlanmır.
       if (payload.remainingAmount <= 0 || payload.respawnAtMs > 0) continue;
       resources.push(payload);
     }
@@ -558,6 +572,9 @@ async function worldV2ResursMiqdariniAzalt({
 module.exports = {
   HADISE_NOVU,
   RESURS_SAYI,
+  COL_SON_INDEX,
+  ORTA_SON_INDEX,
+  DAXILI_SON_INDEX,
   RESURS_NOVLERI,
   XERITE_MIN,
   XERITE_MAX,
