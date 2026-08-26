@@ -16,7 +16,12 @@ const DAXILI_SON_INDEX = 590;
 const XERITE_MIN = 0;
 const XERITE_MAX = 1200;
 const XERITE_MERKEZI = 600;
-const SERHED_PAYI = 24;
+
+// Unity-də mavi sərhəd xətti fiziki xəritə kənarından təxminən 32 vahid içəridədir.
+// Resurs binasının mərkəzi xəttin üzərinə düşməsin deyə əlavə təhlükəsizlik payı saxlanılır.
+const SERHED_PAYI = 42;
+const COL_ZONA_MAKSIMUM_MERKEZ_MESAFESI = XERITE_MERKEZI - SERHED_PAYI;
+
 const BAZADAN_MIN_MESAFE = 18;
 const RESURSDAN_MIN_MESAFE = 16;
 const KOHNE_MOVQEDEN_MIN_MESAFE = 50;
@@ -83,7 +88,7 @@ function zonaTesviriAl(index) {
     return {
       zoneId: 'outer',
       minimumMerkezMesafesi: 445,
-      maksimumMerkezMesafesi: 576,
+      maksimumMerkezMesafesi: COL_ZONA_MAKSIMUM_MERKEZ_MESAFESI,
       minimumLevel: 3,
       maksimumLevel: 6,
       presidentCenter: false,
@@ -440,8 +445,9 @@ async function worldV2ResurslariniAl(stateId, bases = [], nowMs = Date.now()) {
         continue;
       }
 
-      // Əvvəlki test saylarından qalan node yeni 600-lük zona bölgüsünə
-      // uyğun deyilsə authoritative yeni koordinata köçürülür.
+      // Əvvəlki runtime-dan sərhədə çox yaxın qalan node-lar da
+      // koordinatZonayaUyğundur yoxlamasından keçmədiyi üçün authoritative
+      // şəkildə daxilə, təhlükəsiz yeni koordinata köçürülür.
       if (!koordinatZonayaUyğundur(node.x, node.y, zona)) {
         runtime.nodes[descriptor.nodeId] = yeniSpawnQur(
           runtime,
@@ -580,6 +586,7 @@ module.exports = {
   XERITE_MAX,
   XERITE_MERKEZI,
   SERHED_PAYI,
+  COL_ZONA_MAKSIMUM_MERKEZ_MESAFESI,
   BAZADAN_MIN_MESAFE,
   RESURSDAN_MIN_MESAFE,
   KOHNE_MOVQEDEN_MIN_MESAFE,
