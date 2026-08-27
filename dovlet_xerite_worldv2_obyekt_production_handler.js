@@ -175,6 +175,8 @@ function worldV2ProductionObyektHandleriYarat({
       return false;
     }
 
+    const sorquBaslangicMs = Date.now();
+
     const cavabType = baxilanObyektSorqusudur
       ? WORLDV2_BAXILAN_OBYEKT_CAVAB
       : WORLDV2_OBYEKT_CAVAB;
@@ -268,17 +270,22 @@ function worldV2ProductionObyektHandleriYarat({
         readOnlyView: baxilanObyektSorqusudur,
       });
 
+      const bazaBaslangicMs = Date.now();
       const kataloqNeticesi = await dovletBazalariniAl(viewedStateId, nowMs);
+      const serverBazaMs = Date.now() - bazaBaslangicMs;
+
       const bazalar = kataloqNeticesi && Array.isArray(kataloqNeticesi.bases)
         ? kataloqNeticesi.bases
         : [];
 
+      const resursBaslangicMs = Date.now();
       const resursNeticesi = await dovletResurslariniAl(
         viewedStateId,
         bazalar,
         nowMs,
         requestedResourceCount,
       );
+      const serverResursMs = Date.now() - resursBaslangicMs;
 
       const resurslar = resursNeticesi && Array.isArray(resursNeticesi.resources)
         ? resursNeticesi.resources
@@ -297,15 +304,7 @@ function worldV2ProductionObyektHandleriYarat({
       const physicalCapacityReached =
         !!(resursNeticesi && resursNeticesi.physicalCapacityReached === true);
 
-      console.log("[WORLDV2 RESURS NƏTİCƏ]", {
-        playerId,
-        stateId: viewedStateId,
-        requestedResourceCount,
-        activeResourceCount,
-        provisionedResourceCount,
-        physicalCapacityReached,
-      });
-
+      const payloadBaslangicMs = Date.now();
       const info = worldV2ObyektPayloadHazirla({
         stateId: viewedStateId,
         requestingPlayerId: playerId,
@@ -313,6 +312,14 @@ function worldV2ProductionObyektHandleriYarat({
         resources: resurslar,
         serverTimeUnixMs: nowMs,
       });
+      const serverPayloadMs = Date.now() - payloadBaslangicMs;
+
+      // VACİB: əvvəl info həm obyekt kimi, həm də payloadJson=JSON.stringify(info)
+      // kimi ikinci dəfə göndərilirdi. 10 000 resursda bu WebSocket paketini demək olar
+      // ikiqat böyüdürdü. Unity WorldV2 client-i birbaşa info sahəsini oxuyur, buna görə
+      // payloadJson artıq bu ağır cavaba əlavə edilmir.
+      const gonderBaslangicMs = Date.now();
+      const serverHazirlamaMs = Date.now() - sorquBaslangicMs;
 
       gonder(kontekst, cavabType, {
         success: true,
@@ -326,8 +333,28 @@ function worldV2ProductionObyektHandleriYarat({
         physicalCapacityReached,
         readOnlyView: baxilanObyektSorqusudur,
         persistentPlacementMutated: false,
+        serverBazaMs,
+        serverResursMs,
+        serverPayloadMs,
+        serverHazirlamaMs,
         info,
-        payloadJson: JSON.stringify(info),
+      });
+
+      const serverGonderMs = Date.now() - gonderBaslangicMs;
+      const serverTotalMs = Date.now() - sorquBaslangicMs;
+
+      console.log("[WORLDV2 RESURS NƏTİCƏ]", {
+        playerId,
+        stateId: viewedStateId,
+        requestedResourceCount,
+        activeResourceCount,
+        provisionedResourceCount,
+        physicalCapacityReached,
+        serverBazaMs,
+        serverResursMs,
+        serverPayloadMs,
+        serverGonderMs,
+        serverTotalMs,
       });
     }
     catch (xeta) {
