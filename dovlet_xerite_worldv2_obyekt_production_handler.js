@@ -82,9 +82,6 @@ function istenilenResursSayiniAl(kontekst) {
     return mesajdaki;
   }
 
-  // Eyni WebSocket-də son seçilmiş Inspector sayı saxlanılır.
-  // Beləliklə başqa köhnə obyekt sorğusu sonradan count göndərməsə də
-  // resurs sayı yenidən server default-a düşmür.
   return musbetTamEdedAl(
     ws && ws._worldV2RequestedResourceCount,
     0,
@@ -105,16 +102,38 @@ async function standartDovletResurslariniAl(
   nowMs,
   requestedResourceCount = 0,
 ) {
-  const {
-    worldV2ResurslariniAl,
-  } = require("./dovlet_xerite_worldv2_resurs_provider");
+  const provider = require("./dovlet_xerite_worldv2_resurs_provider");
+  const istenilen = musbetTamEdedAl(requestedResourceCount, 0);
+  const cariProvision = provider.worldV2ProvisionEdilmisResursSayiniAl();
 
-  return await worldV2ResurslariniAl(
-    stateId,
-    bases,
-    nowMs,
-    requestedResourceCount,
-  );
+  // Providerin default production sayı server üçün fallback olaraq qalır.
+  // Inspector daha böyük say istəyəndə həmin konkret çağırış üçün provision müvəqqəti
+  // böyüdülür. worldV2ResurslariniAl aktiv sayı ilk await-dan ƏVVƏL hesabladığı üçün
+  // env dərhal bərpa edilir və başqa request-lərin konfiqurasiyasına təsir etmir.
+  const kohneEnv = process.env.WORLDV2_RESOURCE_ACTIVE_COUNT;
+  if (istenilen > cariProvision) {
+    process.env.WORLDV2_RESOURCE_ACTIVE_COUNT = String(istenilen);
+  }
+
+  let promise;
+  try {
+    promise = provider.worldV2ResurslariniAl(
+      stateId,
+      bases,
+      nowMs,
+      istenilen,
+    );
+  }
+  finally {
+    if (kohneEnv == null) {
+      delete process.env.WORLDV2_RESOURCE_ACTIVE_COUNT;
+    }
+    else {
+      process.env.WORLDV2_RESOURCE_ACTIVE_COUNT = kohneEnv;
+    }
+  }
+
+  return await promise;
 }
 
 function standartStateBerpaOlunub(playerId) {
