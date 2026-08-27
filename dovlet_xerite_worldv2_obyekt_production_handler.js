@@ -14,7 +14,6 @@ const {
 
 const WORLDV2_OBYEKT_SORGU = "state_map_v2_objects_request";
 const WORLDV2_OBYEKT_CAVAB = "state_map_v2_objects_result";
-
 const WORLDV2_BAXILAN_OBYEKT_SORGU = "state_map_v2_view_objects_request";
 const WORLDV2_BAXILAN_OBYEKT_CAVAB = "state_map_v2_view_objects_result";
 
@@ -60,9 +59,7 @@ function stateIdAl(state) {
 
 function baxilanStateIdAl(kontekst) {
   const reqem = Number(
-    kontekst &&
-    kontekst.msg &&
-    kontekst.msg.viewedStateId,
+    kontekst && kontekst.msg && kontekst.msg.viewedStateId,
   );
 
   return Number.isInteger(reqem) && reqem > 0
@@ -102,38 +99,18 @@ async function standartDovletResurslariniAl(
   nowMs,
   requestedResourceCount = 0,
 ) {
-  const provider = require("./dovlet_xerite_worldv2_resurs_provider");
-  const istenilen = musbetTamEdedAl(requestedResourceCount, 0);
-  const cariProvision = provider.worldV2ProvisionEdilmisResursSayiniAl();
+  const {
+    worldV2ResurslariniAl,
+  } = require("./dovlet_xerite_worldv2_resurs_provider");
 
-  // Providerin default production sayı server üçün fallback olaraq qalır.
-  // Inspector daha böyük say istəyəndə həmin konkret çağırış üçün provision müvəqqəti
-  // böyüdülür. worldV2ResurslariniAl aktiv sayı ilk await-dan ƏVVƏL hesabladığı üçün
-  // env dərhal bərpa edilir və başqa request-lərin konfiqurasiyasına təsir etmir.
-  const kohneEnv = process.env.WORLDV2_RESOURCE_ACTIVE_COUNT;
-  if (istenilen > cariProvision) {
-    process.env.WORLDV2_RESOURCE_ACTIVE_COUNT = String(istenilen);
-  }
-
-  let promise;
-  try {
-    promise = provider.worldV2ResurslariniAl(
-      stateId,
-      bases,
-      nowMs,
-      istenilen,
-    );
-  }
-  finally {
-    if (kohneEnv == null) {
-      delete process.env.WORLDV2_RESOURCE_ACTIVE_COUNT;
-    }
-    else {
-      process.env.WORLDV2_RESOURCE_ACTIVE_COUNT = kohneEnv;
-    }
-  }
-
-  return await promise;
+  // Provider requestedResourceCount-u birbaşa qəbul edir.
+  // Env dəyişmək lazım deyil; bu, paralel oyunçu sorğularında race riskini də aradan qaldırır.
+  return await worldV2ResurslariniAl(
+    stateId,
+    bases,
+    nowMs,
+    musbetTamEdedAl(requestedResourceCount, 0),
+  );
 }
 
 function standartStateBerpaOlunub(playerId) {
@@ -191,11 +168,8 @@ function worldV2ProductionObyektHandleriYarat({
       128,
     ).toLowerCase();
 
-    const evObyektSorqusudur =
-      type === WORLDV2_OBYEKT_SORGU;
-
-    const baxilanObyektSorqusudur =
-      type === WORLDV2_BAXILAN_OBYEKT_SORGU;
+    const evObyektSorqusudur = type === WORLDV2_OBYEKT_SORGU;
+    const baxilanObyektSorqusudur = type === WORLDV2_BAXILAN_OBYEKT_SORGU;
 
     if (!evObyektSorqusudur && !baxilanObyektSorqusudur) {
       return false;
@@ -206,9 +180,7 @@ function worldV2ProductionObyektHandleriYarat({
       : WORLDV2_OBYEKT_CAVAB;
 
     const playerId = metnAl(
-      kontekst &&
-      kontekst.ws &&
-      kontekst.ws._authedPlayerId,
+      kontekst && kontekst.ws && kontekst.ws._authedPlayerId,
       128,
     );
 
@@ -216,19 +188,14 @@ function worldV2ProductionObyektHandleriYarat({
       gonder(kontekst, cavabType, {
         success: false,
         errorCode: "WORLDV2_AUTH_REQUIRED",
-        message:
-          "WorldV2 Dövlət xəritəsi üçün autentifikasiya tələb olunur.",
+        message: "WorldV2 Dövlət xəritəsi üçün autentifikasiya tələb olunur.",
       });
       return true;
     }
 
     try {
-      if (
-        typeof kontekst.getOrCreatePlayerState !== "function"
-      ) {
-        throw new Error(
-          "getOrCreatePlayerState kontekstdə yoxdur.",
-        );
+      if (typeof kontekst.getOrCreatePlayerState !== "function") {
+        throw new Error("getOrCreatePlayerState kontekstdə yoxdur.");
       }
 
       if (
@@ -239,9 +206,7 @@ function worldV2ProductionObyektHandleriYarat({
         await stateBerpaEt(kontekst, playerId);
       }
 
-      const state =
-        kontekst.getOrCreatePlayerState(playerId);
-
+      const state = kontekst.getOrCreatePlayerState(playerId);
       const homeStateId = stateIdAl(state);
 
       if (homeStateId <= 0) {
@@ -249,16 +214,14 @@ function worldV2ProductionObyektHandleriYarat({
           success: false,
           playerId,
           errorCode: "WORLDV2_PLACEMENT_MISSING",
-          message:
-            "Oyunçunun Dövlət xəritəsi yerləşməsi tapılmadı.",
+          message: "Oyunçunun Dövlət xəritəsi yerləşməsi tapılmadı.",
         });
         return true;
       }
 
-      const nowMs =
-        typeof kontekst.nowMs === "function"
-          ? kontekst.nowMs()
-          : Date.now();
+      const nowMs = typeof kontekst.nowMs === "function"
+        ? kontekst.nowMs()
+        : Date.now();
 
       let viewedStateId = homeStateId;
 
@@ -271,8 +234,7 @@ function worldV2ProductionObyektHandleriYarat({
             playerId,
             homeStateId,
             errorCode: "WORLDV2_VIEW_INVALID",
-            message:
-              "Baxılan Dövlət ID-si etibarsızdır.",
+            message: "Baxılan Dövlət ID-si etibarsızdır.",
             readOnlyView: true,
             persistentPlacementMutated: false,
           });
@@ -289,8 +251,7 @@ function worldV2ProductionObyektHandleriYarat({
             homeStateId,
             viewedStateId,
             errorCode: "WORLDV2_VIEW_STATE_LOCKED",
-            message:
-              `Dövlət #${viewedStateId} hələ açılmayıb.`,
+            message: `Dövlət #${viewedStateId} hələ açılmayıb.`,
             readOnlyView: true,
             persistentPlacementMutated: false,
           });
@@ -298,34 +259,52 @@ function worldV2ProductionObyektHandleriYarat({
         }
       }
 
-      const requestedResourceCount =
-        istenilenResursSayiniAl(kontekst);
+      const requestedResourceCount = istenilenResursSayiniAl(kontekst);
 
-      const kataloqNeticesi =
-        await dovletBazalariniAl(
-          viewedStateId,
-          nowMs,
-        );
+      console.log("[WORLDV2 RESURS SORĞU]", {
+        playerId,
+        stateId: viewedStateId,
+        requestedResourceCount,
+        readOnlyView: baxilanObyektSorqusudur,
+      });
 
-      const bazalar =
-        kataloqNeticesi &&
-        Array.isArray(kataloqNeticesi.bases)
-          ? kataloqNeticesi.bases
-          : [];
+      const kataloqNeticesi = await dovletBazalariniAl(viewedStateId, nowMs);
+      const bazalar = kataloqNeticesi && Array.isArray(kataloqNeticesi.bases)
+        ? kataloqNeticesi.bases
+        : [];
 
-      const resursNeticesi =
-        await dovletResurslariniAl(
-          viewedStateId,
-          bazalar,
-          nowMs,
-          requestedResourceCount,
-        );
+      const resursNeticesi = await dovletResurslariniAl(
+        viewedStateId,
+        bazalar,
+        nowMs,
+        requestedResourceCount,
+      );
 
-      const resurslar =
-        resursNeticesi &&
-        Array.isArray(resursNeticesi.resources)
-          ? resursNeticesi.resources
-          : [];
+      const resurslar = resursNeticesi && Array.isArray(resursNeticesi.resources)
+        ? resursNeticesi.resources
+        : [];
+
+      const activeResourceCount =
+        resursNeticesi && Number.isFinite(Number(resursNeticesi.activeResourceCount))
+          ? Math.max(0, Math.trunc(Number(resursNeticesi.activeResourceCount)))
+          : resurslar.length;
+
+      const provisionedResourceCount =
+        resursNeticesi && Number.isFinite(Number(resursNeticesi.provisionedResourceCount))
+          ? Math.max(0, Math.trunc(Number(resursNeticesi.provisionedResourceCount)))
+          : 0;
+
+      const physicalCapacityReached =
+        !!(resursNeticesi && resursNeticesi.physicalCapacityReached === true);
+
+      console.log("[WORLDV2 RESURS NƏTİCƏ]", {
+        playerId,
+        stateId: viewedStateId,
+        requestedResourceCount,
+        activeResourceCount,
+        provisionedResourceCount,
+        physicalCapacityReached,
+      });
 
       const info = worldV2ObyektPayloadHazirla({
         stateId: viewedStateId,
@@ -342,12 +321,9 @@ function worldV2ProductionObyektHandleriYarat({
         viewedStateId,
         stateId: viewedStateId,
         requestedResourceCount,
-        activeResourceCount:
-          resursNeticesi && Number.isFinite(Number(resursNeticesi.activeResourceCount))
-            ? Math.max(0, Math.trunc(Number(resursNeticesi.activeResourceCount)))
-            : resurslar.length,
-        physicalCapacityReached:
-          !!(resursNeticesi && resursNeticesi.physicalCapacityReached === true),
+        activeResourceCount,
+        provisionedResourceCount,
+        physicalCapacityReached,
         readOnlyView: baxilanObyektSorqusudur,
         persistentPlacementMutated: false,
         info,
@@ -355,17 +331,13 @@ function worldV2ProductionObyektHandleriYarat({
       });
     }
     catch (xeta) {
-      console.error(
-        "[DÖVLƏT XƏRİTƏSİ WORLDV2 PRODUCTION]",
-        xeta,
-      );
+      console.error("[DÖVLƏT XƏRİTƏSİ WORLDV2 PRODUCTION]", xeta);
 
       gonder(kontekst, cavabType, {
         success: false,
         playerId,
         errorCode: "WORLDV2_OBJECTS_READ_FAILED",
-        message:
-          "WorldV2 obyekt layer-i serverdən alına bilmədi.",
+        message: "WorldV2 obyekt layer-i serverdən alına bilmədi.",
         readOnlyView: baxilanObyektSorqusudur,
         persistentPlacementMutated: false,
       });
