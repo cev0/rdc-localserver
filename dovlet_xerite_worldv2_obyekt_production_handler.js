@@ -16,6 +16,7 @@ const WORLDV2_OBYEKT_SORGU = "state_map_v2_objects_request";
 const WORLDV2_OBYEKT_CAVAB = "state_map_v2_objects_result";
 const WORLDV2_BAXILAN_OBYEKT_SORGU = "state_map_v2_view_objects_request";
 const WORLDV2_BAXILAN_OBYEKT_CAVAB = "state_map_v2_view_objects_result";
+const WORLDV2_RESURS_VIZUAL_CAVAB = "state_map_v2_resource_visuals_result";
 
 function metnAl(deyer, maksimum = 128) {
   return typeof deyer === "string"
@@ -69,13 +70,17 @@ function baxilanStateIdAl(kontekst) {
 
 function istenilenResursSayiniAl(kontekst) {
   const ws = kontekst && kontekst.ws;
+  const msg = kontekst && kontekst.msg;
   const mesajdaki = musbetTamEdedAl(
-    kontekst && kontekst.msg && kontekst.msg.requestedResourceCount,
+    msg && msg.requestedResourceCount,
     0,
   );
 
   if (mesajdaki > 0) {
-    if (ws) ws._worldV2RequestedResourceCount = mesajdaki;
+    // Vizual-only startup sorğusu sonrakı tam obyekt sorğularının sayını dəyişməsin.
+    if (ws && !(msg && msg.resourceVisualOnly === true)) {
+      ws._worldV2RequestedResourceCount = mesajdaki;
+    }
     return mesajdaki;
   }
 
@@ -83,6 +88,65 @@ function istenilenResursSayiniAl(kontekst) {
     ws && ws._worldV2RequestedResourceCount,
     0,
   );
+}
+
+function resursNovKodunuAl(resourceId) {
+  switch (metnAl(resourceId, 32).toLowerCase()) {
+    case "food": return 0;
+    case "water": return 1;
+    case "wood": return 2;
+    case "iron": return 3;
+    case "fuel": return 4;
+    default: return -1;
+  }
+}
+
+function worldV2ResursVizualPaketiHazirla(resurslar) {
+  const paket = {
+    say: 0,
+    i: [],
+    r: [],
+    l: [],
+    x: [],
+    y: [],
+    s: [],
+  };
+
+  if (!Array.isArray(resurslar) || resurslar.length === 0) {
+    return paket;
+  }
+
+  for (const resurs of resurslar) {
+    if (!resurs || typeof resurs !== "object") continue;
+
+    const index = musbetTamEdedAl(resurs.index, 0);
+    const level = musbetTamEdedAl(resurs.level, 0);
+    const spawnSerial = musbetTamEdedAl(resurs.spawnSerial, 0);
+    const novKodu = resursNovKodunuAl(resurs.resourceId);
+    const x = Number(resurs.x);
+    const y = Number(resurs.y);
+
+    if (
+      index <= 0 ||
+      level <= 0 || level > 10 ||
+      spawnSerial <= 0 ||
+      novKodu < 0 ||
+      !Number.isFinite(x) ||
+      !Number.isFinite(y)
+    ) {
+      continue;
+    }
+
+    paket.i.push(index);
+    paket.r.push(novKodu);
+    paket.l.push(level);
+    paket.x.push(Math.round(x));
+    paket.y.push(Math.round(y));
+    paket.s.push(spawnSerial);
+  }
+
+  paket.say = paket.i.length;
+  return paket;
 }
 
 async function standartDovletBazalariniAl(stateId, nowMs) {
@@ -103,8 +167,6 @@ async function standartDovletResurslariniAl(
     worldV2ResurslariniAl,
   } = require("./dovlet_xerite_worldv2_resurs_provider");
 
-  // Provider requestedResourceCount-u birbaşa qəbul edir.
-  // Env dəyişmək lazım deyil; bu, paralel oyunçu sorğularında race riskini də aradan qaldırır.
   return await worldV2ResurslariniAl(
     stateId,
     bases,
@@ -177,12 +239,22 @@ function worldV2ProductionObyektHandleriYarat({
 
     const sorquBaslangicMs = Date.now();
     const ws = kontekst && kontekst.ws;
+    const yalnizResursVizual = !!(
+      kontekst &&
+      kontekst.msg &&
+      kontekst.msg.resourceVisualOnly === true
+    );
+
     let aktivSorquAcari = "";
     let aktivSorquSahibidir = false;
 
-    const cavabType = baxilanObyektSorqusudur
+    const normalCavabType = baxilanObyektSorqusudur
       ? WORLDV2_BAXILAN_OBYEKT_CAVAB
       : WORLDV2_OBYEKT_CAVAB;
+
+    const cavabType = yalnizResursVizual
+      ? WORLDV2_RESURS_VIZUAL_CAVAB
+      : normalCavabType;
 
     const playerId = metnAl(
       ws && ws._authedPlayerId,
@@ -266,10 +338,6 @@ function worldV2ProductionObyektHandleriYarat({
 
       const requestedResourceCount = istenilenResursSayiniAl(kontekst);
 
-      // Eyni WebSocket-dən eyni Dövlət və eyni resurs sayı üçün ağır obyekt sorğusu
-      // artıq işləyirsə ikinci nüsxəni server provider növbəsinə salmırıq. WorldV2-də
-      // bir neçə renderer eyni startup anında obyekt refresh istəyə bildiyi üçün əvvəl
-      // 10 000-lik eyni sorğu 2-3 dəfə ardıcıl işləyirdi və cavablar 6 saniyə arayla gəlirdi.
       if (ws) {
         if (!(ws._worldV2AktivObyektSorqulari instanceof Set)) {
           ws._worldV2AktivObyektSorqulari = new Set();
@@ -287,6 +355,7 @@ function worldV2ProductionObyektHandleriYarat({
             stateId: viewedStateId,
             requestedResourceCount,
             readOnlyView: baxilanObyektSorqusudur,
+            resourceVisualOnly: yalnizResursVizual,
           });
           return true;
         }
@@ -301,6 +370,7 @@ function worldV2ProductionObyektHandleriYarat({
         stateId: viewedStateId,
         requestedResourceCount,
         readOnlyView: baxilanObyektSorqusudur,
+        resourceVisualOnly: yalnizResursVizual,
       });
 
       const bazaBaslangicMs = Date.now();
@@ -324,11 +394,6 @@ function worldV2ProductionObyektHandleriYarat({
         ? resursNeticesi.resources
         : [];
 
-      const activeResourceCount =
-        resursNeticesi && Number.isFinite(Number(resursNeticesi.activeResourceCount))
-          ? Math.max(0, Math.trunc(Number(resursNeticesi.activeResourceCount)))
-          : resurslar.length;
-
       const provisionedResourceCount =
         resursNeticesi && Number.isFinite(Number(resursNeticesi.provisionedResourceCount))
           ? Math.max(0, Math.trunc(Number(resursNeticesi.provisionedResourceCount)))
@@ -336,6 +401,68 @@ function worldV2ProductionObyektHandleriYarat({
 
       const physicalCapacityReached =
         !!(resursNeticesi && resursNeticesi.physicalCapacityReached === true);
+
+      if (yalnizResursVizual) {
+        const vizualBaslangicMs = Date.now();
+        const vizual = worldV2ResursVizualPaketiHazirla(resurslar);
+        const serverVizualMs = Date.now() - vizualBaslangicMs;
+        const serverHazirlamaMs = Date.now() - sorquBaslangicMs;
+        const vaxtMesaji =
+          "WorldV2VisualTiming|baza=" + serverBazaMs +
+          "|resurs=" + serverResursMs +
+          "|vizual=" + serverVizualMs +
+          "|hazirlama=" + serverHazirlamaMs;
+
+        const gonderBaslangicMs = Date.now();
+        gonder(kontekst, cavabType, {
+          success: true,
+          playerId,
+          homeStateId,
+          viewedStateId,
+          stateId: viewedStateId,
+          requestedResourceCount,
+          activeResourceCount: vizual.say,
+          provisionedResourceCount,
+          physicalCapacityReached,
+          readOnlyView: baxilanObyektSorqusudur,
+          persistentPlacementMutated: false,
+          message: vaxtMesaji,
+          serverBazaMs,
+          serverResursMs,
+          serverVizualMs,
+          serverHazirlamaMs,
+          say: vizual.say,
+          i: vizual.i,
+          r: vizual.r,
+          l: vizual.l,
+          x: vizual.x,
+          y: vizual.y,
+          s: vizual.s,
+        });
+
+        const serverGonderMs = Date.now() - gonderBaslangicMs;
+        const serverTotalMs = Date.now() - sorquBaslangicMs;
+
+        console.log("[WORLDV2 RESURS VİZUAL NƏTİCƏ]", {
+          playerId,
+          stateId: viewedStateId,
+          requestedResourceCount,
+          activeResourceCount: vizual.say,
+          physicalCapacityReached,
+          serverBazaMs,
+          serverResursMs,
+          serverVizualMs,
+          serverGonderMs,
+          serverTotalMs,
+        });
+
+        return true;
+      }
+
+      const activeResourceCount =
+        resursNeticesi && Number.isFinite(Number(resursNeticesi.activeResourceCount))
+          ? Math.max(0, Math.trunc(Number(resursNeticesi.activeResourceCount)))
+          : resurslar.length;
 
       const payloadBaslangicMs = Date.now();
       const info = worldV2ObyektPayloadHazirla({
@@ -427,11 +554,14 @@ module.exports = {
   WORLDV2_OBYEKT_CAVAB,
   WORLDV2_BAXILAN_OBYEKT_SORGU,
   WORLDV2_BAXILAN_OBYEKT_CAVAB,
+  WORLDV2_RESURS_VIZUAL_CAVAB,
   metnAl,
   musbetTamEdedAl,
   stateIdAl,
   baxilanStateIdAl,
   istenilenResursSayiniAl,
+  resursNovKodunuAl,
+  worldV2ResursVizualPaketiHazirla,
   standartDovletBazalariniAl,
   standartDovletResurslariniAl,
   standartStateBerpaOlunub,
