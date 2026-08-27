@@ -176,13 +176,16 @@ function worldV2ProductionObyektHandleriYarat({
     }
 
     const sorquBaslangicMs = Date.now();
+    const ws = kontekst && kontekst.ws;
+    let aktivSorquAcari = "";
+    let aktivSorquSahibidir = false;
 
     const cavabType = baxilanObyektSorqusudur
       ? WORLDV2_BAXILAN_OBYEKT_CAVAB
       : WORLDV2_OBYEKT_CAVAB;
 
     const playerId = metnAl(
-      kontekst && kontekst.ws && kontekst.ws._authedPlayerId,
+      ws && ws._authedPlayerId,
       128,
     );
 
@@ -263,6 +266,36 @@ function worldV2ProductionObyektHandleriYarat({
 
       const requestedResourceCount = istenilenResursSayiniAl(kontekst);
 
+      // Eyni WebSocket-dən eyni Dövlət və eyni resurs sayı üçün ağır obyekt sorğusu
+      // artıq işləyirsə ikinci nüsxəni server provider növbəsinə salmırıq. WorldV2-də
+      // bir neçə renderer eyni startup anında obyekt refresh istəyə bildiyi üçün əvvəl
+      // 10 000-lik eyni sorğu 2-3 dəfə ardıcıl işləyirdi və cavablar 6 saniyə arayla gəlirdi.
+      if (ws) {
+        if (!(ws._worldV2AktivObyektSorqulari instanceof Set)) {
+          ws._worldV2AktivObyektSorqulari = new Set();
+        }
+
+        const namizedAcar = [
+          cavabType,
+          viewedStateId,
+          requestedResourceCount,
+        ].join(":");
+
+        if (ws._worldV2AktivObyektSorqulari.has(namizedAcar)) {
+          console.log("[WORLDV2 DUBLİKAT SORĞU BLOKLANDI]", {
+            playerId,
+            stateId: viewedStateId,
+            requestedResourceCount,
+            readOnlyView: baxilanObyektSorqusudur,
+          });
+          return true;
+        }
+
+        ws._worldV2AktivObyektSorqulari.add(namizedAcar);
+        aktivSorquAcari = namizedAcar;
+        aktivSorquSahibidir = true;
+      }
+
       console.log("[WORLDV2 RESURS SORĞU]", {
         playerId,
         stateId: viewedStateId,
@@ -314,12 +347,13 @@ function worldV2ProductionObyektHandleriYarat({
       });
       const serverPayloadMs = Date.now() - payloadBaslangicMs;
 
-      // VACİB: əvvəl info həm obyekt kimi, həm də payloadJson=JSON.stringify(info)
-      // kimi ikinci dəfə göndərilirdi. 10 000 resursda bu WebSocket paketini demək olar
-      // ikiqat böyüdürdü. Unity WorldV2 client-i birbaşa info sahəsini oxuyur, buna görə
-      // payloadJson artıq bu ağır cavaba əlavə edilmir.
       const gonderBaslangicMs = Date.now();
       const serverHazirlamaMs = Date.now() - sorquBaslangicMs;
+      const vaxtMesaji =
+        "WorldV2Timing|baza=" + serverBazaMs +
+        "|resurs=" + serverResursMs +
+        "|payload=" + serverPayloadMs +
+        "|hazirlama=" + serverHazirlamaMs;
 
       gonder(kontekst, cavabType, {
         success: true,
@@ -333,6 +367,7 @@ function worldV2ProductionObyektHandleriYarat({
         physicalCapacityReached,
         readOnlyView: baxilanObyektSorqusudur,
         persistentPlacementMutated: false,
+        message: vaxtMesaji,
         serverBazaMs,
         serverResursMs,
         serverPayloadMs,
@@ -368,6 +403,16 @@ function worldV2ProductionObyektHandleriYarat({
         readOnlyView: baxilanObyektSorqusudur,
         persistentPlacementMutated: false,
       });
+    }
+    finally {
+      if (
+        aktivSorquSahibidir &&
+        ws &&
+        ws._worldV2AktivObyektSorqulari instanceof Set &&
+        aktivSorquAcari
+      ) {
+        ws._worldV2AktivObyektSorqulari.delete(aktivSorquAcari);
+      }
     }
 
     return true;
