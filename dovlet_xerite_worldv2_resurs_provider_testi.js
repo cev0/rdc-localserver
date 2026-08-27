@@ -3,10 +3,10 @@
 const assert = require('assert');
 const {
   RESURS_SAYI,
+  MERKEZ_RESURS_SAYI,
   XERITE_MERKEZI,
   SERHED_PAYI,
   BAZADAN_MIN_MESAFE,
-  RESURSDAN_MIN_MESAFE,
   KOHNE_MOVQEDEN_MIN_MESAFE,
   PREZIDENT_MERKEZINDEN_MIN_MESAFE,
   zonaTesviriAl,
@@ -20,7 +20,7 @@ function mesafeKvadrati(a, b) {
   return dx * dx + dy * dy;
 }
 
-(function testDescriptorPaylanmasi() {
+(function testIlk600DescriptorPaylanmasi() {
   const saylar = {
     outer: 0,
     middle: 0,
@@ -38,22 +38,38 @@ function mesafeKvadrati(a, b) {
   }
 
   assert.strictEqual(RESURS_SAYI, 600);
+  assert.strictEqual(MERKEZ_RESURS_SAYI, 5);
   assert.deepStrictEqual(saylar, {
     outer: 300,
     middle: 190,
-    inner_green: 100,
-    president_center: 10,
+    inner_green: 105,
+    president_center: 5,
   });
 })();
 
-(function testMovqelerVizualZonalaraVeMesafelereUyğundur() {
+(function testOnMinResursdaDaMerkezCemiBesdir() {
+  let merkezSayi = 0;
+  const yoxlanilanSay = 10000;
+
+  for (let i = 1; i <= yoxlanilanSay; i++) {
+    if (zonaTesviriAl(i).zoneId === 'president_center') {
+      merkezSayi++;
+    }
+  }
+
+  assert.strictEqual(
+    merkezSayi,
+    5,
+    'Inspector sayı artsa da Prezident mərkəzində cəmi 5 resurs qalmalıdır.',
+  );
+})();
+
+(function testMovqelerZonayaBazaVePrezidentMesafesineUyğundur() {
   const bases = [
     { x: 100, y: 100 },
     { x: 1000, y: 1000 },
     { x: 600, y: 500 },
   ];
-
-  const movqeler = [];
 
   for (let i = 1; i <= RESURS_SAYI; i++) {
     const zona = zonaTesviriAl(i);
@@ -62,9 +78,9 @@ function mesafeKvadrati(a, b) {
       index: i,
       spawnSerial: 1,
       bases,
-      digerMovqeler: movqeler,
     });
 
+    assert.ok(movqe);
     assert.ok(movqe.x >= SERHED_PAYI && movqe.x <= 1200 - SERHED_PAYI);
     assert.ok(movqe.y >= SERHED_PAYI && movqe.y <= 1200 - SERHED_PAYI);
 
@@ -82,19 +98,19 @@ function mesafeKvadrati(a, b) {
       );
     }
 
-    for (const diger of movqeler) {
-      assert.ok(
-        mesafeKvadrati(movqe, diger) >= RESURSDAN_MIN_MESAFE * RESURSDAN_MIN_MESAFE,
-      );
-    }
-
     assert.ok(
       mesafeKvadrati(movqe, { x: XERITE_MERKEZI, y: XERITE_MERKEZI }) >=
         PREZIDENT_MERKEZINDEN_MIN_MESAFE * PREZIDENT_MERKEZINDEN_MIN_MESAFE,
     );
-
-    movqeler.push(movqe);
   }
+})();
+
+(function testBazaPayiArtigSeYrekDeyil() {
+  assert.strictEqual(
+    BAZADAN_MIN_MESAFE,
+    5,
+    'Baza-resurs minimum mərkəz məsafəsi 1x1 vizual boşluğa uyğun 5 olmalıdır.',
+  );
 })();
 
 (function testRespawnKohneKoordinatdanUzaqlasir() {
