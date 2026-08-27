@@ -7,6 +7,7 @@ const {
 const {
   worldV2ResursTargetIdDirmi,
   worldV2ResursuRezervEtClient,
+  worldV2ResursRezerviniBuraxClient,
   worldV2ResursToplamaniBitirClient
 } = require("./dovlet_xerite_worldv2_resurs_emeliyyat_sistemi");
 
@@ -90,11 +91,66 @@ function pendingMukafatElaveEt(state, operation, tamamlanma) {
   return reward;
 }
 
-function geriQayitmagaBasla(operation, baslamaMs, result) {
+function yolUzerindekiCariMovqeniAl(operation, nowMs) {
+  const baslama = tamEded(operation && operation.startedAtMs);
+  const catma = tamEded(operation && operation.arrivalAtMs);
+  const indi = tamEded(nowMs) || Date.now();
+
+  if (catma <= baslama) {
+    return {
+      x: Number(operation && operation.targetX) || 0,
+      z: Number(operation && operation.targetZ) || 0
+    };
+  }
+
+  const faiz = Math.max(0, Math.min(1, (indi - baslama) / (catma - baslama)));
+  const fromX = Number(operation && operation.fromX) || 0;
+  const fromZ = Number(operation && operation.fromZ) || 0;
+  const targetX = Number(operation && operation.targetX) || 0;
+  const targetZ = Number(operation && operation.targetZ) || 0;
+
+  return {
+    x: fromX + (targetX - fromX) * faiz,
+    z: fromZ + (targetZ - fromZ) * faiz
+  };
+}
+
+function geriQayitmagaBasla(operation, baslamaMs, result, qayidisMovqeyi = null, state = null) {
+  const baslama = tamEded(baslamaMs) || Date.now();
+  const baza = state ? bazaMovqeyiAl(state) : {
+    x: Number(operation && operation.fromX) || 0,
+    z: Number(operation && operation.fromZ) || 0
+  };
+
+  const qayidis = qayidisMovqeyi && Number.isFinite(Number(qayidisMovqeyi.x)) &&
+    Number.isFinite(Number(qayidisMovqeyi.z))
+    ? {
+        x: Number(qayidisMovqeyi.x),
+        z: Number(qayidisMovqeyi.z)
+      }
+    : {
+        x: Number(operation && operation.targetX) || 0,
+        z: Number(operation && operation.targetZ) || 0
+      };
+
+  const qayidisMuddeti = sistem.hereketMuddetiniHesabla(
+    qayidis.x,
+    qayidis.z,
+    baza.x,
+    baza.z
+  );
+
   operation.status = sistem.STATUS.GERI;
   operation.result = result || null;
-  operation.returnStartedAtMs = tamEded(baslamaMs) || Date.now();
-  operation.returnEndsAtMs = operation.returnStartedAtMs + tamEded(operation.travelDurationMs);
+  operation.returnStartedAtMs = baslama;
+  operation.returnEndsAtMs = baslama + qayidisMuddeti;
+  operation.travelDurationMs = qayidisMuddeti;
+
+  // Mövcud Unity DTO-su returning zamanı target -> from interpolasiyası edir.
+  // Manual geri çağırış yolda baş verərsə target cari yol mövqeyinə çəkilir.
+  operation.targetX = qayidis.x;
+  operation.targetZ = qayidis.z;
+  operation.actionEndsAtMs = 0;
 }
 
 function worldV2HedefOverrideEtibarlidir(state, targetType, targetId, hedefOverride) {
@@ -235,6 +291,118 @@ sistem.emeliyyatiBaslat = function(
   );
 };
 
+sistem.emeliyyatiGeriCagir = async function(
+  state,
+  playerId,
+  convoyId,
+  nowMs = Date.now(),
+  secimler = null
+) {
+  const emeliyyatlar = sistem.stateTeminEt(state);
+  const id = metnAl(convoyId, 64);
+  const now = tamEded(nowMs) || Date.now();
+  const client = secimler && secimler.client;
+
+  if (!id) {
+    return { success: false, errorCode: "CONVOY_RECALL_INVALID", message: "Konvoy ID yoxdur." };
+  }
+
+  const operation = emeliyyatlar.activeByConvoy[id];
+  if (!operation) {
+    return { success: false, errorCode: "CONVOY_RECALL_NOT_ACTIVE", message: "Konvoy aktiv xəritə əməliyyatında deyil." };
+  }
+
+  if (metnAl(operation.resourceSystem, 32) !== "worldv2" ||
+      metnAl(operation.targetType, 32) !== "resource") {
+    return {
+      success: false,
+      errorCode: "CONVOY_RECALL_UNSUPPORTED",
+      message: "Hazırda geri çağırma yalnız WorldV2 resurs konvoyları üçün aktivdir."
+    };
+  }
+
+  if (operation.status === sistem.STATUS.GERI) {
+    return {
+      success: true,
+      alreadyReturning: true,
+      operation: kopyala(operation),
+      message: "Konvoy artıq bazaya qayıdır."
+    };
+  }
+
+  if (operation.status !== sistem.STATUS.YOLDA &&
+      operation.status !== sistem.STATUS.TOPLAMA) {
+    return {
+      success: false,
+      errorCode: "CONVOY_RECALL_STATUS_INVALID",
+      message: "Konvoyun hazırkı vəziyyətində geri çağırma mümkün deyil."
+    };
+  }
+
+  if (operation.status === sistem.STATUS.TOPLAMA) {
+    if (!client || typeof client.query !== "function") {
+      return {
+        success: false,
+        errorCode: "WORLDV2_RESOURCE_TRANSACTION_REQUIRED",
+        message: "Resurs rezervini buraxmaq üçün server transaction-u tələb olunur."
+      };
+    }
+
+    const burax = await worldV2ResursRezerviniBuraxClient(client, {
+      stateId: tamEded(operation.stateId),
+      targetId: operation.targetId,
+      playerId,
+      convoyId: id,
+      nowMs: now
+    });
+
+    if (!burax || burax.success !== true) {
+      return {
+        success: false,
+        errorCode: burax && burax.errorCode
+          ? burax.errorCode
+          : "WORLDV2_RESOURCE_RELEASE_FAILED",
+        message: burax && burax.message
+          ? burax.message
+          : "Resurs rezervi buraxıla bilmədi."
+      };
+    }
+  }
+
+  const qayidisMovqeyi = operation.status === sistem.STATUS.YOLDA
+    ? yolUzerindekiCariMovqeniAl(operation, now)
+    : {
+        x: Number(operation.targetX) || 0,
+        z: Number(operation.targetZ) || 0
+      };
+
+  operation.gatherRewardId = "";
+  operation.failureReason = "";
+  operation.recalledAtMs = now;
+
+  geriQayitmagaBasla(
+    operation,
+    now,
+    {
+      success: true,
+      type: "recall",
+      resourceSystem: "worldv2",
+      manualRecall: true,
+      collectedAmount: 0,
+      deliveryPending: false
+    },
+    qayidisMovqeyi,
+    state
+  );
+
+  return {
+    success: true,
+    alreadyReturning: false,
+    operation: kopyala(operation),
+    message: "Konvoy bazaya geri çağırıldı."
+  };
+};
+
 sistem.emeliyyatlariYenile = async function(
   state,
   playerId,
@@ -254,10 +422,14 @@ sistem.emeliyyatlariYenile = async function(
     if (!client || typeof client.query !== "function") {
       operation.failureReason = "WorldV2 resurs əməliyyatı üçün transaction client yoxdur.";
       if (operation.status !== sistem.STATUS.GERI) {
+        const qayidisMovqeyi = operation.status === sistem.STATUS.YOLDA
+          ? yolUzerindekiCariMovqeniAl(operation, now)
+          : null;
+
         geriQayitmagaBasla(operation, now, {
           success: false,
           message: operation.failureReason
-        });
+        }, qayidisMovqeyi, state);
         worldV2Deyisdi = true;
       }
       continue;
@@ -292,7 +464,7 @@ sistem.emeliyyatlariYenile = async function(
           success: false,
           message: operation.failureReason,
           errorCode: rezerv && rezerv.errorCode ? rezerv.errorCode : "WORLDV2_RESOURCE_RESERVE_FAILED"
-        });
+        }, null, state);
       }
 
       worldV2Deyisdi = true;
@@ -323,7 +495,7 @@ sistem.emeliyyatlariYenile = async function(
           remainingAmount: tamEded(tamamlanma.remainingAmount),
           respawnAtMs: tamEded(tamamlanma.respawnAtMs),
           deliveryPending: !!operation.gatherRewardId
-        });
+        }, null, state);
       }
       else {
         operation.failureReason = tamamlanma && tamamlanma.message
@@ -335,7 +507,7 @@ sistem.emeliyyatlariYenile = async function(
           errorCode: tamamlanma && tamamlanma.errorCode
             ? tamamlanma.errorCode
             : "WORLDV2_RESOURCE_GATHER_FAILED"
-        });
+        }, null, state);
       }
 
       worldV2Deyisdi = true;
