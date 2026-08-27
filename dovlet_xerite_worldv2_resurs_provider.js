@@ -10,8 +10,8 @@ const {
 
 const HADISE_NOVU = 'dovlet_worldv2_resurs_runtime_v2';
 
-// Yalnız əvvəlki 600 node-un deterministik zone bölgüsünü qorumaq üçün legacy sabitdir.
-// Bu artıq WorldV2 resurs indeksinin maksimumu DEYİL.
+// Yalnız ilk 600 node-un köhnə deterministik bölgüsünü qoruyan legacy sabitdir.
+// Maksimum resurs sayı deyil.
 const RESURS_SAYI = 600;
 const LEGACY_RESURS_SAYI = 600;
 const DEFAULT_AKTIV_RESURS_SAYI = 3000;
@@ -20,20 +20,20 @@ const LIMITSIZ_ZONE_DOVRU = 100;
 const COL_SON_INDEX = 300;
 const ORTA_SON_INDEX = 490;
 const DAXILI_SON_INDEX = 590;
+
 const XERITE_MIN = 0;
 const XERITE_MAX = 1200;
 const XERITE_MERKEZI = 600;
-
-// Unity-də mavi sərhəd xətti fiziki xəritə kənarından təxminən 32 vahid içəridədir.
-// Resurs binasının mərkəzi xəttin üzərinə düşməsin deyə əlavə təhlükəsizlik payı saxlanılır.
 const SERHED_PAYI = 42;
 const COL_ZONA_MAKSIMUM_MERKEZ_MESAFESI = XERITE_MERKEZI - SERHED_PAYI;
 
 const BAZADAN_MIN_MESAFE = 18;
-const RESURSDAN_MIN_MESAFE = 16;
+// 16 çox seyrək idi və xəritənin fiziki tutumunu tez doldururdu.
+// 7 vahid 4.2 ölçülü mobil sprite-lar üçün kifayət qədər təhlükəsiz aralıq saxlayır.
+const RESURSDAN_MIN_MESAFE = 7;
 const KOHNE_MOVQEDEN_MIN_MESAFE = 50;
 const PREZIDENT_MERKEZINDEN_MIN_MESAFE = 35;
-const MAKSIMUM_MOVQE_CEHDI = 900;
+const MAKSIMUM_MOVQE_CEHDI = 180;
 const MOVQE_XANASI = RESURSDAN_MIN_MESAFE;
 
 const RESURS_NOVLERI = Object.freeze([
@@ -48,9 +48,7 @@ const yaddaKilidi = new Map();
 
 function tamEdedAl(deyer, fallback = 0) {
   const reqem = Number(deyer);
-  return Number.isFinite(reqem)
-    ? Math.trunc(reqem)
-    : fallback;
+  return Number.isFinite(reqem) ? Math.trunc(reqem) : fallback;
 }
 
 function menfiOlmayanTamEdedAl(deyer, fallback = 0) {
@@ -75,8 +73,6 @@ function stateAcar(stateId) {
 }
 
 function worldV2ProvisionEdilmisResursSayiniAl() {
-  // Hard-coded maksimum yoxdur. Server sahibi env ilə istənilən müsbət aktiv hovuz
-  // ölçüsünü verə bilər. Default sadəcə başlanğıc production dəyəridir.
   return musbetTamEdedAl(
     process.env.WORLDV2_RESOURCE_ACTIVE_COUNT,
     DEFAULT_AKTIV_RESURS_SAYI,
@@ -84,14 +80,12 @@ function worldV2ProvisionEdilmisResursSayiniAl() {
 }
 
 function worldV2AktivResursSayiniAl(istenilenSay = 0) {
-  const provision = worldV2ProvisionEdilmisResursSayiniAl();
+  // Inspector müsbət say göndəribsə onu birbaşa qəbul edirik.
+  // Statik maksimum yoxdur; real limit yalnız xəritənin fiziki yerləşdirmə tutumudur.
   const istenilen = musbetTamEdedAl(istenilenSay, 0);
-
-  // Client yalnız render/network yükünü AZALDA bilər; server hovuzunu client böyütmür.
-  // Beləliklə Inspector sonradan 250/500/1000 kimi say verə bilər.
   return istenilen > 0
-    ? Math.min(istenilen, provision)
-    : provision;
+    ? istenilen
+    : worldV2ProvisionEdilmisResursSayiniAl();
 }
 
 function seededRng(seed) {
@@ -116,53 +110,52 @@ function merkezeKvadratMesafe(x, y) {
 }
 
 function zonaObyekti(zoneId) {
-  if (zoneId === 'outer') {
-    return {
-      zoneId: 'outer',
-      minimumMerkezMesafesi: 445,
-      maksimumMerkezMesafesi: COL_ZONA_MAKSIMUM_MERKEZ_MESAFESI,
-      minimumLevel: 3,
-      maksimumLevel: 6,
-      presidentCenter: false,
-    };
-  }
+  switch (zoneId) {
+    case 'outer':
+      return {
+        zoneId: 'outer',
+        minimumMerkezMesafesi: 445,
+        maksimumMerkezMesafesi: COL_ZONA_MAKSIMUM_MERKEZ_MESAFESI,
+        minimumLevel: 3,
+        maksimumLevel: 6,
+        presidentCenter: false,
+      };
 
-  if (zoneId === 'middle') {
-    return {
-      zoneId: 'middle',
-      minimumMerkezMesafesi: 270,
-      maksimumMerkezMesafesi: 445,
-      minimumLevel: 5,
-      maksimumLevel: 8,
-      presidentCenter: false,
-    };
-  }
+    case 'middle':
+      return {
+        zoneId: 'middle',
+        minimumMerkezMesafesi: 270,
+        maksimumMerkezMesafesi: 445,
+        minimumLevel: 5,
+        maksimumLevel: 8,
+        presidentCenter: false,
+      };
 
-  if (zoneId === 'inner_green') {
-    return {
-      zoneId: 'inner_green',
-      minimumMerkezMesafesi: 115,
-      maksimumMerkezMesafesi: 270,
-      minimumLevel: 8,
-      maksimumLevel: 9,
-      presidentCenter: false,
-    };
-  }
+    case 'inner_green':
+      return {
+        zoneId: 'inner_green',
+        minimumMerkezMesafesi: 115,
+        maksimumMerkezMesafesi: 270,
+        minimumLevel: 8,
+        maksimumLevel: 9,
+        presidentCenter: false,
+      };
 
-  return {
-    zoneId: 'president_center',
-    minimumMerkezMesafesi: PREZIDENT_MERKEZINDEN_MIN_MESAFE,
-    maksimumMerkezMesafesi: 115,
-    minimumLevel: 10,
-    maksimumLevel: 10,
-    presidentCenter: true,
-  };
+    default:
+      return {
+        zoneId: 'president_center',
+        minimumMerkezMesafesi: PREZIDENT_MERKEZINDEN_MIN_MESAFE,
+        maksimumMerkezMesafesi: 115,
+        minimumLevel: 10,
+        maksimumLevel: 10,
+        presidentCenter: true,
+      };
+  }
 }
 
 function zonaTesviriAl(index) {
   const i = Math.max(1, tamEdedAl(index, 1));
 
-  // İlk 600 indeksin əvvəlki deterministik bölgüsü dəyişmir.
   if (i <= LEGACY_RESURS_SAYI) {
     if (i <= COL_SON_INDEX) return zonaObyekti('outer');
     if (i <= ORTA_SON_INDEX) return zonaObyekti('middle');
@@ -170,8 +163,6 @@ function zonaTesviriAl(index) {
     return zonaObyekti('president_center');
   }
 
-  // 600-dən sonra heç bir indeks limiti yoxdur. Hər 100 yeni node üçün
-  // 50% outer, 32% middle, 16% inner, 2% center bölgüsü təkrarlanır.
   const dovrIndex = ((i - LEGACY_RESURS_SAYI - 1) % LIMITSIZ_ZONE_DOVRU) + 1;
   if (dovrIndex <= 50) return zonaObyekti('outer');
   if (dovrIndex <= 82) return zonaObyekti('middle');
@@ -250,6 +241,7 @@ function spatialIndexeElaveEt(index, movqe) {
 
 function yaxinResursMovqeleriniAl(index, x, y) {
   if (!index) return [];
+
   const cx = Math.floor(Number(x) / MOVQE_XANASI);
   const cy = Math.floor(Number(y) / MOVQE_XANASI);
   const netice = [];
@@ -269,7 +261,6 @@ function movqeTehlukesizdir({
   y,
   zona,
   bazaMovqeleri,
-  digerMovqeler,
   spatialIndex,
   kohneMovqe,
 }) {
@@ -281,11 +272,7 @@ function movqeTehlukesizdir({
   }
 
   const resursMinKv = RESURSDAN_MIN_MESAFE * RESURSDAN_MIN_MESAFE;
-  const yoxlanacaqResurslar = spatialIndex
-    ? yaxinResursMovqeleriniAl(spatialIndex, x, y)
-    : (digerMovqeler || []);
-
-  for (const movqe of yoxlanacaqResurslar) {
+  for (const movqe of yaxinResursMovqeleriniAl(spatialIndex, x, y)) {
     if (mesafeKvadrati(x, y, movqe.x, movqe.y) < resursMinKv) return false;
   }
 
@@ -307,7 +294,6 @@ function worldV2ResursMovqeyiSec({
   index,
   spawnSerial,
   bases = [],
-  digerMovqeler = [],
   spatialIndex = null,
   kohneMovqe = null,
 }) {
@@ -316,11 +302,7 @@ function worldV2ResursMovqeyiSec({
   const serial = Math.max(1, tamEdedAl(spawnSerial, 1));
   const zona = zonaTesviriAl(i);
   const bazaMovqeleri = bazaMovqeleriniHazirla(bases);
-  const rng = seededRng(
-    sid * 1000003 +
-    i * 9176 +
-    serial * 65537,
-  );
+  const rng = seededRng(sid * 1000003 + i * 9176 + serial * 65537);
 
   for (let cehd = 0; cehd < MAKSIMUM_MOVQE_CEHDI; cehd++) {
     const x = Math.round(SERHED_PAYI + rng() * (XERITE_MAX - SERHED_PAYI * 2));
@@ -331,30 +313,10 @@ function worldV2ResursMovqeyiSec({
       y,
       zona,
       bazaMovqeleri,
-      digerMovqeler,
       spatialIndex,
       kohneMovqe,
     })) {
       return { x, y };
-    }
-  }
-
-  // Sıx xəritədə deterministic scan fallback. Fiziki yer qalmayıbsa null qaytarılır;
-  // provider bu halda həmin indeksdə dayanır və serveri çökdürmür.
-  const baslangic = SERHED_PAYI + ((sid * 31 + i * 17 + serial * 13) % 19);
-  for (let y = baslangic; y <= XERITE_MAX - SERHED_PAYI; y += 7) {
-    for (let x = baslangic; x <= XERITE_MAX - SERHED_PAYI; x += 7) {
-      if (movqeTehlukesizdir({
-        x,
-        y,
-        zona,
-        bazaMovqeleri,
-        digerMovqeler,
-        spatialIndex,
-        kohneMovqe,
-      })) {
-        return { x, y };
-      }
     }
   }
 
@@ -363,7 +325,7 @@ function worldV2ResursMovqeyiSec({
 
 function bosRuntime(stateId) {
   return {
-    version: 3,
+    version: 4,
     stateId: sidAl(stateId),
     nodes: {},
   };
@@ -376,7 +338,7 @@ function runtimeNeticesiniHazirla(stateId, netice) {
     ? kopyala(detallar.runtime)
     : bosRuntime(sid);
 
-  runtime.version = 3;
+  runtime.version = 4;
   runtime.stateId = sid;
   if (!runtime.nodes || typeof runtime.nodes !== 'object' || Array.isArray(runtime.nodes)) {
     runtime.nodes = {};
@@ -406,10 +368,11 @@ async function postgresDovletKilidiniAl(client, stateId) {
 
 async function runtimeYazClient(client, stateId, runtime) {
   const acar = stateAcar(stateId);
+
   await client.query(
     `INSERT INTO hesab_audit_jurnali (hesab_id, oyuncu_id, hadise_novu, detallar)
      VALUES (NULL, $1, $2, $3::jsonb)`,
-    [acar, HADISE_NOVU, JSON.stringify({ version: 3, runtime: kopyala(runtime) })],
+    [acar, HADISE_NOVU, JSON.stringify({ version: 4, runtime: kopyala(runtime) })],
   );
 
   await client.query(
@@ -459,6 +422,7 @@ async function runtimeEmeliyyati(stateId, emeliyyat) {
         await client.query('ROLLBACK');
       }
       catch (_) {
+        // Əsas xəta saxlanılır.
       }
       throw xeta;
     }
@@ -533,20 +497,6 @@ function yeniSpawnQur(runtime, descriptor, bases, nowMs, spatialIndex, kohneNode
   };
 }
 
-function aktivNodeSpatialIndexiniHazirla(runtime, aktivSay, nowMs) {
-  const index = spatialIndexYarat();
-  for (let i = 1; i <= aktivSay; i++) {
-    const nodeId = `state_${runtime.stateId}_worldv2_resource_${i}`;
-    const node = runtime.nodes[nodeId];
-    if (!node || menfiOlmayanTamEdedAl(node.remainingAmount) <= 0 || menfiOlmayanTamEdedAl(node.respawnAtMs) > 0) {
-      continue;
-    }
-    if (!Number.isFinite(Number(node.x)) || !Number.isFinite(Number(node.y))) continue;
-    spatialIndexeElaveEt(index, { x: Number(node.x), y: Number(node.y), nodeId });
-  }
-  return index;
-}
-
 async function worldV2ResurslariniAl(stateId, bases = [], nowMs = Date.now(), istenilenSay = 0) {
   const sid = sidAl(stateId);
   const indi = menfiOlmayanTamEdedAl(nowMs, Date.now());
@@ -555,6 +505,7 @@ async function worldV2ResurslariniAl(stateId, bases = [], nowMs = Date.now(), is
   const netice = await runtimeEmeliyyati(sid, async runtime => {
     let deyisdi = false;
     let fizikiTutumDoldu = false;
+    let ugursuzSpawnSayi = 0;
     const spatialIndex = spatialIndexYarat();
 
     for (let i = 1; i <= aktivSay; i++) {
@@ -562,78 +513,105 @@ async function worldV2ResurslariniAl(stateId, bases = [], nowMs = Date.now(), is
       const zona = zonaTesviriAl(i);
       let node = runtime.nodes[descriptor.nodeId];
 
-      if (!node || typeof node !== 'object' || Array.isArray(node)) {
-        node = yeniSpawnQur(runtime, descriptor, bases, indi, spatialIndex, null);
-        if (!node) {
+      if (node && typeof node === 'object' && !Array.isArray(node)) {
+        const qalan = Math.min(
+          menfiOlmayanTamEdedAl(node.remainingAmount, descriptor.fullAmount),
+          descriptor.fullAmount,
+        );
+        node.remainingAmount = qalan;
+        const respawnAtMs = menfiOlmayanTamEdedAl(node.respawnAtMs);
+        const canlidir = qalan > 0 && respawnAtMs === 0;
+
+        if (canlidir) {
+          const movqeNormaldir = koordinatZonayaUyğundur(node.x, node.y, zona) &&
+            movqeTehlukesizdir({
+              x: Number(node.x),
+              y: Number(node.y),
+              zona,
+              bazaMovqeleri: bazaMovqeleriniHazirla(bases),
+              spatialIndex,
+              kohneMovqe: null,
+            });
+
+          if (movqeNormaldir) {
+            if (menfiOlmayanTamEdedAl(node.occupiedUntilMs) <= indi &&
+                (node.occupiedByPlayerId || node.occupiedByConvoyId || node.occupiedUntilMs)) {
+              node.occupiedByPlayerId = '';
+              node.occupiedByConvoyId = '';
+              node.occupiedUntilMs = 0;
+              deyisdi = true;
+            }
+
+            spatialIndexeElaveEt(spatialIndex, {
+              x: Number(node.x),
+              y: Number(node.y),
+              nodeId: descriptor.nodeId,
+            });
+            ugursuzSpawnSayi = 0;
+            continue;
+          }
+
+          const yeni = yeniSpawnQur(runtime, descriptor, bases, indi, spatialIndex, node);
+          if (yeni) {
+            runtime.nodes[descriptor.nodeId] = yeni;
+            spatialIndexeElaveEt(spatialIndex, { x: yeni.x, y: yeni.y, nodeId: descriptor.nodeId });
+            deyisdi = true;
+            ugursuzSpawnSayi = 0;
+            continue;
+          }
+
           fizikiTutumDoldu = true;
-          break;
+          ugursuzSpawnSayi++;
+          continue;
         }
-        runtime.nodes[descriptor.nodeId] = node;
-        spatialIndexeElaveEt(spatialIndex, { x: node.x, y: node.y, nodeId: descriptor.nodeId });
-        deyisdi = true;
-        continue;
-      }
 
-      const qalan = Math.min(
-        menfiOlmayanTamEdedAl(node.remainingAmount, descriptor.fullAmount),
-        descriptor.fullAmount,
-      );
-      node.remainingAmount = qalan;
-
-      const respawnAtMs = menfiOlmayanTamEdedAl(node.respawnAtMs);
-      const canlidir = qalan > 0 && respawnAtMs === 0;
-
-      // Əvvəlki runtime-dan sərhədə/zona xaricinə düşən node authoritative şəkildə köçürülür.
-      if (canlidir && !koordinatZonayaUyğundur(node.x, node.y, zona)) {
-        const yeni = yeniSpawnQur(runtime, descriptor, bases, indi, spatialIndex, node);
-        if (!yeni) {
-          fizikiTutumDoldu = true;
-          break;
-        }
-        runtime.nodes[descriptor.nodeId] = yeni;
-        node = yeni;
-        spatialIndexeElaveEt(spatialIndex, { x: node.x, y: node.y, nodeId: descriptor.nodeId });
-        deyisdi = true;
-        continue;
-      }
-
-      if (canlidir) {
-        // Vaxtı bitmiş rezervasiyanı təmizlə.
-        if (menfiOlmayanTamEdedAl(node.occupiedUntilMs) <= indi &&
-            (node.occupiedByPlayerId || node.occupiedByConvoyId || node.occupiedUntilMs)) {
+        if (qalan <= 0 && respawnAtMs <= 0) {
+          node.respawnAtMs = indi + descriptor.respawnSeconds * 1000;
           node.occupiedByPlayerId = '';
           node.occupiedByConvoyId = '';
           node.occupiedUntilMs = 0;
           deyisdi = true;
+          continue;
         }
-        spatialIndexeElaveEt(spatialIndex, { x: Number(node.x), y: Number(node.y), nodeId: descriptor.nodeId });
+
+        if (qalan <= 0 && indi >= respawnAtMs) {
+          const yeni = yeniSpawnQur(runtime, descriptor, bases, indi, spatialIndex, node);
+          if (yeni) {
+            runtime.nodes[descriptor.nodeId] = yeni;
+            spatialIndexeElaveEt(spatialIndex, { x: yeni.x, y: yeni.y, nodeId: descriptor.nodeId });
+            deyisdi = true;
+            ugursuzSpawnSayi = 0;
+          }
+          else {
+            fizikiTutumDoldu = true;
+            ugursuzSpawnSayi++;
+          }
+          continue;
+        }
+
         continue;
       }
 
-      if (qalan <= 0 && respawnAtMs <= 0) {
-        node.respawnAtMs = indi + descriptor.respawnSeconds * 1000;
-        node.occupiedByPlayerId = '';
-        node.occupiedByConvoyId = '';
-        node.occupiedUntilMs = 0;
-        deyisdi = true;
-        continue;
-      }
-
-      if (qalan <= 0 && indi >= respawnAtMs) {
-        const yeni = yeniSpawnQur(runtime, descriptor, bases, indi, spatialIndex, node);
-        if (!yeni) {
-          fizikiTutumDoldu = true;
-          break;
-        }
+      const yeni = yeniSpawnQur(runtime, descriptor, bases, indi, spatialIndex, null);
+      if (yeni) {
         runtime.nodes[descriptor.nodeId] = yeni;
         spatialIndexeElaveEt(spatialIndex, { x: yeni.x, y: yeni.y, nodeId: descriptor.nodeId });
         deyisdi = true;
+        ugursuzSpawnSayi = 0;
+      }
+      else {
+        fizikiTutumDoldu = true;
+        ugursuzSpawnSayi++;
+      }
+
+      // Bütün zonalarda ardıcıl olaraq yer tapılmırsa boşuna minlərlə cəhd etmə.
+      if (ugursuzSpawnSayi >= LIMITSIZ_ZONE_DOVRU * 2) {
+        break;
       }
     }
 
     const resources = [];
-    const sonIndex = Math.min(aktivSay, Object.keys(runtime.nodes).length > 0 ? aktivSay : 0);
-    for (let i = 1; i <= sonIndex; i++) {
+    for (let i = 1; i <= aktivSay; i++) {
       const descriptor = worldV2ResursDescriptoruAl(sid, i);
       const node = runtime.nodes[descriptor.nodeId];
       if (!node) continue;
@@ -678,9 +656,11 @@ function targetIddenIndexAl(targetId) {
   const match = String(targetId || '').trim().toLowerCase()
     .match(/^state_(\d+)_worldv2_resource_(\d+)_spawn_(\d+)$/);
   if (!match) return null;
+
   const stateId = musbetTamEdedAl(match[1], 0);
   const index = musbetTamEdedAl(match[2], 0);
   const spawnSerial = musbetTamEdedAl(match[3], 0);
+
   return stateId && index && spawnSerial
     ? { stateId, index, spawnSerial }
     : null;
@@ -705,12 +685,14 @@ async function worldV2ResursMiqdariniAzalt({
   return runtimeEmeliyyati(sid, async runtime => {
     const descriptor = worldV2ResursDescriptoruAl(sid, parca.index);
     const node = runtime.nodes[descriptor.nodeId];
+
     if (!node || Math.max(1, tamEdedAl(node.spawnSerial, 1)) !== parca.spawnSerial) {
       return { deyisdi: false, success: false, message: 'Resurs artıq dəyişib və ya tapılmadı.' };
     }
 
     const remaining = menfiOlmayanTamEdedAl(node.remainingAmount, descriptor.fullAmount);
     const respawnAtMs = menfiOlmayanTamEdedAl(node.respawnAtMs);
+
     if (remaining <= 0 || respawnAtMs > 0) {
       return {
         deyisdi: false,
