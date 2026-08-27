@@ -24,6 +24,13 @@ function metnAl(deyer, maksimum = 128) {
     : "";
 }
 
+function musbetTamEdedAl(deyer, fallback = 0) {
+  const reqem = Number(deyer);
+  return Number.isFinite(reqem) && reqem > 0
+    ? Math.trunc(reqem)
+    : fallback;
+}
+
 function gonder(kontekst, type, melumat) {
   if (!kontekst || typeof kontekst.send !== "function") {
     throw new Error(
@@ -63,6 +70,27 @@ function baxilanStateIdAl(kontekst) {
     : 0;
 }
 
+function istenilenResursSayiniAl(kontekst) {
+  const ws = kontekst && kontekst.ws;
+  const mesajdaki = musbetTamEdedAl(
+    kontekst && kontekst.msg && kontekst.msg.requestedResourceCount,
+    0,
+  );
+
+  if (mesajdaki > 0) {
+    if (ws) ws._worldV2RequestedResourceCount = mesajdaki;
+    return mesajdaki;
+  }
+
+  // Eyni WebSocket-də son seçilmiş Inspector sayı saxlanılır.
+  // Beləliklə başqa köhnə obyekt sorğusu sonradan count göndərməsə də
+  // resurs sayı yenidən server default-a düşmür.
+  return musbetTamEdedAl(
+    ws && ws._worldV2RequestedResourceCount,
+    0,
+  );
+}
+
 async function standartDovletBazalariniAl(stateId, nowMs) {
   const {
     dovletBazalariniAl,
@@ -71,12 +99,22 @@ async function standartDovletBazalariniAl(stateId, nowMs) {
   return await dovletBazalariniAl(stateId, nowMs);
 }
 
-async function standartDovletResurslariniAl(stateId, bases, nowMs) {
+async function standartDovletResurslariniAl(
+  stateId,
+  bases,
+  nowMs,
+  requestedResourceCount = 0,
+) {
   const {
     worldV2ResurslariniAl,
   } = require("./dovlet_xerite_worldv2_resurs_provider");
 
-  return await worldV2ResurslariniAl(stateId, bases, nowMs);
+  return await worldV2ResurslariniAl(
+    stateId,
+    bases,
+    nowMs,
+    requestedResourceCount,
+  );
 }
 
 function standartStateBerpaOlunub(playerId) {
@@ -241,6 +279,9 @@ function worldV2ProductionObyektHandleriYarat({
         }
       }
 
+      const requestedResourceCount =
+        istenilenResursSayiniAl(kontekst);
+
       const kataloqNeticesi =
         await dovletBazalariniAl(
           viewedStateId,
@@ -258,6 +299,7 @@ function worldV2ProductionObyektHandleriYarat({
           viewedStateId,
           bazalar,
           nowMs,
+          requestedResourceCount,
         );
 
       const resurslar =
@@ -280,6 +322,13 @@ function worldV2ProductionObyektHandleriYarat({
         homeStateId,
         viewedStateId,
         stateId: viewedStateId,
+        requestedResourceCount,
+        activeResourceCount:
+          resursNeticesi && Number.isFinite(Number(resursNeticesi.activeResourceCount))
+            ? Math.max(0, Math.trunc(Number(resursNeticesi.activeResourceCount)))
+            : resurslar.length,
+        physicalCapacityReached:
+          !!(resursNeticesi && resursNeticesi.physicalCapacityReached === true),
         readOnlyView: baxilanObyektSorqusudur,
         persistentPlacementMutated: false,
         info,
@@ -316,8 +365,10 @@ module.exports = {
   WORLDV2_BAXILAN_OBYEKT_SORGU,
   WORLDV2_BAXILAN_OBYEKT_CAVAB,
   metnAl,
+  musbetTamEdedAl,
   stateIdAl,
   baxilanStateIdAl,
+  istenilenResursSayiniAl,
   standartDovletBazalariniAl,
   standartDovletResurslariniAl,
   standartStateBerpaOlunub,
