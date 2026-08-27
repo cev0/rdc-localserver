@@ -27,12 +27,16 @@ const XERITE_MERKEZI = 600;
 const SERHED_PAYI = 42;
 const COL_ZONA_MAKSIMUM_MERKEZ_MESAFESI = XERITE_MERKEZI - SERHED_PAYI;
 
-const BAZADAN_MIN_MESAFE = 18;
+// Baza koordinatı yalnız bir nöqtədir, amma Unity-də baza prefabı həmin nöqtənin
+// ətrafında vizual footprint tutur. 18 vahid bəzi böyük baza vizualları üçün az idi.
+// 32 vahid resurs sprite-ının baza/prefab üzərinə düşməsinin qarşısını alır.
+const BAZADAN_MIN_MESAFE = 32;
 // 16 çox seyrək idi və xəritənin fiziki tutumunu tez doldururdu.
 // 7 vahid 4.2 ölçülü mobil sprite-lar üçün kifayət qədər təhlükəsiz aralıq saxlayır.
 const RESURSDAN_MIN_MESAFE = 7;
 const KOHNE_MOVQEDEN_MIN_MESAFE = 50;
-const PREZIDENT_MERKEZINDEN_MIN_MESAFE = 35;
+// Prezident mərkəzi ayrıca böyük xəritə binasıdır; resurs onun vizual footprint-inə girməməlidir.
+const PREZIDENT_MERKEZINDEN_MIN_MESAFE = 45;
 const MAKSIMUM_MOVQE_CEHDI = 180;
 const MOVQE_XANASI = RESURSDAN_MIN_MESAFE;
 
