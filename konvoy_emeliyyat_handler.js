@@ -4,6 +4,7 @@ require("./konvoy_emeliyyat_worldv2_override");
 
 const {
   emeliyyatiBaslat,
+  emeliyyatiGeriCagir,
   emeliyyatlariYenile,
   emeliyyatMelumatiniHazirla
 } = require("./konvoy_emeliyyat_sistemi");
@@ -29,7 +30,8 @@ const {
 
 const MESAJLAR = new Set([
   "convoy_operation_info_request",
-  "convoy_operation_start_request"
+  "convoy_operation_start_request",
+  "convoy_operation_recall_request"
 ]);
 
 const STATE_YEDEK_SAHELERI = Object.freeze([
@@ -159,6 +161,12 @@ function startPayloadiniAl(msg) {
   };
 }
 
+function geriCagirPayloadiniAl(msg) {
+  return {
+    convoyId: metnAl(msg && msg.convoyId, 64)
+  };
+}
+
 async function worldV2HedefOverrideAl(state, requestPayload, nowMs, client) {
   if (!requestPayload ||
       requestPayload.targetType !== "resource" ||
@@ -209,6 +217,129 @@ async function worldV2HedefOverrideAl(state, requestPayload, nowMs, client) {
   };
 }
 
+async function geriCagirmaMutasiyasiniTetbiqEt(
+  state,
+  playerId,
+  msg,
+  nowMs,
+  client,
+  yenilemeDeyisdi
+) {
+  const requestId = requestIdAl(msg && msg.requestId);
+  const requestPayload = geriCagirPayloadiniAl(msg);
+  const tekrar = tekrarNeticesiniTap(
+    state,
+    "konvoy_emeliyyat_geri_cagir",
+    requestId,
+    requestPayload
+  );
+
+  if (tekrar.conflict) {
+    return {
+      success: false,
+      deyisdi: yenilemeDeyisdi,
+      requestId,
+      idempotentReplay: false,
+      message: tekrar.message || "requestId ziddiyyəti yarandı.",
+      info: emeliyyatMelumatiniHazirla(state, nowMs)
+    };
+  }
+
+  if (tekrar.replay) {
+    await sharedKonvoylariTransactiondaSinxronEt(
+      client,
+      state,
+      playerId,
+      nowMs
+    );
+
+    const replay = tekrar.result && typeof tekrar.result === "object"
+      ? kopyala(tekrar.result)
+      : {};
+
+    return {
+      success: true,
+      deyisdi: yenilemeDeyisdi,
+      requestId,
+      idempotentReplay: true,
+      operation: replay.operation || null,
+      info: replay.info || emeliyyatMelumatiniHazirla(state, nowMs),
+      payloadJson: JSON.stringify(replay),
+      message: replay.message || "Konvoy artıq geri çağırılıb."
+    };
+  }
+
+  const geriCagirmadanEvvel = stateYedeyiniAl(state);
+  const result = await emeliyyatiGeriCagir(
+    state,
+    playerId,
+    requestPayload.convoyId,
+    nowMs,
+    { client }
+  );
+
+  if (!result || result.success !== true) {
+    stateRollbackEt(state, geriCagirmadanEvvel);
+
+    if (yenilemeDeyisdi) {
+      await sharedKonvoylariTransactiondaSinxronEt(
+        client,
+        state,
+        playerId,
+        nowMs
+      );
+    }
+
+    return {
+      success: false,
+      deyisdi: yenilemeDeyisdi,
+      requestId,
+      idempotentReplay: false,
+      errorCode: result && result.errorCode
+        ? result.errorCode
+        : "CONVOY_RECALL_FAILED",
+      message: result && result.message
+        ? result.message
+        : "Konvoy geri çağırıla bilmədi.",
+      info: emeliyyatMelumatiniHazirla(state, nowMs)
+    };
+  }
+
+  const info = emeliyyatMelumatiniHazirla(state, nowMs);
+  const cavab = {
+    operation: kopyala(result.operation),
+    info: kopyala(info),
+    message: result.message || "Konvoy bazaya geri çağırıldı."
+  };
+
+  ugurluNeticeniQeydEt(
+    state,
+    "konvoy_emeliyyat_geri_cagir",
+    requestId,
+    requestPayload,
+    cavab,
+    nowMs
+  );
+
+  await sharedKonvoylariTransactiondaSinxronEt(
+    client,
+    state,
+    playerId,
+    nowMs
+  );
+
+  return {
+    success: true,
+    deyisdi: true,
+    requestId,
+    idempotentReplay: false,
+    operation: cavab.operation,
+    info: cavab.info,
+    message: cavab.message,
+    payloadJson: JSON.stringify(cavab)
+  };
+}
+
 async function konvoyEmeliyyatMutasiyasiniTetbiqEt(
   state,
   playerId,
@@ -240,6 +371,17 @@ async function konvoyEmeliyyatMutasiyasiniTetbiqEt(
       info,
       payloadJson: JSON.stringify(info)
     };
+  }
+
+  if (type === "convoy_operation_recall_request") {
+    return geriCagirmaMutasiyasiniTetbiqEt(
+      state,
+      playerId,
+      msg,
+      nowMs,
+      client,
+      yenilemeDeyisdi
+    );
   }
 
   const requestId = requestIdAl(msg && msg.requestId);
@@ -479,7 +621,9 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
             : undefined,
           message: netice && netice.message
             ? netice.message
-            : "Konvoy əməliyyatı başlaya bilmədi.",
+            : (type === "convoy_operation_recall_request"
+                ? "Konvoy geri çağırıla bilmədi."
+                : "Konvoy əməliyyatı başlaya bilmədi."),
           readinessCode: netice && netice.readinessCode
             ? netice.readinessCode
             : undefined,
@@ -496,16 +640,19 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
         return;
       }
 
+      const info = netice.info || emeliyyatMelumatiniHazirla(canliState, nowMs);
       gonder(kontekst, resultType, {
         success: true,
         playerId,
         requestId: netice.requestId || "",
         idempotentReplay: netice.idempotentReplay === true,
+        message: netice.message || "",
         operation: netice.operation || null,
-        info: netice.info || emeliyyatMelumatiniHazirla(canliState, nowMs),
+        info,
         payloadJson: netice.payloadJson || JSON.stringify({
           operation: netice.operation || null,
-          info: netice.info || emeliyyatMelumatiniHazirla(canliState, nowMs)
+          info,
+          message: netice.message || ""
         })
       });
     });
@@ -517,7 +664,9 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
       playerId,
       requestId: requestIdAl(kontekst.msg && kontekst.msg.requestId),
       idempotentReplay: false,
-      message: "Konvoy əməliyyatı tamamlanmadı."
+      message: type === "convoy_operation_recall_request"
+        ? "Konvoy geri çağırma əməliyyatı tamamlanmadı."
+        : "Konvoy əməliyyatı tamamlanmadı."
     });
   }
 
@@ -528,6 +677,7 @@ module.exports = {
   MESAJLAR,
   STATE_YEDEK_SAHELERI,
   startPayloadiniAl,
+  geriCagirPayloadiniAl,
   stateYedeyiniAl,
   stateRollbackEt,
   worldV2HedefOverrideAl,
