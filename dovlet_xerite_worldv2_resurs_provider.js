@@ -19,7 +19,8 @@ const LIMITSIZ_ZONE_DOVRU = 100;
 
 const COL_SON_INDEX = 300;
 const ORTA_SON_INDEX = 490;
-const DAXILI_SON_INDEX = 590;
+const MERKEZ_RESURS_SAYI = 5;
+const DAXILI_SON_INDEX = LEGACY_RESURS_SAYI - MERKEZ_RESURS_SAYI;
 
 const XERITE_MIN = 0;
 const XERITE_MAX = 1200;
@@ -27,10 +28,11 @@ const XERITE_MERKEZI = 600;
 const SERHED_PAYI = 42;
 const COL_ZONA_MAKSIMUM_MERKEZ_MESAFESI = XERITE_MERKEZI - SERHED_PAYI;
 
-// Baza koordinatı yalnız bir nöqtədir, amma Unity-də baza prefabı həmin nöqtənin
-// ətrafında vizual footprint tutur. 18 vahid bəzi böyük baza vizualları üçün az idi.
-// 32 vahid resurs sprite-ının baza/prefab üzərinə düşməsinin qarşısını alır.
-const BAZADAN_MIN_MESAFE = 32;
+// WorldV2-də 1 server koordinat vahidi = 1 Unity world vahididir.
+// Cari baza placeholder-i təxminən 2.6, resurs sprite-ı isə 4.2 world vahididir.
+// Mərkəzlər arasında 5 vahid saxlayanda vizuallar üst-üstə düşmür və arada
+// təxminən bir 1x1 xana qədər boşluq qalır. Buna görə əvvəlki 32 vahid ləğv edildi.
+const BAZADAN_MIN_MESAFE = 5;
 // 16 çox seyrək idi və xəritənin fiziki tutumunu tez doldururdu.
 // 7 vahid 4.2 ölçülü mobil sprite-lar üçün kifayət qədər təhlükəsiz aralıq saxlayır.
 const RESURSDAN_MIN_MESAFE = 7;
@@ -160,6 +162,8 @@ function zonaObyekti(zoneId) {
 function zonaTesviriAl(index) {
   const i = Math.max(1, tamEdedAl(index, 1));
 
+  // Mərkəz zonasında bütün Dövlət üzrə cəmi 5 resurs saxlanılır.
+  // İlk 600 node içində son 5 indeks Prezident mərkəzinə ayrılır.
   if (i <= LEGACY_RESURS_SAYI) {
     if (i <= COL_SON_INDEX) return zonaObyekti('outer');
     if (i <= ORTA_SON_INDEX) return zonaObyekti('middle');
@@ -167,11 +171,12 @@ function zonaTesviriAl(index) {
     return zonaObyekti('president_center');
   }
 
+  // 600-dən sonrakı limitsiz node-lar artıq Prezident mərkəzinə düşmür.
+  // Beləliklə Inspector 3 000, 10 000 və ya daha çox istəsə də mərkəzdə həmişə 5 qalır.
   const dovrIndex = ((i - LEGACY_RESURS_SAYI - 1) % LIMITSIZ_ZONE_DOVRU) + 1;
   if (dovrIndex <= 50) return zonaObyekti('outer');
   if (dovrIndex <= 82) return zonaObyekti('middle');
-  if (dovrIndex <= 98) return zonaObyekti('inner_green');
-  return zonaObyekti('president_center');
+  return zonaObyekti('inner_green');
 }
 
 function worldV2ResursDescriptoruAl(stateId, index) {
@@ -737,6 +742,7 @@ module.exports = {
   COL_SON_INDEX,
   ORTA_SON_INDEX,
   DAXILI_SON_INDEX,
+  MERKEZ_RESURS_SAYI,
   RESURS_NOVLERI,
   XERITE_MIN,
   XERITE_MAX,
