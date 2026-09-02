@@ -6,7 +6,8 @@ const {
   emeliyyatiBaslat,
   emeliyyatiGeriCagir,
   emeliyyatlariYenile,
-  emeliyyatMelumatiniHazirla
+  emeliyyatMelumatiniHazirla,
+  emeliyyatOnbaxisiniHazirla
 } = require("./konvoy_emeliyyat_sistemi");
 const {
   worldV2ResursTargetIdDirmi,
@@ -30,6 +31,7 @@ const {
 
 const MESAJLAR = new Set([
   "convoy_operation_info_request",
+  "convoy_operation_preview_request",
   "convoy_operation_start_request",
   "convoy_operation_recall_request"
 ]);
@@ -373,6 +375,87 @@ async function konvoyEmeliyyatMutasiyasiniTetbiqEt(
     };
   }
 
+  if (type === "convoy_operation_preview_request") {
+    const requestId = requestIdAl(msg && msg.requestId);
+    const requestPayload = startPayloadiniAl(msg);
+    const worldV2Hedef = await worldV2HedefOverrideAl(
+      state,
+      requestPayload,
+      nowMs,
+      client
+    );
+
+    if (!worldV2Hedef || worldV2Hedef.success !== true) {
+      if (yenilemeDeyisdi) {
+        await sharedKonvoylariTransactiondaSinxronEt(
+          client,
+          state,
+          playerId,
+          nowMs
+        );
+      }
+
+      return {
+        success: false,
+        deyisdi: yenilemeDeyisdi,
+        requestId,
+        errorCode: worldV2Hedef && worldV2Hedef.errorCode
+          ? worldV2Hedef.errorCode
+          : undefined,
+        message: worldV2Hedef && worldV2Hedef.message
+          ? worldV2Hedef.message
+          : "Konvoy yürüş vaxtı hesablana bilmədi."
+      };
+    }
+
+    const result = emeliyyatOnbaxisiniHazirla(
+      state,
+      requestPayload.convoyId,
+      requestPayload.targetType,
+      requestPayload.targetId,
+      worldV2Hedef.hedefOverride
+        ? { hedefOverride: worldV2Hedef.hedefOverride }
+        : null
+    );
+
+    if (!result || result.success !== true || !result.preview) {
+      if (yenilemeDeyisdi) {
+        await sharedKonvoylariTransactiondaSinxronEt(
+          client,
+          state,
+          playerId,
+          nowMs
+        );
+      }
+
+      return {
+        success: false,
+        deyisdi: yenilemeDeyisdi,
+        requestId,
+        message: result && result.message
+          ? result.message
+          : "Konvoy yürüş vaxtı hesablana bilmədi."
+      };
+    }
+
+    if (yenilemeDeyisdi) {
+      await sharedKonvoylariTransactiondaSinxronEt(
+        client,
+        state,
+        playerId,
+        nowMs
+      );
+    }
+
+    return {
+      success: true,
+      deyisdi: yenilemeDeyisdi,
+      requestId,
+      preview: result.preview,
+      payloadJson: JSON.stringify(result.preview)
+    };
+  }
+
   if (type === "convoy_operation_recall_request") {
     return geriCagirmaMutasiyasiniTetbiqEt(
       state,
@@ -608,6 +691,18 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
         return;
       }
 
+      if (type === "convoy_operation_preview_request" &&
+          netice && netice.success === true && netice.preview) {
+        gonder(kontekst, resultType, {
+          success: true,
+          playerId,
+          requestId: netice.requestId || "",
+          preview: netice.preview,
+          payloadJson: netice.payloadJson || JSON.stringify(netice.preview)
+        });
+        return;
+      }
+
       if (!netice || netice.success !== true) {
         gonder(kontekst, resultType, {
           success: false,
@@ -623,7 +718,9 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
             ? netice.message
             : (type === "convoy_operation_recall_request"
                 ? "Konvoy geri çağırıla bilmədi."
-                : "Konvoy əməliyyatı başlaya bilmədi."),
+                : type === "convoy_operation_preview_request"
+                  ? "Konvoy yürüş vaxtı hesablana bilmədi."
+                  : "Konvoy əməliyyatı başlaya bilmədi."),
           readinessCode: netice && netice.readinessCode
             ? netice.readinessCode
             : undefined,
@@ -666,7 +763,9 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
       idempotentReplay: false,
       message: type === "convoy_operation_recall_request"
         ? "Konvoy geri çağırma əməliyyatı tamamlanmadı."
-        : "Konvoy əməliyyatı tamamlanmadı."
+        : type === "convoy_operation_preview_request"
+          ? "Konvoy yürüş vaxtının hesablanması tamamlanmadı."
+          : "Konvoy əməliyyatı tamamlanmadı."
     });
   }
 

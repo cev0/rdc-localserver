@@ -86,6 +86,95 @@ function hereketMuddetiniHesabla(ax, az, bx, bz) {
   return Math.max(1, Math.ceil(mesafeHesabla(ax, az, bx, bz) * msPerXana));
 }
 
+function emeliyyatOnbaxisiniHazirla(
+  state,
+  convoyId,
+  targetType,
+  targetId,
+  secimler = null
+) {
+  const id = metnAl(convoyId, 64);
+  const sorquHedefTipi = metnAl(targetType, 32);
+  const sorquHedefId = metnAl(targetId, 220);
+
+  if (!id) {
+    return { success: false, message: "Konvoy ID yoxdur." };
+  }
+
+  if (sorquHedefTipi !== "resource" && sorquHedefTipi !== "enemy") {
+    return { success: false, message: "Konvoy hədəfinin tipi yanlışdır." };
+  }
+
+  if (!sorquHedefId) {
+    return { success: false, message: "Konvoy hədəfinin ID-si yoxdur." };
+  }
+
+  const hedefOverride = secimler && secimler.hedefOverride;
+  let hedef = null;
+
+  if (hedefOverride && typeof hedefOverride === "object") {
+    const overrideHedefTipi = metnAl(
+      hedefOverride.targetType || sorquHedefTipi,
+      32
+    );
+    const overrideHedefId = metnAl(hedefOverride.targetId, 220);
+    const hedefX = Number(hedefOverride.x);
+    const hedefZ = Number(hedefOverride.z);
+
+    if (overrideHedefTipi !== sorquHedefTipi ||
+        overrideHedefId !== sorquHedefId ||
+        !Number.isFinite(hedefX) ||
+        !Number.isFinite(hedefZ)) {
+      return { success: false, message: "Konvoy hədəfinin önbaxış məlumatı etibarsızdır." };
+    }
+
+    hedef = {
+      targetType: overrideHedefTipi,
+      targetId: overrideHedefId,
+      stateId: tamEded(hedefOverride.stateId),
+      x: hedefX,
+      z: hedefZ,
+      zoneId: metnAl(hedefOverride.zoneId, 64),
+      level: tamEded(hedefOverride.level)
+    };
+  }
+  else {
+    hedef = hedefMelumatiniAl(state, sorquHedefTipi, sorquHedefId);
+  }
+
+  if (!hedef) {
+    return { success: false, message: "Konvoy hədəfi tapılmadı." };
+  }
+
+  const hereket = hereketKonfiqiniAl();
+  const baza = bazaMovqeyiAl(state);
+  const distanceMapUnits = mesafeHesabla(baza.x, baza.z, hedef.x, hedef.z);
+  const travelDurationMs = hereketMuddetiniHesabla(
+    baza.x,
+    baza.z,
+    hedef.x,
+    hedef.z
+  );
+
+  return {
+    success: true,
+    preview: {
+      convoyId: id,
+      targetType: hedef.targetType,
+      targetId: hedef.targetId,
+      stateId: hedef.stateId,
+      fromX: baza.x,
+      fromZ: baza.z,
+      targetX: hedef.x,
+      targetZ: hedef.z,
+      distanceMapUnits,
+      travelDurationMs,
+      movementMsPerMapUnit: hereket.msPerMapUnit,
+      movementSource: hereket.source
+    }
+  };
+}
+
 function dovletIdAl(state) {
   return Math.max(1, tamEded(state && state.worldPlacement && state.worldPlacement.stateId) || 1);
 }
@@ -463,6 +552,7 @@ module.exports = {
   hereketKonfiqiniAl,
   hereketMsPerXana,
   hereketMuddetiniHesabla,
+  emeliyyatOnbaxisiniHazirla,
   emeliyyatiBaslat,
   emeliyyatlariYenile,
   emeliyyatMelumatiniHazirla

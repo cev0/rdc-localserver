@@ -70,7 +70,19 @@ function fakeClientHazirla() {
   let runtime = {
     version: 2,
     stateId: 1,
-    items: {}
+    items: {},
+    nodes: {
+      state_1_worldv2_resource_1: {
+        spawnSerial: 1,
+        x: 1000,
+        y: 600,
+        remainingAmount: 100,
+        occupiedByPlayerId: "",
+        occupiedByConvoyId: "",
+        occupiedUntilMs: 0,
+        respawnAtMs: 0
+      }
+    }
   };
   let yazmaSayi = 0;
 
@@ -138,6 +150,56 @@ function fakeClientHazirla() {
     assert.strictEqual(sql.length, 2);
     assert.ok(sql[0].startsWith("SELECT pg_advisory_xact_lock"));
     assert.ok(sql[1].startsWith("SELECT detallar"));
+    assert.strictEqual(fake.yazmaSayiniAl(), 0);
+  }
+
+  {
+    const state = stateHazirla();
+    const fake = fakeClientHazirla();
+
+    const evvelki = kopyala(state);
+    const netice = await konvoyEmeliyyatMutasiyasiniTetbiqEt(
+      state,
+      "oyuncu_a",
+      "convoy_operation_preview_request",
+      {
+        requestId: "REQ-PREVIEW-001",
+        convoyId: "KONVOY_1",
+        targetType: "RESOURCE",
+        targetId: "STATE_1_WORLDV2_RESOURCE_1_SPAWN_1"
+      },
+      1500,
+      fake.client
+    );
+
+    assert.strictEqual(netice.success, true);
+    assert.strictEqual(netice.deyisdi, false);
+    assert.strictEqual(netice.requestId, "req-preview-001");
+    assert.ok(netice.preview);
+    assert.strictEqual(netice.preview.convoyId, "konvoy_1");
+    assert.strictEqual(netice.preview.targetType, "resource");
+    assert.strictEqual(
+      netice.preview.targetId,
+      "state_1_worldv2_resource_1_spawn_1"
+    );
+    assert.strictEqual(netice.preview.fromX, 10);
+    assert.strictEqual(netice.preview.fromZ, 10);
+    assert.strictEqual(netice.preview.targetX, 1000);
+    assert.strictEqual(netice.preview.targetZ, 600);
+    assert.strictEqual(
+      netice.preview.travelDurationMs,
+      Math.max(
+        1,
+        Math.ceil(
+          Math.hypot(990, 590) * netice.preview.movementMsPerMapUnit
+        )
+      )
+    );
+    assert.deepStrictEqual(
+      state,
+      evvelki,
+      "Önbaxış konvoy əməliyyatı yaratmamalı və player state-i dəyişməməlidir."
+    );
     assert.strictEqual(fake.yazmaSayiniAl(), 0);
   }
 
