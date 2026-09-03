@@ -23,6 +23,7 @@ const { qosunTelimiMesajiniEmalEt } = require("./qosun_telimi_handler");
 const { dovletXeriteKataloqMesajiniEmalEt } = require("./dovlet_xerite_kataloq_handler");
 const { worldV2InfoProductionHandleriYarat } = require("./dovlet_xerite_worldv2_info_production_handler");
 const { dovletXeriteWorldV2ObyektProductionMesajiniEmalEt } = require("./dovlet_xerite_worldv2_obyekt_production_handler");
+const { dovletXeriteWorldV2TeleportMesajiniEmalEt } = require("./dovlet_xerite_worldv2_teleport_handler");
 const { dovletXeriteWorldV2ResursMesajiniEmalEt } = require("./dovlet_xerite_worldv2_resurs_handler");
 const { worldV2BaxisProductionHandleriYarat } = require("./dovlet_xerite_worldv2_baxis_production_handler");
 const { worldV2QlobalProductionHandleriYarat } = require("./dovlet_xerite_worldv2_qlobal_production_handler");
@@ -90,6 +91,7 @@ const OYUNCU_MUTASIYA_MESAJLARI = new Set([
   "resurs_hesabati_sil_request",
   "state_map_v2_elfecin_elave_request",
   "state_map_v2_elfecin_sil_request",
+  "state_map_v2_base_teleport_request",
   "pvp_base_attack_start_request",
   "pvp_base_attack_status_request",
   "pvp_base_attack_return_request",
@@ -139,6 +141,7 @@ async function gameplayMesajZenciriniIcraEt(kontekst) {
   if (await qosunTelimiMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteKataloqMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteWorldV2InfoProductionMesajiniEmalEt(kontekst)) return true;
+  if (await dovletXeriteWorldV2TeleportMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteWorldV2ObyektProductionMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteWorldV2ResursMesajiniEmalEt(kontekst)) return true;
   if (await dovletXeriteWorldV2BaxisProductionMesajiniEmalEt(kontekst)) return true;

@@ -113,8 +113,12 @@ function bazaElementiniHazirla(playerId, state, stateId) {
   };
 }
 
-async function bazalariPostgresdenAl(sid) {
-  const netice = await sorguEt(`
+async function bazalariSorquIleAl(sorquEtFn, sid) {
+  if (typeof sorquEtFn !== "function") {
+    throw new Error("Dövlət baza kataloqu üçün sorğu funksiyası tələb olunur.");
+  }
+
+  const netice = await sorquEtFn(`
       WITH son_snapshot AS (
         SELECT DISTINCT ON (oyuncu_id) oyuncu_id, detallar
         FROM hesab_audit_jurnali
@@ -132,6 +136,25 @@ async function bazalariPostgresdenAl(sid) {
     if (item && item.playerId) bases.push(item);
   }
   return { version: 5, stateId: sid, count: bases.length, bases };
+}
+
+async function bazalariPostgresdenAl(sid) {
+  return await bazalariSorquIleAl(
+    async (sql, parametrler) => await sorguEt(sql, parametrler),
+    sid
+  );
+}
+
+async function dovletBazalariniBirbasaPostgresdenAlClient(client, stateId) {
+  if (!client || typeof client.query !== "function") {
+    throw new Error("Dövlət bazalarını transaction daxilində oxumaq üçün client tələb olunur.");
+  }
+
+  const sid = Math.max(1, tamEded(stateId) || 1);
+  return await bazalariSorquIleAl(
+    async (sql, parametrler) => await client.query(sql, parametrler),
+    sid
+  );
 }
 
 async function birBazaSnapshotiniSorquIleAl(sorquEtFn, stateId, targetPlayerId) {
@@ -194,6 +217,7 @@ function dovletBazaKeshiniTemizle(stateId = null) {
 module.exports = {
   BAZA_KESHI_MS,
   dovletBazalariniAl,
+  dovletBazalariniBirbasaPostgresdenAlClient,
   dovletBazasiniAl,
   dovletBazasiniBirbasaAl,
   dovletBazasiniBirbasaAlClient,

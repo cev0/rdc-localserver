@@ -47,6 +47,24 @@ assert.strictEqual(
   true,
 );
 assert.strictEqual(muqavile.authoritativeRules.globalSearchIsReadOnly, true);
+
+const teleportMesaji = muqavile.messages.state_map_v2_base_teleport_request;
+assert.deepStrictEqual(teleportMesaji.requestFields, ['stateId', 'x', 'y']);
+assert.strictEqual(teleportMesaji.resultType, 'state_map_v2_base_teleport_result');
+assert.strictEqual(
+  muqavile.productionConnections.state_map_v2_base_teleport_request.transactional,
+  true,
+);
+assert.strictEqual(
+  muqavile.authoritativeRules.baseTeleportIsServerAuthoritative,
+  true,
+);
+assert.strictEqual(
+  muqavile.authoritativeRules.baseTeleportClientMayNotMutateWorldPlacement,
+  true,
+);
+
 assert.ok(muqavile.errorCodes.includes('WORLDV2_GLOBAL_SEARCH_INVALID'));
+assert.ok(muqavile.errorCodes.includes('WORLDV2_TELEPORT_BASE_OCCUPIED'));
 
 console.log('✓ WorldV2 Server↔Unity contract global search/topology qaydaları doğrudur');

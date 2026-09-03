@@ -31,6 +31,7 @@ async function run() {
   await require('./dovlet_xerite_worldv2_handler_testi');
   await require('./dovlet_xerite_worldv2_obyekt_handler_testi');
   await require('./dovlet_xerite_worldv2_info_production_handler_testi');
+  await require('./dovlet_xerite_worldv2_teleport_handler_testi');
   await require('./dovlet_xerite_worldv2_obyekt_production_handler_testi');
   await require('./dovlet_xerite_worldv2_resurs_vizual_paket_testi');
   await require('./dovlet_xerite_worldv2_qlobal_production_handler_testi');

@@ -12,6 +12,7 @@ function run() {
 
   const telebOlunanHandlerler = [
     'dovletXeriteWorldV2InfoProductionMesajiniEmalEt',
+    'dovletXeriteWorldV2TeleportMesajiniEmalEt',
     'dovletXeriteWorldV2ObyektProductionMesajiniEmalEt',
     'dovletXeriteWorldV2BaxisProductionMesajiniEmalEt',
     'dovletXeriteWorldV2QlobalProductionMesajiniEmalEt',
@@ -77,6 +78,11 @@ function run() {
       `${mesajType} read-only qalmalı və player mutasiya kilidinə salınmamalıdır.`,
     );
   }
+
+  assert.ok(
+    mutasiyaSetiMetni.includes('"state_map_v2_base_teleport_request"'),
+    'WorldV2 baza teleportu player mutation kilidində işləməlidir.',
+  );
 
   console.log('✓ WorldV2 production route wiring testi keçdi');
 }

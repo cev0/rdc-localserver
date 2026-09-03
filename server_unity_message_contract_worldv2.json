@@ -70,6 +70,15 @@
         "state 1434"
       ],
       "note": "Axtarış yalnız authoritative lifecycle payload-da olan açıq Dövlətlər içində dəqiq State ID tapır; player worldPlacement mutasiya edilmir."
+    },
+    "state_map_v2_base_teleport_request": {
+      "connected": true,
+      "stateSource": "oyun_state_daimilik_korpu",
+      "mutationSource": "oyun_state_mutasiya_postgres",
+      "collisionSource": "dovlet_baza_kataloqu_postgres + dovlet_xerite_worldv2_resurs_provider",
+      "transactional": true,
+      "persistentPlacementMutated": true,
+      "note": "Client yalnız eyni Dövlət daxilində tam koordinat təklif edir. Sərhəd, Prezident zonası, baza və resurs toqquşması serverdə yoxlanılır; qəbul ediləndə worldPlacement.baseX/baseZ PostgreSQL transaction-da dəyişir."
     }
   },
   "coordinateSystem": {
@@ -393,6 +402,26 @@
         },
         "payloadJson": "json_string"
       }
+    },
+    "state_map_v2_base_teleport_request": {
+      "authRequired": true,
+      "requestFields": [
+        "stateId",
+        "x",
+        "y"
+      ],
+      "resultType": "state_map_v2_base_teleport_result",
+      "currentBehavior": "production_server_authoritative_transactional_home_state_base_relocation",
+      "result": {
+        "success": "boolean",
+        "playerId": "string",
+        "stateId": "positive_integer",
+        "x": "integer_0_to_1200",
+        "y": "integer_0_to_1200",
+        "errorCode": "string_or_empty",
+        "message": "string",
+        "serverTimeUnixMs": "integer"
+      }
     }
   },
   "neighbor_contract": {
@@ -446,7 +475,15 @@
     "WORLDV2_RESOURCE_GATHER_INVALID",
     "WORLDV2_RESOURCE_NOT_FOUND",
     "WORLDV2_RESOURCE_TRANSACTION_REQUIRED",
-    "WORLDV2_INTERNAL_ERROR"
+    "WORLDV2_INTERNAL_ERROR",
+    "WORLDV2_TELEPORT_COORDINATE_INVALID",
+    "WORLDV2_TELEPORT_BORDER_BLOCKED",
+    "WORLDV2_TELEPORT_ALREADY_THERE",
+    "WORLDV2_TELEPORT_RESERVED_ZONE",
+    "WORLDV2_TELEPORT_BASE_OCCUPIED",
+    "WORLDV2_TELEPORT_RESOURCE_OCCUPIED",
+    "WORLDV2_TELEPORT_STATE_MISMATCH",
+    "WORLDV2_TELEPORT_FAILED"
   ],
   "authoritativeRules": {
     "stateLifecycleDays": 60,
@@ -482,7 +519,11 @@
     "resourceDepletionRemovesNodeFromObjectFeed": true,
     "resourceRespawnChoosesNewServerCoordinate": true,
     "resourceReservationAndGatherAreTransactional": true,
-    "resourceClientMayNotChooseCoordinatesOrRemainingAmount": true
+    "resourceClientMayNotChooseCoordinatesOrRemainingAmount": true,
+    "baseTeleportIsServerAuthoritative": true,
+    "baseTeleportOnlyInsideHomeState": true,
+    "baseTeleportCollisionValidationIsTransactional": true,
+    "baseTeleportClientMayNotMutateWorldPlacement": true
   },
   "intentionallyUnresolved": {
     "realStateTopologyIds": true,
