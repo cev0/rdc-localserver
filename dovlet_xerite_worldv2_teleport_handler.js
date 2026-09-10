@@ -23,7 +23,7 @@ const WORLDV2_TELEPORT_SORGU = "state_map_v2_base_teleport_request";
 const WORLDV2_TELEPORT_CAVAB = "state_map_v2_base_teleport_result";
 const WORLDV2_TELEPORT_SERHED_PAYI = 4;
 const WORLDV2_TELEPORT_BAZA_MIN_MESAFE = 8;
-const WORLDV2_TELEPORT_RESURS_MIN_MESAFE = 7;
+const WORLDV2_TELEPORT_RESURS_MIN_MESAFE = 3;
 const WORLDV2_TELEPORT_PREZIDENT_MIN_MESAFE = 45;
 const WORLDV2_TELEPORT_STATE_KILIDI = "worldv2_baza_teleport_state_v1";
 
@@ -188,7 +188,7 @@ async function standartBazalariKilidliAl(client, stateId) {
 }
 
 async function standartResurslariAl(stateId, bases, nowMs) {
-  return await worldV2ResurslariniAl(stateId, bases, nowMs);
+  return await worldV2ResurslariniAl(stateId, bases, nowMs, 0, { butunMovcudlar: true });
 }
 
 function worldV2TeleportHandleriYarat({
@@ -404,3 +404,4 @@ module.exports = {
   worldV2TeleportHandleriYarat,
   dovletXeriteWorldV2TeleportMesajiniEmalEt,
 };
+

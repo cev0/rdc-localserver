@@ -57,21 +57,13 @@ Bu rəqəmlər WorldV2-yə avtomatik scale edilmir. Seed/RNG çağırış ardıc
 
 ### WorldV2 statusu
 
-`worldV2ResourcePlacement` və `worldV2EnemyPlacement` hələ qəsdən unresolved-dur. Yeni terrain/biom zonaları, spawn sıxlığı, say və level band-ləri təsdiqlənmədən ayrıca V2 placement generatoru yazılmır.
+`worldV2ResourcePlacement` artıq həll olunub və ayrıca server runtime provider-i ilə işləyir. `worldV2EnemyPlacement` açıq qalır; yeni düşmən/biom qaydaları ayrıca qərar tələb edir.
 
 ---
 
 # 3. Resurs runtime
 
-`xerite_resurs_toplama_sistemi.js` legacy xəritədə 18 node və köhnə zone bölgüsündən istifadə edir. PostgreSQL occupied/respawn/toplama transaction mexanizmi placement-dan ayrılıb saxlanıla bilər, amma WorldV2 resurs sayı və yerləşimi hələ final gameplay qaydası deyil.
-
-Açıq qalan qərarlar:
-
-- V2 resurs sayı və sıxlığı;
-- zone/biom sərhədləri;
-- level bölgüsü;
-- Prezident mərkəzi ətrafında resurs qaydası;
-- bazalardan minimum spawn məsafəsi.
+`xerite_resurs_toplama_sistemi.js` köhnə xəritəyə aiddir. WorldV2 resursları ayrıca `dovlet_xerite_worldv2_resurs_provider.js` və `dovlet_xerite_worldv2_resurs_emeliyyat_sistemi.js` ilə PostgreSQL runtime-da saxlanır. Canlı node-un koordinatı, ID-si, qalan miqdarı və aktiv konvoy rezervi qorunur. V5 görünən sahə xidməti revision/respawn vaxtına əsaslanan cache və məhdud kamera sorğusu əlavə edir. Cari sıxlıq, Prezidentin 5 resursu və məsafələr `DOVLET_XERITESI_WORLDV2_RESURS_SAHE_V5.md` sənədindədir.
 
 ---
 
@@ -167,12 +159,12 @@ Contract, guard, production handler və sənəd consistency testləri server-aut
 Aşağıdakılar istifadəçi/gameplay qərarı və ya real authoritative data mənbəyi olmadan yazılmır:
 
 - yeni biom/zone radiusları;
-- WorldV2 resurs sayı və placement;
 - WorldV2 düşmən sayı və placement;
-- resource/enemy level band-ləri;
+- yeni düşmən level band-ləri;
 - real State qonşuluq ID-ləri;
 - `allianceName`-dən saxta stabil ittifaq ID-si;
 - war-target identifikator/storage qaydası;
 - Qlobal Prezident/ad/bayraq metadata mənbəyi.
 
 Prezident müdafiə koordinatları, sərhəd giriş koordinatı və Qlobal Layout V1 artıq bu siyahıya daxil deyil; onlar server-authoritative olaraq həll olunub.
+

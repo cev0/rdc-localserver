@@ -63,6 +63,9 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Paketləri qur
+        run: npm ci
+
       - name: Unity mesaj müqaviləsi JSON sintaksisini yoxla
         run: node -e "JSON.parse(require('fs').readFileSync('server_unity_message_contract_worldv2.json','utf8')); console.log('WorldV2 contract JSON OK')"
 

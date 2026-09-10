@@ -11,6 +11,23 @@ const PREFIX = 'dovlet_xerite_worldv2_';
 // mövcud authoritative server mənbələrini oxumağa icazə verilir.
 // Buraya wildcard və ümumi qovluq icazəsi əlavə etmək olmaz.
 const ICAZELI_XARICI_LOCAL_REQUIRE = Object.freeze({
+  // Mövcud resource/teleport production adapterlərinin konkret asılılıqları.
+  // Sahə cache-i yalnız eyni resource audit revision-unu oxuyur.
+  'dovlet_xerite_worldv2_resurs_emeliyyat_sistemi.js': new Set([
+    './verilenler_bazasi',
+  ]),
+  'dovlet_xerite_worldv2_resurs_provider.js': new Set([
+    './verilenler_bazasi',
+    './xerite_resurs_qaydalari',
+  ]),
+  'dovlet_xerite_worldv2_resurs_sahe.js': new Set([
+    './verilenler_bazasi',
+  ]),
+  'dovlet_xerite_worldv2_teleport_handler.js': new Set([
+    './oyun_state_daimilik_korpu',
+    './oyun_state_mutasiya_postgres',
+    './dovlet_baza_kataloqu_postgres',
+  ]),
   'dovlet_xerite_worldv2_lifecycle_adapteri.js': new Set([
     './dovlet_lifecycle_handler',
   ]),
@@ -116,3 +133,4 @@ module.exports = {
   relativeRequireHedefleriniTap,
   xariciLocalRequireIcazelidir,
 };
+
