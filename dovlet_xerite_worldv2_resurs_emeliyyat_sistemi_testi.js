@@ -75,9 +75,11 @@ async function run() {
   );
 
   assert.strictEqual(
-    worldV2ResursTargetiniParcala('state_1_worldv2_resource_99999_spawn_1'),
-    null,
+    worldV2ResursTargetiniParcala('state_1_worldv2_resource_99999_spawn_1').index,
+    99999,
   );
+
+  assert.strictEqual(worldV2ResursTargetiniParcala('state_1_worldv2_resource_0_spawn_1'), null);
 
   const client = saxtaClientYarat({
     version: 2,
@@ -188,3 +190,4 @@ async function run() {
 }
 
 module.exports = run();
+

@@ -39,8 +39,10 @@ assert.strictEqual(contract.intentionallyUnresolved.stableAllianceIdForBaseLodFi
 assert.ok(sened.includes('stabil server-authoritative `allianceId` mənbəyi hələ yoxdur'));
 assert.ok(sened.includes('İttifaq adı texniki ID kimi istifadə edilmir'));
 
-assert.strictEqual(contract.intentionallyUnresolved.worldV2ResourcePlacement, true);
+assert.strictEqual(contract.intentionallyUnresolved.worldV2ResourcePlacement, false);
 assert.strictEqual(contract.intentionallyUnresolved.worldV2EnemyPlacement, true);
+assert.ok(sened.includes('`worldV2ResourcePlacement` artıq həll olunub'));
+assert.ok(migrasiyaAuditi.includes('`worldV2ResourcePlacement` artıq həll olunub'));
 assert.ok(sened.includes('Legacy xəritədə olan `1024×1024` radius və spawn sayları'));
 
 assert.strictEqual(contract.intentionallyUnresolved.globalPresidentNameFlagMetadataSource, true);
@@ -73,3 +75,4 @@ assert.strictEqual(contract.intentionallyUnresolved.globalPresidentNameFlagMetad
 assert.ok(migrasiyaAuditi.includes('Qlobal Prezident/ad/bayraq metadata mənbəyi'));
 
 console.log('WorldV2 sənədləri contract-la uyğundur.');
+

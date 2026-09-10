@@ -184,6 +184,8 @@ async function run() {
         connectionId: 'topologiya_1_2',
         fromStateId: 1,
         toStateId: 2,
+        fromNodeId: 'qlobal_v1_node_001',
+        toNodeId: 'qlobal_v1_node_002',
       },
     ]);
 
@@ -200,3 +202,4 @@ async function run() {
 }
 
 module.exports = run();
+

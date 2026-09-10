@@ -101,16 +101,9 @@ War-target qaydası təsdiqlənmədən server filtri və ya saxta identifikator 
 
 Legacy xəritədə olan `1024×1024` radius və spawn sayları yeni `1200×1200` xəritəyə avtomatik scale edilmir.
 
-Hələ müəyyən edilməlidir:
+`worldV2ResourcePlacement` artıq həll olunub: `dovlet_xerite_worldv2_resurs_provider` server runtime-ı resursların koordinatını, level-ini, miqdarını və spawn ID-sini saxlayır. V5 yaxın sahə rejimi eyni kataloqun məhdud hissəsini telefona göndərir; mövcud canlı hədəflər köçürülmür. Sıxlıq və ölçü sazlanması: `DOVLET_XERITESI_WORLDV2_RESURS_SAHE_V5.md`.
 
-- terrain/biom gameplay zonalarının dəqiq sərhədləri;
-- hər zonada resurs sıxlığı və sayı;
-- düşmən sayı və səviyyə bölgüsü;
-- spawn məsafələri;
-- Prezident mərkəzi ətrafında resurs/düşmən qaydası;
-- bazalardan minimum məsafə.
-
-Mövcud PostgreSQL respawn/runtime mexanizmi saxlanıla bilər, lakin V2 placement qaydası ayrıca qərar tələb edir.
+Düşmənlərin WorldV2 yerləşimi, sayı, level bölgüsü və gələcək biom qaydaları açıq qalır. Legacy düşmən radiusları avtomatik V2-yə çevrilmir.
 
 ---
 
@@ -162,3 +155,4 @@ GitHub Actions workflow-u bu runner-i PR-lərdə işlətmək üçün mövcuddur.
 ## Unity inteqrasiyası üçün dəyişməyən server prinsipi
 
 Unity vizualı server coordinate contract-ına uyğunlaşdırılır. Server shared-world vəziyyətinin authoritative mənbəyi olaraq qalır. Client bağlı Dövlət, saxta qlobal node, saxta ittifaq ID-si və ya placement balansı icad etməməlidir. Sərhəd giriş koordinatı server tərəfindən hesablanır; client onu yalnız təqdimat/naviqasiya üçün istifadə edir.
+

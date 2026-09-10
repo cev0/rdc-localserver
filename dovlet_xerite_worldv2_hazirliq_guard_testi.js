@@ -25,7 +25,7 @@ assert.strictEqual(
 );
 assert.strictEqual(
   contract.productionConnections.state_map_v2_objects_request.source,
-  'dovlet_baza_kataloqu_postgres',
+  'dovlet_baza_kataloqu_postgres + dovlet_xerite_worldv2_resurs_provider',
 );
 assert.strictEqual(
   contract.productionConnections.state_map_v2_objects_request.layers.bases,
@@ -33,14 +33,13 @@ assert.strictEqual(
 );
 assert.strictEqual(
   contract.productionConnections.state_map_v2_objects_request.layers.resources,
-  false,
+  true,
 );
 
 const unresolved = contract.intentionallyUnresolved || {};
 for (const key of [
   'realStateTopologyIds',
   'globalPresidentNameFlagMetadataSource',
-  'worldV2ResourcePlacement',
   'worldV2EnemyPlacement',
   'stableAllianceIdForBaseLodFiltering',
 ]) {
@@ -50,6 +49,9 @@ for (const key of [
     `Hazırlıq mərhələsində unresolved qayda false edilməməlidir: ${key}`,
   );
 }
+
+// Resurs yerləşimi mövcud server runtime provider-i ilə həll olunub.
+assert.strictEqual(unresolved.worldV2ResourcePlacement, false);
 
 // Sərhəd giriş koordinatı artıq production server qaydasıdır.
 assert.strictEqual(unresolved.borderEntryCoordinates, false);
@@ -159,23 +161,24 @@ assert.strictEqual(
 const obyektMesaji = contract.messages.state_map_v2_objects_request;
 assert.strictEqual(
   obyektMesaji.currentBehavior,
-  'production_postgres_bases_connected',
+  'production_postgres_bases_and_dynamic_resources_connected',
 );
 assert.strictEqual(
   obyektMesaji.productionSource,
-  'dovlet_baza_kataloqu_postgres',
+  'dovlet_baza_kataloqu_postgres + dovlet_xerite_worldv2_resurs_provider',
 );
 assert.strictEqual(
   obyektMesaji.readFailureErrorCode,
   'WORLDV2_OBJECTS_READ_FAILED',
 );
 assert.strictEqual(
-  obyektMesaji.resultWhenBaseDependencyConnected.info.layerStatus.basesConnected,
+  obyektMesaji.resultWhenDependenciesConnected.info.layerStatus.basesConnected,
   true,
 );
 assert.strictEqual(
-  obyektMesaji.resultWhenBaseDependencyConnected.info.layerStatus.resourcesConnected,
-  false,
+  obyektMesaji.resultWhenDependenciesConnected.info.layerStatus.resourcesConnected,
+  true,
 );
 
 console.log('WorldV2 hazırlıq guard testləri uğurla tamamlandı.');
+
