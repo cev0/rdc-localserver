@@ -8,6 +8,8 @@ const {
   resursLevelMelumatiniAl,
 } = require('./xerite_resurs_qaydalari');
 
+const { dovletBazalariniBirbasaPostgresdenAlClient } = require('./dovlet_baza_kataloqu_postgres');
+
 const HADISE_NOVU = 'dovlet_worldv2_resurs_runtime_v2';
 
 // Yalnız ilk 600 node-un köhnə deterministik bölgüsünü qoruyan legacy sabitdir.
@@ -425,7 +427,7 @@ async function runtimeEmeliyyati(stateId, emeliyyat) {
       await client.query('BEGIN');
       await postgresDovletKilidiniAl(client, sid);
       const runtime = await runtimeOxuClient(client, sid);
-      const cavab = await emeliyyat(runtime, sid);
+      const cavab = await emeliyyat(runtime, sid, client);
       if (cavab && cavab.deyisdi === true) {
         await runtimeYazClient(client, sid, runtime);
       }
@@ -518,7 +520,8 @@ async function worldV2ResurslariniAl(stateId, bases = [], nowMs = Date.now(), is
   const indi = menfiOlmayanTamEdedAl(nowMs, Date.now());
   const teleb = worldV2AktivResursSayiniAl(istenilenSay);
 
-  return runtimeEmeliyyati(sid, async runtime => {
+  return runtimeEmeliyyati(sid, async (runtime, _, client) => {
+    let spawnBazalari = null;
     let deyisdi = false;
     let fizikiTutumDoldu = false;
     let sonIndex = teleb;
@@ -575,7 +578,16 @@ async function worldV2ResurslariniAl(stateId, bases = [], nowMs = Date.now(), is
       // Tutum həddi yalnız yeni spawn cəhdlərini saxlayır; yuxarı indekslərdəki
       // mövcud node-ların lifecycle emalı davam edir.
       if (ugursuzSpawnSayi >= LIMITSIZ_ZONE_DOVRU * 2) continue;
-      const yeni = yeniSpawnQur(runtime, descriptor, bases, indi, spatialIndex, node || null);
+      // Teleport və resurs əməliyyatları eyni resurs kilidini saxlayır. Kiliddən
+      // SONRA oxunan baza snapshot-u köhnə cache-in bazanın altında respawn yaratmasını önləyir.
+      if (spawnBazalari === null) {
+        const paket = await dovletBazalariniBirbasaPostgresdenAlClient(client, sid);
+        const cariBazalar = Array.isArray(paket && paket.bases) ? paket.bases : [];
+        const cariIdler = new Set(cariBazalar.map(b => String(b.playerId || '').toLowerCase()));
+        spawnBazalari = cariBazalar.concat((Array.isArray(bases) ? bases : []).filter(b =>
+          b && !cariIdler.has(String(b.playerId || '').toLowerCase())));
+      }
+      const yeni = yeniSpawnQur(runtime, descriptor, spawnBazalari, indi, spatialIndex, node || null);
       if (yeni) {
         runtime.nodes[descriptor.nodeId] = yeni;
         spatialIndexeElaveEt(spatialIndex, { x: yeni.x, y: yeni.y, nodeId: descriptor.nodeId });

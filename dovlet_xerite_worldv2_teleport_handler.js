@@ -16,8 +16,8 @@ const {
   dovletBazaKeshiniTemizle,
 } = require("./dovlet_baza_kataloqu_postgres");
 const {
-  worldV2ResurslariniAl,
-} = require("./dovlet_xerite_worldv2_resurs_provider");
+  worldV2TeleportSaheResurslariniSilClient,
+} = require("./dovlet_xerite_worldv2_resurs_emeliyyat_sistemi");
 
 const WORLDV2_TELEPORT_SORGU = "state_map_v2_base_teleport_request";
 const WORLDV2_TELEPORT_CAVAB = "state_map_v2_base_teleport_result";
@@ -67,7 +67,6 @@ function teleportYeriYoxla({
   cariX,
   cariY,
   bases = [],
-  resources = [],
 } = {}) {
   if (!koordinatEtibarlidir(x, y) ||
       !Number.isInteger(Number(x)) ||
@@ -130,21 +129,6 @@ function teleportYeriYoxla({
     }
   }
 
-  for (const resurs of Array.isArray(resources) ? resources : []) {
-    const rx = Number(resurs && resurs.x);
-    const ry = Number(resurs && (resurs.y != null ? resurs.y : resurs.z));
-    if (!Number.isFinite(rx) || !Number.isFinite(ry)) continue;
-
-    if (xanalarUstUsteDusur(tx, ty, WORLDV2_BAZA_XANA_ENI,
-        rx, ry, WORLDV2_RESURS_XANA_ENI)) {
-      return {
-        success: false,
-        errorCode: "WORLDV2_TELEPORT_RESOURCE_OCCUPIED",
-        message: "Seçilən 2×2 sahədə resurs xanası var.",
-      };
-    }
-  }
-
   return { success: true, x: tx, y: ty };
 }
 
@@ -192,16 +176,12 @@ async function standartBazalariKilidliAl(client, stateId) {
   return await dovletBazalariniBirbasaPostgresdenAlClient(client, stateId);
 }
 
-async function standartResurslariAl(stateId, bases, nowMs) {
-  return await worldV2ResurslariniAl(stateId, bases, nowMs, 0, { butunMovcudlar: true });
-}
-
 function worldV2TeleportHandleriYarat({
   stateBerpaOlunub = oyuncuStateBerpaOlunub,
   stateBerpaEt = standartStateBerpaEt,
   stateMutasiyaEt = standartStateMutasiyaEt,
   bazalariKilidliAl = standartBazalariKilidliAl,
-  resurslariAl = standartResurslariAl,
+  resurslariSilClient = worldV2TeleportSaheResurslariniSilClient,
   bazaKeshiniTemizle = dovletBazaKeshiniTemizle,
 } = {}) {
   return async function dovletXeriteWorldV2TeleportMesajiniEmalEt(kontekst) {
@@ -310,15 +290,6 @@ function worldV2TeleportHandleriYarat({
           const bases = Array.isArray(bazaPaketi && bazaPaketi.bases)
             ? bazaPaketi.bases
             : [];
-          const resursPaketi = await resurslariAl(
-            placement.stateId,
-            bases,
-            nowMs,
-          );
-          const resources = Array.isArray(resursPaketi && resursPaketi.resources)
-            ? resursPaketi.resources
-            : [];
-
           const yoxlama = teleportYeriYoxla({
             playerId,
             x,
@@ -326,11 +297,13 @@ function worldV2TeleportHandleriYarat({
             cariX: placement.baseX,
             cariY: placement.baseZ,
             bases,
-            resources,
           });
 
           if (!yoxlama.success)
             return { ...yoxlama, deyisdi: false };
+
+          // Resurs silinməsi və baza snapshot-u eyni PostgreSQL transaction-da yazılır.
+          const silinme = await resurslariSilClient(client, { stateId: placement.stateId, x, y, nowMs });
 
           placement.placement.baseX = x;
           placement.placement.baseZ = y;
@@ -345,6 +318,7 @@ function worldV2TeleportHandleriYarat({
             stateId: placement.stateId,
             x,
             y,
+            removedResourceTargetIds: silinme.removedResourceTargetIds,
             message: "Baza yeni koordinata köçürüldü.",
           };
         },
@@ -356,6 +330,8 @@ function worldV2TeleportHandleriYarat({
         stateId: requestedStateId,
         x,
         y,
+        removedResourceTargetIds: netice && netice.success && Array.isArray(netice.removedResourceTargetIds)
+          ? netice.removedResourceTargetIds : [],
         errorCode: netice && netice.errorCode ? netice.errorCode : "",
         message: netice && netice.message
           ? netice.message
