@@ -167,23 +167,23 @@ test('Obyekt layer-i production PostgreSQL baza mənbəyinə qoşulub', () => {
   const objects = contract.messages[WORLDV2_MESAJ_NOVLERI.OBYEKTLER_SORGU];
   assert.strictEqual(
     objects.currentBehavior,
-    'production_postgres_bases_connected',
+    'production_postgres_bases_and_dynamic_resources_connected',
   );
-  assert.strictEqual(objects.productionSource, 'dovlet_baza_kataloqu_postgres');
+  assert.strictEqual(objects.productionSource, 'dovlet_baza_kataloqu_postgres + dovlet_xerite_worldv2_resurs_provider');
   assert.strictEqual(objects.readFailureErrorCode, 'WORLDV2_OBJECTS_READ_FAILED');
   assert.strictEqual(
-    objects.resultWhenBaseDependencyConnected.info.layerStatus.basesConnected,
+    objects.resultWhenDependenciesConnected.info.layerStatus.basesConnected,
     true,
   );
   assert.strictEqual(
-    objects.resultWhenBaseDependencyConnected.info.layerStatus.resourcesConnected,
-    false,
+    objects.resultWhenDependenciesConnected.info.layerStatus.resourcesConnected,
+    true,
   );
 });
 
 test('WorldV2 baza public marker sahələri JSON müqaviləsində runtime payload-la uyğun saxlanır', () => {
   const baza = contract.messages[WORLDV2_MESAJ_NOVLERI.OBYEKTLER_SORGU]
-    .resultWhenBaseDependencyConnected.info.bases[0];
+    .resultWhenDependenciesConnected.info.bases[0];
 
   assert.deepStrictEqual(baza, {
     playerId: 'string',
@@ -234,3 +234,4 @@ test('Qlobal node və əlaqə qaydaları server-authoritative kimi rəsmiləşdi
 });
 
 console.log('\nWorldV2 server/Unity müqavilə testləri uğurla tamamlandı.');
+
