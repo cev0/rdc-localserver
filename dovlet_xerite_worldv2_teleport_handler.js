@@ -22,8 +22,8 @@ const {
 const WORLDV2_TELEPORT_SORGU = "state_map_v2_base_teleport_request";
 const WORLDV2_TELEPORT_CAVAB = "state_map_v2_base_teleport_result";
 const WORLDV2_TELEPORT_SERHED_PAYI = 4;
-const WORLDV2_TELEPORT_BAZA_MIN_MESAFE = 8;
-const WORLDV2_TELEPORT_RESURS_MIN_MESAFE = 3;
+const WORLDV2_BAZA_XANA_ENI = 2;
+const WORLDV2_RESURS_XANA_ENI = 1;
 const WORLDV2_TELEPORT_PREZIDENT_MIN_MESAFE = 45;
 const WORLDV2_TELEPORT_STATE_KILIDI = "worldv2_baza_teleport_state_v1";
 
@@ -53,6 +53,11 @@ function bazaKoordinatiniAl(baza) {
       : (baza.z != null ? baza.z : baza.baseZ),
   );
   return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+}
+
+function xanalarUstUsteDusur(ax, ay, aEn, bx, by, bEn) {
+  // X:Y birinci xananın koordinatıdır; toxunan sərhədlər üst-üstə düşmə deyil.
+  return ax < bx + bEn && ax + aEn > bx && ay < by + bEn && ay + aEn > by;
 }
 
 function teleportYeriYoxla({
@@ -115,12 +120,12 @@ function teleportYeriYoxla({
     if (!bazaPlayerId || bazaPlayerId === normalizedPlayerId) continue;
 
     const koordinat = bazaKoordinatiniAl(baza);
-    if (koordinat && mesafeKvadrati(tx, ty, koordinat.x, koordinat.y) <
-        WORLDV2_TELEPORT_BAZA_MIN_MESAFE ** 2) {
+    if (koordinat && xanalarUstUsteDusur(tx, ty, WORLDV2_BAZA_XANA_ENI,
+        koordinat.x, koordinat.y, WORLDV2_BAZA_XANA_ENI)) {
       return {
         success: false,
         errorCode: "WORLDV2_TELEPORT_BASE_OCCUPIED",
-        message: "Seçilən koordinat başqa bazaya çox yaxındır.",
+        message: "Seçilən 2×2 sahə başqa bazanın xanaları ilə üst-üstə düşür.",
       };
     }
   }
@@ -130,12 +135,12 @@ function teleportYeriYoxla({
     const ry = Number(resurs && (resurs.y != null ? resurs.y : resurs.z));
     if (!Number.isFinite(rx) || !Number.isFinite(ry)) continue;
 
-    if (mesafeKvadrati(tx, ty, rx, ry) <
-        WORLDV2_TELEPORT_RESURS_MIN_MESAFE ** 2) {
+    if (xanalarUstUsteDusur(tx, ty, WORLDV2_BAZA_XANA_ENI,
+        rx, ry, WORLDV2_RESURS_XANA_ENI)) {
       return {
         success: false,
         errorCode: "WORLDV2_TELEPORT_RESOURCE_OCCUPIED",
-        message: "Seçilən koordinat resurs sahəsinə çox yaxındır.",
+        message: "Seçilən 2×2 sahədə resurs xanası var.",
       };
     }
   }
@@ -397,8 +402,8 @@ module.exports = {
   WORLDV2_TELEPORT_SORGU,
   WORLDV2_TELEPORT_CAVAB,
   WORLDV2_TELEPORT_SERHED_PAYI,
-  WORLDV2_TELEPORT_BAZA_MIN_MESAFE,
-  WORLDV2_TELEPORT_RESURS_MIN_MESAFE,
+  WORLDV2_BAZA_XANA_ENI,
+  WORLDV2_RESURS_XANA_ENI,
   WORLDV2_TELEPORT_PREZIDENT_MIN_MESAFE,
   teleportYeriYoxla,
   worldV2TeleportHandleriYarat,
