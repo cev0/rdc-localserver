@@ -505,6 +505,36 @@ async function worldV2ResursRezerviniBuraxClient(client, {
   });
 }
 
+// Yalnız teleport transaction-ından çağırılır. COMMIT/ROLLBACK çağıran tərəfə məxsusdur.
+// Node-un köhnə spawn-ı tombstone kimi saxlanır ki, növbəti oxuma onu yenidən yaratmasın.
+async function worldV2TeleportSaheResurslariniSilClient(client, { stateId, x, y, nowMs = Date.now() }) {
+  if (!Number.isInteger(stateId) || stateId <= 0 || !Number.isInteger(x) || !Number.isInteger(y) ||
+      x < 0 || y < 0 || x + 1 > 1200 || y + 1 > 1200) {
+    throw new Error('Teleport resurs təmizləməsi üçün etibarlı 2×2 sahə tələb olunur.');
+  }
+  const indi = menfiOlmayanTamEdedAl(nowMs, Date.now());
+  return runtimeEmeliyyatiClient(client, stateId, async runtime => {
+    const removedResourceTargetIds = [];
+    for (const [nodeId, node] of Object.entries(runtime.nodes)) {
+      const match = nodeId.match(/^state_(\d+)_worldv2_resource_(\d+)$/);
+      if (!match || Number(match[1]) !== stateId || !node ||
+          Number(node.remainingAmount) <= 0 || Number(node.respawnAtMs) > 0) continue;
+      const rx = Number(node.x), ry = Number(node.y);
+      if (!Number.isFinite(rx) || !Number.isFinite(ry) ||
+          !(x < rx + 1 && x + 2 > rx && y < ry + 1 && y + 2 > ry)) continue;
+      const descriptor = worldV2ResursDescriptoruAl(stateId, Number(match[2]));
+      removedResourceTargetIds.push(`${nodeId}_spawn_${Math.max(1, tamEdedAl(node.spawnSerial, 1))}`);
+      node.remainingAmount = 0;
+      node.respawnAtMs = indi + Math.max(1, descriptor.respawnSeconds) * 1000;
+      node.removedByTeleportAtMs = indi;
+      node.occupiedByPlayerId = '';
+      node.occupiedByConvoyId = '';
+      node.occupiedUntilMs = 0;
+    }
+    return { deyisdi: removedResourceTargetIds.length > 0, removedResourceTargetIds };
+  });
+}
+
 async function worldV2ResursToplamaniBitirClient(client, {
   stateId,
   targetId,
@@ -590,5 +620,6 @@ module.exports = {
   worldV2ResursuRezervEtClient,
   worldV2ResursSahibliyiniKocurClient,
   worldV2ResursRezerviniBuraxClient,
+  worldV2TeleportSaheResurslariniSilClient,
   worldV2ResursToplamaniBitirClient,
 };

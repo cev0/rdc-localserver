@@ -425,7 +425,7 @@ async function runtimeEmeliyyati(stateId, emeliyyat) {
       await client.query('BEGIN');
       await postgresDovletKilidiniAl(client, sid);
       const runtime = await runtimeOxuClient(client, sid);
-      const cavab = await emeliyyat(runtime, sid);
+      const cavab = await emeliyyat(runtime, sid, client);
       if (cavab && cavab.deyisdi === true) {
         await runtimeYazClient(client, sid, runtime);
       }
@@ -513,12 +513,28 @@ function yeniSpawnQur(runtime, descriptor, bases, nowMs, spatialIndex, kohneNode
   };
 }
 
+// Read only occupied base coordinates using the existing DB boundary. No legacy gameplay dependency.
+async function cariBazaMovqeleriniAlClient(client, stateId) {
+  const result = await client.query(`
+    WITH son_snapshot AS (
+      SELECT DISTINCT ON (oyuncu_id) oyuncu_id, detallar
+      FROM hesab_audit_jurnali
+      WHERE hadise_novu = $1 AND detallar #>> '{state,worldPlacement,stateId}' = $2
+      ORDER BY oyuncu_id, id DESC
+    ) SELECT oyuncu_id, detallar FROM son_snapshot`, ['oyun_state_snapshot_v1', String(stateId)]);
+  return (result.rows || []).map(row => {
+    const wp = row.detallar && row.detallar.state && row.detallar.state.worldPlacement;
+    return wp ? { playerId: row.oyuncu_id, x: Number(wp.baseX), y: Number(wp.baseZ) } : null;
+  }).filter(b => b && Number.isFinite(b.x) && Number.isFinite(b.y));
+}
+
 async function worldV2ResurslariniAl(stateId, bases = [], nowMs = Date.now(), istenilenSay = 0, options = {}) {
   const sid = sidAl(stateId);
   const indi = menfiOlmayanTamEdedAl(nowMs, Date.now());
   const teleb = worldV2AktivResursSayiniAl(istenilenSay);
 
-  return runtimeEmeliyyati(sid, async runtime => {
+  return runtimeEmeliyyati(sid, async (runtime, _, client) => {
+    let spawnBazalari = null;
     let deyisdi = false;
     let fizikiTutumDoldu = false;
     let sonIndex = teleb;
@@ -575,7 +591,15 @@ async function worldV2ResurslariniAl(stateId, bases = [], nowMs = Date.now(), is
       // Tutum həddi yalnız yeni spawn cəhdlərini saxlayır; yuxarı indekslərdəki
       // mövcud node-ların lifecycle emalı davam edir.
       if (ugursuzSpawnSayi >= LIMITSIZ_ZONE_DOVRU * 2) continue;
-      const yeni = yeniSpawnQur(runtime, descriptor, bases, indi, spatialIndex, node || null);
+      // Teleport və resurs əməliyyatları eyni resurs kilidini saxlayır. Kiliddən
+      // SONRA oxunan baza snapshot-u köhnə cache-in bazanın altında respawn yaratmasını önləyir.
+      if (spawnBazalari === null) {
+        const cariBazalar = await cariBazaMovqeleriniAlClient(client, sid);
+        const cariIdler = new Set(cariBazalar.map(b => String(b.playerId || '').toLowerCase()));
+        spawnBazalari = cariBazalar.concat((Array.isArray(bases) ? bases : []).filter(b =>
+          b && !cariIdler.has(String(b.playerId || '').toLowerCase())));
+      }
+      const yeni = yeniSpawnQur(runtime, descriptor, spawnBazalari, indi, spatialIndex, node || null);
       if (yeni) {
         runtime.nodes[descriptor.nodeId] = yeni;
         spatialIndexeElaveEt(spatialIndex, { x: yeni.x, y: yeni.y, nodeId: descriptor.nodeId });

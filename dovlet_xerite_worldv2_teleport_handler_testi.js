@@ -55,7 +55,7 @@ async function run() {
       const args = { playerId: "oyuncu_1", x: 300 + dx, y: 400 + dy, cariX: 100, cariY: 100 };
       if (width === 1) args.resources = [{ x: 300, y: 400 }];
       else args.bases = [{ playerId: "oyuncu_2", x: 300, y: 400 }];
-      assert.strictEqual(teleportYeriYoxla(args).success, !blocked,
+      assert.strictEqual(teleportYeriYoxla(args).success, width === 1 || !blocked,
         `2x2 destination vs ${width}x${width}: ${dx}:${dy}`);
     }
   }
@@ -68,7 +68,7 @@ async function run() {
     .errorCode, "WORLDV2_TELEPORT_ALREADY_THERE");
   for (const [x, y] of [[300,400],[301,400],[300,401],[301,401]]) {
     assert.strictEqual(teleportYeriYoxla({ playerId: "oyuncu_1", x:300, y:400, cariX:100, cariY:100,
-      resources:[{x,y}] }).errorCode, "WORLDV2_TELEPORT_RESOURCE_OCCUPIED", "Every destination cell must be empty");
+      resources:[{x,y}] }).success, true, "Resources in every destination cell may be cleared on commit");
   }
   assert.strictEqual(teleportYeriYoxla({ x:0, y:400 }).errorCode,"WORLDV2_TELEPORT_BORDER_BLOCKED");
   assert.strictEqual(teleportYeriYoxla({ x:300.5, y:400 }).errorCode,"WORLDV2_TELEPORT_COORDINATE_INVALID");
@@ -96,7 +96,7 @@ async function run() {
       });
     },
     bazalariKilidliAl: async (_client, stateId) => ({ stateId, bases: busyBases }),
-    resurslariAl: async (stateId) => ({ stateId, resources: busyResources }),
+    resurslariSilClient: async () => ({ removedResourceTargetIds: [] }),
     bazaKeshiniTemizle: stateId => temizlenenStateIdleri.push(stateId),
   });
 
@@ -135,8 +135,7 @@ async function run() {
   assert.strictEqual(gonderilenler[0].success,true,"Adjacent base and resource are accepted through the transaction handler");
   assert.strictEqual(state.worldPlacement.baseX,302);
 
-  for (const [x,y,errorCode] of [[303,400,"WORLDV2_TELEPORT_BASE_OCCUPIED"],
-    [301,400,"WORLDV2_TELEPORT_RESOURCE_OCCUPIED"]]) {
+  for (const [x,y,errorCode] of [[303,400,"WORLDV2_TELEPORT_BASE_OCCUPIED"]]) {
     const before = JSON.stringify(state);
     gonderilenler.length = 0;
     await handler(kontekst("state_map_v2_base_teleport_request", {stateId:1,x,y}));
