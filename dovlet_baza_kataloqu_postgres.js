@@ -44,7 +44,15 @@ function binaLeveliniAl(state, buildingId) {
   let maksimum = 0;
   for (const bina of Array.isArray(state && state.buildings) ? state.buildings : []) {
     if (!bina || binaIdAl(bina) !== axtarilan) continue;
-    if (bina.isCompleted === false) continue;
+    if (bina.isCompleted === false) {
+      // Upgrade başlayanda level hələ mövcud səviyyədir; targetLevel isə job-dadır.
+      // Yeni tikilən HQ-nu hazır saymadan, mövcud bazanın görünüşünü saxla.
+      const jobs = state && state.builders && Array.isArray(state.builders.jobs)
+        ? state.builders.jobs : [];
+      const hqYukselir = axtarilan === "hq" && metnAl(bina.instanceId) && jobs.some(job =>
+        job && job.kind === "upgrade" && job.buildingInstanceId === bina.instanceId);
+      if (!hqYukselir) continue;
+    }
     maksimum = Math.max(maksimum, Math.max(1, tamEded(bina.level) || 1));
   }
   return maksimum;

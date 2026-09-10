@@ -13,6 +13,7 @@ const UNIT_TESTLERI = [
   "cihaz_pin_refresh_handler_fail_closed_testi.js",
   "cihaz_pin_refresh_fail_closed_testi.js",
   "dovlet_baza_birbasa_postgres_testi.js",
+  "dovlet_baza_hq_gorunus_testi.js",
   "dovlet_konvoy_runtime_client_sync_testi.js",
   "dovlet_konvoy_runtime_pvp_status_testi.js",
   "doyus_itki_stat_v2_testi.js",
