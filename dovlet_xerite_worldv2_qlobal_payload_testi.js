@@ -104,6 +104,8 @@ test('Authoritative topologiya veriləndə Qlobal əlaqələr layout-dan yox, h�
       connectionId: 'topologiya_1_2',
       fromStateId: 1,
       toStateId: 2,
+      fromNodeId: 'qlobal_v1_node_001',
+      toNodeId: 'qlobal_v1_node_002',
     }]);
   });
 });
