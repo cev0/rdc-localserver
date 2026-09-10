@@ -8,8 +8,6 @@ const {
   resursLevelMelumatiniAl,
 } = require('./xerite_resurs_qaydalari');
 
-const { dovletBazalariniBirbasaPostgresdenAlClient } = require('./dovlet_baza_kataloqu_postgres');
-
 const HADISE_NOVU = 'dovlet_worldv2_resurs_runtime_v2';
 
 // Yalnız ilk 600 node-un köhnə deterministik bölgüsünü qoruyan legacy sabitdir.
@@ -515,6 +513,21 @@ function yeniSpawnQur(runtime, descriptor, bases, nowMs, spatialIndex, kohneNode
   };
 }
 
+// Read only occupied base coordinates using the existing DB boundary. No legacy gameplay dependency.
+async function cariBazaMovqeleriniAlClient(client, stateId) {
+  const result = await client.query(`
+    WITH son_snapshot AS (
+      SELECT DISTINCT ON (oyuncu_id) oyuncu_id, detallar
+      FROM hesab_audit_jurnali
+      WHERE hadise_novu = $1 AND detallar #>> '{state,worldPlacement,stateId}' = $2
+      ORDER BY oyuncu_id, id DESC
+    ) SELECT oyuncu_id, detallar FROM son_snapshot`, ['oyun_state_snapshot_v1', String(stateId)]);
+  return (result.rows || []).map(row => {
+    const wp = row.detallar && row.detallar.state && row.detallar.state.worldPlacement;
+    return wp ? { playerId: row.oyuncu_id, x: Number(wp.baseX), y: Number(wp.baseZ) } : null;
+  }).filter(b => b && Number.isFinite(b.x) && Number.isFinite(b.y));
+}
+
 async function worldV2ResurslariniAl(stateId, bases = [], nowMs = Date.now(), istenilenSay = 0, options = {}) {
   const sid = sidAl(stateId);
   const indi = menfiOlmayanTamEdedAl(nowMs, Date.now());
@@ -581,8 +594,7 @@ async function worldV2ResurslariniAl(stateId, bases = [], nowMs = Date.now(), is
       // Teleport və resurs əməliyyatları eyni resurs kilidini saxlayır. Kiliddən
       // SONRA oxunan baza snapshot-u köhnə cache-in bazanın altında respawn yaratmasını önləyir.
       if (spawnBazalari === null) {
-        const paket = await dovletBazalariniBirbasaPostgresdenAlClient(client, sid);
-        const cariBazalar = Array.isArray(paket && paket.bases) ? paket.bases : [];
+        const cariBazalar = await cariBazaMovqeleriniAlClient(client, sid);
         const cariIdler = new Set(cariBazalar.map(b => String(b.playerId || '').toLowerCase()));
         spawnBazalari = cariBazalar.concat((Array.isArray(bases) ? bases : []).filter(b =>
           b && !cariIdler.has(String(b.playerId || '').toLowerCase())));
