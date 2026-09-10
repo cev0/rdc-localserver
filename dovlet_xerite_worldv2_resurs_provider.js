@@ -33,9 +33,9 @@ const COL_ZONA_MAKSIMUM_MERKEZ_MESAFESI = XERITE_MERKEZI - SERHED_PAYI;
 // Mərkəzlər arasında 5 vahid saxlayanda vizuallar üst-üstə düşmür və arada
 // təxminən bir 1x1 xana qədər boşluq qalır. Buna görə əvvəlki 32 vahid ləğv edildi.
 const BAZADAN_MIN_MESAFE = 5;
-// 16 çox seyrək idi və xəritənin fiziki tutumunu tez doldururdu.
-// 7 vahid 4.2 ölçülü mobil sprite-lar üçün kifayət qədər təhlükəsiz aralıq saxlayır.
-const RESURSDAN_MIN_MESAFE = 7;
+// Yalnız yeni yaranan / təbii respawn edən resursların aralığı.
+// Mövcud canlı node-lar yenidən yerləşdirilmir.
+const RESURSDAN_MIN_MESAFE = 2; // V5: resursun vizual və klik sahəsi 1 koordinatdır.
 const KOHNE_MOVQEDEN_MIN_MESAFE = 50;
 // Prezident mərkəzi ayrıca böyük xəritə binasıdır; resurs onun vizual footprint-inə girməməlidir.
 const PREZIDENT_MERKEZINDEN_MIN_MESAFE = 45;
@@ -347,6 +347,10 @@ function runtimeNeticesiniHazirla(stateId, netice) {
     ? kopyala(detallar.runtime)
     : bosRuntime(sid);
 
+  Object.defineProperty(runtime, '_auditRevision', {
+    value: String(netice && netice.rows && netice.rows[0] && netice.rows[0].id || ''),
+    writable: true, enumerable: false,
+  });
   runtime.version = 4;
   runtime.stateId = sid;
   if (!runtime.nodes || typeof runtime.nodes !== 'object' || Array.isArray(runtime.nodes)) {
@@ -358,7 +362,7 @@ function runtimeNeticesiniHazirla(stateId, netice) {
 async function runtimeOxuClient(client, stateId) {
   const sid = sidAl(stateId);
   const netice = await client.query(
-    `SELECT detallar
+    `SELECT id, detallar
        FROM hesab_audit_jurnali
       WHERE oyuncu_id = $1 AND hadise_novu = $2
       ORDER BY id DESC
@@ -378,11 +382,13 @@ async function postgresDovletKilidiniAl(client, stateId) {
 async function runtimeYazClient(client, stateId, runtime) {
   const acar = stateAcar(stateId);
 
-  await client.query(
+  const yazilan = await client.query(
     `INSERT INTO hesab_audit_jurnali (hesab_id, oyuncu_id, hadise_novu, detallar)
-     VALUES (NULL, $1, $2, $3::jsonb)`,
+     VALUES (NULL, $1, $2, $3::jsonb) RETURNING id`,
     [acar, HADISE_NOVU, JSON.stringify({ version: 4, runtime: kopyala(runtime) })],
   );
+
+  runtime._auditRevision = String(yazilan.rows && yazilan.rows[0] && yazilan.rows[0].id || '');
 
   await client.query(
     `DELETE FROM hesab_audit_jurnali
@@ -424,6 +430,7 @@ async function runtimeEmeliyyati(stateId, emeliyyat) {
         await runtimeYazClient(client, sid, runtime);
       }
       await client.query('COMMIT');
+      if (cavab) cavab.runtimeRevision = runtime._auditRevision || '';
       return cavab;
     }
     catch (xeta) {
@@ -506,159 +513,101 @@ function yeniSpawnQur(runtime, descriptor, bases, nowMs, spatialIndex, kohneNode
   };
 }
 
-async function worldV2ResurslariniAl(stateId, bases = [], nowMs = Date.now(), istenilenSay = 0) {
+async function worldV2ResurslariniAl(stateId, bases = [], nowMs = Date.now(), istenilenSay = 0, options = {}) {
   const sid = sidAl(stateId);
   const indi = menfiOlmayanTamEdedAl(nowMs, Date.now());
-  const aktivSay = worldV2AktivResursSayiniAl(istenilenSay);
+  const teleb = worldV2AktivResursSayiniAl(istenilenSay);
 
-  const netice = await runtimeEmeliyyati(sid, async runtime => {
+  return runtimeEmeliyyati(sid, async runtime => {
     let deyisdi = false;
     let fizikiTutumDoldu = false;
-    let ugursuzSpawnSayi = 0;
+    let sonIndex = teleb;
     const spatialIndex = spatialIndexYarat();
 
-    for (let i = 1; i <= aktivSay; i++) {
+    // Əvvəl BÜTÜN canlı node-ları indekslə. Kiçik legacy sorğu və ya aşağı
+    // indeksin respawn-u sonradan yaradılmış resursun üstünə düşə bilməz.
+    for (const [nodeId, node] of Object.entries(runtime.nodes)) {
+      const match = nodeId.match(/^state_(\d+)_worldv2_resource_(\d+)$/);
+      if (!match || Number(match[1]) !== sid || !node || typeof node !== 'object') continue;
+      sonIndex = Math.max(sonIndex, Number(match[2]));
+      if (Number(node.remainingAmount) > 0 && !Number(node.respawnAtMs) &&
+          Number.isFinite(Number(node.x)) && Number.isFinite(Number(node.y))) {
+        spatialIndexeElaveEt(spatialIndex, { x: Number(node.x), y: Number(node.y), nodeId });
+      }
+    }
+
+    let ugursuzSpawnSayi = 0;
+    let nextRespawnAtMs = 0;
+    for (let i = 1; i <= sonIndex; i++) {
       const descriptor = worldV2ResursDescriptoruAl(sid, i);
-      const zona = zonaTesviriAl(i);
       let node = runtime.nodes[descriptor.nodeId];
-
       if (node && typeof node === 'object' && !Array.isArray(node)) {
-        const qalan = Math.min(
-          menfiOlmayanTamEdedAl(node.remainingAmount, descriptor.fullAmount),
-          descriptor.fullAmount,
-        );
-        node.remainingAmount = qalan;
+        const qalan = Math.min(menfiOlmayanTamEdedAl(node.remainingAmount, descriptor.fullAmount), descriptor.fullAmount);
         const respawnAtMs = menfiOlmayanTamEdedAl(node.respawnAtMs);
-        const canlidir = qalan > 0 && respawnAtMs === 0;
-
-        if (canlidir) {
-          const movqeNormaldir = koordinatZonayaUyğundur(node.x, node.y, zona) &&
-            movqeTehlukesizdir({
-              x: Number(node.x),
-              y: Number(node.y),
-              zona,
-              bazaMovqeleri: bazaMovqeleriniHazirla(bases),
-              spatialIndex,
-              kohneMovqe: null,
-            });
-
-          if (movqeNormaldir) {
-            if (menfiOlmayanTamEdedAl(node.occupiedUntilMs) <= indi &&
-                (node.occupiedByPlayerId || node.occupiedByConvoyId || node.occupiedUntilMs)) {
-              node.occupiedByPlayerId = '';
-              node.occupiedByConvoyId = '';
-              node.occupiedUntilMs = 0;
-              deyisdi = true;
-            }
-
-            spatialIndexeElaveEt(spatialIndex, {
-              x: Number(node.x),
-              y: Number(node.y),
-              nodeId: descriptor.nodeId,
-            });
-            ugursuzSpawnSayi = 0;
-            continue;
-          }
-
-          const yeni = yeniSpawnQur(runtime, descriptor, bases, indi, spatialIndex, node);
-          if (yeni) {
-            runtime.nodes[descriptor.nodeId] = yeni;
-            spatialIndexeElaveEt(spatialIndex, { x: yeni.x, y: yeni.y, nodeId: descriptor.nodeId });
+        if (qalan > 0 && respawnAtMs === 0) {
+          // Canlı hədəfin X:Y / spawnSerial / miqdar / rezervi sıxlıq dəyişəndə qorunur.
+          // Yaxınlıq qaydasını yenidən yoxlayıb konvoy hədəfini köçürmə.
+          if (menfiOlmayanTamEdedAl(node.occupiedUntilMs) <= indi &&
+              (node.occupiedByPlayerId || node.occupiedByConvoyId || node.occupiedUntilMs)) {
+            node.occupiedByPlayerId = '';
+            node.occupiedByConvoyId = '';
+            node.occupiedUntilMs = 0;
             deyisdi = true;
-            ugursuzSpawnSayi = 0;
-            continue;
           }
-
-          fizikiTutumDoldu = true;
-          ugursuzSpawnSayi++;
           continue;
         }
-
-        if (qalan <= 0 && respawnAtMs <= 0) {
+        if (qalan <= 0 && respawnAtMs === 0) {
           node.respawnAtMs = indi + descriptor.respawnSeconds * 1000;
           node.occupiedByPlayerId = '';
           node.occupiedByConvoyId = '';
           node.occupiedUntilMs = 0;
           deyisdi = true;
+        }
+        if (Number(node.respawnAtMs) > indi) {
+          nextRespawnAtMs = nextRespawnAtMs ? Math.min(nextRespawnAtMs, node.respawnAtMs) : node.respawnAtMs;
           continue;
         }
-
-        if (qalan <= 0 && indi >= respawnAtMs) {
-          const yeni = yeniSpawnQur(runtime, descriptor, bases, indi, spatialIndex, node);
-          if (yeni) {
-            runtime.nodes[descriptor.nodeId] = yeni;
-            spatialIndexeElaveEt(spatialIndex, { x: yeni.x, y: yeni.y, nodeId: descriptor.nodeId });
-            deyisdi = true;
-            ugursuzSpawnSayi = 0;
-          }
-          else {
-            fizikiTutumDoldu = true;
-            ugursuzSpawnSayi++;
-          }
-          continue;
-        }
-
+      } else if (i > teleb) {
+        // Əvvəlki kiçik sorğuda yaranmamış boş indeksləri say azalanda doldurma.
         continue;
       }
 
-      const yeni = yeniSpawnQur(runtime, descriptor, bases, indi, spatialIndex, null);
+      // Tutum həddi yalnız yeni spawn cəhdlərini saxlayır; yuxarı indekslərdəki
+      // mövcud node-ların lifecycle emalı davam edir.
+      if (ugursuzSpawnSayi >= LIMITSIZ_ZONE_DOVRU * 2) continue;
+      const yeni = yeniSpawnQur(runtime, descriptor, bases, indi, spatialIndex, node || null);
       if (yeni) {
         runtime.nodes[descriptor.nodeId] = yeni;
         spatialIndexeElaveEt(spatialIndex, { x: yeni.x, y: yeni.y, nodeId: descriptor.nodeId });
         deyisdi = true;
         ugursuzSpawnSayi = 0;
-      }
-      else {
+      } else {
         fizikiTutumDoldu = true;
         ugursuzSpawnSayi++;
-      }
-
-      // Bütün zonalarda ardıcıl olaraq yer tapılmırsa boşuna minlərlə cəhd etmə.
-      if (ugursuzSpawnSayi >= LIMITSIZ_ZONE_DOVRU * 2) {
-        break;
+        // Dolmuş zonada alınmayan respawn bir müddət sonra yenidən yoxlanır.
+        const tekrar = indi + 5000;
+        nextRespawnAtMs = nextRespawnAtMs ? Math.min(nextRespawnAtMs, tekrar) : tekrar;
       }
     }
 
     const resources = [];
-    for (let i = 1; i <= aktivSay; i++) {
+    const cavabLimiti = options.butunMovcudlar === true ? sonIndex : teleb;
+    for (let i = 1; i <= cavabLimiti; i++) {
       const descriptor = worldV2ResursDescriptoruAl(sid, i);
       const node = runtime.nodes[descriptor.nodeId];
       if (!node) continue;
-
       const payload = nodePayloadHazirla(node, descriptor, indi);
-      if (payload.remainingAmount <= 0 || payload.respawnAtMs > 0) continue;
-      resources.push(payload);
+      if (payload.remainingAmount > 0 && payload.respawnAtMs === 0) resources.push(payload);
     }
-
     return {
-      deyisdi,
-      success: true,
-      stateId: sid,
+      deyisdi, stateId: sid,
       requestedResourceCount: musbetTamEdedAl(istenilenSay, 0),
       provisionedResourceCount: worldV2ProvisionEdilmisResursSayiniAl(),
       activeResourceCount: resources.length,
       physicalCapacityReached: fizikiTutumDoldu,
-      resources,
+      nextRespawnAtMs, resources,
     };
   });
-
-  return netice && Array.isArray(netice.resources)
-    ? {
-        stateId: sid,
-        requestedResourceCount: netice.requestedResourceCount,
-        provisionedResourceCount: netice.provisionedResourceCount,
-        activeResourceCount: netice.activeResourceCount,
-        physicalCapacityReached: netice.physicalCapacityReached === true,
-        resources: netice.resources,
-      }
-    : {
-        stateId: sid,
-        requestedResourceCount: musbetTamEdedAl(istenilenSay, 0),
-        provisionedResourceCount: worldV2ProvisionEdilmisResursSayiniAl(),
-        activeResourceCount: 0,
-        physicalCapacityReached: false,
-        resources: [],
-      };
 }
 
 function targetIddenIndexAl(targetId) {

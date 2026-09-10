@@ -40,6 +40,8 @@ function gonder(kontekst, type, melumat) {
 
   kontekst.send(kontekst.ws, {
     type,
+    resourceView: !!(kontekst.msg && kontekst.msg.resourceView === true),
+    resourceViewRequestId: musbetTamEdedAl(kontekst.msg && kontekst.msg.resourceViewRequestId, 0),
     ...melumat,
     serverTimeUnixMs:
       typeof kontekst.nowMs === "function"
@@ -162,10 +164,16 @@ async function standartDovletResurslariniAl(
   bases,
   nowMs,
   requestedResourceCount = 0,
+  sahe = null,
 ) {
   const {
     worldV2ResurslariniAl,
   } = require("./dovlet_xerite_worldv2_resurs_provider");
+
+  if (sahe) {
+    const { worldV2ResursSahesiniAl } = require("./dovlet_xerite_worldv2_resurs_sahe");
+    return worldV2ResursSahesiniAl(stateId, bases, nowMs, sahe);
+  }
 
   return await worldV2ResurslariniAl(
     stateId,
@@ -336,7 +344,9 @@ function worldV2ProductionObyektHandleriYarat({
         }
       }
 
-      const requestedResourceCount = istenilenResursSayiniAl(kontekst);
+      const { saheSorqusunuOxu } = require("./dovlet_xerite_worldv2_resurs_sahe");
+      const sahe = saheSorqusunuOxu(kontekst.msg);
+      const requestedResourceCount = sahe ? 0 : istenilenResursSayiniAl(kontekst);
 
       if (ws) {
         if (!(ws._worldV2AktivObyektSorqulari instanceof Set)) {
@@ -347,6 +357,7 @@ function worldV2ProductionObyektHandleriYarat({
           cavabType,
           viewedStateId,
           requestedResourceCount,
+          sahe ? sahe.requestId : 0,
         ].join(":");
 
         if (ws._worldV2AktivObyektSorqulari.has(namizedAcar)) {
@@ -365,7 +376,7 @@ function worldV2ProductionObyektHandleriYarat({
         aktivSorquSahibidir = true;
       }
 
-      console.log("[WORLDV2 RESURS SORĞU]", {
+      if (!sahe) console.log("[WORLDV2 RESURS SORĞU]", {
         playerId,
         stateId: viewedStateId,
         requestedResourceCount,
@@ -387,6 +398,7 @@ function worldV2ProductionObyektHandleriYarat({
         bazalar,
         nowMs,
         requestedResourceCount,
+        sahe,
       );
       const serverResursMs = Date.now() - resursBaslangicMs;
 
@@ -404,7 +416,7 @@ function worldV2ProductionObyektHandleriYarat({
 
       if (yalnizResursVizual) {
         const vizualBaslangicMs = Date.now();
-        const vizual = worldV2ResursVizualPaketiHazirla(resurslar);
+        const vizual = (sahe && resursNeticesi.vizual) || worldV2ResursVizualPaketiHazirla(resurslar);
         const serverVizualMs = Date.now() - vizualBaslangicMs;
         const serverHazirlamaMs = Date.now() - sorquBaslangicMs;
         const vaxtMesaji =
@@ -421,7 +433,12 @@ function worldV2ProductionObyektHandleriYarat({
           viewedStateId,
           stateId: viewedStateId,
           requestedResourceCount,
-          activeResourceCount: vizual.say,
+          activeResourceCount: sahe ? resursNeticesi.activeResourceCount : vizual.say,
+          resourceViewMinX: sahe ? sahe.minX : 0,
+          resourceViewMinY: sahe ? sahe.minY : 0,
+          resourceViewMaxX: sahe ? sahe.maxX : 0,
+          resourceViewMaxY: sahe ? sahe.maxY : 0,
+          resourceViewTruncated: !!resursNeticesi.resourceViewTruncated,
           provisionedResourceCount,
           physicalCapacityReached,
           readOnlyView: baxilanObyektSorqusudur,
@@ -443,7 +460,7 @@ function worldV2ProductionObyektHandleriYarat({
         const serverGonderMs = Date.now() - gonderBaslangicMs;
         const serverTotalMs = Date.now() - sorquBaslangicMs;
 
-        console.log("[WORLDV2 RESURS VİZUAL NƏTİCƏ]", {
+        if (!sahe) console.log("[WORLDV2 RESURS VİZUAL NƏTİCƏ]", {
           playerId,
           stateId: viewedStateId,
           requestedResourceCount,
