@@ -26,6 +26,7 @@ async function run() {
   require('./dovlet_xerite_worldv2_hazirliq_guard_testi');
   require('./dovlet_xerite_worldv2_aciq_meseleler_senedi_testi');
   require('./dovlet_xerite_worldv2_production_route_testi');
+  require('./dovlet_baza_kataloqu_state_izolyasiya_testi');
 
   await require('./dovlet_xerite_worldv2_resurs_emeliyyat_sistemi_testi');
   await require('./dovlet_xerite_worldv2_handler_testi');
