@@ -186,6 +186,14 @@ function worldV2BaxisProductionHandleriYarat({
       const neighbors = qonsulariHazirla(topologiyaXeritesi, info.viewedStateId, nowMs);
       if (neighbors) info = { ...info, neighbors };
 
+      // Read-only baxış yalnız UI məlumatı deyil, bu websocket sessiyasının cari
+      // xəritə kontekstidir. Teleport kimi mutasiya handler-ləri bu server-təsdiqli
+      // markerə baxaraq başqa Dövlətə baxarkən əməliyyatı qəti bloklayır.
+      if (kontekst && kontekst.ws) {
+        kontekst.ws._worldV2ViewedStateId = info.viewedStateId;
+        kontekst.ws._worldV2ViewingHomeState = !!info.viewingHomeState;
+      }
+
       cavabGonder(kontekst, cavabType, {
         success: true,
         playerId,
