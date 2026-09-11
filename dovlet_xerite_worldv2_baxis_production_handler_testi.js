@@ -54,6 +54,8 @@ async function run() {
   assert.strictEqual(cavab.info.readOnlyView, true);
   assert.strictEqual(cavab.info.persistentPlacementMutated, false);
   assert.strictEqual(cavab.info.neighbors.qerb.stateId, 1);
+  assert.strictEqual(esas.ws._worldV2ViewedStateId, 2);
+  assert.strictEqual(esas.ws._worldV2ViewingHomeState, false);
   assert.deepStrictEqual(playerState, ilkin);
 
   emal = await handler({
@@ -67,6 +69,8 @@ async function run() {
   assert.strictEqual(cavab.success, true);
   assert.strictEqual(cavab.info.mode, 'near');
   assert.deepStrictEqual(cavab.info.viewCoordinate, { x: 600, y: 600 });
+  assert.strictEqual(esas.ws._worldV2ViewedStateId, 2);
+  assert.strictEqual(esas.ws._worldV2ViewingHomeState, false);
   assert.deepStrictEqual(playerState, ilkin);
 
   emal = await handler({
@@ -82,6 +86,8 @@ async function run() {
   assert.deepStrictEqual(cavab.info.viewCoordinate, { x: 321, y: 654 });
   assert.strictEqual(cavab.info.mode, 'near');
   assert.strictEqual(cavab.info.viewingHomeState, true);
+  assert.strictEqual(esas.ws._worldV2ViewedStateId, 1);
+  assert.strictEqual(esas.ws._worldV2ViewingHomeState, true);
   assert.deepStrictEqual(playerState, ilkin);
 
   await handler({
