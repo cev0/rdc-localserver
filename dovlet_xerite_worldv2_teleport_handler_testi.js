@@ -152,6 +152,42 @@ async function run() {
   assert.strictEqual(gonderilenler[0].errorCode, "WORLDV2_TELEPORT_STATE_MISMATCH");
   assert.strictEqual(state.worldPlacement.baseX, 302);
 
+  // Ekranda Dövlət 2 read-only göstərilsə belə request Ev Dövlət ID-si ilə gəlsə,
+  // server artıq koordinatı Ev Dövlət bazasına tətbiq etməməlidir.
+  const xariciBaxisWs = {
+    _authedPlayerId: "oyuncu_1",
+    _worldV2ViewedStateId: 2,
+    _worldV2ViewingHomeState: false,
+  };
+  const xariciBaxisdenEvvel = JSON.stringify(state.worldPlacement);
+  gonderilenler.length = 0;
+  await handler(kontekst(
+    "state_map_v2_base_teleport_request",
+    { stateId: 1, x: 355, y: 455 },
+    xariciBaxisWs,
+  ));
+  assert.strictEqual(gonderilenler[0].success, false);
+  assert.strictEqual(gonderilenler[0].errorCode, "WORLDV2_TELEPORT_READ_ONLY_VIEW");
+  assert.strictEqual(JSON.stringify(state.worldPlacement), xariciBaxisdenEvvel,
+    "Foreign read-only view must never mutate home placement");
+
+  // Ev Dövlətinə qayıdış markerindən sonra teleport yenidən mümkündür.
+  const evBaxisWs = {
+    _authedPlayerId: "oyuncu_1",
+    _worldV2ViewedStateId: 1,
+    _worldV2ViewingHomeState: true,
+  };
+  busyBases = [];
+  gonderilenler.length = 0;
+  await handler(kontekst(
+    "state_map_v2_base_teleport_request",
+    { stateId: 1, x: 356, y: 456 },
+    evBaxisWs,
+  ));
+  assert.strictEqual(gonderilenler[0].success, true);
+  assert.strictEqual(state.worldPlacement.baseX, 356);
+  assert.strictEqual(state.worldPlacement.baseZ, 456);
+
   gonderilenler.length = 0;
   await handler(kontekst(
     "state_map_v2_base_teleport_request",
