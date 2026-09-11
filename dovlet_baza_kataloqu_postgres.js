@@ -126,15 +126,21 @@ async function bazalariSorquIleAl(sorquEtFn, sid) {
     throw new Error("Dövlət baza kataloqu üçün sorğu funksiyası tələb olunur.");
   }
 
+  // Vacib: əvvəl hər oyunçunun EN SON snapshot-ını seçirik, yalnız sonra cari
+  // stateId-yə görə filtr edirik. Əks halda WHERE stateId=$2 CTE daxilində olarsa,
+  // oyunçu bir vaxtlar başqa Dövlətdə olubsa həmin köhnə snapshot o Dövlətdə
+  // həmişə görünməyə davam edir və eyni baza bir neçə Dövlətdə təkrarlanır.
   const netice = await sorquEtFn(`
       WITH son_snapshot AS (
         SELECT DISTINCT ON (oyuncu_id) oyuncu_id, detallar
         FROM hesab_audit_jurnali
         WHERE hadise_novu = $1
-          AND detallar #>> '{state,worldPlacement,stateId}' = $2
         ORDER BY oyuncu_id, id DESC
       )
-      SELECT oyuncu_id, detallar FROM son_snapshot ORDER BY oyuncu_id ASC
+      SELECT oyuncu_id, detallar
+      FROM son_snapshot
+      WHERE detallar #>> '{state,worldPlacement,stateId}' = $2
+      ORDER BY oyuncu_id ASC
     `, [SNAPSHOT_HADISE_NOVU, String(sid)]);
   const bases = [];
   for (const row of (netice.rows || [])) {
