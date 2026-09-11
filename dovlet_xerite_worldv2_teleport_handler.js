@@ -160,6 +160,24 @@ function worldPlacementAl(state) {
   return { placement, stateId, baseX, baseZ };
 }
 
+function xariciDovletBaxisiAktivdir(ws, homeStateId) {
+  if (!ws || !Number.isInteger(Number(homeStateId)) || Number(homeStateId) <= 0)
+    return false;
+
+  const baxilanStateId = tamEdedAl(ws._worldV2ViewedStateId);
+  const evDovletineBaxilir = ws._worldV2ViewingHomeState;
+
+  // Köhnə client/session bu markerləri göndərməyibsə davranışı pozmuruq.
+  // Marker varsa isə xarici Dövlət read-only kontekstində heç bir baza mutasiyasına
+  // icazə verilmir. Bu yoxlama clientin göndərdiyi stateId-dən asılı deyil.
+  if (evDovletineBaxilir === false)
+    return true;
+
+  return baxilanStateId !== null &&
+         baxilanStateId > 0 &&
+         baxilanStateId !== Number(homeStateId);
+}
+
 async function standartStateBerpaEt(kontekst, playerId) {
   return await oyunStateIniBerpaEt(kontekst, playerId);
 }
@@ -243,6 +261,19 @@ function worldV2TeleportHandleriYarat({
         return true;
       }
 
+      if (xariciDovletBaxisiAktivdir(kontekst && kontekst.ws, ilkPlacement.stateId)) {
+        gonder(kontekst, {
+          success: false,
+          playerId,
+          stateId: ilkPlacement.stateId,
+          x,
+          y,
+          errorCode: "WORLDV2_TELEPORT_READ_ONLY_VIEW",
+          message: "Başqa Dövlətə baxış rejimində baza köçürülə bilməz.",
+        });
+        return true;
+      }
+
       if (requestedStateId === null || requestedStateId !== ilkPlacement.stateId) {
         gonder(kontekst, {
           success: false,
@@ -271,6 +302,17 @@ function worldV2TeleportHandleriYarat({
               success: false,
               errorCode: "WORLDV2_TELEPORT_STATE_MISMATCH",
               message: "Dövlət yerləşməsi dəyişdiyi üçün teleport dayandırıldı.",
+            };
+          }
+
+          // Baxış konteksti ilkin yoxlamadan sonra dəyişsə belə transaction
+          // persistent state-i dəyişməsin.
+          if (xariciDovletBaxisiAktivdir(kontekst && kontekst.ws, placement.stateId)) {
+            return {
+              deyisdi: false,
+              success: false,
+              errorCode: "WORLDV2_TELEPORT_READ_ONLY_VIEW",
+              message: "Başqa Dövlətə baxış rejimində baza köçürülə bilməz.",
             };
           }
 
@@ -385,4 +427,3 @@ module.exports = {
   worldV2TeleportHandleriYarat,
   dovletXeriteWorldV2TeleportMesajiniEmalEt,
 };
-
