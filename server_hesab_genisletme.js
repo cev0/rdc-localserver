@@ -132,4 +132,7 @@ hesabLoginModulu.hesabLoginMesajiniEmalEt = async function(kontekst) {
   return await esasHesabLoginMesajiniEmalEt(tamamlanmisKontekst);
 };
 
+// server.js yüklənməzdən əvvəl əhali log qoruyucusunu aktiv et.
+// Eyni əhali dəyərləri background tick-lərdə təkrar loglanmayacaq.
+require("./ehali_log_qoruyucusu");
 require("./server");
