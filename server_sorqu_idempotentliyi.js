@@ -154,6 +154,27 @@ function tekrarNeticesiniTap(state, operationType, requestId, payload) {
   };
 }
 
+function saxlanacaqNeticeniHazirla(operationType, result) {
+  const op = emeliyyatTipiniAl(operationType);
+  const netice = kopyala(result);
+
+  if (!netice || typeof netice !== "object" || Array.isArray(netice)) {
+    return netice;
+  }
+
+  // Recall idempotency-si mutasiyanın yalnız bir dəfə icra olunmasını təmin edir.
+  // Cari konvoy info snapshot-ı isə dinamikdir: konvoy geri qayıdıb bazaya çatdıqdan
+  // sonra köhnə "returning" snapshot-ını replay etmək client cache-ni yenidən geriyə
+  // aparırdı. Ona görə recall üçün info saxlanmır; replay handler həmişə həmin anın
+  // authoritative info-sunu emeliyyatMelumatiniHazirla(...) ilə qurur.
+  if (op === "konvoy_emeliyyat_geri_cagir") {
+    delete netice.info;
+    delete netice.payloadJson;
+  }
+
+  return netice;
+}
+
 function ugurluNeticeniQeydEt(state, operationType, requestId, payload, result, nowMs = Date.now()) {
   const op = emeliyyatTipiniAl(operationType);
   const rid = requestIdAl(requestId);
@@ -178,7 +199,7 @@ function ugurluNeticeniQeydEt(state, operationType, requestId, payload, result, 
     requestId: rid,
     fingerprint,
     completedAtMs: tamEded(nowMs) || Date.now(),
-    result: kopyala(result)
+    result: saxlanacaqNeticeniHazirla(op, result)
   };
 
   store.items.push(qeyd);
