@@ -134,6 +134,11 @@ function fakeClientHazirla() {
     1500
   );
 
+  // Köhnə server versiyalarının PostgreSQL snapshot-da saxladığı stale info-nu
+  // süni şəkildə geri əlavə edirik. Oxuma vaxtı sanitizer bunu da təmizləməlidir.
+  assert.strictEqual(state.serverSorquIdempotentliyi.items.length, 1);
+  state.serverSorquIdempotentliyi.items[0].result.info = kopyala(staleInfo);
+
   const saxlanmis = tekrarNeticesiniTap(
     state,
     "konvoy_emeliyyat_geri_cagir",
@@ -146,7 +151,7 @@ function fakeClientHazirla() {
   assert.strictEqual(
     Object.prototype.hasOwnProperty.call(saxlanmis.result, "info"),
     false,
-    "Recall idempotency dinamik konvoy info snapshot-ını saxlamamalıdır."
+    "Legacy recall replay köhnə returning info snapshot-ını clientə qaytarmamalıdır."
   );
 
   const netice = await konvoyEmeliyyatMutasiyasiniTetbiqEt(
