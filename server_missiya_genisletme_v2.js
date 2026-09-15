@@ -83,6 +83,7 @@ const OYUNCU_MUTASIYA_MESAJLARI = new Set([
   "convoy_formation_set_request",
   "convoy_defense_set_request",
   "convoy_operation_start_request",
+  "convoy_operation_recall_request",
   "convoy_gather_start_request",
   "convoy_gather_status_request",
   "convoy_gather_claim_request",
