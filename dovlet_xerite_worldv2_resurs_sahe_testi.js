@@ -18,6 +18,9 @@ const req = name => {
   if (name === './dovlet_xerite_worldv2_resurs_runtime_postgres') return {
     worldV2ResursSahesiniSqlDenAlClient() { throw new Error('Unexpected default SQL viewport'); },
   };
+  if (name === './dovlet_xerite_worldv2_resurs_sql_native') return {
+    async worldV2SqlRespawnlariYenile() { return { updated: 0 }; },
+  };
   return require(name);
 };
 vm.runInThisContext('(function(require,module,exports){' + fs.readFileSync(filename, 'utf8') + '\n})', { filename })(req, moduleUnderTest, moduleUnderTest.exports);
