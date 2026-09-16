@@ -14,7 +14,7 @@ const ICAZELI_XARICI_LOCAL_REQUIRE = Object.freeze({
   'dovlet_xerite_worldv2_resurs_emeliyyat_legacy.js': new Set([
     './verilenler_bazasi',
   ]),
-  'dovlet_xerite_worldv2_resurs_provider.js': new Set([
+  'dovlet_xerite_worldv2_resurs_provider_legacy.js': new Set([
     './verilenler_bazasi',
     './xerite_resurs_qaydalari',
   ]),
