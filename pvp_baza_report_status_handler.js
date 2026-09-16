@@ -132,9 +132,15 @@ async function pvpBazaReportStatusMesajiniEmalEt(kontekst) {
         throw new Error("PvP settlement üçün defender playerId düzgün deyil.");
       }
 
+      // Defender onlayn olsa da raport əvvəl yalnız PostgreSQL snapshot-a yazılırdı.
+      // Battle Report səhifəsi canlı RAM state-dən oxuduğu üçün həmin sessiyada
+      // raport görünməyə bilərdi. Hər iki tərəfin RAM state-ni transaction-a veririk;
+      // iki-oyunçu transaction COMMIT-dən sonra onları authoritative snapshot-la merge edir.
+      const defenderState = kontekst.getOrCreatePlayerState(defenderId);
+
       settlement = await pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
         { playerId, cariState: state },
-        { playerId: defenderId, cariState: null },
+        { playerId: defenderId, cariState: defenderState },
         convoyId,
         active.operationId,
         now
