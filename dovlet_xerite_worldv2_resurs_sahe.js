@@ -1,9 +1,16 @@
 'use strict';
 
-// V5: koordinatlar yalnız serverdən gəlir. Kamera sorğusu yeni yerləşmə yaratmır;
-// yalnız Dövlət üzrə sabit kataloqun məhdud düzbucaqlısını qaytarır.
+// V6: SQL viewport aktivdirsə və row-runtime legacy audit revision-la tam freshdirsə
+// kamera yalnız görünən sahəni SQL-dən oxuyur. Əks halda V5 legacy cache/provider yolu qalır.
 const { proqramHovuzunuAl } = require('./verilenler_bazasi');
-const { HADISE_NOVU, worldV2ResurslariniAl } = require('./dovlet_xerite_worldv2_resurs_provider');
+const {
+  HADISE_NOVU,
+  worldV2ResurslariniAl,
+  worldV2ResursDescriptoruAl,
+} = require('./dovlet_xerite_worldv2_resurs_provider');
+const {
+  worldV2ResursSahesiniSqlDenAlClient,
+} = require('./dovlet_xerite_worldv2_resurs_runtime_postgres');
 
 const DEFAULT_SIX_RESURS_SAYI = 80000;
 const MAKSIMUM_SAHE_ENI = 128;
@@ -11,6 +18,7 @@ const MAKSIMUM_SAHE_SAYI = 4096;
 const SAHE_XANASI = 16;
 const MAKSIMUM_KESHLENEN_DOVLET = 4;
 const YAVAS_KESH_XEBERDARLIQ_MS = 250;
+const SQL_XETA_SAKITLIK_MS = 30000;
 
 function saheSorqusunuOxu(msg) {
   if (!msg || msg.resourceView !== true) return null;
@@ -31,6 +39,11 @@ function sixResursSayiniAl() {
   return Number.isInteger(n) && n >= 600 && n <= 100000 ? n : DEFAULT_SIX_RESURS_SAYI;
 }
 
+function sqlViewportAktivdir() {
+  const deyer = String(process.env.WORLDV2_RESOURCE_SQL_VIEWPORT || '').trim().toLowerCase();
+  return deyer === '1' || deyer === 'true' || deyer === 'on' || deyer === 'yes';
+}
+
 function kompaktKeshYarat(netice, teleb) {
   const cells = new Map();
   let say = 0;
@@ -40,7 +53,6 @@ function kompaktKeshYarat(netice, teleb) {
     if (code < 0) continue;
     const key = Math.floor(r.x / SAHE_XANASI) * 128 + Math.floor(r.y / SAHE_XANASI);
     if (!cells.has(key)) cells.set(key, []);
-    // Full gameplay obyektləri və uzun ID sətirləri cache-də saxlanılmır.
     cells.get(key).push([r.index, code, r.level, r.x, r.y, r.spawnSerial]);
     say++;
   }
@@ -62,8 +74,6 @@ function keshiSaheyeKes(kesh, sahe) {
     }
   }
 
-  // Normal V5 sıxlığında sahə 4096 limitini keçmir. Bu halda məsafəyə görə
-  // sort etmək nəticəni dəyişmir, amma hər kamera sorğusunda lazımsız CPU yaradır.
   let secilen = entries;
   if (entries.length > MAKSIMUM_SAHE_SAYI) {
     const cx = (sahe.minX + sahe.maxX) * 0.5;
@@ -95,10 +105,87 @@ async function auditRevisionAl(stateId) {
   return String(result.rows && result.rows[0] && result.rows[0].id || '');
 }
 
-function resursSaheXidmetiYarat({ provider = worldV2ResurslariniAl, revisionAl = auditRevisionAl } = {}) {
+async function sqlFreshnessMetaAl(stateId, teleb) {
+  const sid = Math.max(1, Math.trunc(Number(stateId) || 1));
+  const result = await proqramHovuzunuAl().query(
+    `SELECT s.provisioned_count, s.physical_capacity_reached, s.revision,
+            s.legacy_audit_id,
+            (
+              SELECT id::text
+                FROM hesab_audit_jurnali
+               WHERE oyuncu_id = $2 AND hadise_novu = $3
+               ORDER BY id DESC LIMIT 1
+            ) AS current_audit_id
+       FROM dovlet_worldv2_resurs_state s
+      WHERE s.state_id = $1`,
+    [sid, `__dovlet_worldv2_resurs_${sid}__`, HADISE_NOVU],
+  );
+  const row = result.rows && result.rows[0];
+  if (!row) return null;
+  const provisionedCount = Math.max(0, Math.trunc(Number(row.provisioned_count) || 0));
+  const legacyAuditId = row.legacy_audit_id == null ? '' : String(row.legacy_audit_id);
+  const currentAuditId = row.current_audit_id == null ? '' : String(row.current_audit_id);
+  const physicalCapacityReached = row.physical_capacity_reached === true;
+  return {
+    stateId: sid,
+    revision: String(row.revision == null ? '0' : row.revision),
+    provisionedCount,
+    physicalCapacityReached,
+    legacyAuditId,
+    currentAuditId,
+    fresh: !!legacyAuditId && legacyAuditId === currentAuditId,
+    coverageOk: provisionedCount >= teleb || physicalCapacityReached,
+  };
+}
+
+async function sqlSaheAl(stateId, sahe) {
+  return worldV2ResursSahesiniSqlDenAlClient(
+    proqramHovuzunuAl(), stateId, sahe, MAKSIMUM_SAHE_SAYI,
+  );
+}
+
+function sqlNeticesiniHazirla(sqlNetice, meta, teleb, sahe, descriptorAl = worldV2ResursDescriptoruAl) {
+  const v = { say: 0, i: [], r: [], l: [], x: [], y: [], s: [] };
+  for (const node of (sqlNetice && sqlNetice.nodes) || []) {
+    if (!node || !Number.isInteger(Number(node.index))) continue;
+    const descriptor = descriptorAl(meta.stateId, Number(node.index));
+    if (!descriptor) continue;
+    const code = ['food', 'water', 'wood', 'iron', 'fuel'].indexOf(descriptor.resourceId);
+    if (code < 0) continue;
+    v.i.push(Number(node.index));
+    v.r.push(code);
+    v.l.push(Number(descriptor.level));
+    v.x.push(Number(node.x));
+    v.y.push(Number(node.y));
+    v.s.push(Math.max(1, Math.trunc(Number(node.spawnSerial) || 1)));
+  }
+  v.say = v.i.length;
+  return {
+    resources: [],
+    vizual: v,
+    activeResourceCount: meta.provisionedCount,
+    provisionedResourceCount: teleb,
+    physicalCapacityReached: meta.physicalCapacityReached === true,
+    resourceViewTruncated: sqlNetice && sqlNetice.truncated === true,
+    resourceViewMinX: sahe.minX, resourceViewMinY: sahe.minY,
+    resourceViewMaxX: sahe.maxX, resourceViewMaxY: sahe.maxY,
+  };
+}
+
+function resursSaheXidmetiYarat({
+  provider = worldV2ResurslariniAl,
+  revisionAl = auditRevisionAl,
+  sqlAktivdir = sqlViewportAktivdir,
+  sqlMetaAl = sqlFreshnessMetaAl,
+  sqlViewAl = sqlSaheAl,
+  descriptorAl = worldV2ResursDescriptoruAl,
+} = {}) {
   const keshlər = new Map();
   const davamEdenler = new Map();
   const revisionDavamEdenler = new Map();
+  const sqlMetaDavamEdenler = new Map();
+  let sqlSakitlikBitirMs = 0;
+  let sqlSonXetaLogMs = 0;
 
   async function ortaqRevisionAl(stateId) {
     let promise = revisionDavamEdenler.get(stateId);
@@ -106,20 +193,42 @@ function resursSaheXidmetiYarat({ provider = worldV2ResurslariniAl, revisionAl =
       promise = Promise.resolve().then(() => revisionAl(stateId));
       revisionDavamEdenler.set(stateId, promise);
     }
-    try {
-      return await promise;
+    try { return await promise; }
+    finally { if (revisionDavamEdenler.get(stateId) === promise) revisionDavamEdenler.delete(stateId); }
+  }
+
+  async function ortaqSqlMetaAl(stateId, teleb) {
+    const acar = `${stateId}:${teleb}`;
+    let promise = sqlMetaDavamEdenler.get(acar);
+    if (!promise) {
+      promise = Promise.resolve().then(() => sqlMetaAl(stateId, teleb));
+      sqlMetaDavamEdenler.set(acar, promise);
     }
-    finally {
-      if (revisionDavamEdenler.get(stateId) === promise) revisionDavamEdenler.delete(stateId);
-    }
+    try { return await promise; }
+    finally { if (sqlMetaDavamEdenler.get(acar) === promise) sqlMetaDavamEdenler.delete(acar); }
   }
 
   return async function saheAl(stateId, bases, nowMs, sahe) {
     const teleb = sixResursSayiniAl();
-    let kesh = keshlər.get(stateId);
 
-    // Cache yoxdursa, sıxlıq dəyişibsə və ya respawn vaxtı çatıbsa onsuz da
-    // kataloq yenidən qurulacaq. Bu hallarda ayrıca revision SQL sorğusu etmirik.
+    if (sqlAktivdir() && Date.now() >= sqlSakitlikBitirMs) {
+      try {
+        const meta = await ortaqSqlMetaAl(stateId, teleb);
+        if (meta && meta.fresh === true && meta.coverageOk === true) {
+          const sqlNetice = await sqlViewAl(stateId, sahe);
+          return sqlNeticesiniHazirla(sqlNetice, meta, teleb, sahe, descriptorAl);
+        }
+      } catch (xeta) {
+        sqlSakitlikBitirMs = Date.now() + SQL_XETA_SAKITLIK_MS;
+        if (Date.now() - sqlSonXetaLogMs >= SQL_XETA_SAKITLIK_MS) {
+          sqlSonXetaLogMs = Date.now();
+          console.warn('[WORLDV2 SQL VIEWPORT] SQL fast-path söndürüldü, legacy fallback işləyir:',
+            xeta && xeta.message ? String(xeta.message).slice(0, 220) : 'naməlum xəta');
+        }
+      }
+    }
+
+    let kesh = keshlər.get(stateId);
     const telebDeyisib = !!kesh && kesh.teleb !== teleb;
     const respawnVaxtidir = !!kesh && kesh.nextRespawnAtMs > 0 && nowMs >= kesh.nextRespawnAtMs;
     let revision = '';
@@ -160,5 +269,17 @@ function resursSaheXidmetiYarat({ provider = worldV2ResurslariniAl, revisionAl =
 }
 
 const worldV2ResursSahesiniAl = resursSaheXidmetiYarat();
-module.exports = { DEFAULT_SIX_RESURS_SAYI, MAKSIMUM_SAHE_ENI, saheSorqusunuOxu,
-  sixResursSayiniAl, kompaktKeshYarat, keshiSaheyeKes, resursSaheXidmetiYarat, worldV2ResursSahesiniAl };
+module.exports = {
+  DEFAULT_SIX_RESURS_SAYI,
+  MAKSIMUM_SAHE_ENI,
+  MAKSIMUM_SAHE_SAYI,
+  saheSorqusunuOxu,
+  sixResursSayiniAl,
+  sqlViewportAktivdir,
+  kompaktKeshYarat,
+  keshiSaheyeKes,
+  sqlFreshnessMetaAl,
+  sqlNeticesiniHazirla,
+  resursSaheXidmetiYarat,
+  worldV2ResursSahesiniAl,
+};
