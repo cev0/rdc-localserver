@@ -4,15 +4,15 @@
  * MÜVƏQQƏTİ WorldV2 inteqrasiya test rejimi.
  *
  * Məqsəd:
- * - Koyeb-də ayrıca env yazmadan Dövlət #1 <-> Dövlət #2 sərhəd keçidini yoxlamaq;
- * - normal unit-test runner-lərinə təsir etməmək;
- * - test bitəndən sonra bu fallback-i asanlıqla söndürmək.
+ * - Dövlət #1 <-> Dövlət #2 sərhəd keçidini yalnız explicit env ilə yoxlamaq;
+ * - production/Koyeb startında Dövlət #2-ni avtomatik açmamaq;
+ * - normal unit-test runner-lərinə təsir etməmək.
  *
  * Bu modul gameplay üçün final topologiya mənbəyi deyil.
  */
 
 const WORLDV2_IKI_DOVLET_TEST_ENV = 'WORLDV2_IKI_DOVLET_TESTI';
-const WORLDV2_IKI_DOVLET_TESTI_MECBURIDIR = true;
+const WORLDV2_IKI_DOVLET_TESTI_MECBURIDIR = false;
 const WORLDV2_IKI_DOVLET_TEST_AKTIV_STATE_ID = 2;
 
 function serverStartProsesiDirmi(argv = process.argv) {
