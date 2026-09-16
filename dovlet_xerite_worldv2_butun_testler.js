@@ -30,6 +30,8 @@ async function run() {
 
   await require('./dovlet_xerite_worldv2_resurs_runtime_postgres_testi');
   await require('./dovlet_xerite_worldv2_resurs_shadow_sync_testi');
+  await require('./dovlet_xerite_worldv2_resurs_runtime_mode_testi');
+  await require('./dovlet_xerite_worldv2_resurs_sql_native_testi');
   await require('./dovlet_xerite_worldv2_resurs_emeliyyat_sistemi_testi');
   await require('./dovlet_xerite_worldv2_handler_testi');
   await require('./dovlet_xerite_worldv2_obyekt_handler_testi');
