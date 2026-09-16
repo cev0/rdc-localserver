@@ -13,7 +13,7 @@ const PREFIX = 'dovlet_xerite_worldv2_';
 const ICAZELI_XARICI_LOCAL_REQUIRE = Object.freeze({
   // Mövcud resource/teleport production adapterlərinin konkret asılılıqları.
   // Sahə cache-i yalnız eyni resource audit revision-unu oxuyur.
-  'dovlet_xerite_worldv2_resurs_emeliyyat_sistemi.js': new Set([
+  'dovlet_xerite_worldv2_resurs_emeliyyat_legacy.js': new Set([
     './verilenler_bazasi',
   ]),
   'dovlet_xerite_worldv2_resurs_provider.js': new Set([
@@ -136,4 +136,3 @@ module.exports = {
   relativeRequireHedefleriniTap,
   xariciLocalRequireIcazelidir,
 };
-
