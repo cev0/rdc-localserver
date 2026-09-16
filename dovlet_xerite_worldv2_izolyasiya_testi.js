@@ -23,6 +23,9 @@ const ICAZELI_XARICI_LOCAL_REQUIRE = Object.freeze({
   'dovlet_xerite_worldv2_resurs_sahe.js': new Set([
     './verilenler_bazasi',
   ]),
+  'dovlet_xerite_worldv2_resurs_runtime_postgres.js': new Set([
+    './verilenler_bazasi',
+  ]),
   'dovlet_xerite_worldv2_teleport_handler.js': new Set([
     './oyun_state_daimilik_korpu',
     './oyun_state_mutasiya_postgres',
