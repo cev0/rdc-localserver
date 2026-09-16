@@ -10,6 +10,7 @@ const MAKSIMUM_SAHE_ENI = 128;
 const MAKSIMUM_SAHE_SAYI = 4096;
 const SAHE_XANASI = 16;
 const MAKSIMUM_KESHLENEN_DOVLET = 4;
+const YAVAS_KESH_XEBERDARLIQ_MS = 250;
 
 function saheSorqusunuOxu(msg) {
   if (!msg || msg.resourceView !== true) return null;
@@ -60,12 +61,18 @@ function keshiSaheyeKes(kesh, sahe) {
       }
     }
   }
-  // Normal 2 koordinat aralığında 128×128 sahə bu limiti keçmir.
-  // Korlanmış / köhnə sıx kataloq olsa da cavab ölçüsü məhduddur.
-  const cx = (sahe.minX + sahe.maxX) * 0.5;
-  const cy = (sahe.minY + sahe.maxY) * 0.5;
-  entries.sort((a, b) => ((a[3]-cx)**2 + (a[4]-cy)**2) - ((b[3]-cx)**2 + (b[4]-cy)**2) || a[0]-b[0]);
-  for (const r of entries.slice(0, MAKSIMUM_SAHE_SAYI)) {
+
+  // Normal V5 sıxlığında sahə 4096 limitini keçmir. Bu halda məsafəyə görə
+  // sort etmək nəticəni dəyişmir, amma hər kamera sorğusunda lazımsız CPU yaradır.
+  let secilen = entries;
+  if (entries.length > MAKSIMUM_SAHE_SAYI) {
+    const cx = (sahe.minX + sahe.maxX) * 0.5;
+    const cy = (sahe.minY + sahe.maxY) * 0.5;
+    entries.sort((a, b) => ((a[3]-cx)**2 + (a[4]-cy)**2) - ((b[3]-cx)**2 + (b[4]-cy)**2) || a[0]-b[0]);
+    secilen = entries.slice(0, MAKSIMUM_SAHE_SAYI);
+  }
+
+  for (const r of secilen) {
     v.i.push(r[0]); v.r.push(r[1]); v.l.push(r[2]); v.x.push(r[3]); v.y.push(r[4]); v.s.push(r[5]);
   }
   v.say = v.i.length;
@@ -91,20 +98,53 @@ async function auditRevisionAl(stateId) {
 function resursSaheXidmetiYarat({ provider = worldV2ResurslariniAl, revisionAl = auditRevisionAl } = {}) {
   const keshlər = new Map();
   const davamEdenler = new Map();
+  const revisionDavamEdenler = new Map();
+
+  async function ortaqRevisionAl(stateId) {
+    let promise = revisionDavamEdenler.get(stateId);
+    if (!promise) {
+      promise = Promise.resolve().then(() => revisionAl(stateId));
+      revisionDavamEdenler.set(stateId, promise);
+    }
+    try {
+      return await promise;
+    }
+    finally {
+      if (revisionDavamEdenler.get(stateId) === promise) revisionDavamEdenler.delete(stateId);
+    }
+  }
+
   return async function saheAl(stateId, bases, nowMs, sahe) {
     const teleb = sixResursSayiniAl();
     let kesh = keshlər.get(stateId);
-    const revision = await revisionAl(stateId);
-    if (!kesh || !revision || kesh.revision !== revision || kesh.teleb !== teleb ||
-        (kesh.nextRespawnAtMs > 0 && nowMs >= kesh.nextRespawnAtMs)) {
+
+    // Cache yoxdursa, sıxlıq dəyişibsə və ya respawn vaxtı çatıbsa onsuz da
+    // kataloq yenidən qurulacaq. Bu hallarda ayrıca revision SQL sorğusu etmirik.
+    const telebDeyisib = !!kesh && kesh.teleb !== teleb;
+    const respawnVaxtidir = !!kesh && kesh.nextRespawnAtMs > 0 && nowMs >= kesh.nextRespawnAtMs;
+    let revision = '';
+    let revisionDeyisib = false;
+    if (kesh && !telebDeyisib && !respawnVaxtidir) {
+      revision = await ortaqRevisionAl(stateId);
+      revisionDeyisib = !revision || kesh.revision !== revision;
+    }
+
+    if (!kesh || telebDeyisib || respawnVaxtidir || revisionDeyisib) {
       let promise = davamEdenler.get(stateId);
       if (!promise) {
         promise = (async () => {
+          const baslangic = Date.now();
           const netice = await provider(stateId, bases, nowMs, teleb, { butunMovcudlar: true });
           const yeni = kompaktKeshYarat(netice, teleb);
           keshlər.delete(stateId);
           keshlər.set(stateId, yeni);
           while (keshlər.size > MAKSIMUM_KESHLENEN_DOVLET) keshlər.delete(keshlər.keys().next().value);
+
+          const muddet = Date.now() - baslangic;
+          if (muddet >= YAVAS_KESH_XEBERDARLIQ_MS) {
+            console.warn('[WORLDV2 SAHE PERF] Kataloq keshinin qurulması yavaşdır:',
+              `state=${stateId}`, `ms=${muddet}`, `active=${yeni.say}`, `target=${teleb}`);
+          }
           return yeni;
         })();
         davamEdenler.set(stateId, promise);
