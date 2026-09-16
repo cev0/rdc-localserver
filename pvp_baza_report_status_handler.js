@@ -34,6 +34,36 @@ function gonder(k, type, data) {
   });
 }
 
+function defenderRaportBildirisiniGonder(kontekst, report) {
+  if (!kontekst || !report || typeof kontekst.send !== "function") return;
+
+  const defenderId = metnAl(report.playerId, 128);
+  const reportId = metnAl(report.reportId, 220);
+  if (!defenderId || !reportId) return;
+
+  const connections = kontekst.connections;
+  const defenderWs = connections && typeof connections.get === "function"
+    ? connections.get(defenderId)
+    : null;
+
+  // ws.OPEN === 1. Handler WebSocket moduluna birbaşa bağlanmadan canlı socket-i yoxlayır.
+  if (!defenderWs || defenderWs.readyState !== 1) return;
+
+  try {
+    kontekst.send(defenderWs, {
+      type: "battle_report_created",
+      playerId: defenderId,
+      reportId,
+      battleType: "pvp",
+      pvpRole: "defender",
+      serverTimeUnixMs: kontekst.nowMs()
+    });
+  }
+  catch (xeta) {
+    console.error("[PVP_BAZA_REPORT_NOTIFY]", xeta);
+  }
+}
+
 async function pvpBazaReportStatusMesajiniEmalEt(kontekst) {
   const type = metnAl(kontekst && kontekst.type, 128);
   if (type !== "pvp_base_attack_status_request") return false;
@@ -178,6 +208,12 @@ async function pvpBazaReportStatusMesajiniEmalEt(kontekst) {
           ? settlement.reports.defenderReport.reportId
           : ""
       };
+
+      // Hücuma məruz qalan oyunçu onlayndırsa Mail badge/siyahı dərhal yenilənsin.
+      defenderRaportBildirisiniGonder(
+        kontekst,
+        settlement.reports.defenderReport
+      );
     }
 
     gonder(kontekst, "pvp_base_attack_status_result", {
