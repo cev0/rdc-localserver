@@ -1,7 +1,8 @@
 'use strict';
 
-// V6: SQL viewport aktivdirsə və row-runtime legacy audit revision-la tam freshdirsə
-// kamera yalnız görünən sahəni SQL-dən oxuyur. Əks halda V5 legacy cache/provider yolu qalır.
+// V7: SQL viewport aktivdirsə və row-runtime legacy audit revision-la tam freshdirsə
+// kamera yalnız görünən sahəni SQL-dən oxuyur. SQL-authoritative rejimdə viewport
+// oxusundan əvvəl throttled row-level respawn lifecycle işləyir.
 const { proqramHovuzunuAl } = require('./verilenler_bazasi');
 const {
   HADISE_NOVU,
@@ -11,6 +12,9 @@ const {
 const {
   worldV2ResursSahesiniSqlDenAlClient,
 } = require('./dovlet_xerite_worldv2_resurs_runtime_postgres');
+const {
+  worldV2SqlRespawnlariYenile,
+} = require('./dovlet_xerite_worldv2_resurs_sql_native');
 
 const DEFAULT_SIX_RESURS_SAYI = 80000;
 const MAKSIMUM_SAHE_ENI = 128;
@@ -138,7 +142,8 @@ async function sqlFreshnessMetaAl(stateId, teleb) {
   };
 }
 
-async function sqlSaheAl(stateId, sahe) {
+async function sqlSaheAl(stateId, sahe, nowMs = Date.now()) {
+  await worldV2SqlRespawnlariYenile(stateId, nowMs);
   return worldV2ResursSahesiniSqlDenAlClient(
     proqramHovuzunuAl(), stateId, sahe, MAKSIMUM_SAHE_SAYI,
   );
@@ -215,7 +220,7 @@ function resursSaheXidmetiYarat({
       try {
         const meta = await ortaqSqlMetaAl(stateId, teleb);
         if (meta && meta.fresh === true && meta.coverageOk === true) {
-          const sqlNetice = await sqlViewAl(stateId, sahe);
+          const sqlNetice = await sqlViewAl(stateId, sahe, nowMs);
           return sqlNeticesiniHazirla(sqlNetice, meta, teleb, sahe, descriptorAl);
         }
       } catch (xeta) {

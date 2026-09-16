@@ -28,8 +28,11 @@ async function run() {
   require('./dovlet_xerite_worldv2_production_route_testi');
   require('./dovlet_baza_kataloqu_state_izolyasiya_testi');
 
+  await require('./dovlet_xerite_worldv2_resurs_provider_guard_testi');
   await require('./dovlet_xerite_worldv2_resurs_runtime_postgres_testi');
   await require('./dovlet_xerite_worldv2_resurs_shadow_sync_testi');
+  await require('./dovlet_xerite_worldv2_resurs_runtime_mode_testi');
+  await require('./dovlet_xerite_worldv2_resurs_sql_native_testi');
   await require('./dovlet_xerite_worldv2_resurs_emeliyyat_sistemi_testi');
   await require('./dovlet_xerite_worldv2_handler_testi');
   await require('./dovlet_xerite_worldv2_obyekt_handler_testi');

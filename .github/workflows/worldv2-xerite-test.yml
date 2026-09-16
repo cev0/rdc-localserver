@@ -7,7 +7,9 @@ on:
     paths:
       - 'dovlet_xerite_worldv2_*.js'
       - 'worldv2_resurs_sql_miqrasiya.js'
+      - 'worldv2_resurs_sql_mode.js'
       - 'miqrasiyalar/20260916_worldv2_resurs_runtime.sql'
+      - 'miqrasiyalar/20260916_worldv2_resurs_sql_authoritative.sql'
       - 'server_missiya_genisletme_v2.js'
       - 'server_unity_mesaj_muqavilesi_testi.js'
       - 'DOVLET_XERITESI_WORLDV2_*.md'
@@ -20,7 +22,9 @@ on:
     paths:
       - 'dovlet_xerite_worldv2_*.js'
       - 'worldv2_resurs_sql_miqrasiya.js'
+      - 'worldv2_resurs_sql_mode.js'
       - 'miqrasiyalar/20260916_worldv2_resurs_runtime.sql'
+      - 'miqrasiyalar/20260916_worldv2_resurs_sql_authoritative.sql'
       - 'server_missiya_genisletme_v2.js'
       - 'server_unity_mesaj_muqavilesi_testi.js'
       - 'DOVLET_XERITESI_WORLDV2_*.md'
@@ -48,7 +52,7 @@ jobs:
           xeta=0
           while IFS= read -r fayl; do
             case "$fayl" in
-              dovlet_xerite_worldv2_*.js|worldv2_resurs_sql_miqrasiya.js|miqrasiyalar/20260916_worldv2_resurs_runtime.sql|server_missiya_genisletme_v2.js|server_unity_mesaj_muqavilesi_testi.js|DOVLET_XERITESI_WORLDV2_*.md|server_unity_message_contract_worldv2.json|package.json|.github/workflows/worldv2-xerite-test.yml)
+              dovlet_xerite_worldv2_*.js|worldv2_resurs_sql_miqrasiya.js|worldv2_resurs_sql_mode.js|miqrasiyalar/20260916_worldv2_resurs_runtime.sql|miqrasiyalar/20260916_worldv2_resurs_sql_authoritative.sql|server_missiya_genisletme_v2.js|server_unity_mesaj_muqavilesi_testi.js|DOVLET_XERITESI_WORLDV2_*.md|server_unity_message_contract_worldv2.json|package.json|.github/workflows/worldv2-xerite-test.yml)
                 ;;
               *)
                 echo "WorldV2 allowlist xaricində dəyişiklik: $fayl"

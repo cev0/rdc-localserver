@@ -92,11 +92,13 @@ async function run(){
     const after=db.read();replies.length=0;await handler(context);
     assert.equal(replies[0].errorCode,'WORLDV2_TELEPORT_ALREADY_THERE');assert.deepEqual(db.read(),after,'Repeated request cannot delete again');
   }
-  // Execute the real respawn provider with stale caller data. Its DB snapshot under
+  // Execute the real LEGACY respawn provider with stale caller data. Its DB snapshot under
   // the resource lock must prevent spawning inside a base placed after that data.
+  // The public provider is now a SQL-authoritative guard wrapper, so this regression
+  // intentionally targets the unchanged legacy implementation directly.
   const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
   const db=database(), loaded={exports:{}};
-  const filename=path.join(__dirname,'dovlet_xerite_worldv2_resurs_provider.js');
+  const filename=path.join(__dirname,'dovlet_xerite_worldv2_resurs_provider_legacy.js');
   const req=name=>name==='./verilenler_bazasi'?{proqramHovuzunuAl:()=>db.pool}:require(name);
   vm.runInThisContext('(function(require,module,exports){'+fs.readFileSync(filename,'utf8')+'\n})',{filename})(req,loaded,loaded.exports);
   const provider=loaded.exports;
