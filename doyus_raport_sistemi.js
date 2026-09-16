@@ -30,6 +30,48 @@ function rewardResurslariVar(reward) {
   return RESURS_MUKAFAT_IDLERI.some(id => tamEded(reward[id]) > 0);
 }
 
+function pvpRaportudur(report) {
+  if (!report || typeof report !== "object") return false;
+
+  const battleType = metnAl(report.battleType, 32);
+  const enemyType = metnAl(report.enemyType, 128);
+  const reportId = metnAl(report.reportId, 220);
+
+  return battleType === "pvp" ||
+    enemyType === "player_base" ||
+    reportId.startsWith("pvp_");
+}
+
+function pvpRolunuAl(report) {
+  const role = metnAl(report && report.pvpRole, 32);
+  if (role === "attacker" || role === "defender") return role;
+
+  const reportId = metnAl(report && report.reportId, 220);
+  if (reportId.endsWith("_defender")) return "defender";
+  if (reportId.endsWith("_attacker")) return "attacker";
+  return "";
+}
+
+function playerIdQisalt(raw) {
+  const id = typeof raw === "string" ? raw.trim() : "";
+  if (!id) return "naməlum";
+  if (id.length <= 16) return id;
+  return `${id.slice(0, 8)}…${id.slice(-4)}`;
+}
+
+function pvpLegacyHedefMetni(report) {
+  const role = pvpRolunuAl(report);
+  const opponent =
+    metnAl(report && report.opponentPlayerId, 128) ||
+    metnAl(report && report.enemyId, 128);
+  const stateId = Math.max(1, tamEded(report && report.stateId) || 1);
+  const x = Number(report && report.x) || 0;
+  const z = Number(report && report.z) || 0;
+  const prefix = role === "defender" ? "Hücumçu" : "Rəqib";
+
+  return `${prefix}: ${playerIdQisalt(opponent)} • D${stateId} X:${x} Y:${z}`;
+}
+
 function legacyRaportuYenile(report) {
   if (!report || typeof report !== "object") return report;
 
@@ -69,6 +111,26 @@ function legacyRaportuYenile(report) {
   if (report.resourceRewardClaimed === true) {
     report.resourceRewardClaimPending = false;
     report.lootAlreadyApplied = true;
+  }
+
+  // Köhnə PvP raportları bəzi client-lərdə battleType/pvpRole olmadan saxlanıb.
+  // ReportId və player_base markerindən onları yenidən PvP kimi tanıyırıq ki
+  // müdafiəçi tərəfdə hücumçu və koordinat məlumatı itməsin.
+  if (pvpRaportudur(report)) {
+    report.battleType = "pvp";
+
+    const role = pvpRolunuAl(report);
+    if (role) report.pvpRole = role;
+
+    const enemyId = metnAl(report.enemyId, 128);
+    const opponentPlayerId = metnAl(report.opponentPlayerId, 128);
+
+    if (!opponentPlayerId && enemyId) {
+      report.opponentPlayerId = enemyId;
+    }
+    if (!enemyId && opponentPlayerId) {
+      report.enemyId = opponentPlayerId;
+    }
   }
 
   report.reportVersion = Math.max(3, tamEded(report.reportVersion) || 1);
@@ -244,36 +306,48 @@ function raportSiyahisiniHazirla(state) {
   return raportStateTeminEt(state).items
     .slice()
     .sort((a, b) => tamEded(b.createdAtMs) - tamEded(a.createdAtMs))
-    .map(x => ({
-      reportId: x.reportId,
-      category: x.category,
-      battleType: x.battleType || "pve",
-      stateId: x.stateId,
-      x: x.x,
-      z: x.z,
-      enemyId: x.enemyId,
-      enemyType: x.enemyType,
-      enemyLevel: x.enemyLevel,
-      result: x.result,
-      victory: x.victory === true,
-      playerPower: tamEded(x.playerPower),
-      enemyPower: tamEded(x.enemyPower),
-      createdAtMs: x.createdAtMs,
-      isRead: x.isRead === true,
-      isSaved: x.isSaved === true,
-      heroExp: tamEded(x.heroExp),
-      heroExpDistributionPending: x.heroExpDistributionPending === true,
-      reward: kopyala(x.reward) || {},
-      resourceRewardClaimed: x.resourceRewardClaimed === true,
-      resourceRewardClaimPending: x.resourceRewardClaimPending === true,
-      resourceRewardAvailableAtMs: tamEded(x.resourceRewardAvailableAtMs),
-      resourceRewardClaimedAtMs: tamEded(x.resourceRewardClaimedAtMs),
-      resourceRewardLastError: x.resourceRewardLastError || "",
-      casualtySummary: kopyala(x.casualtySummary) || {},
-      lossCalculationPending: x.lossCalculationPending === true,
-      hospitalResolutionPending: x.hospitalResolutionPending === true,
-      lightWoundedRecoveryPending: x.lightWoundedRecoveryPending === true
-    }));
+    .map(x => {
+      const pvp = pvpRaportudur(x);
+      const opponentPlayerId = pvp
+        ? (metnAl(x.opponentPlayerId, 128) || metnAl(x.enemyId, 128))
+        : "";
+
+      return {
+        reportId: x.reportId,
+        category: x.category,
+        battleType: pvp ? "pvp" : (x.battleType || "pve"),
+        pvpRole: pvp ? pvpRolunuAl(x) : "",
+        opponentPlayerId,
+        stateId: x.stateId,
+        x: x.x,
+        z: x.z,
+        enemyId: x.enemyId,
+        // Köhnə build-lər yalnız enemyType sahəsini göstərir. PvP-də həmin
+        // sahəyə hücumçu/rəqib + koordinatı da qoyuruq ki MEmu köhnə APK ilə
+        // belə boş "player_base" görməsin.
+        enemyType: pvp ? pvpLegacyHedefMetni(x) : x.enemyType,
+        enemyLevel: x.enemyLevel,
+        result: x.result,
+        victory: x.victory === true,
+        playerPower: tamEded(x.playerPower),
+        enemyPower: tamEded(x.enemyPower),
+        createdAtMs: x.createdAtMs,
+        isRead: x.isRead === true,
+        isSaved: x.isSaved === true,
+        heroExp: tamEded(x.heroExp),
+        heroExpDistributionPending: x.heroExpDistributionPending === true,
+        reward: kopyala(x.reward) || {},
+        resourceRewardClaimed: x.resourceRewardClaimed === true,
+        resourceRewardClaimPending: x.resourceRewardClaimPending === true,
+        resourceRewardAvailableAtMs: tamEded(x.resourceRewardAvailableAtMs),
+        resourceRewardClaimedAtMs: tamEded(x.resourceRewardClaimedAtMs),
+        resourceRewardLastError: x.resourceRewardLastError || "",
+        casualtySummary: kopyala(x.casualtySummary) || {},
+        lossCalculationPending: x.lossCalculationPending === true,
+        hospitalResolutionPending: x.hospitalResolutionPending === true,
+        lightWoundedRecoveryPending: x.lightWoundedRecoveryPending === true
+      };
+    });
 }
 
 function raportDetaliHazirla(state, reportId) {
