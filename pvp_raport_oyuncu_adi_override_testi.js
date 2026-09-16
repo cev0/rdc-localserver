@@ -58,9 +58,14 @@ assert.strictEqual(result.success, true);
 assert.strictEqual(result.attackerReport.opponentCommanderName, "MEmu Komandir");
 assert.strictEqual(result.defenderReport.opponentCommanderName, "Cavidan");
 
+const rawDefenderReport = defenderState.doyusRaportlari.items[0];
+assert.strictEqual(rawDefenderReport.opponentPlayerId, "attacker_1");
+assert.strictEqual(rawDefenderReport.opponentCommanderName, "Cavidan");
+
 const defenderList = raportSiyahisiniHazirla(defenderState);
 assert.strictEqual(defenderList.length, 1);
 assert.strictEqual(defenderList[0].opponentCommanderName, "Cavidan");
+assert.strictEqual(defenderList[0].opponentPlayerId, "Cavidan");
 assert.ok(defenderList[0].enemyType.includes("Hücumçu: Cavidan"));
 assert.ok(defenderList[0].enemyType.includes("X:265 Y:840"));
 

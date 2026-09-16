@@ -2,7 +2,8 @@
 
 /**
  * PvP döyüş raportlarında playerId əvəzinə oyunçunun real komandir adını daşıyır.
- * Mövcud playerId sahələri saxlanılır; ad ayrıca opponentCommanderName kimi əlavə olunur.
+ * Daxildə real playerId saxlanılır; siyahı payload-ında köhnə Unity build-ləri üçün
+ * opponentPlayerId yalnız göstərim məqsədilə komandir adı ilə əvəz olunur.
  * Modul əsas server handler-ləri yüklənməzdən əvvəl require edilməlidir.
  */
 
@@ -59,7 +60,8 @@ function raportGorunusunuYenile(report, rawReport) {
     64
   );
   const opponentId = metnAl(
-    report.opponentPlayerId || report.enemyId || (rawReport && (rawReport.opponentPlayerId || rawReport.enemyId)),
+    (rawReport && (rawReport.opponentPlayerId || rawReport.enemyId)) ||
+      report.opponentPlayerId || report.enemyId,
     128
   );
   const role = rolAl(report) || rolAl(rawReport);
@@ -113,6 +115,12 @@ if (typeof esasSiyahiniHazirla === 'function') {
     for (const item of Array.isArray(items) ? items : []) {
       const raw = rawItems.find(x => x && metnAl(x.reportId, 220) === metnAl(item && item.reportId, 220));
       raportGorunusunuYenile(item, raw);
+
+      // Hazırkı Unity kartı opponentPlayerId-ni göstərir. Yeni model sahəsi tələb etmədən
+      // köhnə və yeni APK-lar real adı göstərsin deyə yalnız response copy-də ad verilir.
+      // Raw raportdakı opponentPlayerId dəyişmir və server daxili kimlik olaraq qalır.
+      const ad = metnAl(raw && raw.opponentCommanderName, 64);
+      if (ad) item.opponentPlayerId = ad;
     }
 
     return items;
