@@ -135,4 +135,13 @@ hesabLoginModulu.hesabLoginMesajiniEmalEt = async function(kontekst) {
 // server.js yüklənməzdən əvvəl əhali log qoruyucusunu aktiv et.
 // Eyni əhali dəyərləri background tick-lərdə təkrar loglanmayacaq.
 require("./ehali_log_qoruyucusu");
+
+// Dövlət 2 əvvəlki müvəqqəti inteqrasiya testindən qalmışdı.
+// Server source-u yüklənməzdən əvvəl yeni hesabları Dövlət 1-ə bağlayan
+// və köhnə test State 2 hesablarını növbəti girişdə Dövlət 1-ə keçirən patch-i tətbiq et.
+const {
+  dovlet1YeniOyuncuQaydasiniTetbiqEt
+} = require("./dovlet1_yeni_oyuncu_patch");
+dovlet1YeniOyuncuQaydasiniTetbiqEt();
+
 require("./server");
