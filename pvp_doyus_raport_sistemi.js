@@ -187,6 +187,8 @@ function pvpReportHazirla({
     opponentPlayerId: metnAl(opponentPlayerId, 128),
     opponentType: "player_base",
     stateId: Math.max(1, tamEded(stateId) || 1),
+    // Siyahı kartında x/z həmişə qarşı tərəfin baza koordinatıdır.
+    // Hücumçu üçün müdafiəçinin, müdafiəçi üçün hücumçunun başlanğıc bazası.
     x: Number(x) || 0,
     z: Number(z) || 0,
     enemyId: metnAl(opponentPlayerId, 128),
@@ -271,8 +273,10 @@ function pvpIkiTerefRaportlariniYarat(attackerState, defenderState, settlement, 
 
   const target = operation.targetSnapshot || {};
   const stateId = Math.max(1, tamEded(operation.stateId || target.stateId) || 1);
-  const x = Number(target.targetX != null ? target.targetX : operation.targetX) || 0;
-  const z = Number(target.targetZ != null ? target.targetZ : operation.targetZ) || 0;
+  const targetX = Number(target.targetX != null ? target.targetX : operation.targetX) || 0;
+  const targetZ = Number(target.targetZ != null ? target.targetZ : operation.targetZ) || 0;
+  const attackerX = Number(operation.fromX) || 0;
+  const attackerZ = Number(operation.fromZ) || 0;
 
   const attackerCasualty = casualtyNeticesiniHazirla(settlement.attackerCasualty);
   const defenderCasualty = defenderCasualtyNeticesiniBirlesdir(settlement.defenderApplications);
@@ -286,8 +290,8 @@ function pvpIkiTerefRaportlariniYarat(attackerState, defenderState, settlement, 
     role: "attacker",
     operationId,
     stateId,
-    x,
-    z,
+    x: targetX,
+    z: targetZ,
     victory: combat.attackerVictory === true,
     ownPower: combat.attackerPower,
     opponentPower: combat.defenderPower,
@@ -304,8 +308,8 @@ function pvpIkiTerefRaportlariniYarat(attackerState, defenderState, settlement, 
     role: "defender",
     operationId,
     stateId,
-    x,
-    z,
+    x: attackerX,
+    z: attackerZ,
     victory: combat.defenderVictory === true,
     ownPower: combat.defenderPower,
     opponentPower: combat.attackerPower,
