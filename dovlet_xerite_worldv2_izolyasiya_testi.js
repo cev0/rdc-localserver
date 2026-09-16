@@ -11,8 +11,6 @@ const PREFIX = 'dovlet_xerite_worldv2_';
 // mövcud authoritative server mənbələrini oxumağa icazə verilir.
 // Buraya wildcard və ümumi qovluq icazəsi əlavə etmək olmaz.
 const ICAZELI_XARICI_LOCAL_REQUIRE = Object.freeze({
-  // Mövcud resource/teleport production adapterlərinin konkret asılılıqları.
-  // Sahə cache-i yalnız eyni resource audit revision-unu oxuyur.
   'dovlet_xerite_worldv2_resurs_emeliyyat_legacy.js': new Set([
     './verilenler_bazasi',
   ]),
@@ -25,6 +23,13 @@ const ICAZELI_XARICI_LOCAL_REQUIRE = Object.freeze({
   ]),
   'dovlet_xerite_worldv2_resurs_runtime_postgres.js': new Set([
     './verilenler_bazasi',
+  ]),
+  'dovlet_xerite_worldv2_resurs_runtime_mode.js': new Set([
+    './verilenler_bazasi',
+  ]),
+  'dovlet_xerite_worldv2_resurs_sql_native.js': new Set([
+    './verilenler_bazasi',
+    './dovlet_baza_kataloqu_postgres',
   ]),
   'dovlet_xerite_worldv2_teleport_handler.js': new Set([
     './oyun_state_daimilik_korpu',
@@ -98,8 +103,6 @@ function run() {
       );
     }
 
-    // WorldV2 modulu server process-i özü başlatmamalıdır.
-    // Production inteqrasiya mövcud gameplay handler zəncirindən edilməlidir.
     assert.strictEqual(
       /require\s*\(\s*['"]\.\/server(?:_[^'"]*)?['"]\s*\)/.test(metn),
       false,
@@ -107,8 +110,6 @@ function run() {
     );
   }
 
-  // Allowlist-də yazılan hər dependency həqiqətən faylda olmalıdır.
-  // Beləliklə köhnəlmiş, lazımsız icazə səssiz qalmır.
   for (const [fayl, icazeler] of Object.entries(ICAZELI_XARICI_LOCAL_REQUIRE)) {
     const tamYol = path.join(ROOT, fayl);
     assert.ok(fs.existsSync(tamYol), `Allowlist faylı tapılmadı: ${fayl}`);
