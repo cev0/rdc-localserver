@@ -309,13 +309,18 @@ function stateHazirla() {
 
 (function sourceInteqrasiyaTesti() {
   const handlerKod = fs.readFileSync(path.join(__dirname, "qosun_telimi_handler.js"), "utf8");
-  const zencirKod = fs.readFileSync(path.join(__dirname, "server_missiya_genisletme_v2.js"), "utf8");
+  const serverZenciri = fs.readFileSync(path.join(__dirname, "server_missiya_genisletme_v2.js"), "utf8");
+  const runtimeGameplayKod = fs.readFileSync(
+    path.join(__dirname, "runtime_gameplay_mutation_commands.js"),
+    "utf8"
+  );
+  const zencirKod = serverZenciri + "\n" + runtimeGameplayKod;
 
   assert.ok(handlerKod.includes("oyuncuStateMutasiyasiniPostgresIleIcraEt"));
   assert.ok(handlerKod.includes("troop_catalog_request"));
   assert.ok(handlerKod.includes("troop_training_preview_request"));
   assert.ok(handlerKod.includes("troop_training_status_request"));
-  assert.ok(zencirKod.includes("qosunTelimiMesajiniEmalEt"));
+  assert.ok(serverZenciri.includes("qosunTelimiMesajiniEmalEt"));
   assert.ok(zencirKod.includes("\"train_unit_request\""));
   assert.ok(zencirKod.includes("\"troop_training_status_request\""));
 })();
