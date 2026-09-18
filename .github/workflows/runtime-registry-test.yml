@@ -19,6 +19,9 @@ on:
       - "runtime_request_idempotency_testi.js"
       - "runtime_pg_authoritative_mutation.js"
       - "runtime_pg_authoritative_mutation_testi.js"
+      - "runtime_legacy_base_teleport.js"
+      - "runtime_legacy_base_teleport_testi.js"
+      - "world_state_transaction_lock.js"
       - "runtime_ws_guard.js"
       - "runtime_ws_guard_testi.js"
       - "runtime_command_router.js"
@@ -57,6 +60,9 @@ on:
       - "runtime_request_idempotency_testi.js"
       - "runtime_pg_authoritative_mutation.js"
       - "runtime_pg_authoritative_mutation_testi.js"
+      - "runtime_legacy_base_teleport.js"
+      - "runtime_legacy_base_teleport_testi.js"
+      - "world_state_transaction_lock.js"
       - "runtime_ws_guard.js"
       - "runtime_ws_guard_testi.js"
       - "runtime_command_router.js"
@@ -115,6 +121,9 @@ jobs:
 
       - name: Test PostgreSQL authoritative mutation
         run: node runtime_pg_authoritative_mutation_testi.js
+
+      - name: Test shared state teleport authority
+        run: node runtime_legacy_base_teleport_testi.js
 
       - name: Test command router
         run: node runtime_command_router_testi.js
