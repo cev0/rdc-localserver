@@ -35,6 +35,9 @@ on:
       - "runtime_build_commands_testi.js"
       - "runtime_map_mutation_commands.js"
       - "runtime_map_mutation_commands_testi.js"
+      - "world_state_center_postgres.js"
+      - "world_state_center_postgres_testi.js"
+      - "miqrasiyalar/20260918_world_state_runtime.sql"
       - "runtime_account_commands.js"
       - "runtime_account_commands_testi.js"
       - "server_missiya_genisletme_v2.js"
@@ -76,6 +79,9 @@ on:
       - "runtime_build_commands_testi.js"
       - "runtime_map_mutation_commands.js"
       - "runtime_map_mutation_commands_testi.js"
+      - "world_state_center_postgres.js"
+      - "world_state_center_postgres_testi.js"
+      - "miqrasiyalar/20260918_world_state_runtime.sql"
       - "runtime_account_commands.js"
       - "runtime_account_commands_testi.js"
       - "server_missiya_genisletme_v2.js"
@@ -139,6 +145,9 @@ jobs:
 
       - name: Test routed map mutations
         run: node runtime_map_mutation_commands_testi.js
+
+      - name: Test persistent state center
+        run: node world_state_center_postgres_testi.js
 
       - name: Test routed account commands
         run: node runtime_account_commands_testi.js
