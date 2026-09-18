@@ -43,7 +43,9 @@ function mapMutationCommandleriniQeydEt(
     syncResourceSlotOccupancy,
     getWorldStateRuntime,
     dovletBazalariniBirbasaPostgresdenAlClient,
-    dovletBazaKeshiniTemizle
+    dovletBazaKeshiniTemizle,
+    occupyStateCenterPostgresClient,
+    pushWorldMapToAllAuthedPlayers
   } = deps || {};
 
   const requiredFns = {
@@ -65,7 +67,9 @@ function mapMutationCommandleriniQeydEt(
     syncResourceSlotOccupancy,
     getWorldStateRuntime,
     dovletBazalariniBirbasaPostgresdenAlClient,
-    dovletBazaKeshiniTemizle
+    dovletBazaKeshiniTemizle,
+    occupyStateCenterPostgresClient,
+    pushWorldMapToAllAuthedPlayers
   };
 
   for (
@@ -767,7 +771,14 @@ function mapMutationCommandleriniQeydEt(
 
   router.register(
     "occupy_state_center_request",
-    async ({ ws, msg, send }) => {
+    async ({
+      ws,
+      msg,
+      send,
+      nowMs,
+      transactionContext,
+      deferAfterCommit
+    }) => {
       const authCheck =
         playerIdUyugunluqYoxla(
           msg,
@@ -787,21 +798,213 @@ function mapMutationCommandleriniQeydEt(
         return;
       }
 
-      /*
-       * Prezident / Dövlət mərkəzi ortaq world state-dir.
-       * Legacy RAM runtime multi-instance üçün authoritative deyil.
-       * Persistent world metadata transaction modeli hazır olana qədər
-       * split-brain yaratmaqdansa fail-closed davranırıq.
-       */
-      errorGonder(
-        send,
-        ws,
-        "State center occupation is temporarily disabled until persistent world-state authority is enabled.",
-        "STATE_CENTER_PERSISTENCE_REQUIRED"
+      const playerId =
+        authCheck.playerId;
+
+      const state =
+        getOrCreatePlayerState(
+          playerId
+        );
+
+      const ownStateId =
+        Number(
+          state &&
+          state.worldPlacement &&
+          state.worldPlacement.stateId
+        );
+
+      if (
+        !Number.isInteger(ownStateId) ||
+        ownStateId <= 0
+      ) {
+        errorGonder(
+          send,
+          ws,
+          "Player world placement not found",
+          "STATE_CENTER_PLACEMENT_MISSING"
+        );
+        return;
+      }
+
+      const requestedStateId =
+        msg &&
+        msg.stateId != null
+          ? Number(msg.stateId)
+          : ownStateId;
+
+      if (
+        !Number.isInteger(
+          requestedStateId
+        ) ||
+        requestedStateId !==
+          ownStateId
+      ) {
+        errorGonder(
+          send,
+          ws,
+          "State center can only be occupied in the player's own state",
+          "STATE_CENTER_STATE_MISMATCH"
+        );
+        return;
+      }
+
+      const stateRuntime =
+        getWorldStateRuntime(
+          ownStateId
+        );
+
+      if (!stateRuntime) {
+        errorGonder(
+          send,
+          ws,
+          "World state not found",
+          "STATE_CENTER_WORLD_STATE_MISSING"
+        );
+        return;
+      }
+
+      const client =
+        transactionContext &&
+        transactionContext.client;
+
+      if (
+        !client ||
+        typeof client.query !==
+          "function"
+      ) {
+        throw new Error(
+          "State center PostgreSQL transaction client-i yoxdur."
+        );
+      }
+
+      const allianceId =
+        typeof msg.allianceId ===
+          "string"
+          ? msg.allianceId.trim()
+          : "";
+
+      const currentNow =
+        nowMs();
+
+      const centerUnlockAtMs =
+        Math.max(
+          0,
+          Number(
+            stateRuntime.centerBuilding &&
+            stateRuntime.centerBuilding.unlockAtMs
+          ) ||
+          Number(
+            stateRuntime.centerUnlockAtMs
+          ) ||
+          0
+        );
+
+      const result =
+        await occupyStateCenterPostgresClient(
+          client,
+          {
+            stateId:
+              ownStateId,
+            playerId,
+            allianceId,
+            centerUnlockAtMs,
+            nowMs:
+              currentNow
+          }
+        );
+
+      if (
+        !result ||
+        result.success !== true
+      ) {
+        errorGonder(
+          send,
+          ws,
+          result &&
+          result.message
+            ? result.message
+            : "State center occupation failed",
+          result &&
+          result.errorCode
+            ? result.errorCode
+            : "STATE_CENTER_OCCUPATION_FAILED"
+        );
+        return;
+      }
+
+      send(ws, {
+        type:
+          "state_center_occupied",
+        playerId,
+        serverTimeUnixMs:
+          currentNow,
+        payloadJson:
+          JSON.stringify({
+            stateId:
+              result.stateId,
+            occupiedByPlayerId:
+              result.occupiedByPlayerId,
+            occupiedByAllianceId:
+              result.occupiedByAllianceId ||
+              null,
+            occupiedAtMs:
+              result.occupiedAtMs,
+            revision:
+              result.revision
+          })
+      });
+
+      await deferAfterCommit(
+        async () => {
+          if (
+            !stateRuntime.centerBuilding ||
+            typeof stateRuntime.centerBuilding !==
+              "object"
+          ) {
+            stateRuntime.centerBuilding = {};
+          }
+
+          stateRuntime.centerBuilding
+            .occupiedByPlayerId =
+              result.occupiedByPlayerId;
+
+          stateRuntime.centerBuilding
+            .occupiedByAllianceId =
+              result.occupiedByAllianceId ||
+              null;
+
+          stateRuntime.centerBuilding
+            .occupiedAtMs =
+              result.occupiedAtMs;
+
+          stateRuntime.centerBuilding
+            .unlockAtMs =
+              result.centerUnlockAtMs;
+
+          stateRuntime.centerBuilding
+            .isUnlocked =
+              currentNow >=
+              result.centerUnlockAtMs;
+
+          stateRuntime.presidentPlayerId =
+            result.occupiedByPlayerId;
+
+          stateRuntime.presidentAllianceId =
+            result.occupiedByAllianceId ||
+            null;
+
+          pushStateLocalMapToStatePlayers(
+            ownStateId
+          );
+
+          pushWorldMapToAllAuthedPlayers();
+        }
       );
     },
     {
-      authRequired: true
+      authRequired: true,
+      mutation: true,
+      postgresAuthoritative: true
     }
   );
 
