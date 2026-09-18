@@ -124,7 +124,7 @@
     "server:unity-contract-test": "node server_unity_mesaj_muqavilesi_testi.js",
     "dusmen:movqe-pg-test": "node dusmen_movqeyi_pg_mutasiya_testi.js",
     "xerite:worldv2-test": "node dovlet_xerite_worldv2_butun_testler.js",
-    "runtime:registry-test": "node --check server.js && node runtime_registry_testi.js && node runtime_redis_testi.js && node runtime_deadline_scheduler_testi.js && node runtime_production_clock_testi.js && node runtime_command_router_testi.js && node server_oyuncu_mutasiya_kilidi_testi.js"
+    "runtime:registry-test": "node --check server.js && node runtime_registry_testi.js && node runtime_redis_testi.js && node runtime_deadline_scheduler_testi.js && node runtime_production_clock_testi.js && node runtime_command_router_testi.js && node runtime_auth_command_testi.js && node server_oyuncu_mutasiya_kilidi_testi.js"
   },
   "repository": {
     "type": "git",
