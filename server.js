@@ -7353,6 +7353,7 @@ wss.on("connection", (ws, req) => {
       send: cavabGonder,
       nowMs,
       connections,
+      runtimeBus,
       getOrCreatePlayerState,
       updateServerTime,
       makeClientState,

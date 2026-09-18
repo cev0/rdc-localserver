@@ -58,37 +58,192 @@ function silmeTesdiqiDuzgundur(deyer) {
   return temiz === "SIL";
 }
 
-function socketiOyuncuyaBagla(ws, playerId, sessiyaId, connections) {
-  const kohnePlayerId = ws._authedPlayerId;
-
+function connectionSocketiniSil(
+  connections,
+  playerId,
+  ws
+) {
   if (
-    kohnePlayerId &&
-    connections.get(kohnePlayerId) === ws
+    !connections ||
+    !playerId
   ) {
-    connections.delete(kohnePlayerId);
+    return false;
   }
 
-  ws._authedPlayerId = playerId;
-  ws._accountSessionId = sessiyaId || null;
-  ws._authKind = sessiyaId ? "account" : "guest";
-  ws._pendingPinChallengeId = null;
-  connections.set(playerId, ws);
+  if (
+    typeof connections.deleteIfCurrent ===
+      "function"
+  ) {
+    return connections.deleteIfCurrent(
+      playerId,
+      ws
+    );
+  }
+
+  if (
+    typeof connections.get ===
+      "function" &&
+    typeof connections.delete ===
+      "function" &&
+    connections.get(playerId) === ws
+  ) {
+    return connections.delete(
+      playerId
+    );
+  }
+
+  return false;
 }
 
-function socketiPinGozlemeyeAl(ws, connections, challengeId) {
-  const kohnePlayerId = ws._authedPlayerId;
+async function runtimePresenceQeydEt(
+  runtimeBus,
+  playerId
+) {
+  if (
+    !runtimeBus ||
+    typeof runtimeBus.registerLocalPlayer !==
+      "function" ||
+    !playerId
+  ) {
+    return false;
+  }
+
+  try {
+    return await runtimeBus
+      .registerLocalPlayer(
+        playerId
+      );
+  }
+  catch (error) {
+    console.error(
+      "[REDIS] Account presence register error:",
+      error && error.message
+        ? error.message
+        : error
+    );
+
+    return false;
+  }
+}
+
+async function runtimePresenceSil(
+  runtimeBus,
+  connections,
+  playerId
+) {
+  if (
+    !runtimeBus ||
+    typeof runtimeBus.unregisterLocalPlayer !==
+      "function" ||
+    !playerId
+  ) {
+    return false;
+  }
+
+  if (
+    connections &&
+    typeof connections.has ===
+      "function" &&
+    connections.has(playerId)
+  ) {
+    return false;
+  }
+
+  try {
+    return await runtimeBus
+      .unregisterLocalPlayer(
+        playerId
+      );
+  }
+  catch (error) {
+    console.error(
+      "[REDIS] Account presence unregister error:",
+      error && error.message
+        ? error.message
+        : error
+    );
+
+    return false;
+  }
+}
+
+async function socketiOyuncuyaBagla(
+  ws,
+  playerId,
+  sessiyaId,
+  connections,
+  runtimeBus = null
+) {
+  const kohnePlayerId =
+    ws._authedPlayerId;
 
   if (
     kohnePlayerId &&
-    connections.get(kohnePlayerId) === ws
+    kohnePlayerId !== playerId
   ) {
-    connections.delete(kohnePlayerId);
+    connectionSocketiniSil(
+      connections,
+      kohnePlayerId,
+      ws
+    );
+
+    await runtimePresenceSil(
+      runtimeBus,
+      connections,
+      kohnePlayerId
+    );
+  }
+
+  ws._authedPlayerId =
+    playerId;
+  ws._accountSessionId =
+    sessiyaId || null;
+  ws._authKind =
+    sessiyaId
+      ? "account"
+      : "guest";
+  ws._pendingPinChallengeId =
+    null;
+
+  connections.set(
+    playerId,
+    ws
+  );
+
+  await runtimePresenceQeydEt(
+    runtimeBus,
+    playerId
+  );
+}
+
+async function socketiPinGozlemeyeAl(
+  ws,
+  connections,
+  challengeId,
+  runtimeBus = null
+) {
+  const kohnePlayerId =
+    ws._authedPlayerId;
+
+  if (kohnePlayerId) {
+    connectionSocketiniSil(
+      connections,
+      kohnePlayerId,
+      ws
+    );
+
+    await runtimePresenceSil(
+      runtimeBus,
+      connections,
+      kohnePlayerId
+    );
   }
 
   ws._authedPlayerId = null;
   ws._accountSessionId = null;
   ws._authKind = "pin_pending";
-  ws._pendingPinChallengeId = metnAl(challengeId);
+  ws._pendingPinChallengeId =
+    metnAl(challengeId);
 }
 
 function cihazPinTelebiGonder(send, ws, challenge, nowMs) {
@@ -245,6 +400,7 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
     send,
     nowMs,
     connections,
+    runtimeBus,
     getOrCreatePlayerState,
     updateServerTime,
     makeClientState,
@@ -332,11 +488,12 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
       return true;
     }
 
-    socketiOyuncuyaBagla(
+    await socketiOyuncuyaBagla(
       ws,
       playerId,
       sessiya.sessionId,
-      connections
+      connections,
+      runtimeBus
     );
 
     send(ws, {
@@ -555,10 +712,11 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
           return true;
         }
 
-        socketiPinGozlemeyeAl(
+        await socketiPinGozlemeyeAl(
           ws,
           connections,
-          challenge.challengeId
+          challenge.challengeId,
+          runtimeBus
         );
 
         cihazPinTelebiGonder(
@@ -584,11 +742,12 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
       }
     }
 
-    socketiOyuncuyaBagla(
+    await socketiOyuncuyaBagla(
       ws,
       playerId,
       sessiya.sessionId,
-      connections
+      connections,
+      runtimeBus
     );
 
     send(ws, {
@@ -682,10 +841,11 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
         return true;
       }
 
-      socketiPinGozlemeyeAl(
+      await socketiPinGozlemeyeAl(
         ws,
         connections,
-        challenge.challengeId
+        challenge.challengeId,
+        runtimeBus
       );
 
       cihazPinTelebiGonder(
@@ -713,11 +873,12 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
       return true;
     }
 
-    socketiOyuncuyaBagla(
+    await socketiOyuncuyaBagla(
       ws,
       playerId,
       sessiya.sessionId,
-      connections
+      connections,
+      runtimeBus
     );
 
     send(ws, {
@@ -772,10 +933,11 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
       ) {
         const challenge = cihazQoruma.challenge;
 
-        socketiPinGozlemeyeAl(
+        await socketiPinGozlemeyeAl(
           ws,
           connections,
-          challenge.challengeId
+          challenge.challengeId,
+          runtimeBus
         );
 
         cihazPinTelebiGonder(
@@ -860,11 +1022,12 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
       return true;
     }
 
-    socketiOyuncuyaBagla(
+    await socketiOyuncuyaBagla(
       ws,
       playerId,
       sessiya.sessionId,
-      connections
+      connections,
+      runtimeBus
     );
 
     send(ws, {
@@ -920,11 +1083,18 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
 
     const playerId = ws._authedPlayerId;
 
-    if (
-      playerId &&
-      connections.get(playerId) === ws
-    ) {
-      connections.delete(playerId);
+    if (playerId) {
+      connectionSocketiniSil(
+        connections,
+        playerId,
+        ws
+      );
+
+      await runtimePresenceSil(
+        runtimeBus,
+        connections,
+        playerId
+      );
     }
 
     ws._authedPlayerId = null;
@@ -1052,5 +1222,10 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
 }
 
 module.exports = {
-  hesabLoginMesajiniEmalEt
+  hesabLoginMesajiniEmalEt,
+  connectionSocketiniSil,
+  runtimePresenceQeydEt,
+  runtimePresenceSil,
+  socketiOyuncuyaBagla,
+  socketiPinGozlemeyeAl
 };

@@ -34,6 +34,8 @@ on:
       - "runtime_core_read_commands.js"
       - "runtime_auth_command.js"
       - "runtime_auth_command_testi.js"
+      - "hesab_login_handler.js"
+      - "hesab_login_presence_testi.js"
       - "runtime_gameplay_mutation_commands.js"
       - "runtime_gameplay_mutation_commands_testi.js"
       - "runtime_build_commands.js"
@@ -83,6 +85,8 @@ on:
       - "runtime_core_read_commands.js"
       - "runtime_auth_command.js"
       - "runtime_auth_command_testi.js"
+      - "hesab_login_handler.js"
+      - "hesab_login_presence_testi.js"
       - "runtime_gameplay_mutation_commands.js"
       - "runtime_gameplay_mutation_commands_testi.js"
       - "runtime_build_commands.js"
@@ -152,6 +156,9 @@ jobs:
 
       - name: Test routed auth command
         run: node runtime_auth_command_testi.js
+
+      - name: Test account-login Redis presence lifecycle
+        run: node hesab_login_presence_testi.js
 
       - name: Test routed gameplay mutations
         run: node runtime_gameplay_mutation_commands_testi.js
