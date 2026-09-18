@@ -103,13 +103,8 @@ const OYUNCU_MUTASIYA_MESAJLARI = new Set([
   "battle_report_save_request",
   "battle_report_delete_request",
   "xestexana_sagaltma_request",
-  "expand_area_request",
-  "expand_base",
   "troop_training_preview_request",
   "troop_training_status_request",
-  "base_teleport_request",
-  "move_request",
-  "connect_road_request",
 ]);
 
 const esasHesabLoginMesajiniEmalEt = hesabLoginModulu.hesabLoginMesajiniEmalEt;
