@@ -3383,6 +3383,9 @@ const {
   buildCommandleriniQeydEt
 } = require("./runtime_build_commands");
 const {
+  mapMutationCommandleriniQeydEt
+} = require("./runtime_map_mutation_commands");
+const {
   oyuncuMutasiyaKilidiIleIcraEt
 } = require("./server_oyuncu_mutasiya_kilidi");
 
@@ -6887,6 +6890,30 @@ buildCommandleriniQeydEt(
     makeClientState,
     sendStateLocalMapToPlayer,
     sendWorldMapToPlayer
+  }
+);
+
+mapMutationCommandleriniQeydEt(
+  runtimeCommandRouter,
+  {
+    getOrCreatePlayerState,
+    ensureMapState,
+    expandUnlockedArea,
+    updateServerTime,
+    makeClientState,
+    normalizeBuildingId,
+    refreshRoadAccessForBuildings,
+    findRoadPathAStar,
+    createRoadsAlongPath,
+    pushStateToPlayerConnections,
+    teleportPlayerBaseInsideState,
+    pushStateLocalMapToStatePlayers,
+    canMoveThisBuilding,
+    canMoveBuilding,
+    syncResourceSlotOccupancy,
+    getWorldStateRuntime,
+    occupyStateCenter,
+    pushWorldMapToAllAuthedPlayers
   }
 );
 
