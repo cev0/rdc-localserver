@@ -71,7 +71,7 @@ async function worldStateCenterMetadataAlClient(
 
   const result =
     await client.query(
-      \`
+      `
       SELECT
         state_id,
         center_unlock_at_ms,
@@ -82,7 +82,7 @@ async function worldStateCenterMetadataAlClient(
       FROM dovlet_world_state_runtime
       WHERE state_id = $1
       LIMIT 1
-      \`,
+      `,
       [sid]
     );
 
@@ -176,7 +176,7 @@ async function occupyStateCenterPostgresClient(
    * Sonrakı instanslar öz RAM tarixləri ilə həmin dəyəri overwrite etmir.
    */
   await client.query(
-    \`
+    `
     INSERT INTO dovlet_world_state_runtime (
       state_id,
       center_unlock_at_ms,
@@ -188,7 +188,7 @@ async function occupyStateCenterPostgresClient(
     )
     VALUES ($1, $2, '', '', 0, 0, NOW())
     ON CONFLICT (state_id) DO NOTHING
-    \`,
+    `,
     [
       stateId,
       centerUnlockAtMs
@@ -225,7 +225,7 @@ async function occupyStateCenterPostgresClient(
 
   const updated =
     await client.query(
-      \`
+      `
       UPDATE dovlet_world_state_runtime
       SET
         president_player_id = $2,
@@ -241,7 +241,7 @@ async function occupyStateCenterPostgresClient(
         president_alliance_id,
         center_occupied_at_ms,
         revision
-      \`,
+      `,
       [
         stateId,
         playerId,
