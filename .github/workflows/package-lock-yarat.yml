@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - server-v2-scalable
     paths:
       - "package.json"
       - ".github/workflows/package-lock-yarat.yml"
