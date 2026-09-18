@@ -31,9 +31,57 @@ const {
         error() {}
       },
       mutationExecutor:
-        async (playerId, fn) => {
-          locks.push(playerId);
+        async (
+          playerId,
+          fn
+        ) => {
+          locks.push(
+            playerId
+          );
           return await fn();
+        },
+      authoritativeMutationExecutor:
+        async (
+          playerId,
+          fn
+        ) => {
+          locks.push(
+            playerId
+          );
+
+          const afterCommit = [];
+
+          const result =
+            await fn({
+              send:
+                (_ws, payload) => {
+                  sent.push(
+                    payload
+                  );
+                },
+              deferAfterCommit:
+                (callback) => {
+                  if (
+                    typeof callback ===
+                      "function"
+                  ) {
+                    afterCommit.push(
+                      callback
+                    );
+                  }
+
+                  return true;
+                }
+            });
+
+          for (
+            const callback of
+            afterCommit
+          ) {
+            await callback();
+          }
+
+          return result;
         }
     });
 
