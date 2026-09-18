@@ -6682,6 +6682,7 @@ case "research_start": {
 
         refreshTechnologyStats(state);
         updateServerTime(state);
+        schedulePlayerDeadline(playerId, state);
 
         send(ws, {
           type: "research_started",
@@ -6960,6 +6961,7 @@ case "research_start": {
 
         refreshBuilderCapacity(state);
         updateServerTime(state);
+        schedulePlayerDeadline(playerId, state);
 
         send(ws, {
           type: "construction_started",
@@ -7284,6 +7286,7 @@ refreshBuilderCapacity(state);
         };
 
         state.army.trainingQueues[buildingInstanceId] = queueEntry;
+        schedulePlayerDeadline(playerId, state);
 
         console.log("[TRAIN_STARTED]", queueEntry);
 
@@ -7427,6 +7430,7 @@ refreshBuilderCapacity(state);
         }
 
         refreshBuilderCapacity(state);
+        schedulePlayerDeadline(playerId, state);
 
         send(ws, {
           type: "upgrade_started",
@@ -7485,6 +7489,8 @@ case "technology_research_start": {
     send(ws, { type: "error", message: result.message || "Technology research could not start" });
     break;
   }
+
+  schedulePlayerDeadline(playerId, state);
 
   send(ws, {
     type: "technology_research_started",
@@ -7688,6 +7694,7 @@ updateServerTime(state);
 
         const state = getOrCreatePlayerState(playerId);
         updateServerTime(state);
+        schedulePlayerDeadline(playerId, state);
 
         send(ws, {
           type: "ack",
@@ -8785,6 +8792,7 @@ case "occupy_state_center_request": {
         updateServerTime(incoming);
 
         players.set(playerId, incoming);
+        schedulePlayerDeadline(playerId, incoming);
 
         send(ws, {
           type: "save_ok",
@@ -8850,71 +8858,16 @@ function completeTechnologyResearchForAllPlayers() {
 }
 
 // ============================================================
-// LOOPS
+// RUNTIME SCHEDULING
+// ------------------------------------------------------------
+// Construction / research / training artıq bütün player-ləri
+// hər saniyə scan etmir. RuntimeDeadlineScheduler yalnız aktiv
+// deadline olan player-ləri vaxtı çatanda oyadır.
+//
+// Resource production hələlik mövcud 5 saniyəlik tick semantikasını
+// qoruyur. Növbəti mərhələdə onu elapsed-time/lazy accrual modelinə
+// keçirəcəyik.
 // ============================================================
-
-setInterval(() => {
-  const now = nowMs();
-
-  players.forEach((state, playerId) => {
-    if (!state || !state.army || !state.army.trainingQueues)
-      return;
-
-    let stateChanged = false;
-
-    for (const buildingInstanceId in state.army.trainingQueues) {
-      const queue = state.army.trainingQueues[buildingInstanceId];
-      if (!queue)
-        continue;
-
-      if (now >= queue.finishTimeMs) {
-        console.log("[TRAIN_FINISHED]", queue);
-
-        if (!state.army.troops) {
-          state.army.troops = {};
-        }
-
-        if (typeof state.army.troops[queue.unitId] !== "number") {
-          state.army.troops[queue.unitId] = 0;
-        }
-
-        state.army.troops[queue.unitId] += queue.count;
-        delete state.army.trainingQueues[buildingInstanceId];
-
-        console.log("[TRAIN_REWARD_ADDED]", {
-          playerId,
-          unitId: queue.unitId,
-          added: queue.count,
-          newTotal: state.army.troops[queue.unitId]
-        });
-
-        stateChanged = true;
-      }
-    }
-
-    if (stateChanged) {
-      updateServerTime(state);
-
-      const ws = connections.get(playerId);
-      if (ws) {
-        send(ws, {
-          type: "state",
-          playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify(makeClientState(state))
-        });
-      }
-    }
-  });
-}, 1000);
-
-setInterval(() => {
-  completeTechnologyResearchForAllPlayers();
-}, 1000);
-
-setInterval(() => {
-  completeFinishedJobsForAllPlayers();
-}, 1000);
 
 setInterval(() => {
   processProductionForAllPlayers();
@@ -8938,6 +8891,8 @@ async function gracefulShutdown(signal) {
   gracefulShutdownBaslayib = true;
 
   console.log("[SERVER] Graceful shutdown:", signal);
+
+  deadlineScheduler.stop();
 
   try {
     await runtimeBus.close();
