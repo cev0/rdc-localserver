@@ -3398,6 +3398,9 @@ const {
   stateIdempotencyExecutorYarat
 } = require("./runtime_request_idempotency");
 const {
+  occupyStateCenterPostgresClient
+} = require("./world_state_center_postgres");
+const {
   postgresAuthoritativeMutationExecutorYarat
 } = require("./runtime_pg_authoritative_mutation");
 const {
@@ -7143,7 +7146,9 @@ mapMutationCommandleriniQeydEt(
     syncResourceSlotOccupancy,
     getWorldStateRuntime,
     dovletBazalariniBirbasaPostgresdenAlClient,
-    dovletBazaKeshiniTemizle
+    dovletBazaKeshiniTemizle,
+    occupyStateCenterPostgresClient,
+    pushWorldMapToAllAuthedPlayers
   }
 );
 
