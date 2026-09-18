@@ -75,6 +75,14 @@ class ConnectionRuntimeRegistry extends MapCompatibleRegistry {
   constructor() {
     super("connections");
     this._socketSets = new Map();
+    this._remotePublisher = null;
+  }
+
+  configureRemotePublisher(publisher) {
+    this._remotePublisher =
+      typeof publisher === "function"
+        ? publisher
+        : null;
   }
 
   /**
@@ -106,6 +114,40 @@ class ConnectionRuntimeRegistry extends MapCompatibleRegistry {
     }
 
     return count;
+  }
+
+  deliverLocal(playerId, payload, sendFn) {
+    if (typeof sendFn !== "function") {
+      return 0;
+    }
+
+    return this.forEachSocket(playerId, (socket) => {
+      sendFn(socket, payload);
+    });
+  }
+
+  deliver(playerId, payload, sendFn) {
+    const localCount =
+      this.deliverLocal(playerId, payload, sendFn);
+
+    if (localCount > 0) {
+      return true;
+    }
+
+    if (!this._remotePublisher) {
+      return false;
+    }
+
+    Promise.resolve(
+      this._remotePublisher(playerId, payload)
+    ).catch((error) => {
+      console.error(
+        "[RUNTIME_REGISTRY] Remote delivery failed:",
+        error && error.message ? error.message : error
+      );
+    });
+
+    return true;
   }
 
   /**
