@@ -45,6 +45,7 @@ jobs:
           fetch-depth: 0
 
       - name: WorldV2 diff izolyasiyasını yoxla
+        if: github.event_name != 'pull_request' || startsWith(github.head_ref, 'worldv2-')
         shell: bash
         run: |
           set -euo pipefail
