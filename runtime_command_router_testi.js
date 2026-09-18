@@ -197,8 +197,91 @@ const {
     1
   );
 
+  const executorCalls = [];
+
+  const mutationRouter =
+    new RuntimeCommandRouter({
+      name: "mutation-test",
+      logger: {
+        error() {}
+      },
+      mutationExecutor:
+        async (
+          playerId,
+          action
+        ) => {
+          executorCalls.push(
+            "normal:" + playerId
+          );
+
+          return await action();
+        },
+      authoritativeMutationExecutor:
+        async (
+          playerId,
+          action,
+          metadata
+        ) => {
+          executorCalls.push(
+            "pg:" +
+            playerId +
+            ":" +
+            metadata.type
+          );
+
+          return await action({
+            send
+          });
+        }
+    });
+
+  mutationRouter.register(
+    "normal_mutation",
+    async () => {},
+    {
+      authRequired: true,
+      mutation: true
+    }
+  );
+
+  mutationRouter.register(
+    "pg_mutation",
+    async () => {},
+    {
+      authRequired: true,
+      mutation: true,
+      postgresAuthoritative: true
+    }
+  );
+
+  await mutationRouter.dispatch({
+    type: "normal_mutation",
+    msg: {
+      type: "normal_mutation"
+    },
+    ws,
+    send
+  });
+
+  await mutationRouter.dispatch({
+    type: "pg_mutation",
+    msg: {
+      type: "pg_mutation"
+    },
+    ws,
+    send
+  });
+
+  assert.deepStrictEqual(
+    executorCalls,
+    [
+      "normal:p1",
+      "pg:p1:pg_mutation"
+    ]
+  );
+
   console.log(
-    "PASS: command router dispatch, auth guard, metrics and core read commands."
+    "PASS: command router dispatch, auth guard, metrics, core reads and PostgreSQL authoritative route selection."
   );
 })().catch((error) => {
   console.error(error);
