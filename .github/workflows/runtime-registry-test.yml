@@ -41,5 +41,20 @@ jobs:
         with:
           node-version: "20"
           cache: npm
-      - run: npm ci
-      - run: npm run runtime:registry-test
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check server syntax
+        run: node --check server.js
+
+      - name: Test runtime registry
+        run: node runtime_registry_testi.js
+
+      - name: Test Redis runtime bus
+        run: node runtime_redis_testi.js
+
+      - name: Test deadline scheduler
+        run: node runtime_deadline_scheduler_testi.js
+
+      - name: Test player mutation lock
+        run: node server_oyuncu_mutasiya_kilidi_testi.js
