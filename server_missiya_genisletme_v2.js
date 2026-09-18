@@ -105,7 +105,6 @@ const OYUNCU_MUTASIYA_MESAJLARI = new Set([
   "xestexana_sagaltma_request",
   "expand_area_request",
   "expand_base",
-  "build_request",
   "troop_training_preview_request",
   "troop_training_status_request",
   "base_teleport_request",
