@@ -7,6 +7,9 @@ const { missiyaMesajiniEmalEt } = require("./missiya_handler");
 const {
   oyuncuMutasiyaKilidiIleIcraEt
 } = require("./server_oyuncu_mutasiya_kilidi");
+const {
+  runtimeStateInvalidationGonder
+} = require("./runtime_state_sync");
 
 require("./qehreman_recruit_qayda_override");
 
@@ -159,10 +162,38 @@ async function gameplayMesajZenciriniIcraEt(kontekst) {
 hesabLoginModulu.hesabLoginMesajiniEmalEt = async function(kontekst) {
   const type = metnAl(kontekst && kontekst.type, 128);
   const playerId = metnAl(kontekst && kontekst.ws && kontekst.ws._authedPlayerId, 128);
+
   if (!playerId || !OYUNCU_MUTASIYA_MESAJLARI.has(type)) {
     return await gameplayMesajZenciriniIcraEt(kontekst);
   }
-  return await oyuncuMutasiyaKilidiIleIcraEt(playerId, async () => await gameplayMesajZenciriniIcraEt(kontekst));
+
+  return await oyuncuMutasiyaKilidiIleIcraEt(
+    playerId,
+    async () => {
+      const handled =
+        await gameplayMesajZenciriniIcraEt(
+          kontekst
+        );
+
+      if (handled === true) {
+        await runtimeStateInvalidationGonder(
+          kontekst && kontekst.runtimeBus,
+          playerId,
+          {
+            type:
+              type ||
+              "legacy_state_commit",
+            committedAtMs:
+              typeof kontekst.nowMs === "function"
+                ? kontekst.nowMs()
+                : Date.now()
+          }
+        );
+      }
+
+      return handled;
+    }
+  );
 };
 
 const { dovletQaydalariniTetbiqEt } = require("./server_dovlet_patch");

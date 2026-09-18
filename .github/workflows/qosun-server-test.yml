@@ -105,6 +105,7 @@ on:
       - 'world_state_transaction_lock.js'
       - 'world_state_iki_oyuncu_mutasiya_postgres.js'
       - 'world_state_iki_oyuncu_mutasiya_postgres_testi.js'
+      - 'runtime_state_sync.js'
       - 'server_missiya_genisletme_v2.js'
       - 'missiya_handler.js'
       - 'missiya_postgres.js'
@@ -127,6 +128,8 @@ jobs:
           cache: npm
       - name: Paketleri qur
         run: npm ci
+      - name: Gameplay extension syntax
+        run: node --check server_missiya_genisletme_v2.js
       - name: Missiya mukafat PG mutasiya testleri
         run: node missiya_mukafat_pg_mutasiya_testi.js
       - name: Qosun kataloqu testleri

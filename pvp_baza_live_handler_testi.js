@@ -6,7 +6,8 @@ const {
   pvpCanliQaydasiniHazirla,
   pvpGeriDonusuBaslat,
   pvpGeriDonusuYekunlasdir,
-  pvpStatusMelumatiniHazirla
+  pvpStatusMelumatiniHazirla,
+  pvpRemoteStateInvalidationlariniGonder
 } = require("./pvp_baza_live_handler");
 
 function operationHazirla(status = "camping_at_abandoned_target") {
@@ -58,7 +59,7 @@ function stateHazirla(operation = operationHazirla()) {
   };
 }
 
-(function testleriIcraEt() {
+(async function testleriIcraEt() {
   {
     const raw = {
       type: "pvp_base_attack_preview_result",
@@ -175,5 +176,70 @@ function stateHazirla(operation = operationHazirla()) {
     assert.strictEqual(mismatch.blocker, "operation_mismatch");
   }
 
+  {
+    const published = [];
+
+    const count =
+      await pvpRemoteStateInvalidationlariniGonder(
+        {
+          runtimeBus: {
+            async publishToPlayer(
+              playerId,
+              payload
+            ) {
+              published.push({
+                playerId,
+                payload
+              });
+
+              return true;
+            }
+          }
+        },
+        {
+          success: true,
+          deyisenPlayerIdleri: [
+            "oyuncu_a",
+            "oyuncu_b",
+            "oyuncu_b"
+          ]
+        },
+        "oyuncu_a",
+        12345
+      );
+
+    assert.strictEqual(
+      count,
+      1
+    );
+
+    assert.deepStrictEqual(
+      published.map(
+        x => x.playerId
+      ),
+      [
+        "oyuncu_b"
+      ]
+    );
+
+    assert.strictEqual(
+      published[0].payload.type,
+      "__runtime_state_invalidate_v1"
+    );
+
+    assert.strictEqual(
+      published[0].payload.reason,
+      "pvp_battle_settlement"
+    );
+
+    assert.strictEqual(
+      published[0].payload.committedAtMs,
+      12345
+    );
+  }
+
   console.log("[PVP_BAZA_LIVE_HANDLER_TEST] OK");
-})();
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

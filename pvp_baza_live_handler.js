@@ -32,6 +32,9 @@ const {
 const {
   PVP_BAZA_STATUSLARI
 } = require("./pvp_baza_hedef_qaydasi");
+const {
+  runtimeStateInvalidationGonder
+} = require("./runtime_state_sync");
 
 const MESAJLAR = new Set([
   "pvp_base_attack_preview_request",
@@ -60,6 +63,74 @@ function gonder(k, type, data) {
     ...data,
     serverTimeUnixMs: k.nowMs()
   });
+}
+
+async function pvpRemoteStateInvalidationlariniGonder(
+  kontekst,
+  settlement,
+  currentPlayerId,
+  committedAtMs = Date.now()
+) {
+  if (
+    !settlement ||
+    settlement.success !== true ||
+    !Array.isArray(
+      settlement.deyisenPlayerIdleri
+    )
+  ) {
+    return 0;
+  }
+
+  const currentId =
+    metnAl(
+      currentPlayerId,
+      128
+    );
+
+  const remoteChangedIds =
+    Array.from(
+      new Set(
+        settlement
+          .deyisenPlayerIdleri
+          .map(
+            id =>
+              metnAl(
+                id,
+                128
+              )
+          )
+          .filter(
+            id =>
+              id &&
+              id !== currentId
+          )
+      )
+    );
+
+  let publishedCount = 0;
+
+  for (
+    const changedPlayerId of
+    remoteChangedIds
+  ) {
+    const published =
+      await runtimeStateInvalidationGonder(
+        kontekst &&
+        kontekst.runtimeBus,
+        changedPlayerId,
+        {
+          type:
+            "pvp_battle_settlement",
+          committedAtMs
+        }
+      );
+
+    if (published) {
+      publishedCount += 1;
+    }
+  }
+
+  return publishedCount;
 }
 
 function pvpCanliQaydasiniHazirla() {
@@ -486,6 +557,14 @@ async function statusEmeliyyatiniIcraEt(kontekst, hazir) {
       active.operationId,
       now
     );
+
+    await pvpRemoteStateInvalidationlariniGonder(
+      kontekst,
+      settlement,
+      playerId,
+      now
+    );
+
     deyisdi = deyisdi || !!(settlement && settlement.deyisdi === true);
   }
 
@@ -594,5 +673,6 @@ module.exports = {
   pvpGeriDonusuBaslat,
   pvpGeriDonusuYekunlasdir,
   pvpStatusMelumatiniHazirla,
+  pvpRemoteStateInvalidationlariniGonder,
   pvpBazaLiveMesajiniEmalEt
 };

@@ -11,6 +11,11 @@ function kopyala(v) { return v == null ? null : JSON.parse(JSON.stringify(v)); }
 function attackerStateHazirla() {
   return {
     playerId: "oyuncu_a",
+    worldPlacement: {
+      stateId: 1,
+      baseX: 1,
+      baseZ: 1
+    },
     army: { troops: { fighter_lv1: 100 } },
     konvoylar: { items: [{
       konvoyId: "konvoy_1", aciqdir: true, defenseEnabled: true,
@@ -42,6 +47,11 @@ function attackerStateHazirla() {
 function defenderStateHazirla(duplicateRows = false) {
   return {
     playerId: "oyuncu_b",
+    worldPlacement: {
+      stateId: 1,
+      baseX: 5,
+      baseZ: 5
+    },
     technology: { levels: { ikinci_konvoy: 1 } },
     buildings: [
       { instanceId: "defender_barrack_1", buildingId: "barrack_1", level: 1, isCompleted: true },
@@ -143,6 +153,31 @@ function fakeHovuzHazirla(snapshotByPlayerId) {
     assert.ok(error, "Etibarsız defender formasiya settlement-i uğursuz olmalıdır.");
     assert.ok(fake.sorqular.some(x => x.sql === "ROLLBACK"));
     assert.ok(!fake.sorqular.some(x => x.sql === "COMMIT"));
+
+    const stateLockIndex =
+      fake.sorqular.findIndex(
+        x =>
+          x.sql.startsWith(
+            "SELECT pg_advisory_xact_lock"
+          ) &&
+          x.parametrler.length === 1
+      );
+
+    const playerLockIndex =
+      fake.sorqular.findIndex(
+        x =>
+          x.sql.startsWith(
+            "SELECT pg_advisory_xact_lock"
+          ) &&
+          x.parametrler.length === 2
+      );
+
+    assert.ok(
+      stateLockIndex >= 0 &&
+      playerLockIndex > stateLockIndex,
+      "PvP settlement əvvəl Dövlət, sonra oyunçu lock-larını almalıdır."
+    );
+
     assert.deepStrictEqual(fake.yazilan, {});
     assert.deepStrictEqual(liveAttacker, beforeAttacker);
     assert.deepStrictEqual(liveDefender, beforeDefender);

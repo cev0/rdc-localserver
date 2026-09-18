@@ -70,6 +70,53 @@ function runtimeStateInvalidationPayloadidir(
   );
 }
 
+async function runtimeStateInvalidationGonder(
+  runtimeBus,
+  playerId,
+  metadata = null,
+  logger = console
+) {
+  const id =
+    metnAl(
+      playerId,
+      128
+    );
+
+  if (
+    !id ||
+    !runtimeBus ||
+    typeof runtimeBus.publishToPlayer !==
+      "function"
+  ) {
+    return false;
+  }
+
+  try {
+    return await runtimeBus
+      .publishToPlayer(
+        id,
+        runtimeStateInvalidationPayloadYarat(
+          id,
+          metadata
+        )
+      );
+  }
+  catch (error) {
+    try {
+      logger.error(
+        "[RUNTIME_STATE_SYNC] Invalidation publish failed:",
+        error && error.message
+          ? error.message
+          : error
+      );
+    }
+    catch (_) {
+    }
+
+    return false;
+  }
+}
+
 function runtimeStateSyncControllerYarat(
   options = {}
 ) {
@@ -212,45 +259,12 @@ function runtimeStateSyncControllerYarat(
     playerId,
     metadata = null
   ) {
-    const id =
-      metnAl(
-        playerId,
-        128
-      );
-
-    if (
-      !id ||
-      !runtimeBus ||
-      typeof runtimeBus.publishToPlayer !==
-        "function"
-    ) {
-      return false;
-    }
-
-    try {
-      return await runtimeBus
-        .publishToPlayer(
-          id,
-          runtimeStateInvalidationPayloadYarat(
-            id,
-            metadata
-          )
-        );
-    }
-    catch (error) {
-      try {
-        logger.error(
-          "[RUNTIME_STATE_SYNC] Invalidation publish failed:",
-          error && error.message
-            ? error.message
-            : error
-        );
-      }
-      catch (_) {
-      }
-
-      return false;
-    }
+    return await runtimeStateInvalidationGonder(
+      runtimeBus,
+      playerId,
+      metadata,
+      logger
+    );
   }
 
   async function handleDirect(
@@ -334,5 +348,6 @@ module.exports = {
   RUNTIME_STATE_INVALIDATION_TYPE,
   runtimeStateInvalidationPayloadYarat,
   runtimeStateInvalidationPayloadidir,
+  runtimeStateInvalidationGonder,
   runtimeStateSyncControllerYarat
 };
