@@ -317,8 +317,199 @@ const {
     ]
   );
 
+  const guardSent = [];
+  let guardedHandlerCalls = 0;
+
+  const worldMissingRouter =
+    new RuntimeCommandRouter({
+      name:
+        "world-missing",
+      logger: {
+        error() {}
+      },
+      mutationExecutor:
+        async (
+          _playerId,
+          action
+        ) =>
+          await action(),
+      authoritativeMutationExecutor:
+        async (
+          _playerId,
+          action
+        ) =>
+          await action()
+    });
+
+  worldMissingRouter.register(
+    "world_guarded",
+    async () => {
+      guardedHandlerCalls += 1;
+    },
+    {
+      authRequired: true,
+      mutation: true,
+      worldStateAuthoritative: true
+    }
+  );
+
+  await worldMissingRouter.dispatch({
+    type:
+      "world_guarded",
+    msg: {
+      type:
+        "world_guarded"
+    },
+    ws,
+    send:
+      (_ws, payload) =>
+        guardSent.push(
+          payload
+        )
+  });
+
+  assert.strictEqual(
+    guardedHandlerCalls,
+    0,
+    "World-state executor yoxdursa handler RAM fallback ilə işləməməlidir."
+  );
+
+  assert.strictEqual(
+    guardSent.pop().code,
+    "COMMAND_HANDLER_FAILED"
+  );
+
+  assert.strictEqual(
+    worldMissingRouter
+      .getMetrics()
+      .world_guarded
+      .failed,
+    1
+  );
+
+  const pgMissingRouter =
+    new RuntimeCommandRouter({
+      name:
+        "pg-missing",
+      logger: {
+        error() {}
+      },
+      mutationExecutor:
+        async (
+          _playerId,
+          action
+        ) =>
+          await action()
+    });
+
+  pgMissingRouter.register(
+    "pg_guarded",
+    async () => {
+      guardedHandlerCalls += 1;
+    },
+    {
+      authRequired: true,
+      mutation: true,
+      postgresAuthoritative: true
+    }
+  );
+
+  await pgMissingRouter.dispatch({
+    type: "pg_guarded",
+    msg: {
+      type: "pg_guarded"
+    },
+    ws,
+    send:
+      (_ws, payload) =>
+        guardSent.push(
+          payload
+        )
+  });
+
+  assert.strictEqual(
+    guardedHandlerCalls,
+    0
+  );
+
+  assert.strictEqual(
+    guardSent.pop().code,
+    "COMMAND_HANDLER_FAILED"
+  );
+
+  const mutationMissingRouter =
+    new RuntimeCommandRouter({
+      name:
+        "mutation-missing",
+      logger: {
+        error() {}
+      }
+    });
+
+  mutationMissingRouter.register(
+    "normal_guarded",
+    async () => {
+      guardedHandlerCalls += 1;
+    },
+    {
+      authRequired: true,
+      mutation: true
+    }
+  );
+
+  await mutationMissingRouter.dispatch({
+    type:
+      "normal_guarded",
+    msg: {
+      type:
+        "normal_guarded"
+    },
+    ws,
+    send:
+      (_ws, payload) =>
+        guardSent.push(
+          payload
+        )
+  });
+
+  assert.strictEqual(
+    guardedHandlerCalls,
+    0
+  );
+
+  assert.strictEqual(
+    guardSent.pop().code,
+    "COMMAND_HANDLER_FAILED"
+  );
+
+  assert.throws(
+    () =>
+      mutationMissingRouter.register(
+        "invalid_authority",
+        async () => {},
+        {
+          postgresAuthoritative: true
+        }
+      ),
+    /mutation olmalidir/
+  );
+
+  assert.throws(
+    () =>
+      mutationMissingRouter.register(
+        "ambiguous_authority",
+        async () => {},
+        {
+          mutation: true,
+          postgresAuthoritative: true,
+          worldStateAuthoritative: true
+        }
+      ),
+    /eyni anda/
+  );
+
   console.log(
-    "PASS: command router dispatch, auth guard, metrics, player PostgreSQL and world-state authoritative route selection."
+    "PASS: command router dispatch, auth guard, metrics, authoritative route selection and fail-closed executor guards."
   );
 })().catch((error) => {
   console.error(error);

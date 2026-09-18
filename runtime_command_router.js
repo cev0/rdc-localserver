@@ -64,16 +64,45 @@ class RuntimeCommandRouter {
       );
     }
 
+    const mutation =
+      options.mutation === true;
+
+    const postgresAuthoritative =
+      options.postgresAuthoritative === true;
+
+    const worldStateAuthoritative =
+      options.worldStateAuthoritative === true;
+
+    if (
+      (
+        postgresAuthoritative ||
+        worldStateAuthoritative
+      ) &&
+      !mutation
+    ) {
+      throw new Error(
+        "Authoritative command mutation olmalidir: " +
+        normalized
+      );
+    }
+
+    if (
+      postgresAuthoritative &&
+      worldStateAuthoritative
+    ) {
+      throw new Error(
+        "Command eyni anda player ve world-state authoritative ola bilmez: " +
+        normalized
+      );
+    }
+
     this._routes.set(normalized, {
       handler,
       authRequired:
         options.authRequired === true,
-      mutation:
-        options.mutation === true,
-      postgresAuthoritative:
-        options.postgresAuthoritative === true,
-      worldStateAuthoritative:
-        options.worldStateAuthoritative === true
+      mutation,
+      postgresAuthoritative,
+      worldStateAuthoritative
     });
 
     this._metrics.set(normalized, {
@@ -166,10 +195,7 @@ class RuntimeCommandRouter {
         type
       };
 
-      if (
-        route.mutation &&
-        this.mutationExecutor
-      ) {
+      if (route.mutation) {
         const playerId =
           context.ws &&
           context.ws._authedPlayerId
@@ -178,14 +204,45 @@ class RuntimeCommandRouter {
               )
             : "";
 
-        const selectedExecutor =
-          route.worldStateAuthoritative &&
-          this.worldStateAuthoritativeMutationExecutor
-            ? this.worldStateAuthoritativeMutationExecutor
-            : route.postgresAuthoritative &&
-              this.authoritativeMutationExecutor
-              ? this.authoritativeMutationExecutor
-              : this.mutationExecutor;
+        let selectedExecutor = null;
+
+        if (route.worldStateAuthoritative) {
+          if (
+            !this.worldStateAuthoritativeMutationExecutor
+          ) {
+            throw new Error(
+              "World-state authoritative mutation executor yoxdur: " +
+              type
+            );
+          }
+
+          selectedExecutor =
+            this.worldStateAuthoritativeMutationExecutor;
+        }
+        else if (route.postgresAuthoritative) {
+          if (
+            !this.authoritativeMutationExecutor
+          ) {
+            throw new Error(
+              "PostgreSQL authoritative mutation executor yoxdur: " +
+              type
+            );
+          }
+
+          selectedExecutor =
+            this.authoritativeMutationExecutor;
+        }
+        else {
+          if (!this.mutationExecutor) {
+            throw new Error(
+              "Mutation executor yoxdur: " +
+              type
+            );
+          }
+
+          selectedExecutor =
+            this.mutationExecutor;
+        }
 
         await selectedExecutor(
           playerId,
