@@ -312,7 +312,13 @@ function mapMutationCommandleriniQeydEt(
 
   router.register(
     "expand_base",
-    async ({ ws, msg, send, nowMs }) => {
+    async ({
+      ws,
+      msg,
+      send,
+      nowMs,
+      deferAfterCommit
+    }) => {
       const authCheck =
         playerIdUyugunluqYoxla(msg, ws);
 
@@ -356,9 +362,13 @@ function mapMutationCommandleriniQeydEt(
           JSON.stringify(state.map)
       });
 
-      pushStateToPlayerConnections(
-        playerId,
-        state
+      await deferAfterCommit(
+        async () => {
+          pushStateToPlayerConnections(
+            playerId,
+            state
+          );
+        }
       );
     },
     {
