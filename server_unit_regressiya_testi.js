@@ -48,6 +48,7 @@ const UNIT_TESTLERI = [
   "konvoy_unity_contract_testi.js",
   "konvoy_yola_hazirliq_sistemi_testi.js",
   "missiya_mukafat_pg_mutasiya_testi.js",
+  "missiya_snapshot_authority_testi.js",
   "missiya_smoke_testi.js",
   "oyun_state_cox_oyuncu_kilidi_testi.js",
   "oyun_state_daimilik_korpu_testi.js",

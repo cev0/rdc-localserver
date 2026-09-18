@@ -67,10 +67,24 @@ const STATE_DEYISEN_MESAJLAR = new Set([
 ]);
 
 const POSTGRES_ATOMIK_MUTASIYA_MESAJLARI = new Set([
-  // Qoşun handler-i eyni oyunçu üçün PostgreSQL advisory lock alır,
-  // son snapshot-ı kiliddən sonra oxuyur və commit olunmuş state-i RAM-a qaytarır.
-  // Legacy setImmediate snapshot həmin commit-i köhnə state ilə əvəz edə bilər.
-  "train_unit_request"
+  /*
+   * Bu gameplay mutation-larının hamısı artıq PostgreSQL-authoritative
+   * transaction və advisory lock altında işləyir. Legacy setImmediate
+   * snapshot writer-i həmin COMMIT-dən sonra köhnə RAM state-i yenidən
+   * audit snapshot-a yaza bilərdi. Ona görə bu mesajlar üçün ikinci
+   * snapshot writer tam söndürülür.
+   */
+  "research_start",
+  "technology_research_start",
+  "expand_area_request",
+  "expand_base",
+  "build_request",
+  "train_unit_request",
+  "upgrade_request",
+  "base_teleport_request",
+  "move_request",
+  "connect_road_request",
+  "start_construction_request"
 ]);
 
 const BERPA_MESAJLARI = new Set([
