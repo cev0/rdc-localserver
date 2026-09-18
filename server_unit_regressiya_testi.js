@@ -42,6 +42,7 @@ const UNIT_TESTLERI = [
   "konvoy_pg_mutasiya_testi.js",
   "konvoy_pvp_info_qayda_override_testi.js",
   "konvoy_texnologiya_inkisaf_inteqrasiya_testi.js",
+  "konvoy_texnologiya_pg_mutasiya_testi.js",
   "konvoy_tutum_formulu_testi.js",
   "konvoy_tutum_texnologiya_disabled_testi.js",
   "konvoy_unity_contract_testi.js",

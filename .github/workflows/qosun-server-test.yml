@@ -46,6 +46,7 @@ on:
       - 'konvoy_emeliyyat_pg_mutasiya_testi.js'
       - 'konvoy_texnologiya_handler.js'
       - 'konvoy_texnologiya_inkisaf_inteqrasiya_testi.js'
+      - 'konvoy_texnologiya_pg_mutasiya_testi.js'
       - 'texnologiya_inkisaf_korpu.js'
       - 'texnologiya_inkisaf_korpu_testi.js'
       - 'tikinti_inkisaf_korpu.js'
@@ -166,6 +167,8 @@ jobs:
         run: node texnologiya_inkisaf_korpu_testi.js
       - name: Konvoy texnologiyasi Inkisaf inteqrasiya testleri
         run: node konvoy_texnologiya_inkisaf_inteqrasiya_testi.js
+      - name: Konvoy texnologiyasi PostgreSQL authoritative testleri
+        run: node konvoy_texnologiya_pg_mutasiya_testi.js
       - name: Tikinti Inkisaf korpusu testleri
         run: node tikinti_inkisaf_korpu_testi.js
       - name: Tikinti Inkisaf runtime inteqrasiya testleri
