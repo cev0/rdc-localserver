@@ -95,6 +95,12 @@ class RuntimeRedisBus {
     this.started = true;
 
     if (!this.enabled) {
+      if (this.required) {
+        throw new Error(
+          "REDIS_REQUIRED=1-dir, amma REDIS_URL verilmeyib."
+        );
+      }
+
       console.log(
         "[REDIS] REDIS_URL yoxdur. Single-instance rejimi davam edir."
       );
