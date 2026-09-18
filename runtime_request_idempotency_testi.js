@@ -202,29 +202,6 @@ const {
       sent.push(payload);
     };
 
-  const run = async () =>
-    await executeIdempotent({
-      playerId: "p1",
-      type: "upgrade_request",
-      msg,
-      ws: {
-        id: "ws-1"
-      },
-      send,
-      execute:
-        async (wrappedSend) => {
-          mutationCount += 1;
-          state.resources.wood -= 25;
-
-          wrappedSend(
-            arguments.length > -1
-              ? run.ws
-              : null,
-            {}
-          );
-        }
-    });
-
   // Executor testini daha aydin saxlamaq ucun eyni socket obyektini ayrica qururuq.
   const ws = {
     id: "ws-1"
