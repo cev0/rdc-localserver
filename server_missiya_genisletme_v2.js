@@ -75,8 +75,6 @@ const OYUNCU_MUTASIYA_MESAJLARI = new Set([
   "technology_hero_remove_request",
   "development_hero_assign_request",
   "development_hero_remove_request",
-  "research_start",
-  "technology_research_start",
   "convoy_hero_assign_request",
   "convoy_hero_remove_request",
   "convoy_troops_set_request",
@@ -108,14 +106,11 @@ const OYUNCU_MUTASIYA_MESAJLARI = new Set([
   "expand_area_request",
   "expand_base",
   "build_request",
-  "train_unit_request",
   "troop_training_preview_request",
   "troop_training_status_request",
-  "upgrade_request",
   "base_teleport_request",
   "move_request",
   "connect_road_request",
-  "start_construction_request"
 ]);
 
 const esasHesabLoginMesajiniEmalEt = hesabLoginModulu.hesabLoginMesajiniEmalEt;
