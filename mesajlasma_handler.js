@@ -193,10 +193,29 @@ function mesajGoruntulemeIcazesi(mesaj, playerId, getOrCreatePlayerState) {
 }
 
 function oyuncuyaGonder(connections, send, playerId, type, yuk) {
-    if (!connections || typeof connections.get !== "function") return false;
+    if (!connections) return false;
+
+    const envelope = {
+        type,
+        playerId: playerId || null,
+        serverTimeUnixMs: Date.now(),
+        payloadJson: JSON.stringify(yuk || {})
+    };
+
+    if (typeof connections.deliver === "function") {
+        return connections.deliver(
+            playerId,
+            envelope,
+            send
+        );
+    }
+
+    if (typeof connections.get !== "function") return false;
+
     const socket = connections.get(playerId);
     if (!socket) return false;
-    cavabGonder(send, socket, type, playerId, yuk);
+
+    send(socket, envelope);
     return true;
 }
 
