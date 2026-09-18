@@ -187,6 +187,27 @@ class RuntimeCommandRouter {
                 ? mutationRuntime.send
                 : context.send;
 
+            const transactionContext =
+              mutationRuntime &&
+              mutationRuntime.transactionContext
+                ? mutationRuntime.transactionContext
+                : null;
+
+            const deferAfterCommit =
+              typeof mutationRuntime.deferAfterCommit === "function"
+                ? mutationRuntime.deferAfterCommit
+                : async (callback) => {
+                    if (
+                      typeof callback ===
+                      "function"
+                    ) {
+                      await callback();
+                      return true;
+                    }
+
+                    return false;
+                  };
+
             if (
               this.idempotencyExecutor
             ) {
@@ -207,7 +228,9 @@ class RuntimeCommandRouter {
                       ...handlerContext,
                       send:
                         sendOverride ||
-                        mutationSend
+                        mutationSend,
+                      transactionContext,
+                      deferAfterCommit
                     })
               });
             }
@@ -215,7 +238,9 @@ class RuntimeCommandRouter {
             return await route.handler({
               ...handlerContext,
               send:
-                mutationSend
+                mutationSend,
+              transactionContext,
+              deferAfterCommit
             });
           },
           {
