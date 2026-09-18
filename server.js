@@ -3529,7 +3529,8 @@ runtimeBus.start().catch((error) => {
   );
 
   if (process.env.REDIS_REQUIRED === "1") {
-    process.exitCode = 1;
+    // Required Redis olmadan multi-instance server saglam sayilmir.
+    setImmediate(() => process.exit(1));
   }
 });
 
@@ -6292,8 +6293,27 @@ function completeFinishedJobsForAllPlayers() {
 
 const server = http.createServer((req, res) => {
   if (req.url === "/health") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true, time: nowMs() }));
+    const redisHealthy =
+      !runtimeBus.required ||
+      (runtimeBus.enabled && runtimeBus.ready);
+
+    const statusCode =
+      redisHealthy ? 200 : 503;
+
+    res.writeHead(statusCode, {
+      "Content-Type": "application/json"
+    });
+
+    res.end(JSON.stringify({
+      ok: redisHealthy,
+      time: nowMs(),
+      redis: {
+        enabled: runtimeBus.enabled,
+        required: runtimeBus.required,
+        ready: runtimeBus.ready
+      }
+    }));
+
     return;
   }
 
@@ -8685,4 +8705,62 @@ setInterval(() => {
 server.listen(PORT, "0.0.0.0", () => {
   console.log("Server started on " + PORT);
 });
+
+let gracefulShutdownBaslayib = false;
+
+async function gracefulShutdown(signal) {
+  if (gracefulShutdownBaslayib) {
+    return;
+  }
+
+  gracefulShutdownBaslayib = true;
+
+  console.log("[SERVER] Graceful shutdown:", signal);
+
+  try {
+    await runtimeBus.close();
+  }
+  catch (error) {
+    console.error(
+      "[REDIS] Shutdown error:",
+      error && error.message ? error.message : error
+    );
+  }
+
+  try {
+    wss.clients.forEach((client) => {
+      try {
+        if (client.readyState === WebSocket.OPEN) {
+          client.close(1001, "server_shutdown");
+        }
+      }
+      catch (_) {
+      }
+    });
+  }
+  catch (_) {
+  }
+
+  server.close(() => {
+    process.exit(0);
+  });
+
+  const forcedExit = setTimeout(() => {
+    process.exit(1);
+  }, 8000);
+
+  if (typeof forcedExit.unref === "function") {
+    forcedExit.unref();
+  }
+}
+
+process.once(
+  "SIGTERM",
+  () => void gracefulShutdown("SIGTERM")
+);
+
+process.once(
+  "SIGINT",
+  () => void gracefulShutdown("SIGINT")
+);
 
