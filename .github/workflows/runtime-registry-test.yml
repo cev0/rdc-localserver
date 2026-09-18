@@ -22,6 +22,8 @@ on:
       - "runtime_gameplay_mutation_commands_testi.js"
       - "runtime_build_commands.js"
       - "runtime_build_commands_testi.js"
+      - "runtime_map_mutation_commands.js"
+      - "runtime_map_mutation_commands_testi.js"
       - "server_missiya_genisletme_v2.js"
       - "mesajlasma_handler.js"
       - "server_oyuncu_mutasiya_kilidi.js"
@@ -48,6 +50,8 @@ on:
       - "runtime_gameplay_mutation_commands_testi.js"
       - "runtime_build_commands.js"
       - "runtime_build_commands_testi.js"
+      - "runtime_map_mutation_commands.js"
+      - "runtime_map_mutation_commands_testi.js"
       - "server_missiya_genisletme_v2.js"
       - "mesajlasma_handler.js"
       - "server_oyuncu_mutasiya_kilidi.js"
@@ -94,6 +98,9 @@ jobs:
 
       - name: Test routed build command
         run: node runtime_build_commands_testi.js
+
+      - name: Test routed map mutations
+        run: node runtime_map_mutation_commands_testi.js
 
       - name: Test player mutation lock
         run: node server_oyuncu_mutasiya_kilidi_testi.js
