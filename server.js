@@ -3357,6 +3357,11 @@ const {
 const {
   RuntimeDeadlineScheduler
 } = require("./runtime_deadline_scheduler");
+const {
+  DEFAULT_PRODUCTION_TICK_MS,
+  ensureProductionClock,
+  consumeProductionTicks
+} = require("./runtime_production_clock");
 
 const STATE_CENTER_UNLOCK_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
 const STATE_NEW_PLAYER_SOFT_CAP = 200;
@@ -4240,7 +4245,14 @@ bazaMelumatlariniYenile(state);
   ensureTechnologyObject(state);
   refreshTechnologyStats(state);
 
+  // State client-e cixmazdan evvel resurs istehsalini cari vaxta qeder
+  // bir defe hesabla. Her 5 saniye butun player-leri scan etmeye ehtiyac yoxdur.
+  processProductionForState(state, nowMs());
+
   const clientState = JSON.parse(JSON.stringify(state));
+
+  // Server-authoritative production saatini client gormur ve deyise bilmir.
+  delete clientState.productionRuntime;
 
   if (
     clientState.army &&
@@ -4379,6 +4391,12 @@ function makeDefaultState(playerId) {
     ittifaqAdi: "",
 
     serverTimeUnixMs: nowMs(),
+
+    // Server-only, PostgreSQL snapshot-da saxlanilan lazy istehsal saatı.
+    productionRuntime: {
+      tickMs: DEFAULT_PRODUCTION_TICK_MS,
+      lastSettledAtMs: nowMs()
+    },
 
     resources: {
       food: 50000,
@@ -4520,6 +4538,17 @@ function getOrCreatePlayerState(playerId) {
   ensureTechnologyObject(state);
   refreshTechnologyStats(state);
   ensureMissionState(state);
+
+  ensureProductionClock(
+    state,
+    nowMs(),
+    DEFAULT_PRODUCTION_TICK_MS
+  );
+
+  // getOrCreatePlayerState demek olar ki butun authoritative handler-lerin
+  // ortaq giris noqtəsidir. Burada lazy settlement etmek mutation-dan once
+  // resurslarin hemişe cari olmasini təmin edir.
+  processProductionForState(state, nowMs());
 
   return state;
 }
@@ -5022,8 +5051,26 @@ function getProductionRule(buildingId, buildingLevel) {
   }
 }
 
-function processProductionForState(state) {
-  if (!state || !Array.isArray(state.buildings)) return false;
+function processProductionForState(
+  state,
+  targetTimeMs = nowMs()
+) {
+  if (!state || !Array.isArray(state.buildings)) {
+    return false;
+  }
+
+  const clock = consumeProductionTicks(
+    state,
+    targetTimeMs,
+    DEFAULT_PRODUCTION_TICK_MS
+  );
+
+  const tickCount =
+    Math.max(0, Number(clock.ticks) || 0);
+
+  if (tickCount <= 0) {
+    return false;
+  }
 
   ensureResourcesObject(state);
   refreshResourceCaps(state);
@@ -5036,38 +5083,85 @@ function processProductionForState(state) {
   for (const building of state.buildings) {
     if (!building) continue;
 
-    // Yalnız tamamlanmış bina istehsal edir
+    // Yalnız tamamlanmış bina istehsal edir.
     if (!building.isCompleted) continue;
 
-    // Yoldan ayrılmış bina istehsal etməsin
+    // Yoldan ayrılmış bina istehsal etməsin.
     if (building.hasRoadAccess === false) continue;
 
-    const level = Math.max(1, Number(building.level) || 1);
-    const rule = getProductionRule(building.buildingId, level);
+    const level =
+      Math.max(1, Number(building.level) || 1);
+
+    const rule =
+      getProductionRule(
+        building.buildingId,
+        level
+      );
 
     if (!rule) continue;
 
     const key = rule.resourceType;
-    if (typeof state.resources[key] !== "number") continue;
 
-    const baseAmount = Math.max(0, Number(rule.amountPerTick) || 0);
-    const technologyProductionPct = Math.max(0, Number(state.technology?.stats?.productionPct) || 0);
-    const { stateUcunBinaIstehsaliniHesabla } = require("./resurs_inkisaf_korpu");
-    const productionCalculation = stateUcunBinaIstehsaliniHesabla(
-      state,
-      building.instanceId,
-      baseAmount,
-      technologyProductionPct
-    );
-    const addAmount = Math.max(0, Number(productionCalculation.finalAmount) || 0);
-    if (addAmount <= 0) continue;
+    if (
+      typeof state.resources[key] !==
+      "number"
+    ) {
+      continue;
+    }
 
-    const cap = typeof state.resourceCaps?.[key] === "number"
-      ? state.resourceCaps[key]
-      : Number.POSITIVE_INFINITY;
+    const baseAmount =
+      Math.max(
+        0,
+        Number(rule.amountPerTick) || 0
+      );
 
-    const before = Number(state.resources[key]) || 0;
-    const after = Math.min(cap, before + addAmount);
+    const technologyProductionPct =
+      Math.max(
+        0,
+        Number(
+          state.technology?.stats?.productionPct
+        ) || 0
+      );
+
+    const {
+      stateUcunBinaIstehsaliniHesabla
+    } = require("./resurs_inkisaf_korpu");
+
+    const productionCalculation =
+      stateUcunBinaIstehsaliniHesabla(
+        state,
+        building.instanceId,
+        baseAmount,
+        technologyProductionPct
+      );
+
+    const perTick =
+      Math.max(
+        0,
+        Number(
+          productionCalculation.finalAmount
+        ) || 0
+      );
+
+    if (perTick <= 0) continue;
+
+    const totalAdd =
+      perTick * tickCount;
+
+    const cap =
+      typeof state.resourceCaps?.[key] ===
+      "number"
+        ? state.resourceCaps[key]
+        : Number.POSITIVE_INFINITY;
+
+    const before =
+      Number(state.resources[key]) || 0;
+
+    const after =
+      Math.min(
+        cap,
+        before + totalAdd
+      );
 
     if (after !== before) {
       state.resources[key] = after;
@@ -5076,21 +5170,60 @@ function processProductionForState(state) {
   }
 
   const specialTickBonuses = [
-    { key: "money", amount: Math.max(0, Number(state.specialStats?.moneyPerTickBonus) || 0) },
-    { key: "chips", amount: Math.max(0, Number(state.specialStats?.chipsPerTickBonus) || 0) },
-    { key: "electricity", amount: Math.max(0, Number(state.specialStats?.electricityPerTickBonus) || 0) }
+    {
+      key: "money",
+      amount: Math.max(
+        0,
+        Number(
+          state.specialStats?.moneyPerTickBonus
+        ) || 0
+      )
+    },
+    {
+      key: "chips",
+      amount: Math.max(
+        0,
+        Number(
+          state.specialStats?.chipsPerTickBonus
+        ) || 0
+      )
+    },
+    {
+      key: "electricity",
+      amount: Math.max(
+        0,
+        Number(
+          state.specialStats
+            ?.electricityPerTickBonus
+        ) || 0
+      )
+    }
   ];
 
   for (const bonus of specialTickBonuses) {
     if (bonus.amount <= 0) continue;
-    if (typeof state.resources[bonus.key] !== "number") continue;
 
-    const cap = typeof state.resourceCaps?.[bonus.key] === "number"
-      ? state.resourceCaps[bonus.key]
-      : Number.POSITIVE_INFINITY;
+    if (
+      typeof state.resources[bonus.key] !==
+      "number"
+    ) {
+      continue;
+    }
 
-    const before = Number(state.resources[bonus.key]) || 0;
-    const after = Math.min(cap, before + bonus.amount);
+    const cap =
+      typeof state.resourceCaps?.[bonus.key] ===
+      "number"
+        ? state.resourceCaps[bonus.key]
+        : Number.POSITIVE_INFINITY;
+
+    const before =
+      Number(state.resources[bonus.key]) || 0;
+
+    const after =
+      Math.min(
+        cap,
+        before + bonus.amount * tickCount
+      );
 
     if (after !== before) {
       state.resources[bonus.key] = after;
@@ -5098,22 +5231,13 @@ function processProductionForState(state) {
     }
   }
 
+  // Clock həmişə irəli gedir, hətta anbar dolu olsa belə.
+  // Beləliklə cap açıldıqdan sonra keçmiş dolu vaxt yenidən hesablanmır.
   if (changed) {
     updateServerTime(state);
   }
 
   return changed;
-}
-
-function processProductionForAllPlayers() {
-  for (const [playerId, state] of players) {
-    const changed = processProductionForState(state);
-
-    if (changed) {
-      pushStateToPlayerConnections(playerId, state);
-      console.log("[SERVER] Production pushed for player:", playerId);
-    }
-  }
 }
 
 // ============================================================
