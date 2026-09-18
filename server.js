@@ -3351,6 +3351,9 @@ const {
   players,
   connections
 } = require("./runtime_registry");
+const {
+  createRuntimeRedisBus
+} = require("./runtime_redis");
 
 const STATE_CENTER_UNLOCK_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
 const STATE_NEW_PLAYER_SOFT_CAP = 200;
@@ -3503,6 +3506,32 @@ function send(ws, obj) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
   ws.send(JSON.stringify(obj));
 }
+
+const runtimeBus = createRuntimeRedisBus({
+  onDirectMessage: ({ playerId, payload }) => {
+    connections.deliverLocal(
+      playerId,
+      payload,
+      send
+    );
+  }
+});
+
+connections.configureRemotePublisher(
+  (playerId, payload) =>
+    runtimeBus.publishToPlayer(playerId, payload)
+);
+
+runtimeBus.start().catch((error) => {
+  console.error(
+    "[REDIS] Startup error:",
+    error && error.message ? error.message : error
+  );
+
+  if (process.env.REDIS_REQUIRED === "1") {
+    process.exitCode = 1;
+  }
+});
 
 function updateServerTime(state) {
   state.serverTimeUnixMs = nowMs();
@@ -7408,6 +7437,12 @@ updateServerTime(state);
 
         ws._authedPlayerId = playerId;
         connections.set(playerId, ws);
+        runtimeBus.registerLocalPlayer(playerId).catch((error) => {
+          console.error(
+            "[REDIS] Presence register error:",
+            error && error.message ? error.message : error
+          );
+        });
 
         const state = getOrCreatePlayerState(playerId);
         updateServerTime(state);
@@ -8529,6 +8564,15 @@ case "occupy_state_center_request": {
     const playerId = ws._authedPlayerId;
     if (playerId) {
       connections.deleteIfCurrent(playerId, ws);
+
+      if (!connections.has(playerId)) {
+        runtimeBus.unregisterLocalPlayer(playerId).catch((error) => {
+          console.error(
+            "[REDIS] Presence unregister error:",
+            error && error.message ? error.message : error
+          );
+        });
+      }
     }
 
     console.log("WS closed");
