@@ -63,6 +63,11 @@ function postgresAuthoritativeMutationExecutorYarat(
       ? options.transactionExecutor
       : oyuncuStateMutasiyasiniPostgresIleIcraEt;
 
+  const prepareLockedState =
+    typeof options.prepareLockedState === "function"
+      ? options.prepareLockedState
+      : null;
+
   const afterCommit =
     typeof options.afterCommit === "function"
       ? options.afterCommit
@@ -119,6 +124,24 @@ function postgresAuthoritativeMutationExecutorYarat(
         playerId,
         liveState,
         async lockedState => {
+          const before =
+            stateBarmaqIziAl(
+              lockedState
+            );
+
+          /*
+           * Vaxtı çatmış build/research/production kimi state keçidləri də
+           * eyni PostgreSQL lock daxilində authoritative snapshot üzərində
+           * yekunlaşdırılır.
+           */
+          if (prepareLockedState) {
+            await prepareLockedState(
+              lockedState,
+              playerId,
+              metadata
+            );
+          }
+
           /*
            * Transaction advisory lock alındıqdan sonra oxunan PostgreSQL
            * snapshot-u həmin request üçün yeganə authoritative başlanğıcdır.
@@ -129,11 +152,6 @@ function postgresAuthoritativeMutationExecutorYarat(
             liveState,
             lockedState
           );
-
-          const before =
-            stateBarmaqIziAl(
-              liveState
-            );
 
           const deferredSend =
             (ws, payload) => {
