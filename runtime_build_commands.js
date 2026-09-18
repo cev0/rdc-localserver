@@ -86,7 +86,8 @@ function buildCommandleriniQeydEt(
       ws,
       msg,
       send,
-      nowMs
+      nowMs,
+      deferAfterCommit
     }) => {
       const authCheck =
         playerIdUyugunluqYoxla(
@@ -379,14 +380,18 @@ function buildCommandleriniQeydEt(
           )
       });
 
-      sendStateLocalMapToPlayer(
-        ws,
-        playerId
-      );
+      await deferAfterCommit(
+        async () => {
+          sendStateLocalMapToPlayer(
+            ws,
+            playerId
+          );
 
-      sendWorldMapToPlayer(
-        ws,
-        playerId
+          sendWorldMapToPlayer(
+            ws,
+            playerId
+          );
+        }
       );
     },
     {
