@@ -30,6 +30,26 @@ const {
     assert.strictEqual(started, false);
     assert.strictEqual(bus.ready, false);
 
+    const requiredBus = new RuntimeRedisBus({
+      redisUrl: "",
+      namespace: "rdc:test",
+      instanceId: "instance-required",
+      required: true
+    });
+
+    let requiredError = null;
+    try {
+      await requiredBus.start();
+    }
+    catch (error) {
+      requiredError = error;
+    }
+
+    assert.ok(
+      requiredError,
+      "REDIS_REQUIRED rejiminde REDIS_URL yoxdursa start ugursuz olmalidir."
+    );
+
     assert.strictEqual(
       await bus.registerLocalPlayer("p1"),
       false
