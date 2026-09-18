@@ -18,6 +18,9 @@ on:
       - "runtime_core_read_commands.js"
       - "runtime_auth_command.js"
       - "runtime_auth_command_testi.js"
+      - "runtime_gameplay_mutation_commands.js"
+      - "runtime_gameplay_mutation_commands_testi.js"
+      - "server_missiya_genisletme_v2.js"
       - "mesajlasma_handler.js"
       - "server_oyuncu_mutasiya_kilidi.js"
       - "server_oyuncu_mutasiya_kilidi_testi.js"
@@ -39,6 +42,9 @@ on:
       - "runtime_core_read_commands.js"
       - "runtime_auth_command.js"
       - "runtime_auth_command_testi.js"
+      - "runtime_gameplay_mutation_commands.js"
+      - "runtime_gameplay_mutation_commands_testi.js"
+      - "server_missiya_genisletme_v2.js"
       - "mesajlasma_handler.js"
       - "server_oyuncu_mutasiya_kilidi.js"
       - "server_oyuncu_mutasiya_kilidi_testi.js"
@@ -78,6 +84,9 @@ jobs:
 
       - name: Test routed auth command
         run: node runtime_auth_command_testi.js
+
+      - name: Test routed gameplay mutations
+        run: node runtime_gameplay_mutation_commands_testi.js
 
       - name: Test player mutation lock
         run: node server_oyuncu_mutasiya_kilidi_testi.js
