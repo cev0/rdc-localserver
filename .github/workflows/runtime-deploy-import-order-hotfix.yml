@@ -1,0 +1,77 @@
+name: Runtime Deploy Import Order Hotfix
+
+on:
+  push:
+    branches: [server-v2-scalable]
+    paths:
+      - '.github/workflows/runtime-deploy-import-order-hotfix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: server-v2-scalable
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Move deploy-config import before first use and add regression guard
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('server.js')
+          s = p.read_text(encoding='utf-8')
+          block = '''const {\n  runtimeDeployConfiginiAl,\n  runtimeDeployConfiginiYoxla,\n  runtimeDeployPublicMelumatiniAl\n} = require("./runtime_deploy_config");\n'''
+          if s.count(block) != 1:
+              raise SystemExit(f'expected exactly one deploy-config import block, found {s.count(block)}')
+          use = 'const runtimeDeployConfig =\n  runtimeDeployConfiginiYoxla('
+          if use not in s:
+              raise SystemExit('runtimeDeployConfig initialization anchor not found')
+          s = s.replace(block, '', 1)
+          anchor = 'const {\n  sifreSifirlamaMesajiniEmalEt\n} = require("./sifre_sifirlama_handler");\n'
+          if anchor not in s:
+              raise SystemExit('top-level import anchor not found')
+          s = s.replace(anchor, anchor + '\n' + block, 1)
+          p.write_text(s, encoding='utf-8')
+
+          test = Path('runtime_deploy_import_order_testi.js')
+          test.write_text(r'''"use strict";
+
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+
+const source = fs.readFileSync(path.join(__dirname, "server.js"), "utf8");
+const importNeedle = 'require("./runtime_deploy_config")';
+const firstUseNeedle = "const runtimeDeployConfig =";
+const importIndex = source.indexOf(importNeedle);
+const firstUseIndex = source.indexOf(firstUseNeedle);
+
+assert(importIndex >= 0, "runtime_deploy_config importu tapilmadi");
+assert(firstUseIndex >= 0, "runtimeDeployConfig ilkinlesdirilmesi tapilmadi");
+assert(
+  importIndex < firstUseIndex,
+  "runtime_deploy_config funksiyalari require edilmeden evvel istifade olunur"
+);
+
+console.log("runtime deploy import order testi kecdi");
+''', encoding='utf-8')
+
+          wf = Path('.github/workflows/runtime-deploy-import-order-hotfix.yml')
+          wf.unlink()
+      - name: Validate syntax and regression guard
+        run: |
+          node --check server.js
+          node runtime_deploy_import_order_testi.js
+      - name: Commit coherent hotfix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js runtime_deploy_import_order_testi.js .github/workflows/runtime-deploy-import-order-hotfix.yml
+          git commit -m "Fix runtime deploy config import order"
+          git push origin HEAD:server-v2-scalable
