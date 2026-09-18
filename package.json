@@ -4,6 +4,7 @@
   "description": "",
   "main": "server_missiya_genisletme.js",
   "dependencies": {
+    "@redis/client": "^6.2.1",
     "accepts": "^2.0.0",
     "body-parser": "^2.2.2",
     "bytes": "^3.1.2",
