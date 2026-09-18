@@ -3404,6 +3404,9 @@ const {
   postgresAuthoritativeMutationExecutorYarat
 } = require("./runtime_pg_authoritative_mutation");
 const {
+  worldStateOyuncuMutasiyasiniPostgresIleIcraEt
+} = require("./world_state_mutasiya_postgres");
+const {
   dovletBazalariniBirbasaPostgresdenAlClient,
   dovletBazaKeshiniTemizle
 } = require("./dovlet_baza_kataloqu_postgres");
@@ -7037,6 +7040,50 @@ const runtimeAuthoritativeMutationExecutor =
         )
     );
 
+const worldStatePostgresAuthoritativeMutationExecutor =
+  postgresAuthoritativeMutationExecutorYarat({
+    getOrCreatePlayerState,
+    transactionExecutor:
+      worldStateOyuncuMutasiyasiniPostgresIleIcraEt,
+    prepareLockedState:
+      async (
+        state,
+        playerId
+      ) => {
+        settlePlayerTimeline(
+          state,
+          playerId,
+          nowMs()
+        );
+      },
+    afterCommit:
+      async (
+        playerId,
+        state
+      ) => {
+        schedulePlayerDeadline(
+          playerId,
+          state
+        );
+      }
+  });
+
+const runtimeWorldStateAuthoritativeMutationExecutor =
+  async (
+    playerId,
+    action,
+    metadata
+  ) =>
+    await oyuncuMutasiyaKilidiIleIcraEt(
+      playerId,
+      async () =>
+        await worldStatePostgresAuthoritativeMutationExecutor(
+          playerId,
+          action,
+          metadata
+        )
+    );
+
 const runtimeCommandRouter =
   new RuntimeCommandRouter({
     name: "gameplay",
@@ -7044,6 +7091,8 @@ const runtimeCommandRouter =
       oyuncuMutasiyaKilidiIleIcraEt,
     authoritativeMutationExecutor:
       runtimeAuthoritativeMutationExecutor,
+    worldStateAuthoritativeMutationExecutor:
+      runtimeWorldStateAuthoritativeMutationExecutor,
     idempotencyExecutor:
       runtimeIdempotencyExecutor
   });

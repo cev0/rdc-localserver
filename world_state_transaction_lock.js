@@ -1,7 +1,12 @@
 "use strict";
 
-const WORLD_STATE_TELEPORT_LOCK_NAME =
+// Mövcud teleport lock namespace-i saxlanılır ki rolling deploy zamanı
+// köhnə instanslarla yeni state-level transaction-lar eyni advisory lock-u paylaşsın.
+const WORLD_STATE_MUTATION_LOCK_NAME =
   "worldv2_baza_teleport_state_v1";
+
+const WORLD_STATE_TELEPORT_LOCK_NAME =
+  WORLD_STATE_MUTATION_LOCK_NAME;
 
 function stateIdAl(value) {
   const n = Number(value);
@@ -18,7 +23,7 @@ function stateIdAl(value) {
   return n;
 }
 
-async function worldStateTeleportKilidiniAl(
+async function worldStateMutationKilidiniAl(
   client,
   stateId
 ) {
@@ -38,7 +43,7 @@ async function worldStateTeleportKilidiniAl(
   await client.query(
     "SELECT pg_advisory_xact_lock(hashtext($1))",
     [
-      WORLD_STATE_TELEPORT_LOCK_NAME +
+      WORLD_STATE_MUTATION_LOCK_NAME +
       ":" +
       sid
     ]
@@ -47,7 +52,19 @@ async function worldStateTeleportKilidiniAl(
   return sid;
 }
 
+async function worldStateTeleportKilidiniAl(
+  client,
+  stateId
+) {
+  return await worldStateMutationKilidiniAl(
+    client,
+    stateId
+  );
+}
+
 module.exports = {
+  WORLD_STATE_MUTATION_LOCK_NAME,
   WORLD_STATE_TELEPORT_LOCK_NAME,
+  worldStateMutationKilidiniAl,
   worldStateTeleportKilidiniAl
 };

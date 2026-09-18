@@ -389,13 +389,13 @@ function mapMutationCommandleriniQeydEt(
   );
 
   /*
-   * Legacy base teleport artıq player snapshot + Dövlət səviyyəli PostgreSQL
-   * advisory lock ilə işləyir. WorldV2 teleport da eyni lock adını istifadə edir,
-   * buna görə köhnə və yeni teleport sorğuları eyni Dövlət daxilində serial olur.
+   * Legacy base teleport və state center shared-world mutation sayılır.
+   * Router onları player-first PostgreSQL transaction əvəzinə Dövlət lock-u
+   * əvvəl alan world-state authoritative executor-a verir.
    *
-   * occupy_state_center_request isə hələ ortaq Prezident runtime state-inə
-   * toxunduğu üçün ayrıca world metadata persistence mərhələsinə qədər
-   * player-only PostgreSQL executor-a salınmır.
+   * Handler daxilindəki teleport/center xüsusi advisory lock-ları saxlanılır;
+   * onlar artıq state-first transaction daxilində alınır və lock sırası
+   * bütün instanslarda deterministik qalır.
    */
   router.register(
     "base_teleport_request",
@@ -590,7 +590,7 @@ function mapMutationCommandleriniQeydEt(
     {
       authRequired: true,
       mutation: true,
-      postgresAuthoritative: true
+      worldStateAuthoritative: true
     }
   );
 
@@ -1004,7 +1004,7 @@ function mapMutationCommandleriniQeydEt(
     {
       authRequired: true,
       mutation: true,
-      postgresAuthoritative: true
+      worldStateAuthoritative: true
     }
   );
 

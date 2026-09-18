@@ -32,6 +32,11 @@ class RuntimeCommandRouter {
         ? options.authoritativeMutationExecutor
         : null;
 
+    this.worldStateAuthoritativeMutationExecutor =
+      typeof options.worldStateAuthoritativeMutationExecutor === "function"
+        ? options.worldStateAuthoritativeMutationExecutor
+        : null;
+
     this._routes = new Map();
     this._metrics = new Map();
   }
@@ -66,7 +71,9 @@ class RuntimeCommandRouter {
       mutation:
         options.mutation === true,
       postgresAuthoritative:
-        options.postgresAuthoritative === true
+        options.postgresAuthoritative === true,
+      worldStateAuthoritative:
+        options.worldStateAuthoritative === true
     });
 
     this._metrics.set(normalized, {
@@ -172,10 +179,13 @@ class RuntimeCommandRouter {
             : "";
 
         const selectedExecutor =
-          route.postgresAuthoritative &&
-          this.authoritativeMutationExecutor
-            ? this.authoritativeMutationExecutor
-            : this.mutationExecutor;
+          route.worldStateAuthoritative &&
+          this.worldStateAuthoritativeMutationExecutor
+            ? this.worldStateAuthoritativeMutationExecutor
+            : route.postgresAuthoritative &&
+              this.authoritativeMutationExecutor
+              ? this.authoritativeMutationExecutor
+              : this.mutationExecutor;
 
         await selectedExecutor(
           playerId,

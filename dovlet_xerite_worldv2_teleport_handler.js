@@ -9,8 +9,8 @@ const {
   oyuncuStateBerpaOlunub,
 } = require("./oyun_state_daimilik_korpu");
 const {
-  oyuncuStateMutasiyasiniPostgresIleIcraEt,
-} = require("./oyun_state_mutasiya_postgres");
+  worldStateOyuncuMutasiyasiniPostgresIleIcraEt,
+} = require("./world_state_mutasiya_postgres");
 const {
   dovletBazalariniBirbasaPostgresdenAlClient,
   dovletBazaKeshiniTemizle,
@@ -186,7 +186,7 @@ async function standartStateBerpaEt(kontekst, playerId) {
 }
 
 async function standartStateMutasiyaEt(playerId, state, emeliyyat) {
-  return await oyuncuStateMutasiyasiniPostgresIleIcraEt(
+  return await worldStateOyuncuMutasiyasiniPostgresIleIcraEt(
     playerId,
     state,
     emeliyyat,

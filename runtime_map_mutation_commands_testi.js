@@ -14,6 +14,7 @@ const {
 (async () => {
   const locks = [];
   const authoritativeLocks = [];
+  const worldAuthoritativeLocks = [];
   const sent = [];
   const localMapPushes = [];
   const worldPushes = [];
@@ -71,6 +72,54 @@ const {
                     };
                   }
                 }
+              },
+              deferAfterCommit:
+                (callback) => {
+                  afterCommit.push(
+                    callback
+                  );
+                  return true;
+                }
+            });
+
+          for (
+            const callback of
+            afterCommit
+          ) {
+            await callback();
+          }
+
+          return result;
+        },
+      worldStateAuthoritativeMutationExecutor:
+        async (
+          playerId,
+          fn,
+          metadata
+        ) => {
+          worldAuthoritativeLocks.push(
+            playerId + ":" +
+            metadata.type
+          );
+
+          const afterCommit = [];
+
+          const result =
+            await fn({
+              send:
+                (_ws, payload) => {
+                  sent.push(payload);
+                },
+              transactionContext: {
+                client: {
+                  async query() {
+                    return {
+                      rows: []
+                    };
+                  }
+                },
+                stateId: 1,
+                worldStateLockHeld: true
               },
               deferAfterCommit:
                 (callback) => {
@@ -333,17 +382,24 @@ const {
   assert.deepStrictEqual(
     authoritativeLocks,
     [
-      "p1:expand_area_request",
+      "p1:expand_area_request"
+    ],
+    "Player-local map mutation player PostgreSQL authoritative executor-da qalmalıdır."
+  );
+
+  assert.deepStrictEqual(
+    worldAuthoritativeLocks,
+    [
       "p1:base_teleport_request",
       "p1:occupy_state_center_request"
     ],
-    "Player-local map, legacy teleport və state center PostgreSQL authoritative executor-dan keçməlidir."
+    "Shared-world teleport və state center Dövlət-first PostgreSQL executor-dan keçməlidir."
   );
 
   assert.deepStrictEqual(
     locks,
     [],
-    "Bu testdə bütün yoxlanan mutasiyalar PostgreSQL authoritative executor-dan keçməlidir."
+    "Bu testdə yoxlanan mutasiyalar fallback RAM-only executor-a düşməməlidir."
   );
 
   const serverCode =
@@ -370,7 +426,7 @@ const {
   }
 
   console.log(
-    "PASS: player-local map mutations and state center use PostgreSQL authoritative routing with post-commit world broadcasts."
+    "PASS: player-local map mutations stay player-authoritative while teleport and state center use state-first PostgreSQL routing."
   );
 })().catch((error) => {
   console.error(error);

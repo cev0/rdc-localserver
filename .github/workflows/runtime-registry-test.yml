@@ -22,6 +22,8 @@ on:
       - "runtime_legacy_base_teleport.js"
       - "runtime_legacy_base_teleport_testi.js"
       - "world_state_transaction_lock.js"
+      - "world_state_mutasiya_postgres.js"
+      - "world_state_mutasiya_postgres_testi.js"
       - "runtime_ws_guard.js"
       - "runtime_ws_guard_testi.js"
       - "runtime_command_router.js"
@@ -66,6 +68,8 @@ on:
       - "runtime_legacy_base_teleport.js"
       - "runtime_legacy_base_teleport_testi.js"
       - "world_state_transaction_lock.js"
+      - "world_state_mutasiya_postgres.js"
+      - "world_state_mutasiya_postgres_testi.js"
       - "runtime_ws_guard.js"
       - "runtime_ws_guard_testi.js"
       - "runtime_command_router.js"
@@ -130,6 +134,9 @@ jobs:
 
       - name: Test shared state teleport authority
         run: node runtime_legacy_base_teleport_testi.js
+
+      - name: Test shared world state PostgreSQL mutation
+        run: node world_state_mutasiya_postgres_testi.js
 
       - name: Test command router
         run: node runtime_command_router_testi.js

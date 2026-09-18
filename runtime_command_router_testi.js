@@ -232,6 +232,23 @@ const {
           return await action({
             send
           });
+        },
+      worldStateAuthoritativeMutationExecutor:
+        async (
+          playerId,
+          action,
+          metadata
+        ) => {
+          executorCalls.push(
+            "world:" +
+            playerId +
+            ":" +
+            metadata.type
+          );
+
+          return await action({
+            send
+          });
         }
     });
 
@@ -254,6 +271,16 @@ const {
     }
   );
 
+  mutationRouter.register(
+    "world_mutation",
+    async () => {},
+    {
+      authRequired: true,
+      mutation: true,
+      worldStateAuthoritative: true
+    }
+  );
+
   await mutationRouter.dispatch({
     type: "normal_mutation",
     msg: {
@@ -272,16 +299,26 @@ const {
     send
   });
 
+  await mutationRouter.dispatch({
+    type: "world_mutation",
+    msg: {
+      type: "world_mutation"
+    },
+    ws,
+    send
+  });
+
   assert.deepStrictEqual(
     executorCalls,
     [
       "normal:p1",
-      "pg:p1:pg_mutation"
+      "pg:p1:pg_mutation",
+      "world:p1:world_mutation"
     ]
   );
 
   console.log(
-    "PASS: command router dispatch, auth guard, metrics, core reads and PostgreSQL authoritative route selection."
+    "PASS: command router dispatch, auth guard, metrics, player PostgreSQL and world-state authoritative route selection."
   );
 })().catch((error) => {
   console.error(error);
