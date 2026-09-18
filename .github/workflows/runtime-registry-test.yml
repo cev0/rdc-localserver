@@ -28,6 +28,8 @@ on:
       - "oyun_state_daimilik_korpu_testi.js"
       - "runtime_state_sync.js"
       - "runtime_state_sync_testi.js"
+      - "runtime_world_map_sync.js"
+      - "runtime_world_map_sync_testi.js"
       - "runtime_legacy_base_teleport.js"
       - "runtime_legacy_base_teleport_testi.js"
       - "world_state_transaction_lock.js"
@@ -85,6 +87,8 @@ on:
       - "oyun_state_daimilik_korpu_testi.js"
       - "runtime_state_sync.js"
       - "runtime_state_sync_testi.js"
+      - "runtime_world_map_sync.js"
+      - "runtime_world_map_sync_testi.js"
       - "runtime_legacy_base_teleport.js"
       - "runtime_legacy_base_teleport_testi.js"
       - "world_state_transaction_lock.js"
@@ -165,6 +169,9 @@ jobs:
 
       - name: Test cross-instance runtime state sync
         run: node runtime_state_sync_testi.js
+
+      - name: Test cross-instance world-map sync
+        run: node runtime_world_map_sync_testi.js
 
       - name: Test shared state teleport authority
         run: node runtime_legacy_base_teleport_testi.js

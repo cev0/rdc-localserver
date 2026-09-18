@@ -45,7 +45,11 @@ function mapMutationCommandleriniQeydEt(
     dovletBazalariniBirbasaPostgresdenAlClient,
     dovletBazaKeshiniTemizle,
     occupyStateCenterPostgresClient,
-    pushWorldMapToAllAuthedPlayers
+    pushWorldMapToAllAuthedPlayers,
+    publishStateMapRefresh =
+      async () => false,
+    publishCenterUpdate =
+      async () => false
   } = deps || {};
 
   const requiredFns = {
@@ -581,8 +585,13 @@ function mapMutationCommandleriniQeydEt(
             state
           );
 
-          pushStateLocalMapToStatePlayers(
+          await pushStateLocalMapToStatePlayers(
             result.stateId
+          );
+
+          await publishStateMapRefresh(
+            result.stateId,
+            "base_teleport"
           );
         }
       );
@@ -993,11 +1002,16 @@ function mapMutationCommandleriniQeydEt(
             result.occupiedByAllianceId ||
             null;
 
-          pushStateLocalMapToStatePlayers(
+          await pushStateLocalMapToStatePlayers(
             ownStateId
           );
 
-          pushWorldMapToAllAuthedPlayers();
+          await pushWorldMapToAllAuthedPlayers();
+
+          await publishCenterUpdate(
+            ownStateId,
+            result
+          );
         }
       );
     },

@@ -18,6 +18,8 @@ const {
   const sent = [];
   const localMapPushes = [];
   const worldPushes = [];
+  const stateMapBroadcasts = [];
+  const centerBroadcasts = [];
 
   const state = {
     playerId: "p1",
@@ -278,6 +280,33 @@ const {
       pushWorldMapToAllAuthedPlayers:
         () => {
           worldPushes.push(true);
+        },
+
+      publishStateMapRefresh:
+        async (
+          stateId,
+          reason
+        ) => {
+          stateMapBroadcasts.push({
+            stateId,
+            reason
+          });
+
+          return true;
+        },
+
+      publishCenterUpdate:
+        async (
+          stateId,
+          result
+        ) => {
+          centerBroadcasts.push({
+            stateId,
+            playerId:
+              result.occupiedByPlayerId
+          });
+
+          return true;
         }
     }
   );
@@ -380,6 +409,29 @@ const {
   );
 
   assert.deepStrictEqual(
+    stateMapBroadcasts,
+    [
+      {
+        stateId: 1,
+        reason:
+          "base_teleport"
+      }
+    ],
+    "Committed base teleport digər server instanslarına State map refresh göndərməlidir."
+  );
+
+  assert.deepStrictEqual(
+    centerBroadcasts,
+    [
+      {
+        stateId: 1,
+        playerId: "p1"
+      }
+    ],
+    "Persistent center occupation digər server instanslarına center update göndərməlidir."
+  );
+
+  assert.deepStrictEqual(
     authoritativeLocks,
     [
       "p1:expand_area_request"
@@ -426,7 +478,7 @@ const {
   }
 
   console.log(
-    "PASS: player-local map mutations stay player-authoritative while teleport and state center use state-first PostgreSQL routing."
+    "PASS: player-local map mutations stay player-authoritative while teleport/state-center use State-first PostgreSQL and cross-instance map sync."
   );
 })().catch((error) => {
   console.error(error);

@@ -3429,9 +3429,13 @@ const {
   runtimeStateSyncControllerYarat
 } = require("./runtime_state_sync");
 const {
+  runtimeWorldMapSyncControllerYarat
+} = require("./runtime_world_map_sync");
+const {
   worldStateOyuncuMutasiyasiniPostgresIleIcraEt
 } = require("./world_state_mutasiya_postgres");
 const {
+  dovletBazalariniAl,
   dovletBazalariniBirbasaPostgresdenAlClient,
   dovletBazaKeshiniTemizle
 } = require("./dovlet_baza_kataloqu_postgres");
@@ -3618,6 +3622,20 @@ const runtimeStateSync =
     pushStateToPlayerConnections
   });
 
+const runtimeWorldMapSync =
+  runtimeWorldMapSyncControllerYarat({
+    getWorldStateRuntime,
+    clearBaseCache:
+      dovletBazaKeshiniTemizle,
+    pushStateLocalMap:
+      pushStateLocalMapToStatePlayersAuthoritative,
+    pushWorldMap:
+      async () => {
+        pushWorldMapToAllAuthedPlayers();
+      },
+    nowMs
+  });
+
 const runtimeBus = createRuntimeRedisBus({
   onDirectMessage:
     async (message) => {
@@ -3640,6 +3658,16 @@ const runtimeBus = createRuntimeRedisBus({
 
   onBroadcastMessage:
     async (message) => {
+      const worldMapHandled =
+        await runtimeWorldMapSync
+          .handleBroadcast(
+            message
+          );
+
+      if (worldMapHandled) {
+        return;
+      }
+
       runtimeYayiminiYereldeGonder(
         message,
         {
@@ -4477,6 +4505,200 @@ function pushStateLocalMapToStatePlayers(stateId) {
       payloadJson: JSON.stringify(perPlayerPayload)
     });
   }
+}
+
+function stateLocalMapBazalariniAuthoritativeHazirla(
+  rawBases,
+  requestingPlayerId = null
+) {
+  return (
+    Array.isArray(rawBases)
+      ? rawBases
+      : []
+  ).map(item => ({
+    ...item,
+    zone:
+      item && item.zoneId
+        ? item.zoneId
+        : "outer",
+    spawnZone:
+      item && item.zoneId
+        ? item.zoneId
+        : "outer",
+    isSelf:
+      !!(
+        requestingPlayerId &&
+        item &&
+        item.playerId ===
+          requestingPlayerId
+      )
+  }));
+}
+
+async function buildStateLocalMapPayloadAuthoritative(
+  stateId,
+  requestingPlayerId = null,
+  bazaPaketi = null
+) {
+  const sid =
+    Number(stateId);
+
+  if (
+    !Number.isInteger(sid) ||
+    sid <= 0
+  ) {
+    return null;
+  }
+
+  const payload =
+    buildStateLocalMapPayload(
+      sid,
+      requestingPlayerId
+    );
+
+  if (!payload) {
+    return null;
+  }
+
+  try {
+    const paket =
+      bazaPaketi ||
+      await dovletBazalariniAl(
+        sid,
+        nowMs()
+      );
+
+    const bases =
+      stateLocalMapBazalariniAuthoritativeHazirla(
+        paket &&
+        paket.bases,
+        requestingPlayerId
+      );
+
+    payload.bases =
+      bases;
+
+    payload.playerCount =
+      bases.length;
+
+    payload.authority =
+      "postgres_snapshot";
+
+    return payload;
+  }
+  catch (error) {
+    console.error(
+      "[STATE_LOCAL_MAP] PostgreSQL base catalog fallback:",
+      {
+        stateId: sid,
+        message:
+          error && error.message
+            ? error.message
+            : String(error)
+      }
+    );
+
+    return payload;
+  }
+}
+
+async function pushStateLocalMapToStatePlayersAuthoritative(
+  stateId
+) {
+  const sid =
+    Number(stateId);
+
+  if (
+    !Number.isInteger(sid) ||
+    sid <= 0
+  ) {
+    return 0;
+  }
+
+  let bazaPaketi = null;
+
+  try {
+    bazaPaketi =
+      await dovletBazalariniAl(
+        sid,
+        nowMs()
+      );
+  }
+  catch (error) {
+    console.error(
+      "[STATE_LOCAL_MAP] Authoritative catalog read failed:",
+      {
+        stateId: sid,
+        message:
+          error && error.message
+            ? error.message
+            : String(error)
+      }
+    );
+  }
+
+  let sentCount = 0;
+
+  for (const ws of wss.clients) {
+    if (
+      !ws ||
+      ws.readyState !==
+        WebSocket.OPEN
+    ) {
+      continue;
+    }
+
+    const playerId =
+      ws._authedPlayerId;
+
+    if (!playerId) {
+      continue;
+    }
+
+    const playerState =
+      players.get(
+        playerId
+      );
+
+    if (
+      !playerState ||
+      !playerState.worldPlacement ||
+      Number(
+        playerState
+          .worldPlacement
+          .stateId
+      ) !== sid
+    ) {
+      continue;
+    }
+
+    const payload =
+      await buildStateLocalMapPayloadAuthoritative(
+        sid,
+        playerId,
+        bazaPaketi
+      );
+
+    if (!payload) {
+      continue;
+    }
+
+    send(ws, {
+      type:
+        "state_local_map",
+      playerId,
+      serverTimeUnixMs:
+        nowMs(),
+      payloadJson:
+        JSON.stringify(
+          payload
+        )
+    });
+
+    sentCount += 1;
+  }
+
+  return sentCount;
 }
 
 function pushWorldMapToAllAuthedPlayers() {
@@ -7338,7 +7560,24 @@ mapMutationCommandleriniQeydEt(
     pushStateToPlayerConnections,
     teleportPlayerBaseInsideState,
     applyPlayerBaseTeleportInsideState,
-    pushStateLocalMapToStatePlayers,
+    pushStateLocalMapToStatePlayers:
+      pushStateLocalMapToStatePlayersAuthoritative,
+    publishStateMapRefresh:
+      (stateId, reason) =>
+        runtimeWorldMapSync
+          .publishBaseRefresh(
+            runtimeBus,
+            stateId,
+            reason
+          ),
+    publishCenterUpdate:
+      (stateId, result) =>
+        runtimeWorldMapSync
+          .publishCenterUpdate(
+            runtimeBus,
+            stateId,
+            result
+          ),
     canMoveThisBuilding,
     canMoveBuilding,
     syncResourceSlotOccupancy,
