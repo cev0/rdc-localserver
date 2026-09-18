@@ -7,6 +7,9 @@ on:
     paths:
       - "runtime_registry.js"
       - "runtime_registry_testi.js"
+      - "runtime_redis.js"
+      - "runtime_redis_testi.js"
+      - "mesajlasma_handler.js"
       - "server.js"
       - "package.json"
       - ".github/workflows/runtime-registry-test.yml"
@@ -14,6 +17,9 @@ on:
     paths:
       - "runtime_registry.js"
       - "runtime_registry_testi.js"
+      - "runtime_redis.js"
+      - "runtime_redis_testi.js"
+      - "mesajlasma_handler.js"
       - "server.js"
       - "package.json"
       - ".github/workflows/runtime-registry-test.yml"
