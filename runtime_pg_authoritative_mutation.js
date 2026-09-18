@@ -112,6 +112,8 @@ function postgresAuthoritativeMutationExecutorYarat(
       kopyala(liveState);
 
     const queuedResponses = [];
+    const afterCommitCallbacks = [];
+
     const baseSend =
       typeof metadata.send === "function"
         ? metadata.send
@@ -123,7 +125,10 @@ function postgresAuthoritativeMutationExecutorYarat(
       await transactionExecutor(
         playerId,
         liveState,
-        async lockedState => {
+        async (
+          lockedState,
+          transactionContext = {}
+        ) => {
           const before =
             stateBarmaqIziAl(
               lockedState
@@ -169,7 +174,23 @@ function postgresAuthoritativeMutationExecutorYarat(
               send:
                 baseSend
                   ? deferredSend
-                  : null
+                  : null,
+              transactionContext,
+              deferAfterCommit:
+                (callback) => {
+                  if (
+                    typeof callback !==
+                    "function"
+                  ) {
+                    return false;
+                  }
+
+                  afterCommitCallbacks.push(
+                    callback
+                  );
+
+                  return true;
+                }
             });
 
           /*
@@ -219,6 +240,13 @@ function postgresAuthoritativeMutationExecutorYarat(
           item.payload
         );
       }
+    }
+
+    for (
+      const callback of
+      afterCommitCallbacks
+    ) {
+      await callback();
     }
 
     if (afterCommit) {
