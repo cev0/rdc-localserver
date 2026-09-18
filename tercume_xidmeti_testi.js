@@ -97,7 +97,18 @@ async function esas() {
     assert.ok(yoxlananOptions);
     assert.strictEqual(yoxlananOptions.hostname, "translation.googleapis.com");
     assert.strictEqual(yoxlananOptions.method, "POST");
-    assert.ok(yoxlananOptions.path.includes("key=test-api-key"));
+    assert.strictEqual(
+        yoxlananOptions.path,
+        "/language/translate/v2"
+    );
+    assert.strictEqual(
+        yoxlananOptions.headers["X-Goog-Api-Key"],
+        "test-api-key"
+    );
+    assert.ok(
+        !yoxlananOptions.path.includes("key="),
+        "API acari URL query-de olmamalidir."
+    );
 
     https.request = requestSaxtasi({
         statusCode: 429,
