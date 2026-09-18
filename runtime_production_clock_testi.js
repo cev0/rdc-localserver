@@ -117,11 +117,27 @@ const {
     "productionRuntime client payload-dan silinmelidir."
   );
 
+  const missiyaCode =
+    fs.readFileSync(
+      require.resolve("./missiya_handler.js"),
+      "utf8"
+    );
+
   assert.ok(
-    serverCode.includes(
-      "incoming.resources ="
+    !serverCode.includes(
+      'case "save_state"'
     ),
-    "save_state client resurslarini authoritative server state ile evez etmelidir."
+    "legacy save_state server.js switch-ine geri qayitmamalidir."
+  );
+
+  assert.ok(
+    missiyaCode.includes(
+      "clientStateIgnored: true"
+    ) &&
+    missiyaCode.includes(
+      "serverAuthoritative: true"
+    ),
+    "save_state client payload server state-inin uzerine yazilmamalidir."
   );
 
   assert.ok(
