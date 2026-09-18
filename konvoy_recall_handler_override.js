@@ -28,6 +28,9 @@ const {
 const {
   oyuncuKonvoylariniSinxronEt,
 } = require("./dovlet_konvoy_runtime_postgres");
+const {
+  runtimeDynamicMapRefreshGonder,
+} = require("./runtime_world_map_sync");
 
 const RECALL_REQUEST = "convoy_operation_recall_request";
 const RECALL_RESULT = "convoy_operation_recall_result";
@@ -202,7 +205,12 @@ async function recallMutasiyasiniIcraEt(
   };
 }
 
-function publicProyeksiyaniArxaPlandaYenile(state, playerId, nowMs) {
+function publicProyeksiyaniArxaPlandaYenile(
+  state,
+  playerId,
+  nowMs,
+  runtimeBus,
+) {
   const stateId = dovletIdAl(state);
   const active = kopyala(aktivEmeliyyatlariAl(state)) || {};
 
@@ -213,9 +221,23 @@ function publicProyeksiyaniArxaPlandaYenile(state, playerId, nowMs) {
       active,
       nowMs,
     ),
-  ).catch(xeta => {
-    console.error("[KONVOY_RECALL_PUBLIC_SYNC]", xeta);
-  });
+  )
+    .then(async netice => {
+      if (
+        netice &&
+        netice.success === true
+      ) {
+        await runtimeDynamicMapRefreshGonder(
+          runtimeBus,
+          stateId,
+          "convoy_operation_recall_request",
+          () => nowMs,
+        );
+      }
+    })
+    .catch(xeta => {
+      console.error("[KONVOY_RECALL_PUBLIC_SYNC]", xeta);
+    });
 }
 
 handler.konvoyEmeliyyatMesajiniEmalEt = async function(kontekst) {
@@ -281,7 +303,12 @@ handler.konvoyEmeliyyatMesajiniEmalEt = async function(kontekst) {
     });
 
     if (netice && netice.deyisdi === true) {
-      publicProyeksiyaniArxaPlandaYenile(canliState, playerId, nowMs);
+      publicProyeksiyaniArxaPlandaYenile(
+        canliState,
+        playerId,
+        nowMs,
+        kontekst.runtimeBus,
+      );
     }
   }
   catch (xeta) {

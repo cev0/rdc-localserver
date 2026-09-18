@@ -7,6 +7,9 @@ const {
 } = require("./oyun_state_snapshot_postgres");
 const { postgresOyuncuKilidiniAl } = require("./oyun_state_mutasiya_postgres");
 const { bazaYerdeyismeKonvoylariniGeriCagir } = require("./baza_yerdeyisme_konvoy_sistemi");
+const {
+  oyuncuKonvoylariniSinxronEtClient
+} = require("./dovlet_konvoy_runtime_postgres");
 
 function metnAl(v, max = 128) {
   return typeof v === "string" ? v.trim().slice(0, max).toLowerCase() : "";
@@ -14,6 +17,34 @@ function metnAl(v, max = 128) {
 
 function kopyala(v) {
   return v == null ? null : JSON.parse(JSON.stringify(v));
+}
+
+function dovletIdAl(state) {
+  const n =
+    Number(
+      state &&
+      state.worldPlacement &&
+      state.worldPlacement.stateId
+    );
+
+  return Number.isFinite(n) &&
+    Math.trunc(n) > 0
+      ? Math.trunc(n)
+      : 1;
+}
+
+function aktivEmeliyyatlariAl(state) {
+  const active =
+    state &&
+    state.konvoyEmeliyyatlari &&
+    state.konvoyEmeliyyatlari
+      .activeByConvoy;
+
+  return active &&
+    typeof active === "object" &&
+    !Array.isArray(active)
+      ? active
+      : {};
 }
 
 async function pvpZeroingKonvoyRecalliniPostCommitIcraEt(
@@ -37,6 +68,12 @@ async function pvpZeroingKonvoyRecalliniPostCommitIcraEt(
   const lockFn = secimler && typeof secimler.lockFn === "function"
     ? secimler.lockFn
     : postgresOyuncuKilidiniAl;
+  const sharedSyncFn =
+    secimler &&
+    typeof secimler.sharedSyncFn ===
+      "function"
+      ? secimler.sharedSyncFn
+      : oyuncuKonvoylariniSinxronEtClient;
 
   if (!hovuz || typeof hovuz.connect !== "function") {
     throw new Error("PvP zeroing convoy recall üçün PostgreSQL hovuzu yoxdur.");
@@ -74,6 +111,29 @@ async function pvpZeroingKonvoyRecalliniPostCommitIcraEt(
     isState.pvpCity.lastConvoyRecallAtMs = Number(nowMs) || Date.now();
     isState.pvpCity.lastConvoyRecallCount = Number(recall.recalledCount) || 0;
 
+    const sharedSync =
+      await sharedSyncFn(
+        client,
+        dovletIdAl(isState),
+        playerId,
+        aktivEmeliyyatlariAl(
+          isState
+        ),
+        nowMs
+      );
+
+    if (
+      !sharedSync ||
+      sharedSync.success !== true
+    ) {
+      throw new Error(
+        sharedSync &&
+        sharedSync.message
+          ? sharedSync.message
+          : "PvP zeroing sonrası shared convoy projection sinxron edilə bilmədi."
+      );
+    }
+
     await snapshotYaz(client, playerId, isState);
     await client.query("COMMIT");
 
@@ -83,7 +143,11 @@ async function pvpZeroingKonvoyRecalliniPostCommitIcraEt(
       alreadyCompleted: false,
       playerId,
       recalledCount: Number(recall.recalledCount) || 0,
-      recall: kopyala(recall)
+      stateId:
+        dovletIdAl(isState),
+      recall: kopyala(recall),
+      sharedConvoySync:
+        kopyala(sharedSync)
     };
   }
   catch (xeta) {

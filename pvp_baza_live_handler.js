@@ -35,6 +35,12 @@ const {
 const {
   runtimeStateInvalidationGonder
 } = require("./runtime_state_sync");
+const {
+  runtimeDynamicMapRefreshGonder
+} = require("./runtime_world_map_sync");
+const {
+  oyuncuKonvoylariniSinxronEtClient
+} = require("./dovlet_konvoy_runtime_postgres");
 
 const MESAJLAR = new Set([
   "pvp_base_attack_preview_request",
@@ -63,6 +69,78 @@ function gonder(k, type, data) {
     ...data,
     serverTimeUnixMs: k.nowMs()
   });
+}
+
+function dovletIdAl(state) {
+  return Math.max(
+    1,
+    tamEded(
+      state &&
+      state.worldPlacement &&
+      state.worldPlacement.stateId
+    ) || 1
+  );
+}
+
+function aktivEmeliyyatlariAl(state) {
+  const active =
+    state &&
+    state.konvoyEmeliyyatlari &&
+    state.konvoyEmeliyyatlari.activeByConvoy;
+
+  return active &&
+    typeof active === "object" &&
+    !Array.isArray(active)
+      ? active
+      : {};
+}
+
+async function pvpSharedKonvoylariTransactiondaSinxronEt(
+  client,
+  state,
+  playerId,
+  nowMs
+) {
+  const netice =
+    await oyuncuKonvoylariniSinxronEtClient(
+      client,
+      dovletIdAl(state),
+      playerId,
+      aktivEmeliyyatlariAl(state),
+      nowMs
+    );
+
+  if (
+    !netice ||
+    netice.success !== true
+  ) {
+    throw new Error(
+      netice &&
+      netice.message
+        ? netice.message
+        : "PvP shared convoy projection transaction daxilində sinxron edilə bilmədi."
+    );
+  }
+
+  return netice;
+}
+
+async function pvpDynamicMapRefreshGonder(
+  kontekst,
+  state,
+  reason,
+  committedAtMs
+) {
+  return await runtimeDynamicMapRefreshGonder(
+    kontekst &&
+    kontekst.runtimeBus,
+    dovletIdAl(state),
+    reason ||
+      "pvp_convoy_runtime_changed",
+    () =>
+      Number(committedAtMs) ||
+      Date.now()
+  );
 }
 
 async function pvpRemoteStateInvalidationlariniGonder(
@@ -367,13 +445,31 @@ async function startEmeliyyatiniIcraEt(kontekst, hazir) {
   const netice = await worldStateOyuncuMutasiyasiniPostgresIleIcraEt(
     playerId,
     state,
-    async (kilidliState, trx) => pvpBazaHucumStartMutasiyasiniIcraEt(
-      kilidliState,
-      playerId,
-      kontekst.msg,
-      trx.client,
-      now
-    )
+    async (kilidliState, trx) => {
+      const result =
+        await pvpBazaHucumStartMutasiyasiniIcraEt(
+          kilidliState,
+          playerId,
+          kontekst.msg,
+          trx.client,
+          now
+        );
+
+      if (
+        result &&
+        result.success === true &&
+        result.deyisdi === true
+      ) {
+        await pvpSharedKonvoylariTransactiondaSinxronEt(
+          trx.client,
+          kilidliState,
+          playerId,
+          now
+        );
+      }
+
+      return result;
+    }
   );
 
   gonder(kontekst, "pvp_base_attack_start_result", {
@@ -394,6 +490,13 @@ async function startEmeliyyatiniIcraEt(kontekst, hazir) {
       playerId,
       payloadJson: JSON.stringify(kontekst.makeClientState(state))
     });
+
+    await pvpDynamicMapRefreshGonder(
+      kontekst,
+      state,
+      "pvp_attack_start",
+      now
+    );
   }
   return true;
 }
@@ -455,13 +558,26 @@ async function statusEmeliyyatiniIcraEt(kontekst, hazir) {
       const finish = pvpGeriDonusuYekunlasdir(kilidliState, convoyId, operationId, now);
       if (!finish.success) return finish;
 
-      return {
+      const result = {
         success: true,
-        deyisdi: arrival.deyisdi === true || finish.deyisdi === true,
+        deyisdi:
+          arrival.deyisdi === true ||
+          finish.deyisdi === true,
         arrivalDue: false,
         arrival,
         finish
       };
+
+      if (result.deyisdi === true) {
+        await pvpSharedKonvoylariTransactiondaSinxronEt(
+          trx.client,
+          kilidliState,
+          playerId,
+          now
+        );
+      }
+
+      return result;
     }
   );
 
@@ -512,7 +628,7 @@ async function statusEmeliyyatiniIcraEt(kontekst, hazir) {
           return finish;
         }
 
-        return {
+        const result = {
           success: true,
           deyisdi:
             arrival.deyisdi === true ||
@@ -521,6 +637,17 @@ async function statusEmeliyyatiniIcraEt(kontekst, hazir) {
           arrival,
           finish
         };
+
+        if (result.deyisdi === true) {
+          await pvpSharedKonvoylariTransactiondaSinxronEt(
+            trx.client,
+            kilidliState,
+            playerId,
+            now
+          );
+        }
+
+        return result;
       }
     );
 
@@ -571,12 +698,36 @@ async function statusEmeliyyatiniIcraEt(kontekst, hazir) {
   const finishAfterBattle = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
     playerId,
     state,
-    async kilidliState => pvpGeriDonusuYekunlasdir(
-      kilidliState,
-      convoyId,
-      operationId,
-      now
-    )
+    async (kilidliState, trx) => {
+      const finish =
+        pvpGeriDonusuYekunlasdir(
+          kilidliState,
+          convoyId,
+          operationId,
+          now
+        );
+
+      if (
+        finish &&
+        finish.success === true &&
+        (
+          finish.deyisdi === true ||
+          (
+            settlement &&
+            settlement.deyisdi === true
+          )
+        )
+      ) {
+        await pvpSharedKonvoylariTransactiondaSinxronEt(
+          trx.client,
+          kilidliState,
+          playerId,
+          now
+        );
+      }
+
+      return finish;
+    }
   );
   deyisdi = deyisdi || !!(finishAfterBattle && finishAfterBattle.deyisdi === true);
 
@@ -594,6 +745,13 @@ async function statusEmeliyyatiniIcraEt(kontekst, hazir) {
       playerId,
       payloadJson: JSON.stringify(kontekst.makeClientState(state))
     });
+
+    await pvpDynamicMapRefreshGonder(
+      kontekst,
+      state,
+      "pvp_attack_status",
+      now
+    );
   }
   return true;
 }
@@ -607,7 +765,30 @@ async function returnEmeliyyatiniIcraEt(kontekst, hazir) {
   const netice = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
     playerId,
     state,
-    async kilidliState => pvpGeriDonusuBaslat(kilidliState, convoyId, operationId, now)
+    async (kilidliState, trx) => {
+      const result =
+        pvpGeriDonusuBaslat(
+          kilidliState,
+          convoyId,
+          operationId,
+          now
+        );
+
+      if (
+        result &&
+        result.success === true &&
+        result.deyisdi === true
+      ) {
+        await pvpSharedKonvoylariTransactiondaSinxronEt(
+          trx.client,
+          kilidliState,
+          playerId,
+          now
+        );
+      }
+
+      return result;
+    }
   );
 
   gonder(kontekst, "pvp_base_attack_return_result", {
@@ -625,6 +806,13 @@ async function returnEmeliyyatiniIcraEt(kontekst, hazir) {
       playerId,
       payloadJson: JSON.stringify(kontekst.makeClientState(state))
     });
+
+    await pvpDynamicMapRefreshGonder(
+      kontekst,
+      state,
+      "pvp_attack_return",
+      now
+    );
   }
   return true;
 }
@@ -673,6 +861,8 @@ module.exports = {
   pvpGeriDonusuBaslat,
   pvpGeriDonusuYekunlasdir,
   pvpStatusMelumatiniHazirla,
+  pvpSharedKonvoylariTransactiondaSinxronEt,
+  pvpDynamicMapRefreshGonder,
   pvpRemoteStateInvalidationlariniGonder,
   pvpBazaLiveMesajiniEmalEt
 };

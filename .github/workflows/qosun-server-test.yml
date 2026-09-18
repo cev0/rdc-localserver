@@ -44,6 +44,8 @@ on:
       - 'konvoy_emeliyyat_sistemi.js'
       - 'konvoy_emeliyyat_handler.js'
       - 'konvoy_emeliyyat_pg_mutasiya_testi.js'
+      - 'konvoy_recall_handler_override.js'
+      - 'konvoy_recall_handler_override_testi.js'
       - 'konvoy_texnologiya_handler.js'
       - 'konvoy_texnologiya_inkisaf_inteqrasiya_testi.js'
       - 'konvoy_texnologiya_pg_mutasiya_testi.js'
@@ -107,6 +109,7 @@ on:
       - 'world_state_iki_oyuncu_mutasiya_postgres.js'
       - 'world_state_iki_oyuncu_mutasiya_postgres_testi.js'
       - 'runtime_state_sync.js'
+      - 'runtime_world_map_sync.js'
       - 'server_missiya_genisletme_v2.js'
       - 'missiya_handler.js'
       - 'missiya_postgres.js'
@@ -158,6 +161,8 @@ jobs:
         run: node konvoy_yola_hazirliq_sistemi_testi.js
       - name: Konvoy emeliyyat PG mutasiya testleri
         run: node konvoy_emeliyyat_pg_mutasiya_testi.js
+      - name: Konvoy fast recall cross-instance projection testi
+        run: node konvoy_recall_handler_override_testi.js
       - name: Qehreman EXP progression testleri
         run: node qehreman_exp_progression_testi.js
       - name: Qehreman skill progression testleri

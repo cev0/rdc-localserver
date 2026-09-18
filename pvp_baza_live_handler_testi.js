@@ -1,12 +1,14 @@
 "use strict";
 
 const assert = require("assert");
+const fs = require("fs");
 const {
   previewCavabiniAktivEt,
   pvpCanliQaydasiniHazirla,
   pvpGeriDonusuBaslat,
   pvpGeriDonusuYekunlasdir,
   pvpStatusMelumatiniHazirla,
+  pvpDynamicMapRefreshGonder,
   pvpRemoteStateInvalidationlariniGonder
 } = require("./pvp_baza_live_handler");
 
@@ -39,6 +41,11 @@ function operationHazirla(status = "camping_at_abandoned_target") {
 function stateHazirla(operation = operationHazirla()) {
   return {
     playerId: "oyuncu_a",
+    worldPlacement: {
+      stateId: 7,
+      baseX: 10,
+      baseZ: 10
+    },
     army: { troops: {} },
     konvoylar: {
       items: [
@@ -177,6 +184,66 @@ function stateHazirla(operation = operationHazirla()) {
   }
 
   {
+    const broadcasts = [];
+
+    const sent =
+      await pvpDynamicMapRefreshGonder(
+        {
+          runtimeBus: {
+            async publishBroadcast(
+              scope,
+              targetId,
+              payload
+            ) {
+              broadcasts.push({
+                scope,
+                targetId,
+                payload
+              });
+
+              return true;
+            }
+          }
+        },
+        stateHazirla(),
+        "pvp_attack_status",
+        12340
+      );
+
+    assert.strictEqual(
+      sent,
+      true
+    );
+
+    assert.deepStrictEqual(
+      broadcasts.map(
+        item => ({
+          scope: item.scope,
+          targetId: item.targetId,
+          type:
+            item.payload.type,
+          reason:
+            item.payload.reason,
+          committedAtMs:
+            item.payload.committedAtMs
+        })
+      ),
+      [
+        {
+          scope: "world-state",
+          targetId: "7",
+          type:
+            "__runtime_state_dynamic_refresh_v1",
+          reason:
+            "pvp_attack_status",
+          committedAtMs:
+            12340
+        }
+      ]
+    );
+  }
+
+  {
     const published = [];
 
     const count =
@@ -235,6 +302,40 @@ function stateHazirla(operation = operationHazirla()) {
     assert.strictEqual(
       published[0].payload.committedAtMs,
       12345
+    );
+  }
+
+  {
+    const kod =
+      fs.readFileSync(
+        require.resolve(
+          "./pvp_baza_live_handler"
+        ),
+        "utf8"
+      );
+
+    assert.ok(
+      kod.includes(
+        "oyuncuKonvoylariniSinxronEtClient"
+      ),
+      "PvP live handler shared convoy projection-u authoritative transaction client-i ilə sync etməlidir."
+    );
+
+    assert.ok(
+      kod.includes(
+        "runtimeDynamicMapRefreshGonder"
+      ),
+      "PvP shared runtime dəyişikliyi cross-instance dynamic map refresh göndərməlidir."
+    );
+
+    assert.ok(
+      kod.indexOf(
+        "pvpSharedKonvoylariTransactiondaSinxronEt"
+      ) <
+      kod.lastIndexOf(
+        "pvpDynamicMapRefreshGonder"
+      ),
+      "Shared projection commit-dən əvvəl transaction daxilində, Redis refresh isə commit-dən sonra işləməlidir."
     );
   }
 
