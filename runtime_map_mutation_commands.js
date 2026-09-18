@@ -3,6 +3,10 @@
 const {
   playerIdUyugunluqYoxla
 } = require("./runtime_core_read_commands");
+const {
+  legacyBaseTeleportYoxla,
+  legacyBaseTeleportKilidiniAl
+} = require("./runtime_legacy_base_teleport");
 
 function errorGonder(send, ws, message, code) {
   send(ws, {
@@ -32,13 +36,16 @@ function mapMutationCommandleriniQeydEt(
     createRoadsAlongPath,
     pushStateToPlayerConnections,
     teleportPlayerBaseInsideState,
+    applyPlayerBaseTeleportInsideState,
     pushStateLocalMapToStatePlayers,
     canMoveThisBuilding,
     canMoveBuilding,
     syncResourceSlotOccupancy,
     getWorldStateRuntime,
     occupyStateCenter,
-    pushWorldMapToAllAuthedPlayers
+    pushWorldMapToAllAuthedPlayers,
+    dovletBazalariniBirbasaPostgresdenAlClient,
+    dovletBazaKeshiniTemizle
   } = deps || {};
 
   const requiredFns = {
@@ -53,13 +60,16 @@ function mapMutationCommandleriniQeydEt(
     createRoadsAlongPath,
     pushStateToPlayerConnections,
     teleportPlayerBaseInsideState,
+    applyPlayerBaseTeleportInsideState,
     pushStateLocalMapToStatePlayers,
     canMoveThisBuilding,
     canMoveBuilding,
     syncResourceSlotOccupancy,
     getWorldStateRuntime,
     occupyStateCenter,
-    pushWorldMapToAllAuthedPlayers
+    pushWorldMapToAllAuthedPlayers,
+    dovletBazalariniBirbasaPostgresdenAlClient,
+    dovletBazaKeshiniTemizle
   };
 
   for (
@@ -379,15 +389,24 @@ function mapMutationCommandleriniQeydEt(
   );
 
   /*
-   * base_teleport_request və occupy_state_center_request yalnız player state
-   * deyil, eyni Dövlətin ortaq world state-inə toxunur. Onları player-level
-   * PostgreSQL authoritative executor-a salmaq təhlükəlidir: ayrıca world/state
-   * transaction modeli tələb olunur. Ona görə aşağıdakı shared-world route-lar
-   * növbəti mərhələyə qədər qəsdən yalnız runtime mutation lock-da qalır.
+   * Legacy base teleport artıq player snapshot + Dövlət səviyyəli PostgreSQL
+   * advisory lock ilə işləyir. WorldV2 teleport da eyni lock adını istifadə edir,
+   * buna görə köhnə və yeni teleport sorğuları eyni Dövlət daxilində serial olur.
+   *
+   * occupy_state_center_request isə hələ ortaq Prezident runtime state-inə
+   * toxunduğu üçün ayrıca world metadata persistence mərhələsinə qədər
+   * player-only PostgreSQL executor-a salınmır.
    */
   router.register(
     "base_teleport_request",
-    async ({ ws, msg, send, nowMs }) => {
+    async ({
+      ws,
+      msg,
+      send,
+      nowMs,
+      transactionContext,
+      deferAfterCommit
+    }) => {
       const authCheck =
         playerIdUyugunluqYoxla(msg, ws);
 
@@ -429,8 +448,101 @@ function mapMutationCommandleriniQeydEt(
       const state =
         getOrCreatePlayerState(playerId);
 
+      if (
+        !state ||
+        !state.worldPlacement
+      ) {
+        errorGonder(
+          send,
+          ws,
+          "Player world placement not found"
+        );
+        return;
+      }
+
+      const stateId =
+        Number(
+          state.worldPlacement.stateId
+        );
+
+      if (
+        !Number.isInteger(stateId) ||
+        stateId <= 0
+      ) {
+        errorGonder(
+          send,
+          ws,
+          "Player stateId is invalid"
+        );
+        return;
+      }
+
+      const stateRuntime =
+        getWorldStateRuntime(
+          stateId
+        );
+
+      if (!stateRuntime) {
+        errorGonder(
+          send,
+          ws,
+          "World state not found"
+        );
+        return;
+      }
+
+      const client =
+        transactionContext &&
+        transactionContext.client;
+
+      if (
+        !client ||
+        typeof client.query !==
+          "function"
+      ) {
+        throw new Error(
+          "Base teleport PostgreSQL transaction client-i yoxdur."
+        );
+      }
+
+      await legacyBaseTeleportKilidiniAl(
+        client,
+        stateId
+      );
+
+      const bazaPaketi =
+        await dovletBazalariniBirbasaPostgresdenAlClient(
+          client,
+          stateId
+        );
+
+      const check =
+        legacyBaseTeleportYoxla({
+          stateRuntime,
+          playerId,
+          targetBaseX,
+          targetBaseZ,
+          bases:
+            Array.isArray(
+              bazaPaketi &&
+              bazaPaketi.bases
+            )
+              ? bazaPaketi.bases
+              : []
+        });
+
+      if (!check.ok) {
+        errorGonder(
+          send,
+          ws,
+          check.message ||
+            "Base teleport failed"
+        );
+        return;
+      }
+
       const result =
-        teleportPlayerBaseInsideState(
+        applyPlayerBaseTeleportInsideState(
           state,
           playerId,
           targetBaseX,
@@ -458,18 +570,27 @@ function mapMutationCommandleriniQeydEt(
           JSON.stringify(result)
       });
 
-      pushStateToPlayerConnections(
-        playerId,
-        state
-      );
+      await deferAfterCommit(
+        async () => {
+          dovletBazaKeshiniTemizle(
+            stateId
+          );
 
-      pushStateLocalMapToStatePlayers(
-        result.stateId
+          pushStateToPlayerConnections(
+            playerId,
+            state
+          );
+
+          pushStateLocalMapToStatePlayers(
+            result.stateId
+          );
+        }
       );
     },
     {
       authRequired: true,
-      mutation: true
+      mutation: true,
+      postgresAuthoritative: true
     }
   );
 
