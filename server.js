@@ -3347,8 +3347,10 @@ function hasUnfinishedBuildingOfSameType(state, buildingId) {
 }
 
 const PORT = process.env.PORT || 3001;
-const players = new Map();
-const connections = new Map();
+const {
+  players,
+  connections
+} = require("./runtime_registry");
 
 const STATE_CENTER_UNLOCK_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
 const STATE_NEW_PLAYER_SOFT_CAP = 200;
@@ -8526,8 +8528,8 @@ case "occupy_state_center_request": {
 
   ws.on("close", () => {
     const playerId = ws._authedPlayerId;
-    if (playerId && connections.get(playerId) === ws) {
-      connections.delete(playerId);
+    if (playerId) {
+      connections.deleteIfCurrent(playerId, ws);
     }
 
     console.log("WS closed");
