@@ -21,6 +21,7 @@ const {
 
   const sent = [];
   const presence = [];
+  const freshCalls = [];
   const schedules = [];
   const mapCalls = [];
 
@@ -64,6 +65,16 @@ const {
       connections,
       runtimeBus,
       getOrCreatePlayerState,
+      ensureFreshPlayerState:
+        async (playerId) => {
+          freshCalls.push(
+            playerId
+          );
+
+          return getOrCreatePlayerState(
+            playerId
+          );
+        },
       updateServerTime,
       schedulePlayerDeadline:
         (playerId) => {
@@ -131,6 +142,11 @@ const {
 
   assert.deepStrictEqual(
     presence,
+    ["player-123"]
+  );
+
+  assert.deepStrictEqual(
+    freshCalls,
     ["player-123"]
   );
 

@@ -16,6 +16,7 @@ function authCommandiniQeydEt(
     connections,
     runtimeBus,
     getOrCreatePlayerState,
+    ensureFreshPlayerState,
     updateServerTime,
     schedulePlayerDeadline,
     makeClientState,
@@ -89,9 +90,14 @@ function authCommandiniQeydEt(
       }
 
       const state =
-        getOrCreatePlayerState(
-          playerId
-        );
+        typeof ensureFreshPlayerState ===
+          "function"
+          ? await ensureFreshPlayerState(
+              playerId
+            )
+          : getOrCreatePlayerState(
+              playerId
+            );
 
       updateServerTime(state);
 

@@ -265,18 +265,53 @@ function cihazPinTelebiGonder(send, ws, challenge, nowMs) {
   });
 }
 
-function oyunStateGonder(
+async function oyunStateGonder(
   ws,
   playerId,
   send,
   nowMs,
   getOrCreatePlayerState,
+  ensureFreshPlayerState,
   updateServerTime,
   makeClientState,
   sendStateLocalMapToPlayer,
   sendWorldMapToPlayer
 ) {
-  const state = getOrCreatePlayerState(playerId);
+  let state;
+
+  try {
+    state =
+      typeof ensureFreshPlayerState ===
+        "function"
+        ? await ensureFreshPlayerState(
+            playerId
+          )
+        : getOrCreatePlayerState(
+            playerId
+          );
+  }
+  catch (error) {
+    console.error(
+      "[STATE_SYNC] Account gameplay state refresh failed:",
+      error && error.message
+        ? error.message
+        : error
+    );
+
+    send(ws, {
+      type:
+        "state_sync_unavailable",
+      success: false,
+      playerId,
+      message:
+        "Gameplay state hazırda sinxronlaşdırıla bilmir.",
+      serverTimeUnixMs:
+        nowMs()
+    });
+
+    return false;
+  }
+
   updateServerTime(state);
 
   send(ws, {
@@ -288,6 +323,8 @@ function oyunStateGonder(
 
   sendStateLocalMapToPlayer(ws, playerId);
   sendWorldMapToPlayer(ws, playerId);
+
+  return true;
 }
 
 async function legacyAuthQorumasiniYoxla(type, msg, ws, send, nowMs) {
@@ -402,6 +439,7 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
     connections,
     runtimeBus,
     getOrCreatePlayerState,
+    ensureFreshPlayerState,
     updateServerTime,
     makeClientState,
     sendStateLocalMapToPlayer,
@@ -513,12 +551,13 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
       serverTimeUnixMs: nowMs()
     });
 
-    oyunStateGonder(
+    await oyunStateGonder(
       ws,
       playerId,
       send,
       nowMs,
       getOrCreatePlayerState,
+      ensureFreshPlayerState,
       updateServerTime,
       makeClientState,
       sendStateLocalMapToPlayer,
@@ -765,12 +804,13 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
       serverTimeUnixMs: nowMs()
     });
 
-    oyunStateGonder(
+    await oyunStateGonder(
       ws,
       playerId,
       send,
       nowMs,
       getOrCreatePlayerState,
+      ensureFreshPlayerState,
       updateServerTime,
       makeClientState,
       sendStateLocalMapToPlayer,
@@ -896,12 +936,13 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
       serverTimeUnixMs: nowMs()
     });
 
-    oyunStateGonder(
+    await oyunStateGonder(
       ws,
       playerId,
       send,
       nowMs,
       getOrCreatePlayerState,
+      ensureFreshPlayerState,
       updateServerTime,
       makeClientState,
       sendStateLocalMapToPlayer,
@@ -1045,12 +1086,13 @@ async function hesabLoginMesajiniEmalEt(kontekst) {
       serverTimeUnixMs: nowMs()
     });
 
-    oyunStateGonder(
+    await oyunStateGonder(
       ws,
       playerId,
       send,
       nowMs,
       getOrCreatePlayerState,
+      ensureFreshPlayerState,
       updateServerTime,
       makeClientState,
       sendStateLocalMapToPlayer,

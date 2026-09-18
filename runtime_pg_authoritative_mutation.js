@@ -120,6 +120,7 @@ function postgresAuthoritativeMutationExecutorYarat(
         : null;
 
     let actionResult;
+    let stateChanged = false;
 
     try {
       await transactionExecutor(
@@ -207,9 +208,12 @@ function postgresAuthoritativeMutationExecutorYarat(
               lockedState
             );
 
+          stateChanged =
+            before !== after;
+
           return {
             deyisdi:
-              before !== after
+              stateChanged
           };
         }
       );
@@ -257,7 +261,9 @@ function postgresAuthoritativeMutationExecutorYarat(
           type:
             metadata.type || "",
           msg:
-            metadata.msg || null
+            metadata.msg || null,
+          changed:
+            stateChanged
         }
       );
     }

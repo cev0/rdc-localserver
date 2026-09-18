@@ -52,6 +52,7 @@ function coreReadCommandleriniQeydEt(
 
   const {
     getOrCreatePlayerState,
+    ensureFreshPlayerState,
     updateServerTime,
     makeClientState,
     buildStateLocalMapPayload,
@@ -107,9 +108,14 @@ function coreReadCommandleriniQeydEt(
         );
 
       const state =
-        getOrCreatePlayerState(
-          playerId
-        );
+        typeof ensureFreshPlayerState ===
+          "function"
+          ? await ensureFreshPlayerState(
+              playerId
+            )
+          : getOrCreatePlayerState(
+              playerId
+            );
 
       updateServerTime(state);
 
@@ -159,9 +165,14 @@ function coreReadCommandleriniQeydEt(
         authCheck.playerId;
 
       const state =
-        getOrCreatePlayerState(
-          playerId
-        );
+        typeof ensureFreshPlayerState ===
+          "function"
+          ? await ensureFreshPlayerState(
+              playerId
+            )
+          : getOrCreatePlayerState(
+              playerId
+            );
 
       if (
         !state ||
@@ -220,9 +231,14 @@ function coreReadCommandleriniQeydEt(
         );
 
       const state =
-        getOrCreatePlayerState(
-          playerId
-        );
+        typeof ensureFreshPlayerState ===
+          "function"
+          ? await ensureFreshPlayerState(
+              playerId
+            )
+          : getOrCreatePlayerState(
+              playerId
+            );
 
       updateServerTime(state);
 

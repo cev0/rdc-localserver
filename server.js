@@ -3420,6 +3420,9 @@ const {
   postgresAuthoritativeMutationExecutorYarat
 } = require("./runtime_pg_authoritative_mutation");
 const {
+  runtimeStateSyncControllerYarat
+} = require("./runtime_state_sync");
+const {
   worldStateOyuncuMutasiyasiniPostgresIleIcraEt
 } = require("./world_state_mutasiya_postgres");
 const {
@@ -3594,14 +3597,40 @@ function send(ws, obj) {
   );
 }
 
+const runtimeStateSync =
+  runtimeStateSyncControllerYarat({
+    getOrCreatePlayerState,
+    updateServerTime,
+    withPlayerLock:
+      oyuncuMutasiyaKilidiIleIcraEt,
+    hasLocalPlayer:
+      playerId =>
+        connections.has(
+          playerId
+        ),
+    schedulePlayerDeadline,
+    pushStateToPlayerConnections
+  });
+
 const runtimeBus = createRuntimeRedisBus({
-  onDirectMessage: ({ playerId, payload }) => {
-    connections.deliverLocal(
-      playerId,
-      payload,
-      send
-    );
-  }
+  onDirectMessage:
+    async (message) => {
+      const stateSyncHandled =
+        await runtimeStateSync
+          .handleDirect(
+            message
+          );
+
+      if (stateSyncHandled) {
+        return;
+      }
+
+      connections.deliverLocal(
+        message.playerId,
+        message.payload,
+        send
+      );
+    }
 });
 
 connections.configureRemotePublisher(
@@ -7019,12 +7048,31 @@ const postgresAuthoritativeMutationExecutor =
     afterCommit:
       async (
         playerId,
-        state
+        state,
+        metadata
       ) => {
         schedulePlayerDeadline(
           playerId,
           state
         );
+
+        if (
+          metadata &&
+          metadata.changed === true
+        ) {
+          await runtimeStateSync
+            .publishInvalidation(
+              runtimeBus,
+              playerId,
+              {
+                type:
+                  metadata.type ||
+                  "state_commit",
+                committedAtMs:
+                  nowMs()
+              }
+            );
+        }
       }
   });
 
@@ -7063,12 +7111,31 @@ const worldStatePostgresAuthoritativeMutationExecutor =
     afterCommit:
       async (
         playerId,
-        state
+        state,
+        metadata
       ) => {
         schedulePlayerDeadline(
           playerId,
           state
         );
+
+        if (
+          metadata &&
+          metadata.changed === true
+        ) {
+          await runtimeStateSync
+            .publishInvalidation(
+              runtimeBus,
+              playerId,
+              {
+                type:
+                  metadata.type ||
+                  "state_commit",
+                committedAtMs:
+                  nowMs()
+              }
+            );
+        }
       }
   });
 
@@ -7105,6 +7172,12 @@ coreReadCommandleriniQeydEt(
   runtimeCommandRouter,
   {
     getOrCreatePlayerState,
+    ensureFreshPlayerState:
+      playerId =>
+        runtimeStateSync
+          .ensureFresh(
+            playerId
+          ),
     updateServerTime,
     makeClientState,
     buildStateLocalMapPayload,
@@ -7118,6 +7191,12 @@ authCommandiniQeydEt(
     connections,
     runtimeBus,
     getOrCreatePlayerState,
+    ensureFreshPlayerState:
+      playerId =>
+        runtimeStateSync
+          .ensureFresh(
+            playerId
+          ),
     updateServerTime,
     schedulePlayerDeadline,
     makeClientState,
@@ -7355,6 +7434,12 @@ wss.on("connection", (ws, req) => {
       connections,
       runtimeBus,
       getOrCreatePlayerState,
+      ensureFreshPlayerState:
+        playerId =>
+          runtimeStateSync
+            .ensureFresh(
+              playerId
+            ),
       updateServerTime,
       makeClientState,
       sendStateLocalMapToPlayer,

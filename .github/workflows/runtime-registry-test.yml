@@ -22,6 +22,10 @@ on:
       - "runtime_request_idempotency_testi.js"
       - "runtime_pg_authoritative_mutation.js"
       - "runtime_pg_authoritative_mutation_testi.js"
+      - "oyun_state_daimilik_korpu.js"
+      - "oyun_state_daimilik_korpu_testi.js"
+      - "runtime_state_sync.js"
+      - "runtime_state_sync_testi.js"
       - "runtime_legacy_base_teleport.js"
       - "runtime_legacy_base_teleport_testi.js"
       - "world_state_transaction_lock.js"
@@ -73,6 +77,10 @@ on:
       - "runtime_request_idempotency_testi.js"
       - "runtime_pg_authoritative_mutation.js"
       - "runtime_pg_authoritative_mutation_testi.js"
+      - "oyun_state_daimilik_korpu.js"
+      - "oyun_state_daimilik_korpu_testi.js"
+      - "runtime_state_sync.js"
+      - "runtime_state_sync_testi.js"
       - "runtime_legacy_base_teleport.js"
       - "runtime_legacy_base_teleport_testi.js"
       - "world_state_transaction_lock.js"
@@ -144,6 +152,12 @@ jobs:
 
       - name: Test PostgreSQL authoritative mutation
         run: node runtime_pg_authoritative_mutation_testi.js
+
+      - name: Test authoritative gameplay state restore
+        run: node oyun_state_daimilik_korpu_testi.js
+
+      - name: Test cross-instance runtime state sync
+        run: node runtime_state_sync_testi.js
 
       - name: Test shared state teleport authority
         run: node runtime_legacy_base_teleport_testi.js

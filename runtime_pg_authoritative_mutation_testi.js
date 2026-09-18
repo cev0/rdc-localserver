@@ -28,6 +28,7 @@ const {
   const sent = [];
   let prepareCount = 0;
   let afterCommitCount = 0;
+  let afterCommitChanged = null;
   let routedAfterCommitCount = 0;
   let sawDeferredBeforeCommit = false;
   let sawSideEffectDeferredBeforeCommit = false;
@@ -91,8 +92,15 @@ const {
         },
 
       afterCommit:
-        async () => {
+        async (
+          _playerId,
+          _state,
+          metadata
+        ) => {
           afterCommitCount += 1;
+          afterCommitChanged =
+            metadata &&
+            metadata.changed;
         }
     });
 
@@ -187,6 +195,11 @@ const {
   assert.strictEqual(
     afterCommitCount,
     1
+  );
+
+  assert.strictEqual(
+    afterCommitChanged,
+    true
   );
 
   assert.strictEqual(
