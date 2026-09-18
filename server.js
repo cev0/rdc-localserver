@@ -3401,6 +3401,10 @@ const {
   postgresAuthoritativeMutationExecutorYarat
 } = require("./runtime_pg_authoritative_mutation");
 const {
+  dovletBazalariniBirbasaPostgresdenAlClient,
+  dovletBazaKeshiniTemizle
+} = require("./dovlet_baza_kataloqu_postgres");
+const {
   oyuncuMutasiyaKilidiIleIcraEt
 } = require("./server_oyuncu_mutasiya_kilidi");
 
@@ -7132,13 +7136,16 @@ mapMutationCommandleriniQeydEt(
     createRoadsAlongPath,
     pushStateToPlayerConnections,
     teleportPlayerBaseInsideState,
+    applyPlayerBaseTeleportInsideState,
     pushStateLocalMapToStatePlayers,
     canMoveThisBuilding,
     canMoveBuilding,
     syncResourceSlotOccupancy,
     getWorldStateRuntime,
     occupyStateCenter,
-    pushWorldMapToAllAuthedPlayers
+    pushWorldMapToAllAuthedPlayers,
+    dovletBazalariniBirbasaPostgresdenAlClient,
+    dovletBazaKeshiniTemizle
   }
 );
 
