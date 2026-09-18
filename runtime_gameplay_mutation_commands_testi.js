@@ -188,7 +188,8 @@ const {
 
   assert.deepStrictEqual(
     deadlines,
-    ["p1"]
+    [],
+    "PostgreSQL-authoritative route deadline-i handler daxilinde commit-den evvel schedule etmemelidir."
   );
 
   assert.strictEqual(
