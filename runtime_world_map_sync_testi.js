@@ -6,6 +6,7 @@ const assert =
 const {
   RUNTIME_STATE_MAP_REFRESH_TYPE,
   RUNTIME_STATE_CENTER_UPDATE_TYPE,
+  RUNTIME_STATE_DYNAMIC_REFRESH_TYPE,
   centerUpdateTetbiqEt,
   runtimeWorldMapSyncControllerYarat
 } = require("./runtime_world_map_sync");
@@ -66,6 +67,7 @@ const {
 
   const cacheClears = [];
   const statePushes = [];
+  const dynamicPushes = [];
   let worldPushes = 0;
   const published = [];
 
@@ -92,6 +94,13 @@ const {
       pushWorldMap:
         async () => {
           worldPushes += 1;
+        },
+
+      pushDynamicMap:
+        async stateId => {
+          dynamicPushes.push(
+            stateId
+          );
         },
 
       nowMs:
@@ -164,6 +173,37 @@ const {
   );
 
   assert.strictEqual(
+    await controller.publishDynamicRefresh(
+      runtimeBus,
+      7,
+      "convoy_start"
+    ),
+    true
+  );
+
+  assert.strictEqual(
+    published[1].payload.type,
+    RUNTIME_STATE_DYNAMIC_REFRESH_TYPE
+  );
+
+  assert.strictEqual(
+    published[1].payload.reason,
+    "convoy_start"
+  );
+
+  await controller.handleBroadcast({
+    scope: "world-state",
+    targetId: "7",
+    payload:
+      published[1].payload
+  });
+
+  assert.deepStrictEqual(
+    dynamicPushes,
+    [7]
+  );
+
+  assert.strictEqual(
     await controller.publishCenterUpdate(
       runtimeBus,
       7,
@@ -184,7 +224,7 @@ const {
   );
 
   assert.strictEqual(
-    published[1].payload.type,
+    published[2].payload.type,
     RUNTIME_STATE_CENTER_UPDATE_TYPE
   );
 
@@ -192,7 +232,7 @@ const {
     scope: "world-state",
     targetId: "7",
     payload:
-      published[1].payload
+      published[2].payload
   });
 
   assert.strictEqual(

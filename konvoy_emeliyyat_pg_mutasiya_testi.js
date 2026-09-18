@@ -333,6 +333,27 @@ function fakeClientHazirla() {
       kod.includes("transaction && transaction.client"),
       "Shared runtime eyni player transaction client-i ilə işləməlidir."
     );
+
+    assert.ok(
+      kod.includes("runtimeDynamicMapRefreshGonder"),
+      "Committed convoy/shared-runtime dəyişikliyi digər server instanslarına dynamic map refresh göndərməlidir."
+    );
+
+    const transactionIndex =
+      kod.indexOf(
+        "await oyuncuStateMutasiyasiniPostgresIleIcraEt"
+      );
+
+    const refreshIndex =
+      kod.indexOf(
+        "await runtimeDynamicMapRefreshGonder"
+      );
+
+    assert.ok(
+      transactionIndex >= 0 &&
+      refreshIndex > transactionIndex,
+      "Dynamic map refresh PostgreSQL mutation tamamlandıqdan sonra göndərilməlidir."
+    );
   }
 
   console.log("[KONVOY_EMELIYYAT_PG_MUTASIYA_TEST] OK");

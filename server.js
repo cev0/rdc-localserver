@@ -3372,6 +3372,13 @@ const {
   runtimeYayiminiYereldeGonder
 } = require("./mesajlasma_handler");
 const {
+  dinamikLayerRuntimeMelumatiniHazirla
+} = require("./dovlet_xerite_layer_handler");
+const {
+  runtimeOxu:
+    dovletKonvoyRuntimeOxu
+} = require("./dovlet_konvoy_runtime_postgres");
+const {
   runtimeDeployConfiginiAl,
   runtimeDeployConfiginiYoxla,
   runtimeDeployPublicMelumatiniAl
@@ -3633,6 +3640,8 @@ const runtimeWorldMapSync =
       async () => {
         pushWorldMapToAllAuthedPlayers();
       },
+    pushDynamicMap:
+      pushStateDynamicMapToStatePlayers,
     nowMs
   });
 
@@ -4692,6 +4701,108 @@ async function pushStateLocalMapToStatePlayersAuthoritative(
       payloadJson:
         JSON.stringify(
           payload
+        )
+    });
+
+    sentCount += 1;
+  }
+
+  return sentCount;
+}
+
+async function pushStateDynamicMapToStatePlayers(
+  stateId
+) {
+  const sid =
+    Number(stateId);
+
+  if (
+    !Number.isInteger(sid) ||
+    sid <= 0
+  ) {
+    return 0;
+  }
+
+  let runtime;
+
+  try {
+    runtime =
+      await dovletKonvoyRuntimeOxu(
+        sid
+      );
+  }
+  catch (error) {
+    console.error(
+      "[STATE_DYNAMIC_MAP] Runtime read failed:",
+      {
+        stateId: sid,
+        message:
+          error && error.message
+            ? error.message
+            : String(error)
+      }
+    );
+
+    return 0;
+  }
+
+  const currentNow =
+    nowMs();
+
+  let sentCount = 0;
+
+  for (const ws of wss.clients) {
+    if (
+      !ws ||
+      ws.readyState !==
+        WebSocket.OPEN
+    ) {
+      continue;
+    }
+
+    const playerId =
+      ws._authedPlayerId;
+
+    if (!playerId) {
+      continue;
+    }
+
+    const playerState =
+      players.get(
+        playerId
+      );
+
+    if (
+      !playerState ||
+      !playerState.worldPlacement ||
+      Number(
+        playerState
+          .worldPlacement
+          .stateId
+      ) !== sid
+    ) {
+      continue;
+    }
+
+    const info =
+      dinamikLayerRuntimeMelumatiniHazirla(
+        runtime,
+        sid,
+        playerId,
+        currentNow
+      );
+
+    send(ws, {
+      type:
+        "state_map_dynamic_result",
+      playerId,
+      success: true,
+      serverTimeUnixMs:
+        currentNow,
+      info,
+      payloadJson:
+        JSON.stringify(
+          info
         )
     });
 

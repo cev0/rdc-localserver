@@ -16,6 +16,7 @@ const UNIT_TESTLERI = [
   "dovlet_baza_hq_gorunus_testi.js",
   "dovlet_konvoy_runtime_client_sync_testi.js",
   "dovlet_konvoy_runtime_pvp_status_testi.js",
+  "dovlet_xerite_layer_dynamic_testi.js",
   "doyus_itki_stat_v2_testi.js",
   "doyus_merheleli_resolver_testi.js",
   "doyus_qosun_lifecycle_testi.js",

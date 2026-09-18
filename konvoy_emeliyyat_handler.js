@@ -28,6 +28,9 @@ const {
 const {
   oyuncuStateMutasiyasiniPostgresIleIcraEt
 } = require("./oyun_state_mutasiya_postgres");
+const {
+  runtimeDynamicMapRefreshGonder
+} = require("./runtime_world_map_sync");
 
 const MESAJLAR = new Set([
   "convoy_operation_info_request",
@@ -674,6 +677,21 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
           );
         }
       );
+
+      if (
+        netice &&
+        netice.deyisdi === true
+      ) {
+        await runtimeDynamicMapRefreshGonder(
+          kontekst.runtimeBus,
+          dovletIdAl(
+            canliState
+          ),
+          type ||
+            "convoy_runtime_changed",
+          kontekst.nowMs
+        );
+      }
 
       if (type === "convoy_operation_info_request") {
         const info = netice && netice.info

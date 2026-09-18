@@ -6,6 +6,9 @@ const RUNTIME_STATE_MAP_REFRESH_TYPE =
 const RUNTIME_STATE_CENTER_UPDATE_TYPE =
   "__runtime_state_center_update_v1";
 
+const RUNTIME_STATE_DYNAMIC_REFRESH_TYPE =
+  "__runtime_state_dynamic_refresh_v1";
+
 function tamEded(value) {
   const n = Number(value);
 
@@ -114,6 +117,70 @@ function centerUpdateTetbiqEt(
   return true;
 }
 
+async function runtimeDynamicMapRefreshGonder(
+  runtimeBus,
+  stateId,
+  reason = "dynamic_state_changed",
+  nowMs = Date.now,
+  logger = console
+) {
+  const sid =
+    stateIdAl(
+      stateId
+    );
+
+  if (
+    !sid ||
+    !runtimeBus ||
+    typeof runtimeBus.publishBroadcast !==
+      "function"
+  ) {
+    return false;
+  }
+
+  const vaxt =
+    typeof nowMs === "function"
+      ? nowMs()
+      : Date.now();
+
+  try {
+    return await runtimeBus
+      .publishBroadcast(
+        "world-state",
+        String(sid),
+        {
+          type:
+            RUNTIME_STATE_DYNAMIC_REFRESH_TYPE,
+          reason:
+            typeof reason === "string" &&
+            reason.trim()
+              ? reason.trim().slice(
+                  0,
+                  96
+                )
+              : "dynamic_state_changed",
+          committedAtMs:
+            Number(vaxt) ||
+            Date.now()
+        }
+      );
+  }
+  catch (error) {
+    try {
+      logger.error(
+        "[RUNTIME_WORLD_MAP_SYNC] Dynamic refresh publish failed:",
+        error && error.message
+          ? error.message
+          : error
+      );
+    }
+    catch (_) {
+    }
+
+    return false;
+  }
+}
+
 function runtimeWorldMapSyncControllerYarat(
   options = {}
 ) {
@@ -136,6 +203,12 @@ function runtimeWorldMapSyncControllerYarat(
     typeof options.pushWorldMap ===
       "function"
       ? options.pushWorldMap
+      : async () => {};
+
+  const pushDynamicMap =
+    typeof options.pushDynamicMap ===
+      "function"
+      ? options.pushDynamicMap
       : async () => {};
 
   const nowMs =
@@ -218,6 +291,21 @@ function runtimeWorldMapSyncControllerYarat(
         committedAtMs:
           nowMs()
       }
+    );
+  }
+
+  async function publishDynamicRefresh(
+    runtimeBus,
+    stateId,
+    reason =
+      "dynamic_state_changed"
+  ) {
+    return await runtimeDynamicMapRefreshGonder(
+      runtimeBus,
+      stateId,
+      reason,
+      nowMs,
+      logger
     );
   }
 
@@ -305,6 +393,17 @@ function runtimeWorldMapSyncControllerYarat(
 
     if (
       payload.type ===
+        RUNTIME_STATE_DYNAMIC_REFRESH_TYPE
+    ) {
+      await pushDynamicMap(
+        sid
+      );
+
+      return true;
+    }
+
+    if (
+      payload.type ===
         RUNTIME_STATE_CENTER_UPDATE_TYPE
     ) {
       const stateRuntime =
@@ -334,6 +433,7 @@ function runtimeWorldMapSyncControllerYarat(
 
   return {
     publishBaseRefresh,
+    publishDynamicRefresh,
     publishCenterUpdate,
     handleBroadcast
   };
@@ -342,6 +442,8 @@ function runtimeWorldMapSyncControllerYarat(
 module.exports = {
   RUNTIME_STATE_MAP_REFRESH_TYPE,
   RUNTIME_STATE_CENTER_UPDATE_TYPE,
+  RUNTIME_STATE_DYNAMIC_REFRESH_TYPE,
   centerUpdateTetbiqEt,
+  runtimeDynamicMapRefreshGonder,
   runtimeWorldMapSyncControllerYarat
 };

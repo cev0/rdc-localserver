@@ -30,6 +30,10 @@ on:
       - "runtime_state_sync_testi.js"
       - "runtime_world_map_sync.js"
       - "runtime_world_map_sync_testi.js"
+      - "dovlet_xerite_layer_handler.js"
+      - "dovlet_xerite_layer_dynamic_testi.js"
+      - "konvoy_emeliyyat_handler.js"
+      - "konvoy_emeliyyat_pg_mutasiya_testi.js"
       - "runtime_legacy_base_teleport.js"
       - "runtime_legacy_base_teleport_testi.js"
       - "world_state_transaction_lock.js"
@@ -89,6 +93,10 @@ on:
       - "runtime_state_sync_testi.js"
       - "runtime_world_map_sync.js"
       - "runtime_world_map_sync_testi.js"
+      - "dovlet_xerite_layer_handler.js"
+      - "dovlet_xerite_layer_dynamic_testi.js"
+      - "konvoy_emeliyyat_handler.js"
+      - "konvoy_emeliyyat_pg_mutasiya_testi.js"
       - "runtime_legacy_base_teleport.js"
       - "runtime_legacy_base_teleport_testi.js"
       - "world_state_transaction_lock.js"
@@ -172,6 +180,12 @@ jobs:
 
       - name: Test cross-instance world-map sync
         run: node runtime_world_map_sync_testi.js
+
+      - name: Test dynamic state-map payload
+        run: node dovlet_xerite_layer_dynamic_testi.js
+
+      - name: Test convoy shared-runtime PostgreSQL mutation
+        run: node konvoy_emeliyyat_pg_mutasiya_testi.js
 
       - name: Test shared state teleport authority
         run: node runtime_legacy_base_teleport_testi.js
