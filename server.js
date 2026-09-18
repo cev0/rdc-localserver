@@ -3380,6 +3380,9 @@ const {
   gameplayMutationCommandleriniQeydEt
 } = require("./runtime_gameplay_mutation_commands");
 const {
+  buildCommandleriniQeydEt
+} = require("./runtime_build_commands");
+const {
   oyuncuMutasiyaKilidiIleIcraEt
 } = require("./server_oyuncu_mutasiya_kilidi");
 
@@ -6857,6 +6860,33 @@ gameplayMutationCommandleriniQeydEt(
     isUpgradeDisabledBuildingId,
     getMaxLevelForBuilding,
     createUpgradeJob
+  }
+);
+
+buildCommandleriniQeydEt(
+  runtimeCommandRouter,
+  {
+    getOrCreatePlayerState,
+    normalizeBuildingId,
+    removeRoadAtCell,
+    checkUnlockRequirements,
+    countPlacedBuildingsOfType,
+    getMaxPlacedCountForBuilding,
+    getAllowedPlacedCountForBuilding,
+    getNextUnlockCountRequirement,
+    hasUnfinishedBuildingOfSameType,
+    canPlaceBuilding,
+    isGarageBuildingId,
+    getLevelData,
+    hasEnoughResources,
+    spendResources,
+    placeBuildingWithoutStarting,
+    syncResourceSlotOccupancy,
+    refreshRoadAccessForBuildings,
+    refreshBuilderCapacity,
+    makeClientState,
+    sendStateLocalMapToPlayer,
+    sendWorldMapToPlayer
   }
 );
 
