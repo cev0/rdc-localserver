@@ -3387,6 +3387,10 @@ const {
   accountCommandleriniQeydEt
 } = require("./runtime_account_commands");
 const {
+  requestIdAl,
+  correlatedSendYarat
+} = require("./runtime_protocol_envelope");
+const {
   oyuncuMutasiyaKilidiIleIcraEt
 } = require("./server_oyuncu_mutasiya_kilidi");
 
@@ -6805,9 +6809,8 @@ async function processPlayerDeadline(playerId) {
 // ============================================================
 // COMMAND ROUTER
 // ------------------------------------------------------------
-// Legacy switch birden-bire silinmir. Yeni router command-lari
-// hissə-hissə öz handler modullarina daşıyır; tanımadığı type-lar
-// aşağıdakı legacy switch-ə düşür.
+// WebSocket command-lari modular handler-lere route olunur.
+// server.js daxilinde legacy gameplay switch artiq yoxdur.
 // ============================================================
 
 const runtimeCommandRouter =
@@ -6998,13 +7001,21 @@ wss.on("connection", (ws, req) => {
     console.log("[SERVER PARSED TYPE]", msg.type);
 
     const type = msg.type;
+    const requestId =
+      requestIdAl(msg);
+
+    const cavabGonder =
+      correlatedSendYarat(
+        send,
+        requestId
+      );
 
     const hesabLoginEmalOlundu =
     await hesabLoginMesajiniEmalEt({
       type,
       msg,
       ws,
-      send,
+      send: cavabGonder,
       nowMs,
       connections,
       getOrCreatePlayerState,
@@ -7023,7 +7034,7 @@ wss.on("connection", (ws, req) => {
       type,
       msg,
       ws,
-      send,
+      send: cavabGonder,
       nowMs
     });
 
@@ -7036,7 +7047,7 @@ wss.on("connection", (ws, req) => {
       type,
       msg,
       ws,
-      send,
+      send: cavabGonder,
       nowMs
     });
 
@@ -7044,7 +7055,7 @@ wss.on("connection", (ws, req) => {
     return;
   }
 
-  send(ws, {
+  cavabGonder(ws, {
     type: "error",
     code: "UNKNOWN_COMMAND",
     message: "Unknown type"
