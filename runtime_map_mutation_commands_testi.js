@@ -303,7 +303,8 @@ const {
 
   assert.deepStrictEqual(
     localMapPushes,
-    [1]
+    [1, 1],
+    "Legacy teleport commit-den sonra, center occupation isə runtime mutation-dan sonra local map push etməlidir."
   );
 
   assert.strictEqual(
