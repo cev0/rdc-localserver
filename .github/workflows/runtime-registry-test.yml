@@ -1,0 +1,31 @@
+name: Runtime Registry Test
+
+on:
+  push:
+    branches:
+      - server-v2-scalable
+    paths:
+      - "runtime_registry.js"
+      - "runtime_registry_testi.js"
+      - "server.js"
+      - "package.json"
+      - ".github/workflows/runtime-registry-test.yml"
+  pull_request:
+    paths:
+      - "runtime_registry.js"
+      - "runtime_registry_testi.js"
+      - "server.js"
+      - "package.json"
+      - ".github/workflows/runtime-registry-test.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npm run runtime:registry-test
