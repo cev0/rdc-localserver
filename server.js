@@ -4550,10 +4550,20 @@ function getOrCreatePlayerState(playerId) {
     DEFAULT_PRODUCTION_TICK_MS
   );
 
-  // getOrCreatePlayerState demek olar ki butun authoritative handler-lerin
-  // ortaq giris noqtəsidir. Burada lazy settlement etmek mutation-dan once
-  // resurslarin hemişe cari olmasini təmin edir.
-  processProductionForState(state, nowMs());
+  // Snapshot-dan qayıdan oyunçuda keçmiş build/research/training deadline-ları
+  // ola bilər. Sadəcə production-u "indi"yə gətirmək düzgün olmazdı:
+  // əvvəl event vaxtlarına qədər istehsal, sonra event, sonra yeni rate ilə
+  // qalan vaxt hesablanmalıdır.
+  settlePlayerTimeline(
+    state,
+    playerId,
+    nowMs()
+  );
+
+  schedulePlayerDeadline(
+    playerId,
+    state
+  );
 
   return state;
 }
@@ -6571,21 +6581,31 @@ function processTrainingQueuesForState(
   return changed;
 }
 
-async function processPlayerDeadline(playerId) {
-  const state = players.get(playerId);
-
+function settlePlayerTimeline(
+  state,
+  playerId,
+  targetTimeMs = nowMs()
+) {
   if (!state) {
-    return null;
+    return {
+      stateChanged: false,
+      builderChanged: false,
+      completedResearchList: [],
+      nextDueAtMs: null
+    };
   }
 
-  const targetNow = nowMs();
+  const targetNow =
+    Math.max(
+      0,
+      Number(targetTimeMs) || nowMs()
+    );
 
   let stateChanged = false;
   let builderChangedAny = false;
   const completedResearchList = [];
 
-  // Bir player ucun normalda bir nece deadline olur.
-  // Guard korlanmis state-in sonsuz loop yaratmasinin qarsisini alir.
+  // Korlanmis state sonsuz loop yaratmasin.
   let guard = 0;
 
   while (guard < 1000) {
@@ -6601,12 +6621,15 @@ async function processPlayerDeadline(playerId) {
       break;
     }
 
-    // Event aninda production tick varsa, once event-i tetbiq edib sonra
-    // hemin tick-i yeni state ile hesablayiriq.
-    processProductionForState(
-      state,
-      Math.max(0, nextDueAt - 1)
-    );
+    // Deadline-dan bir millisaniye evvele qeder kohne istehsal rate-i.
+    if (
+      processProductionForState(
+        state,
+        Math.max(0, nextDueAt - 1)
+      )
+    ) {
+      stateChanged = true;
+    }
 
     const completedResearch =
       completeTechnologyResearchForState(
@@ -6655,8 +6678,7 @@ async function processPlayerDeadline(playerId) {
 
     stateChanged = true;
 
-    // Eger production tick event vaxtina tam dusurse, artıq yeni bina/tech
-    // bonuslari ile hesablanir.
+    // Production tick event vaxtina tam dusurse yeni state/rate ile hesablanir.
     if (
       processProductionForState(
         state,
@@ -6674,7 +6696,7 @@ async function processPlayerDeadline(playerId) {
     );
   }
 
-  // Son event-den cari vaxta qeder qalan production tick-lerini bir defe hesabla.
+  // Son event-den cari vaxta qeder qalan production tick-leri.
   if (
     processProductionForState(
       state,
@@ -6684,7 +6706,31 @@ async function processPlayerDeadline(playerId) {
     stateChanged = true;
   }
 
-  if (stateChanged) {
+  return {
+    stateChanged,
+    builderChanged:
+      builderChangedAny,
+    completedResearchList,
+    nextDueAtMs:
+      nextPlayerDeadlineAtMs(state)
+  };
+}
+
+async function processPlayerDeadline(playerId) {
+  const state = players.get(playerId);
+
+  if (!state) {
+    return null;
+  }
+
+  const netice =
+    settlePlayerTimeline(
+      state,
+      playerId,
+      nowMs()
+    );
+
+  if (netice.stateChanged) {
     pushStateToPlayerConnections(
       playerId,
       state
@@ -6693,7 +6739,7 @@ async function processPlayerDeadline(playerId) {
 
   for (
     const completedResearch of
-    completedResearchList
+    netice.completedResearchList
   ) {
     connections.deliver(
       playerId,
@@ -6719,14 +6765,14 @@ async function processPlayerDeadline(playerId) {
     );
   }
 
-  if (builderChangedAny) {
+  if (netice.builderChanged) {
     console.log(
       "[SERVER] Build completed for player:",
       playerId
     );
   }
 
-  return nextPlayerDeadlineAtMs(state);
+  return netice.nextDueAtMs;
 }
 
 
@@ -8971,6 +9017,12 @@ case "occupy_state_center_request": {
             movcudVeziyyet
           );
 
+          settlePlayerTimeline(
+            movcudVeziyyet,
+            playerId,
+            nowMs()
+          );
+
           /*
            * Oyunçu profil məlumatları server-authoritative qalır.
            * Client save_state ilə adı və ittifaq adını özbaşına dəyişə bilməz.
@@ -9004,6 +9056,17 @@ case "occupy_state_center_request": {
               movcudVeziyyet.missions
             )
           );
+
+          /*
+           * Resurslar da server-authoritative-dir.
+           * Client save_state ile ozune resurs yaza ve ya lazy accrual-u geri ala bilmez.
+           */
+          incoming.resources =
+            JSON.parse(
+              JSON.stringify(
+                movcudVeziyyet.resources
+              )
+            );
 
           /*
            * Lazy production saatini client idarə etmir.
@@ -9108,9 +9171,8 @@ function completeTechnologyResearchForAllPlayers() {
 // hər saniyə scan etmir. RuntimeDeadlineScheduler yalnız aktiv
 // deadline olan player-ləri vaxtı çatanda oyadır.
 //
-// Resource production hələlik mövcud 5 saniyəlik tick semantikasını
-// qoruyur. Növbəti mərhələdə onu elapsed-time/lazy accrual modelinə
-// keçirəcəyik.
+// Resource production 5 saniyəlik iqtisadiyyat semantikasını saxlayır,
+// amma artıq global scan yoxdur: elapsed-time/lazy settlement işləyir.
 // ============================================================
 
 // City production is lazy/elapsed-time based; global player scan yoxdur.
