@@ -3354,6 +3354,9 @@ const {
 const {
   createRuntimeRedisBus
 } = require("./runtime_redis");
+const {
+  RuntimeDeadlineScheduler
+} = require("./runtime_deadline_scheduler");
 
 const STATE_CENTER_UNLOCK_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
 const STATE_NEW_PLAYER_SOFT_CAP = 200;
@@ -3532,6 +3535,11 @@ runtimeBus.start().catch((error) => {
     // Required Redis olmadan multi-instance server saglam sayilmir.
     setImmediate(() => process.exit(1));
   }
+});
+
+const deadlineScheduler = new RuntimeDeadlineScheduler({
+  now: nowMs,
+  onDue: processPlayerDeadline
 });
 
 function updateServerTime(state) {
@@ -6279,6 +6287,220 @@ function completeFinishedJobsForAllPlayers() {
       console.log("[SERVER] Build completed for player:", playerId);
     }
   }
+}
+
+
+function nextPlayerDeadlineAtMs(state) {
+  if (!state || typeof state !== "object") {
+    return null;
+  }
+
+  let next = Number.POSITIVE_INFINITY;
+
+  const researchEndsAt =
+    Number(
+      state.technology &&
+      state.technology.currentResearch &&
+      state.technology.currentResearch.endsAtMs
+    );
+
+  if (
+    Number.isFinite(researchEndsAt) &&
+    researchEndsAt > 0
+  ) {
+    next = Math.min(next, researchEndsAt);
+  }
+
+  const jobs =
+    state.builders &&
+    Array.isArray(state.builders.jobs)
+      ? state.builders.jobs
+      : [];
+
+  for (const job of jobs) {
+    if (!job || job.isCompleted) continue;
+
+    const endsAt = Number(job.endsAtMs);
+    if (Number.isFinite(endsAt) && endsAt > 0) {
+      next = Math.min(next, endsAt);
+    }
+  }
+
+  const queues =
+    state.army &&
+    state.army.trainingQueues &&
+    typeof state.army.trainingQueues === "object"
+      ? state.army.trainingQueues
+      : null;
+
+  if (queues) {
+    for (const queue of Object.values(queues)) {
+      if (!queue) continue;
+
+      const finishAt = Number(queue.finishTimeMs);
+      if (
+        Number.isFinite(finishAt) &&
+        finishAt > 0
+      ) {
+        next = Math.min(next, finishAt);
+      }
+    }
+  }
+
+  return Number.isFinite(next)
+    ? next
+    : null;
+}
+
+function schedulePlayerDeadline(playerId, state) {
+  const nextDueAt =
+    nextPlayerDeadlineAtMs(state);
+
+  if (nextDueAt == null) {
+    deadlineScheduler.cancel(playerId);
+    return null;
+  }
+
+  deadlineScheduler.schedule(
+    playerId,
+    nextDueAt
+  );
+
+  return nextDueAt;
+}
+
+function processTrainingQueuesForState(
+  state,
+  playerId
+) {
+  if (
+    !state ||
+    !state.army ||
+    !state.army.trainingQueues ||
+    typeof state.army.trainingQueues !== "object"
+  ) {
+    return false;
+  }
+
+  if (!state.army.troops) {
+    state.army.troops = {};
+  }
+
+  const now = nowMs();
+  let changed = false;
+
+  for (
+    const buildingInstanceId of
+    Object.keys(state.army.trainingQueues)
+  ) {
+    const queue =
+      state.army.trainingQueues[
+        buildingInstanceId
+      ];
+
+    if (!queue) continue;
+    if (now < Number(queue.finishTimeMs || 0)) {
+      continue;
+    }
+
+    const unitId = queue.unitId;
+    const count =
+      Math.max(0, Number(queue.count) || 0);
+
+    if (
+      typeof state.army.troops[unitId] !==
+      "number"
+    ) {
+      state.army.troops[unitId] = 0;
+    }
+
+    state.army.troops[unitId] += count;
+
+    delete state.army.trainingQueues[
+      buildingInstanceId
+    ];
+
+    changed = true;
+
+    console.log("[TRAIN_FINISHED]", {
+      playerId,
+      buildingInstanceId,
+      unitId,
+      added: count,
+      newTotal: state.army.troops[unitId]
+    });
+  }
+
+  if (changed) {
+    updateServerTime(state);
+  }
+
+  return changed;
+}
+
+async function processPlayerDeadline(playerId) {
+  const state = players.get(playerId);
+
+  if (!state) {
+    return null;
+  }
+
+  const completedResearch =
+    completeTechnologyResearchForState(state);
+
+  const builderChanged =
+    completeFinishedJobsForState(state);
+
+  const trainingChanged =
+    processTrainingQueuesForState(
+      state,
+      playerId
+    );
+
+  const stateChanged =
+    !!completedResearch ||
+    builderChanged ||
+    trainingChanged;
+
+  if (stateChanged) {
+    pushStateToPlayerConnections(
+      playerId,
+      state
+    );
+  }
+
+  if (completedResearch) {
+    connections.deliver(
+      playerId,
+      {
+        type: "technology_research_completed",
+        playerId,
+        serverTimeUnixMs: nowMs(),
+        payloadJson:
+          JSON.stringify(completedResearch)
+      },
+      send
+    );
+
+    console.log(
+      "[TECH_RESEARCH_COMPLETED]",
+      {
+        playerId,
+        techId: completedResearch.techId,
+        targetLevel:
+          completedResearch.targetLevel
+      }
+    );
+  }
+
+  if (builderChanged) {
+    console.log(
+      "[SERVER] Build completed for player:",
+      playerId
+    );
+  }
+
+  return nextPlayerDeadlineAtMs(state);
 }
 
 
