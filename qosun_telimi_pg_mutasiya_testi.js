@@ -302,8 +302,8 @@ function stateHazirla() {
   );
   assert.strictEqual(
     gameplaySnapshotiTelebOlunur("build_request"),
-    true,
-    "Legacy tikinti daimiliyi port olunana qədər snapshot observer saxlanmalıdır."
+    false,
+    "build_request artıq PostgreSQL-authoritative olduğuna görə legacy snapshot observer işləməməlidir."
   );
 })();
 
