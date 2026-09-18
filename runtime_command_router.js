@@ -27,6 +27,11 @@ class RuntimeCommandRouter {
         ? options.idempotencyExecutor
         : null;
 
+    this.authoritativeMutationExecutor =
+      typeof options.authoritativeMutationExecutor === "function"
+        ? options.authoritativeMutationExecutor
+        : null;
+
     this._routes = new Map();
     this._metrics = new Map();
   }
@@ -59,7 +64,9 @@ class RuntimeCommandRouter {
       authRequired:
         options.authRequired === true,
       mutation:
-        options.mutation === true
+        options.mutation === true,
+      postgresAuthoritative:
+        options.postgresAuthoritative === true
     });
 
     this._metrics.set(normalized, {
@@ -164,9 +171,22 @@ class RuntimeCommandRouter {
               )
             : "";
 
-        await this.mutationExecutor(
+        const selectedExecutor =
+          route.postgresAuthoritative &&
+          this.authoritativeMutationExecutor
+            ? this.authoritativeMutationExecutor
+            : this.mutationExecutor;
+
+        await selectedExecutor(
           playerId,
-          async () => {
+          async (
+            mutationRuntime = {}
+          ) => {
+            const mutationSend =
+              typeof mutationRuntime.send === "function"
+                ? mutationRuntime.send
+                : context.send;
+
             if (
               this.idempotencyExecutor
             ) {
@@ -178,7 +198,7 @@ class RuntimeCommandRouter {
                 ws:
                   context.ws,
                 send:
-                  context.send,
+                  mutationSend,
                 execute:
                   async (
                     sendOverride
@@ -187,14 +207,25 @@ class RuntimeCommandRouter {
                       ...handlerContext,
                       send:
                         sendOverride ||
-                        handlerContext.send
+                        mutationSend
                     })
               });
             }
 
-            return await route.handler(
-              handlerContext
-            );
+            return await route.handler({
+              ...handlerContext,
+              send:
+                mutationSend
+            });
+          },
+          {
+            type,
+            msg:
+              context.msg || {},
+            ws:
+              context.ws,
+            send:
+              context.send
           }
         );
       }
