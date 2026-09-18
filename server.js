@@ -3373,6 +3373,9 @@ const {
 const {
   coreReadCommandleriniQeydEt
 } = require("./runtime_core_read_commands");
+const {
+  authCommandiniQeydEt
+} = require("./runtime_auth_command");
 
 const STATE_CENTER_UNLOCK_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
 const STATE_NEW_PLAYER_SOFT_CAP = 200;
@@ -6807,6 +6810,20 @@ coreReadCommandleriniQeydEt(
     makeClientState,
     buildStateLocalMapPayload,
     buildWorldMapPayloadForClient
+  }
+);
+
+authCommandiniQeydEt(
+  runtimeCommandRouter,
+  {
+    connections,
+    runtimeBus,
+    getOrCreatePlayerState,
+    updateServerTime,
+    schedulePlayerDeadline,
+    makeClientState,
+    sendStateLocalMapToPlayer,
+    sendWorldMapToPlayer
   }
 );
 
