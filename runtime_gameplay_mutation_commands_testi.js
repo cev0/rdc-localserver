@@ -48,9 +48,29 @@ const {
         error() {}
       },
       mutationExecutor:
-        async (playerId, fn) => {
-          lockCalls.push(playerId);
+        async (
+          playerId,
+          fn
+        ) => {
+          lockCalls.push(
+            playerId
+          );
           return await fn();
+        },
+      authoritativeMutationExecutor:
+        async (
+          playerId,
+          fn
+        ) => {
+          lockCalls.push(
+            playerId
+          );
+          return await fn({
+            send:
+              (_ws, payload) => {
+                sent.push(payload);
+              }
+          });
         }
     });
 
