@@ -164,7 +164,8 @@ function mapMutationCommandleriniQeydEt(
     },
     {
       authRequired: true,
-      mutation: true
+      mutation: true,
+      postgresAuthoritative: true
     }
   );
 
@@ -304,7 +305,8 @@ function mapMutationCommandleriniQeydEt(
     },
     {
       authRequired: true,
-      mutation: true
+      mutation: true,
+      postgresAuthoritative: true
     }
   );
 
@@ -361,10 +363,18 @@ function mapMutationCommandleriniQeydEt(
     },
     {
       authRequired: true,
-      mutation: true
+      mutation: true,
+      postgresAuthoritative: true
     }
   );
 
+  /*
+   * base_teleport_request və occupy_state_center_request yalnız player state
+   * deyil, eyni Dövlətin ortaq world state-inə toxunur. Onları player-level
+   * PostgreSQL authoritative executor-a salmaq təhlükəlidir: ayrıca world/state
+   * transaction modeli tələb olunur. Ona görə aşağıdakı shared-world route-lar
+   * növbəti mərhələyə qədər qəsdən yalnız runtime mutation lock-da qalır.
+   */
   router.register(
     "base_teleport_request",
     async ({ ws, msg, send, nowMs }) => {
@@ -623,7 +633,8 @@ function mapMutationCommandleriniQeydEt(
     },
     {
       authRequired: true,
-      mutation: true
+      mutation: true,
+      postgresAuthoritative: true
     }
   );
 
