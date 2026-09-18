@@ -42,8 +42,6 @@ function mapMutationCommandleriniQeydEt(
     canMoveBuilding,
     syncResourceSlotOccupancy,
     getWorldStateRuntime,
-    occupyStateCenter,
-    pushWorldMapToAllAuthedPlayers,
     dovletBazalariniBirbasaPostgresdenAlClient,
     dovletBazaKeshiniTemizle
   } = deps || {};
@@ -66,8 +64,6 @@ function mapMutationCommandleriniQeydEt(
     canMoveBuilding,
     syncResourceSlotOccupancy,
     getWorldStateRuntime,
-    occupyStateCenter,
-    pushWorldMapToAllAuthedPlayers,
     dovletBazalariniBirbasaPostgresdenAlClient,
     dovletBazaKeshiniTemizle
   };
@@ -771,106 +767,41 @@ function mapMutationCommandleriniQeydEt(
 
   router.register(
     "occupy_state_center_request",
-    async ({ ws, msg, send, nowMs }) => {
+    async ({ ws, msg, send }) => {
       const authCheck =
-        playerIdUyugunluqYoxla(msg, ws);
+        playerIdUyugunluqYoxla(
+          msg,
+          ws
+        );
 
       if (!authCheck.ok) {
         errorGonder(
           send,
           ws,
           authCheck.message,
-          authCheck.message === "Player ID mismatch"
+          authCheck.message ===
+          "Player ID mismatch"
             ? "PLAYER_ID_MISMATCH"
             : "NOT_AUTHED"
         );
         return;
       }
 
-      const playerId = authCheck.playerId;
-      const playerState =
-        getOrCreatePlayerState(playerId);
-
-      if (
-        !playerState ||
-        !playerState.worldPlacement
-      ) {
-        errorGonder(
-          send,
-          ws,
-          "Player world placement not found"
-        );
-        return;
-      }
-
-      const stateId =
-        Number.isInteger(msg.stateId)
-          ? msg.stateId
-          : Number(
-              playerState.worldPlacement
-                .stateId
-            );
-
-      const stateRuntime =
-        getWorldStateRuntime(stateId);
-
-      if (!stateRuntime) {
-        errorGonder(
-          send,
-          ws,
-          "World state not found"
-        );
-        return;
-      }
-
-      if (
-        Number(
-          playerState.worldPlacement
-            .stateId
-        ) !== Number(stateId)
-      ) {
-        errorGonder(
-          send,
-          ws,
-          "Player is not inside this state"
-        );
-        return;
-      }
-
-      const result =
-        occupyStateCenter(
-          stateRuntime,
-          playerId,
-          null
-        );
-
-      if (!result.ok) {
-        errorGonder(
-          send,
-          ws,
-          result.message ||
-            "Occupation failed"
-        );
-        return;
-      }
-
-      send(ws, {
-        type: "state_center_occupied",
-        playerId,
-        serverTimeUnixMs: nowMs(),
-        payloadJson:
-          JSON.stringify(result)
-      });
-
-      pushStateLocalMapToStatePlayers(
-        stateId
+      /*
+       * Prezident / Dövlət mərkəzi ortaq world state-dir.
+       * Legacy RAM runtime multi-instance üçün authoritative deyil.
+       * Persistent world metadata transaction modeli hazır olana qədər
+       * split-brain yaratmaqdansa fail-closed davranırıq.
+       */
+      errorGonder(
+        send,
+        ws,
+        "State center occupation is temporarily disabled until persistent world-state authority is enabled.",
+        "STATE_CENTER_PERSISTENCE_REQUIRED"
       );
-
-      pushWorldMapToAllAuthedPlayers();
     },
     {
-      authRequired: true,
-      mutation: true
+      authRequired: true
     }
   );
 
