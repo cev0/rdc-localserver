@@ -128,26 +128,35 @@ class ConnectionRuntimeRegistry extends MapCompatibleRegistry {
 
   deliver(playerId, payload, sendFn) {
     const localCount =
-      this.deliverLocal(playerId, payload, sendFn);
+      this.deliverLocal(
+        playerId,
+        payload,
+        sendFn
+      );
 
-    if (localCount > 0) {
+    /*
+     * Eyni hesab eyni anda başqa server instansında da açıq ola bilər.
+     * Ona görə local socket tapılsa belə remote publish dayandırılmır.
+     * Redis bus öz instanceId-sini target siyahısından çıxardığı üçün
+     * bu fan-out local socket-lərdə duplicate yaratmır.
+     */
+    if (this._remotePublisher) {
+      Promise.resolve(
+        this._remotePublisher(
+          playerId,
+          payload
+        )
+      ).catch((error) => {
+        console.error(
+          "[RUNTIME_REGISTRY] Remote delivery failed:",
+          error && error.message ? error.message : error
+        );
+      });
+
       return true;
     }
 
-    if (!this._remotePublisher) {
-      return false;
-    }
-
-    Promise.resolve(
-      this._remotePublisher(playerId, payload)
-    ).catch((error) => {
-      console.error(
-        "[RUNTIME_REGISTRY] Remote delivery failed:",
-        error && error.message ? error.message : error
-      );
-    });
-
-    return true;
+    return localCount > 0;
   }
 
   /**

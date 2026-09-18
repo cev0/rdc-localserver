@@ -89,7 +89,6 @@ const {
   );
 
   assert.strictEqual(sent.length, 1);
-  assert.strictEqual(remote.length, 0);
 
   assert.strictEqual(
     connections.deliver(
@@ -101,11 +100,17 @@ const {
   );
 
   setImmediate(() => {
-    assert.strictEqual(remote.length, 1);
-    assert.strictEqual(remote[0].playerId, "remote-player");
-    assert.strictEqual(remote[0].payload.type, "remote_ping");
+    assert.strictEqual(
+      remote.length,
+      2,
+      "Local socket olsa belə payload digər instanslardakı eyni hesab sessiyalarına publish edilməlidir."
+    );
+    assert.strictEqual(remote[0].playerId, "local-player");
+    assert.strictEqual(remote[0].payload.type, "ping");
+    assert.strictEqual(remote[1].playerId, "remote-player");
+    assert.strictEqual(remote[1].payload.type, "remote_ping");
   });
 })();
 
 
-console.log("PASS: runtime registry Map contract, reconnect safety and remote delivery.");
+console.log("PASS: runtime registry Map contract, reconnect safety and local+remote multi-instance delivery.");

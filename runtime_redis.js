@@ -99,7 +99,12 @@ class RuntimeRedisBus {
   }
 
   presenceKey(playerId) {
+    // Legacy single-instance presence key rolling deploy uyğunluğu üçün saxlanılır.
     return `${this.namespace}:presence:${playerId}`;
+  }
+
+  presenceInstancesKey(playerId) {
+    return `${this.namespace}:presence-v2:${playerId}`;
   }
 
   instanceChannel(instanceId = this.instanceId) {
@@ -217,9 +222,17 @@ class RuntimeRedisBus {
 
     this.localPlayers.delete(id);
 
-    if (!this.ready) {
+    if (
+      !this.commandClient ||
+      !this.commandClient.isReady
+    ) {
       return false;
     }
+
+    await this.commandClient.zRem(
+      this.presenceInstancesKey(id),
+      this.instanceId
+    );
 
     const script =
       "if redis.call('GET', KEYS[1]) == ARGV[1] " +
@@ -240,19 +253,26 @@ class RuntimeRedisBus {
       return false;
     }
 
-    const targetInstanceId =
-      await this.commandClient.get(
-        this.presenceKey(id)
+    const targetInstanceIds =
+      await this._aktivInstanceIdleriniAl(
+        id
       );
 
-    if (!targetInstanceId) {
+    const remoteTargets =
+      targetInstanceIds.filter(
+        instanceId =>
+          instanceId !==
+            this.instanceId
+      );
+
+    if (remoteTargets.length === 0) {
       return false;
     }
 
-    if (targetInstanceId === this.instanceId) {
-      return false;
-    }
-
+    /*
+     * Envelope v1 saxlanılır ki rolling deploy zamanı köhnə instance-lar
+     * yeni multi-instance publisher-dan gələn mesajı qəbul edə bilsin.
+     */
     const envelope = {
       version: 1,
       sourceInstanceId: this.instanceId,
@@ -260,13 +280,28 @@ class RuntimeRedisBus {
       payload
     };
 
-    const subscriberCount =
-      await this.commandClient.publish(
-        this.instanceChannel(targetInstanceId),
-        JSON.stringify(envelope)
-      );
+    let delivered = false;
 
-    return Number(subscriberCount) > 0;
+    for (
+      const targetInstanceId of
+      remoteTargets
+    ) {
+      const subscriberCount =
+        await this.commandClient.publish(
+          this.instanceChannel(
+            targetInstanceId
+          ),
+          JSON.stringify(envelope)
+        );
+
+      if (
+        Number(subscriberCount) > 0
+      ) {
+        delivered = true;
+      }
+    }
+
+    return delivered;
   }
 
   snapshot() {
@@ -275,13 +310,13 @@ class RuntimeRedisBus {
       required: this.required,
       ready: this.ready,
       instanceId: this.instanceId,
-      localPlayers: this.localPlayers.size
+      localPlayers: this.localPlayers.size,
+      presenceMode: "multi-instance-v2"
     };
   }
 
   async close() {
     this.closing = true;
-    this.ready = false;
 
     if (this.refreshTimer) {
       clearInterval(this.refreshTimer);
@@ -394,11 +429,26 @@ class RuntimeRedisBus {
   }
 
   async _presenceYenile(playerId) {
-    if (!this.ready || !this.commandClient) {
+    if (
+      !this.ready ||
+      !this.commandClient ||
+      !this.commandClient.isReady
+    ) {
       return false;
     }
 
-    await this.commandClient.set(
+    const now =
+      Date.now();
+
+    const expiresAtMs =
+      now +
+      this.presenceTtlSeconds *
+        1000;
+
+    const transaction =
+      this.commandClient.multi();
+
+    transaction.set(
       this.presenceKey(playerId),
       this.instanceId,
       {
@@ -406,7 +456,100 @@ class RuntimeRedisBus {
       }
     );
 
+    transaction.zRemRangeByScore(
+      this.presenceInstancesKey(
+        playerId
+      ),
+      0,
+      now
+    );
+
+    transaction.zAdd(
+      this.presenceInstancesKey(
+        playerId
+      ),
+      [
+        {
+          score: expiresAtMs,
+          value: this.instanceId
+        }
+      ]
+    );
+
+    transaction.expire(
+      this.presenceInstancesKey(
+        playerId
+      ),
+      this.presenceTtlSeconds *
+        2
+    );
+
+    await transaction.exec();
+
     return true;
+  }
+
+  async _aktivInstanceIdleriniAl(
+    playerId
+  ) {
+    if (
+      !this.commandClient ||
+      !this.commandClient.isReady
+    ) {
+      return [];
+    }
+
+    const now =
+      Date.now();
+
+    const key =
+      this.presenceInstancesKey(
+        playerId
+      );
+
+    await this.commandClient
+      .zRemRangeByScore(
+        key,
+        0,
+        now
+      );
+
+    const multiInstanceIds =
+      await this.commandClient
+        .zRangeByScore(
+          key,
+          now + 1,
+          "+inf"
+        );
+
+    /*
+     * Legacy key həmişə ayrıca oxunur. Beləliklə rolling deploy zamanı
+     * yeni instance həm v2 presence üzvlərinə, həm də köhnə serverin
+     * single-instance presence qeydiyyatına çata bilir.
+     */
+    const legacyInstanceId =
+      await this.commandClient.get(
+        this.presenceKey(
+          playerId
+        )
+      );
+
+    const ids =
+      new Set(
+        Array.isArray(
+          multiInstanceIds
+        )
+          ? multiInstanceIds
+          : []
+      );
+
+    if (legacyInstanceId) {
+      ids.add(
+        legacyInstanceId
+      );
+    }
+
+    return Array.from(ids);
   }
 
   _presenceRefreshBaslat() {
@@ -443,6 +586,14 @@ class RuntimeRedisBus {
     const transaction =
       this.commandClient.multi();
 
+    const now =
+      Date.now();
+
+    const expiresAtMs =
+      now +
+      this.presenceTtlSeconds *
+        1000;
+
     for (const playerId of this.localPlayers) {
       transaction.set(
         this.presenceKey(playerId),
@@ -450,6 +601,36 @@ class RuntimeRedisBus {
         {
           EX: this.presenceTtlSeconds
         }
+      );
+
+      transaction.zRemRangeByScore(
+        this.presenceInstancesKey(
+          playerId
+        ),
+        0,
+        now
+      );
+
+      transaction.zAdd(
+        this.presenceInstancesKey(
+          playerId
+        ),
+        [
+          {
+            score:
+              expiresAtMs,
+            value:
+              this.instanceId
+          }
+        ]
+      );
+
+      transaction.expire(
+        this.presenceInstancesKey(
+          playerId
+        ),
+        this.presenceTtlSeconds *
+          2
       );
     }
 

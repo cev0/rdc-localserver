@@ -13,6 +13,25 @@ function gozleBirTick() {
   return new Promise(resolve => setImmediate(resolve));
 }
 
+function scoreUyqundur(
+  score,
+  min,
+  max
+) {
+  const lower =
+    String(min) === "-inf"
+      ? -Infinity
+      : Number(min);
+
+  const upper =
+    String(max) === "+inf"
+      ? Infinity
+      : Number(max);
+
+  return score >= lower &&
+    score <= upper;
+}
+
 class FakeRedisClient extends EventEmitter {
   constructor(shared, role = "command") {
     super();
@@ -20,18 +39,14 @@ class FakeRedisClient extends EventEmitter {
     this.role = role;
     this.isReady = false;
     this.isOpen = false;
-    this.subscription = null;
+    this.subscriptions = [];
   }
 
   duplicate() {
-    const sub =
-      new FakeRedisClient(
-        this.shared,
-        "subscriber"
-      );
-
-    this.shared.subscriber = sub;
-    return sub;
+    return new FakeRedisClient(
+      this.shared,
+      "subscriber"
+    );
   }
 
   async connect() {
@@ -41,11 +56,27 @@ class FakeRedisClient extends EventEmitter {
   }
 
   async subscribe(channel, handler) {
-    this.subscription = {
+    let handlers =
+      this.shared.channels.get(
+        channel
+      );
+
+    if (!handlers) {
+      handlers = new Set();
+      this.shared.channels.set(
+        channel,
+        handlers
+      );
+    }
+
+    handlers.add(handler);
+
+    this.subscriptions.push({
       channel,
       handler
-    };
-    return 1;
+    });
+
+    return handlers.size;
   }
 
   async set(key, value) {
@@ -62,40 +93,205 @@ class FakeRedisClient extends EventEmitter {
       : null;
   }
 
+  _zset(key) {
+    let zset =
+      this.shared.zsets.get(
+        key
+      );
+
+    if (!zset) {
+      zset = new Map();
+      this.shared.zsets.set(
+        key,
+        zset
+      );
+    }
+
+    return zset;
+  }
+
+  async zAdd(key, members) {
+    const zset =
+      this._zset(key);
+
+    for (
+      const item of
+      Array.isArray(members)
+        ? members
+        : []
+    ) {
+      zset.set(
+        item.value,
+        Number(item.score)
+      );
+    }
+
+    return zset.size;
+  }
+
+  async zRem(key, member) {
+    const zset =
+      this.shared.zsets.get(
+        key
+      );
+
+    if (!zset) {
+      return 0;
+    }
+
+    return zset.delete(member)
+      ? 1
+      : 0;
+  }
+
+  async zRemRangeByScore(
+    key,
+    min,
+    max
+  ) {
+    const zset =
+      this.shared.zsets.get(
+        key
+      );
+
+    if (!zset) {
+      return 0;
+    }
+
+    let count = 0;
+
+    for (
+      const [member, score] of
+      zset
+    ) {
+      if (
+        scoreUyqundur(
+          score,
+          min,
+          max
+        )
+      ) {
+        zset.delete(member);
+        count += 1;
+      }
+    }
+
+    return count;
+  }
+
+  async zRangeByScore(
+    key,
+    min,
+    max
+  ) {
+    const zset =
+      this.shared.zsets.get(
+        key
+      );
+
+    if (!zset) {
+      return [];
+    }
+
+    return Array
+      .from(zset.entries())
+      .filter(
+        ([, score]) =>
+          scoreUyqundur(
+            score,
+            min,
+            max
+          )
+      )
+      .sort(
+        (a, b) =>
+          a[1] - b[1]
+      )
+      .map(
+        ([member]) =>
+          member
+      );
+  }
+
+  async expire() {
+    return 1;
+  }
+
   async publish(channel, raw) {
     this.shared.published.push({
       channel,
       raw
     });
-    return 1;
+
+    const handlers =
+      this.shared.channels.get(
+        channel
+      );
+
+    if (!handlers) {
+      return 0;
+    }
+
+    for (const handler of handlers) {
+      await handler(raw);
+    }
+
+    return handlers.size;
   }
 
   multi() {
     const client = this;
     const operations = [];
 
-    return {
-      set(key, value) {
-        operations.push([
-          key,
-          value
-        ]);
-        return this;
+    const transaction = {
+      set(...args) {
+        operations.push(
+          () => client.set(...args)
+        );
+        return transaction;
+      },
+
+      zAdd(...args) {
+        operations.push(
+          () => client.zAdd(...args)
+        );
+        return transaction;
+      },
+
+      zRemRangeByScore(...args) {
+        operations.push(
+          () =>
+            client.zRemRangeByScore(
+              ...args
+            )
+        );
+        return transaction;
+      },
+
+      expire(...args) {
+        operations.push(
+          () => client.expire(...args)
+        );
+        return transaction;
       },
 
       async exec() {
-        for (const [key, value] of operations) {
-          client.shared.kv.set(
-            key,
-            value
+        const results = [];
+
+        for (
+          const operation of
+          operations
+        ) {
+          results.push(
+            await operation()
           );
         }
 
-        return operations.map(
-          () => "OK"
-        );
+        return results;
       }
     };
+
+    return transaction;
   }
 
   async eval(_script, options = {}) {
@@ -120,10 +316,44 @@ class FakeRedisClient extends EventEmitter {
   }
 
   async quit() {
+    for (
+      const item of
+      this.subscriptions
+    ) {
+      const handlers =
+        this.shared.channels.get(
+          item.channel
+        );
+
+      if (handlers) {
+        handlers.delete(
+          item.handler
+        );
+
+        if (
+          handlers.size === 0
+        ) {
+          this.shared.channels.delete(
+            item.channel
+          );
+        }
+      }
+    }
+
+    this.subscriptions = [];
     this.isReady = false;
     this.isOpen = false;
     this.emit("end");
   }
+}
+
+function sharedRedisYarat() {
+  return {
+    kv: new Map(),
+    zsets: new Map(),
+    channels: new Map(),
+    published: []
+  };
 }
 
 (async () => {
@@ -148,30 +378,42 @@ class FakeRedisClient extends EventEmitter {
       false
     );
 
-    const bus = new RuntimeRedisBus({
-      redisUrl: "",
-      namespace: "rdc:test",
-      instanceId: "instance-a"
-    });
+    const disabledBus =
+      new RuntimeRedisBus({
+        redisUrl: "",
+        namespace:
+          "rdc:test",
+        instanceId:
+          "instance-disabled"
+      });
 
-    assert.strictEqual(bus.enabled, false);
     assert.strictEqual(
-      bus.presenceKey("p1"),
+      disabledBus.enabled,
+      false
+    );
+
+    assert.strictEqual(
+      disabledBus.presenceKey("p1"),
       "rdc:test:presence:p1"
     );
+
     assert.strictEqual(
-      bus.instanceChannel(),
-      "rdc:test:instance:instance-a"
+      disabledBus.presenceInstancesKey(
+        "p1"
+      ),
+      "rdc:test:presence-v2:p1"
     );
 
-    const started = await bus.start();
-    assert.strictEqual(started, false);
-    assert.strictEqual(bus.ready, false);
+    assert.strictEqual(
+      await disabledBus.start(),
+      false
+    );
 
     const requiredBus =
       new RuntimeRedisBus({
         redisUrl: "",
-        namespace: "rdc:test",
+        namespace:
+          "rdc:test",
         instanceId:
           "instance-required",
         required: "true"
@@ -182,35 +424,25 @@ class FakeRedisClient extends EventEmitter {
       /REDIS_URL/
     );
 
-    assert.strictEqual(
-      await bus.registerLocalPlayer("p1"),
-      false
-    );
+    await disabledBus.close();
 
-    assert.strictEqual(
-      await bus.publishToPlayer(
-        "p2",
-        { type: "test" }
-      ),
-      false
-    );
+    const shared =
+      sharedRedisYarat();
 
-    await bus.close();
+    const receivedA = [];
+    const receivedB = [];
 
-    const shared = {
-      kv: new Map(),
-      published: [],
-      subscriber: null
-    };
-
-    const command =
+    const commandA =
       new FakeRedisClient(
         shared
       );
 
-    const direct = [];
+    const commandB =
+      new FakeRedisClient(
+        shared
+      );
 
-    const liveBus =
+    const busA =
       new RuntimeRedisBus({
         redisUrl:
           "redis://fake",
@@ -218,189 +450,252 @@ class FakeRedisClient extends EventEmitter {
           "rdc:test-live",
         instanceId:
           "instance-a",
-        required:
-          true,
+        required: true,
         presenceRefreshMs:
           10000,
         clientFactory:
-          () => command,
+          () => commandA,
         onDirectMessage:
-          async (message) => {
-            direct.push(message);
-          }
+          async message =>
+            receivedA.push(
+              message
+            )
+      });
+
+    const busB =
+      new RuntimeRedisBus({
+        redisUrl:
+          "redis://fake",
+        namespace:
+          "rdc:test-live",
+        instanceId:
+          "instance-b",
+        required: true,
+        presenceRefreshMs:
+          10000,
+        clientFactory:
+          () => commandB,
+        onDirectMessage:
+          async message =>
+            receivedB.push(
+              message
+            )
       });
 
     assert.strictEqual(
-      await liveBus.start(),
+      await busA.start(),
       true
     );
 
     assert.strictEqual(
-      liveBus.ready,
+      await busB.start(),
       true
     );
 
-    assert.deepStrictEqual(
-      liveBus.snapshot(),
-      {
-        enabled: true,
-        required: true,
-        ready: true,
-        instanceId:
-          "instance-a",
-        localPlayers: 0
-      }
-    );
-
     assert.strictEqual(
-      await liveBus.registerLocalPlayer(
+      await busA.registerLocalPlayer(
         "p1"
       ),
       true
     );
 
     assert.strictEqual(
-      shared.kv.get(
-        "rdc:test-live:presence:p1"
+      await busB.registerLocalPlayer(
+        "p1"
       ),
-      "instance-a"
+      true
     );
 
-    shared.kv.set(
-      "rdc:test-live:presence:p2",
-      "instance-b"
+    const p1Presence =
+      shared.zsets.get(
+        "rdc:test-live:presence-v2:p1"
+      );
+
+    assert.ok(p1Presence);
+
+    assert.deepStrictEqual(
+      Array
+        .from(
+          p1Presence.keys()
+        )
+        .sort(),
+      [
+        "instance-a",
+        "instance-b"
+      ]
     );
 
     assert.strictEqual(
-      await liveBus.publishToPlayer(
-        "p2",
+      await busA.publishToPlayer(
+        "p1",
         {
           type:
-            "remote_ping"
+            "cross_instance_state"
         }
       ),
       true
     );
 
     assert.strictEqual(
-      shared.published.length,
+      receivedA.length,
+      0,
+      "Publisher öz instance kanalına eyni payload-u qaytarmamalıdır."
+    );
+
+    assert.strictEqual(
+      receivedB.length,
       1
     );
 
     assert.strictEqual(
-      shared.published[0].channel,
-      "rdc:test-live:instance:instance-b"
-    );
-
-    const envelope =
-      JSON.parse(
-        shared.published[0].raw
-      );
-
-    assert.strictEqual(
-      envelope.playerId,
-      "p2"
+      receivedB[0].payload.type,
+      "cross_instance_state"
     );
 
     assert.strictEqual(
-      envelope.sourceInstanceId,
+      receivedB[0].sourceInstanceId,
       "instance-a"
     );
 
+    /*
+     * Rolling deploy compatibility:
+     * v2 presence olmayan köhnə instance legacy key vasitəsilə tapılır.
+     */
+    shared.kv.set(
+      "rdc:test-live:presence:legacy-player",
+      "legacy-instance"
+    );
+
+    await busA.publishToPlayer(
+      "legacy-player",
+      {
+        type:
+          "legacy_route"
+      }
+    );
+
     assert.ok(
-      shared.subscriber &&
-      shared.subscriber.subscription
-    );
-
-    await shared.subscriber
-      .subscription
-      .handler(
-        JSON.stringify({
-          version: 1,
-          sourceInstanceId:
-            "instance-b",
-          playerId:
-            "p1",
-          payload: {
-            type:
-              "remote_delivery"
-          }
-        })
-      );
-
-    assert.strictEqual(
-      direct.length,
-      1
+      shared.published.some(
+        item =>
+          item.channel ===
+            "rdc:test-live:instance:legacy-instance"
+      )
     );
 
     assert.strictEqual(
-      direct[0].payload.type,
-      "remote_delivery"
+      await busB.unregisterLocalPlayer(
+        "p1"
+      ),
+      true
     );
 
-    command.isReady = false;
-    command.emit(
+    assert.deepStrictEqual(
+      Array.from(
+        shared.zsets
+          .get(
+            "rdc:test-live:presence-v2:p1"
+          )
+          .keys()
+      ),
+      [
+        "instance-a"
+      ]
+    );
+
+    commandA.isReady = false;
+    commandA.emit(
       "reconnecting"
     );
 
     assert.strictEqual(
-      liveBus.ready,
+      busA.ready,
       false
     );
 
     assert.strictEqual(
-      await liveBus.registerLocalPlayer(
-        "p3"
+      await busA.registerLocalPlayer(
+        "p2"
       ),
       false
     );
 
-    shared.kv.delete(
-      "rdc:test-live:presence:p1"
+    shared.zsets.delete(
+      "rdc:test-live:presence-v2:p1"
     );
 
-    shared.kv.delete(
-      "rdc:test-live:presence:p3"
+    shared.zsets.delete(
+      "rdc:test-live:presence-v2:p2"
     );
 
-    command.isReady = true;
-    command.emit("ready");
+    commandA.isReady = true;
+    commandA.emit("ready");
 
     await gozleBirTick();
 
     assert.strictEqual(
-      liveBus.ready,
+      busA.ready,
       true
     );
 
-    assert.strictEqual(
-      shared.kv.get(
-        "rdc:test-live:presence:p1"
+    assert.deepStrictEqual(
+      Array.from(
+        shared.zsets
+          .get(
+            "rdc:test-live:presence-v2:p1"
+          )
+          .keys()
       ),
-      "instance-a"
+      [
+        "instance-a"
+      ]
     );
 
-    assert.strictEqual(
-      shared.kv.get(
-        "rdc:test-live:presence:p3"
+    assert.deepStrictEqual(
+      Array.from(
+        shared.zsets
+          .get(
+            "rdc:test-live:presence-v2:p2"
+          )
+          .keys()
       ),
-      "instance-a"
+      [
+        "instance-a"
+      ]
     );
 
-    await liveBus.close();
-
-    assert.strictEqual(
-      liveBus.ready,
-      false
+    assert.deepStrictEqual(
+      busA.snapshot(),
+      {
+        enabled: true,
+        required: true,
+        ready: true,
+        instanceId:
+          "instance-a",
+        localPlayers: 2,
+        presenceMode:
+          "multi-instance-v2"
+      }
     );
 
-    assert.strictEqual(
-      liveBus.started,
-      false
+    await busA.close();
+
+    const remainingP1 =
+      shared.zsets.get(
+        "rdc:test-live:presence-v2:p1"
+      );
+
+    assert.ok(
+      !remainingP1 ||
+      !remainingP1.has(
+        "instance-a"
+      ),
+      "Graceful shutdown öz presence üzvlərini dərhal silməlidir."
     );
+
+    await busB.close();
 
     console.log(
-      "PASS: Redis runtime bus disabled, required, routing and reconnect-presence contracts."
+      "PASS: Redis runtime bus supports rolling-compatible multi-instance presence, fan-out routing and reconnect cleanup."
     );
   }
   finally {
