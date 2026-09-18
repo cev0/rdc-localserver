@@ -3395,6 +3395,9 @@ const {
   websocketRuntimeConfigFromEnv
 } = require("./runtime_ws_guard");
 const {
+  stateIdempotencyExecutorYarat
+} = require("./runtime_request_idempotency");
+const {
   oyuncuMutasiyaKilidiIleIcraEt
 } = require("./server_oyuncu_mutasiya_kilidi");
 
@@ -4298,8 +4301,9 @@ bazaMelumatlariniYenile(state);
 
   const clientState = JSON.parse(JSON.stringify(state));
 
-  // Server-authoritative production saatini client gormur ve deyise bilmir.
+  // Server-authoritative runtime metadatasi client-e cixmir.
   delete clientState.productionRuntime;
+  delete clientState.serverRequestIdempotency;
 
   if (
     clientState.army &&
@@ -6829,11 +6833,20 @@ async function processPlayerDeadline(playerId) {
 // server.js daxilinde legacy gameplay switch artiq yoxdur.
 // ============================================================
 
+const runtimeIdempotencyExecutor =
+  stateIdempotencyExecutorYarat({
+    getPlayerState:
+      getOrCreatePlayerState,
+    nowMs
+  });
+
 const runtimeCommandRouter =
   new RuntimeCommandRouter({
     name: "gameplay",
     mutationExecutor:
-      oyuncuMutasiyaKilidiIleIcraEt
+      oyuncuMutasiyaKilidiIleIcraEt,
+    idempotencyExecutor:
+      runtimeIdempotencyExecutor
   });
 
 coreReadCommandleriniQeydEt(
