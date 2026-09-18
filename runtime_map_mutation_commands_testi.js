@@ -208,10 +208,22 @@ const {
 
       dovletBazaKeshiniTemizle() {},
 
-      occupyStateCenter:
-        () => ({
-          ok: true,
-          ownerPlayerId: "p1"
+      occupyStateCenterPostgresClient:
+        async (
+          _client,
+          options
+        ) => ({
+          success: true,
+          stateId:
+            options.stateId,
+          occupiedByPlayerId:
+            options.playerId,
+          occupiedByAllianceId:
+            options.allianceId || "",
+          occupiedAtMs:
+            options.nowMs,
+          centerUnlockAtMs: 0,
+          revision: 1
         }),
 
       pushWorldMapToAllAuthedPlayers:
@@ -298,39 +310,40 @@ const {
 
   assert.strictEqual(
     sent[0].type,
-    "error"
+    "state_center_occupied"
   );
 
   assert.strictEqual(
-    sent[0].code,
-    "STATE_CENTER_PERSISTENCE_REQUIRED"
+    state.worldPlacement.stateId,
+    1
   );
 
   assert.deepStrictEqual(
     localMapPushes,
-    [1],
-    "Yalnız committed legacy teleport local map push etməlidir."
+    [1, 1],
+    "Committed legacy teleport və persistent center occupation local map push etməlidir."
   );
 
   assert.strictEqual(
     worldPushes.length,
-    0,
-    "Fail-closed center occupation shared world state-i broadcast etməməlidir."
+    1,
+    "Persistent center occupation committed olduqdan sonra world map broadcast etməlidir."
   );
 
   assert.deepStrictEqual(
     authoritativeLocks,
     [
       "p1:expand_area_request",
-      "p1:base_teleport_request"
+      "p1:base_teleport_request",
+      "p1:occupy_state_center_request"
     ],
-    "Player-local map və legacy teleport PostgreSQL authoritative executor-dan keçməlidir."
+    "Player-local map, legacy teleport və state center PostgreSQL authoritative executor-dan keçməlidir."
   );
 
   assert.deepStrictEqual(
     locks,
     [],
-    "Fail-closed center occupation heç bir mutasiya lock-u və world state yazısı etməməlidir."
+    "Bu testdə bütün yoxlanan mutasiyalar PostgreSQL authoritative executor-dan keçməlidir."
   );
 
   const serverCode =
@@ -357,7 +370,7 @@ const {
   }
 
   console.log(
-    "PASS: player-local map mutations use PostgreSQL authoritative routing; shared-world mutation stays separately locked."
+    "PASS: player-local map mutations and state center use PostgreSQL authoritative routing with post-commit world broadcasts."
   );
 })().catch((error) => {
   console.error(error);
