@@ -664,13 +664,18 @@ function startTechnologyResearch(state, techId) {
   };
 }
 
-function completeTechnologyResearchForState(state) {
+function completeTechnologyResearchForState(
+  state,
+  atTimeMs = nowMs()
+) {
   ensureTechnologyObject(state);
 
   const research = state.technology.currentResearch;
   if (!research) return null;
 
-  const now = nowMs();
+  const now =
+    Math.max(0, Number(atTimeMs) || nowMs());
+
   if (now < research.endsAtMs) return null;
 
   const techId = normalizeBuildingId(research.techId);
@@ -6339,18 +6344,19 @@ function createUpgradeJob(state, building) {
   return job;
 }
 
-function completeFinishedJobsForState(state) {
+function completeFinishedJobsForState(
+  state,
+  atTimeMs = nowMs()
+) {
   if (!state || !state.builders || !Array.isArray(state.builders.jobs)) return false;
   if (!Array.isArray(state.buildings)) return false;
 
   ensureTechnologyObject(state);
 
-  const now = nowMs();
+  const now =
+    Math.max(0, Number(atTimeMs) || nowMs());
+
   let changed = false;
-  const completedResearch = completeTechnologyResearchForState(state);
-  if (completedResearch) {
-    changed = true;
-  }
 
   for (const job of state.builders.jobs) {
     if (!job) continue;
@@ -6495,7 +6501,8 @@ function schedulePlayerDeadline(playerId, state) {
 
 function processTrainingQueuesForState(
   state,
-  playerId
+  playerId,
+  atTimeMs = nowMs()
 ) {
   if (
     !state ||
@@ -6510,7 +6517,9 @@ function processTrainingQueuesForState(
     state.army.troops = {};
   }
 
-  const now = nowMs();
+  const now =
+    Math.max(0, Number(atTimeMs) || nowMs());
+
   let changed = false;
 
   for (
@@ -6569,22 +6578,111 @@ async function processPlayerDeadline(playerId) {
     return null;
   }
 
-  const completedResearch =
-    completeTechnologyResearchForState(state);
+  const targetNow = nowMs();
 
-  const builderChanged =
-    completeFinishedJobsForState(state);
+  let stateChanged = false;
+  let builderChangedAny = false;
+  const completedResearchList = [];
 
-  const trainingChanged =
-    processTrainingQueuesForState(
+  // Bir player ucun normalda bir nece deadline olur.
+  // Guard korlanmis state-in sonsuz loop yaratmasinin qarsisini alir.
+  let guard = 0;
+
+  while (guard < 1000) {
+    guard += 1;
+
+    const nextDueAt =
+      nextPlayerDeadlineAtMs(state);
+
+    if (
+      nextDueAt == null ||
+      nextDueAt > targetNow
+    ) {
+      break;
+    }
+
+    // Event aninda production tick varsa, once event-i tetbiq edib sonra
+    // hemin tick-i yeni state ile hesablayiriq.
+    processProductionForState(
       state,
-      playerId
+      Math.max(0, nextDueAt - 1)
     );
 
-  const stateChanged =
-    !!completedResearch ||
-    builderChanged ||
-    trainingChanged;
+    const completedResearch =
+      completeTechnologyResearchForState(
+        state,
+        nextDueAt
+      );
+
+    const builderChanged =
+      completeFinishedJobsForState(
+        state,
+        nextDueAt
+      );
+
+    const trainingChanged =
+      processTrainingQueuesForState(
+        state,
+        playerId,
+        nextDueAt
+      );
+
+    const eventChanged =
+      !!completedResearch ||
+      builderChanged ||
+      trainingChanged;
+
+    if (!eventChanged) {
+      console.warn(
+        "[DEADLINE_SCHEDULER] Due deadline state-i deyismedi:",
+        {
+          playerId,
+          nextDueAt
+        }
+      );
+      break;
+    }
+
+    if (completedResearch) {
+      completedResearchList.push(
+        completedResearch
+      );
+    }
+
+    if (builderChanged) {
+      builderChangedAny = true;
+    }
+
+    stateChanged = true;
+
+    // Eger production tick event vaxtina tam dusurse, artıq yeni bina/tech
+    // bonuslari ile hesablanir.
+    if (
+      processProductionForState(
+        state,
+        nextDueAt
+      )
+    ) {
+      stateChanged = true;
+    }
+  }
+
+  if (guard >= 1000) {
+    console.error(
+      "[DEADLINE_SCHEDULER] Guard limit catdi:",
+      playerId
+    );
+  }
+
+  // Son event-den cari vaxta qeder qalan production tick-lerini bir defe hesabla.
+  if (
+    processProductionForState(
+      state,
+      targetNow
+    )
+  ) {
+    stateChanged = true;
+  }
 
   if (stateChanged) {
     pushStateToPlayerConnections(
@@ -6593,7 +6691,10 @@ async function processPlayerDeadline(playerId) {
     );
   }
 
-  if (completedResearch) {
+  for (
+    const completedResearch of
+    completedResearchList
+  ) {
     connections.deliver(
       playerId,
       {
@@ -6610,14 +6711,15 @@ async function processPlayerDeadline(playerId) {
       "[TECH_RESEARCH_COMPLETED]",
       {
         playerId,
-        techId: completedResearch.techId,
+        techId:
+          completedResearch.techId,
         targetLevel:
           completedResearch.targetLevel
       }
     );
   }
 
-  if (builderChanged) {
+  if (builderChangedAny) {
     console.log(
       "[SERVER] Build completed for player:",
       playerId
@@ -8902,6 +9004,24 @@ case "occupy_state_center_request": {
               movcudVeziyyet.missions
             )
           );
+
+          /*
+           * Lazy production saatini client idarə etmir.
+           * Client payload productionRuntime gonderse bele serverdeki
+           * authoritative clock saxlanilir.
+           */
+          ensureProductionClock(
+            movcudVeziyyet,
+            nowMs(),
+            DEFAULT_PRODUCTION_TICK_MS
+          );
+
+          incoming.productionRuntime =
+            JSON.parse(
+              JSON.stringify(
+                movcudVeziyyet.productionRuntime
+              )
+            );
         }
 
         oyuncuProfiliniTeminEt(incoming);
@@ -8993,9 +9113,7 @@ function completeTechnologyResearchForAllPlayers() {
 // keçirəcəyik.
 // ============================================================
 
-setInterval(() => {
-  processProductionForAllPlayers();
-}, 5000);
+// City production is lazy/elapsed-time based; global player scan yoxdur.
 
 // ============================================================
 // SERVER START
