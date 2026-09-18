@@ -22,6 +22,11 @@ class RuntimeCommandRouter {
         ? options.mutationExecutor
         : null;
 
+    this.idempotencyExecutor =
+      typeof options.idempotencyExecutor === "function"
+        ? options.idempotencyExecutor
+        : null;
+
     this._routes = new Map();
     this._metrics = new Map();
   }
@@ -161,10 +166,36 @@ class RuntimeCommandRouter {
 
         await this.mutationExecutor(
           playerId,
-          async () =>
-            await route.handler(
+          async () => {
+            if (
+              this.idempotencyExecutor
+            ) {
+              return await this.idempotencyExecutor({
+                playerId,
+                type,
+                msg:
+                  context.msg || {},
+                ws:
+                  context.ws,
+                send:
+                  context.send,
+                execute:
+                  async (
+                    sendOverride
+                  ) =>
+                    await route.handler({
+                      ...handlerContext,
+                      send:
+                        sendOverride ||
+                        handlerContext.send
+                    })
+              });
+            }
+
+            return await route.handler(
               handlerContext
-            )
+            );
+          }
         );
       }
       else {
