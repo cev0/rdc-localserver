@@ -55,12 +55,40 @@ const {
             metadata.type
           );
 
-          return await fn({
-            send:
-              (_ws, payload) => {
-                sent.push(payload);
-              }
-          });
+          const afterCommit = [];
+
+          const result =
+            await fn({
+              send:
+                (_ws, payload) => {
+                  sent.push(payload);
+                },
+              transactionContext: {
+                client: {
+                  async query() {
+                    return {
+                      rows: []
+                    };
+                  }
+                }
+              },
+              deferAfterCommit:
+                (callback) => {
+                  afterCommit.push(
+                    callback
+                  );
+                  return true;
+                }
+            });
+
+          for (
+            const callback of
+            afterCommit
+          ) {
+            await callback();
+          }
+
+          return result;
         }
     });
 
@@ -114,6 +142,28 @@ const {
           zone: "outer"
         }),
 
+      applyPlayerBaseTeleportInsideState:
+        (
+          target,
+          _playerId,
+          x,
+          z
+        ) => {
+          target.worldPlacement.baseX =
+            x;
+          target.worldPlacement.baseZ =
+            z;
+
+          return {
+            ok: true,
+            ignored: false,
+            stateId: 1,
+            baseX: x,
+            baseZ: z,
+            zone: "outer"
+          };
+        },
+
       pushStateLocalMapToStatePlayers:
         stateId => {
           localMapPushes.push(stateId);
@@ -129,8 +179,34 @@ const {
 
       getWorldStateRuntime:
         stateId => ({
-          stateId
+          stateId,
+          localMap: {
+            width: 1024,
+            height: 1024,
+            centerX: 512,
+            centerZ: 512
+          },
+          centerBuilding: {
+            x: 512,
+            z: 512
+          },
+          playerIds: [
+            "p1"
+          ]
         }),
+
+      dovletBazalariniBirbasaPostgresdenAlClient:
+        async () => ({
+          bases: [
+            {
+              playerId: "p1",
+              baseX: 1,
+              baseZ: 1
+            }
+          ]
+        }),
+
+      dovletBazaKeshiniTemizle() {},
 
       occupyStateCenter:
         () => ({
@@ -179,6 +255,36 @@ const {
   sent.length = 0;
 
   await router.dispatch({
+    type: "base_teleport_request",
+    msg: {
+      type: "base_teleport_request",
+      playerId: "p1",
+      x: 100,
+      z: 100
+    },
+    ws,
+    send,
+    nowMs: () => 150
+  });
+
+  assert.strictEqual(
+    sent[0].type,
+    "base_teleported"
+  );
+
+  assert.strictEqual(
+    state.worldPlacement.baseX,
+    100
+  );
+
+  assert.strictEqual(
+    state.worldPlacement.baseZ,
+    100
+  );
+
+  sent.length = 0;
+
+  await router.dispatch({
     type: "occupy_state_center_request",
     msg: {
       type: "occupy_state_center_request",
@@ -208,15 +314,16 @@ const {
   assert.deepStrictEqual(
     authoritativeLocks,
     [
-      "p1:expand_area_request"
+      "p1:expand_area_request",
+      "p1:base_teleport_request"
     ],
-    "Player-local map mutation PostgreSQL authoritative executor-dan keçməlidir."
+    "Player-local map və legacy teleport PostgreSQL authoritative executor-dan keçməlidir."
   );
 
   assert.deepStrictEqual(
     locks,
     ["p1"],
-    "Shared-world occupy route hələ player-only PostgreSQL executor-a salınmamalıdır."
+    "Shared-world occupy route hələ ayrıca world metadata persistence tələb edir."
   );
 
   const serverCode =
