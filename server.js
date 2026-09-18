@@ -3398,6 +3398,9 @@ const {
   stateIdempotencyExecutorYarat
 } = require("./runtime_request_idempotency");
 const {
+  postgresAuthoritativeMutationExecutorYarat
+} = require("./runtime_pg_authoritative_mutation");
+const {
   oyuncuMutasiyaKilidiIleIcraEt
 } = require("./server_oyuncu_mutasiya_kilidi");
 
@@ -6840,11 +6843,55 @@ const runtimeIdempotencyExecutor =
     nowMs
   });
 
+const postgresAuthoritativeMutationExecutor =
+  postgresAuthoritativeMutationExecutorYarat({
+    getOrCreatePlayerState,
+    prepareLockedState:
+      async (
+        state,
+        playerId
+      ) => {
+        settlePlayerTimeline(
+          state,
+          playerId,
+          nowMs()
+        );
+      },
+    afterCommit:
+      async (
+        playerId,
+        state
+      ) => {
+        schedulePlayerDeadline(
+          playerId,
+          state
+        );
+      }
+  });
+
+const runtimeAuthoritativeMutationExecutor =
+  async (
+    playerId,
+    action,
+    metadata
+  ) =>
+    await oyuncuMutasiyaKilidiIleIcraEt(
+      playerId,
+      async () =>
+        await postgresAuthoritativeMutationExecutor(
+          playerId,
+          action,
+          metadata
+        )
+    );
+
 const runtimeCommandRouter =
   new RuntimeCommandRouter({
     name: "gameplay",
     mutationExecutor:
       oyuncuMutasiyaKilidiIleIcraEt,
+    authoritativeMutationExecutor:
+      runtimeAuthoritativeMutationExecutor,
     idempotencyExecutor:
       runtimeIdempotencyExecutor
   });
