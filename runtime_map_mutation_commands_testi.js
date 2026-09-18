@@ -13,6 +13,7 @@ const {
 
 (async () => {
   const locks = [];
+  const authoritativeLocks = [];
   const sent = [];
   const localMapPushes = [];
   const worldPushes = [];
@@ -42,6 +43,24 @@ const {
         async (playerId, fn) => {
           locks.push(playerId);
           return await fn();
+        },
+      authoritativeMutationExecutor:
+        async (
+          playerId,
+          fn,
+          metadata
+        ) => {
+          authoritativeLocks.push(
+            playerId + ":" +
+            metadata.type
+          );
+
+          return await fn({
+            send:
+              (_ws, payload) => {
+                sent.push(payload);
+              }
+          });
         }
     });
 
@@ -187,8 +206,17 @@ const {
   );
 
   assert.deepStrictEqual(
+    authoritativeLocks,
+    [
+      "p1:expand_area_request"
+    ],
+    "Player-local map mutation PostgreSQL authoritative executor-dan keçməlidir."
+  );
+
+  assert.deepStrictEqual(
     locks,
-    ["p1", "p1"]
+    ["p1"],
+    "Shared-world occupy route hələ player-only PostgreSQL executor-a salınmamalıdır."
   );
 
   const serverCode =
@@ -215,7 +243,7 @@ const {
   }
 
   console.log(
-    "PASS: map mutations are routed, locked and removed from legacy switch."
+    "PASS: player-local map mutations use PostgreSQL authoritative routing; shared-world mutation stays separately locked."
   );
 })().catch((error) => {
   console.error(error);
