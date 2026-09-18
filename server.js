@@ -3377,6 +3377,9 @@ const {
   RuntimeDeadlineScheduler
 } = require("./runtime_deadline_scheduler");
 const {
+  authoritativeDeadlineProcessorYarat
+} = require("./runtime_deadline_authoritative");
+const {
   DEFAULT_PRODUCTION_TICK_MS,
   ensureProductionClock,
   consumeProductionTicks
@@ -3637,6 +3640,27 @@ connections.configureRemotePublisher(
   (playerId, payload) =>
     runtimeBus.publishToPlayer(playerId, payload)
 );
+
+const authoritativeDeadlineProcessor =
+  authoritativeDeadlineProcessorYarat({
+    getPlayerState:
+      playerId =>
+        players.get(
+          playerId
+        ),
+    withPlayerLock:
+      oyuncuMutasiyaKilidiIleIcraEt,
+    settlePlayerTimeline,
+    nowMs,
+    publishInvalidation:
+      (playerId, metadata) =>
+        runtimeStateSync
+          .publishInvalidation(
+            runtimeBus,
+            playerId,
+            metadata
+          )
+  });
 
 const deadlineScheduler = new RuntimeDeadlineScheduler({
   now: nowMs,
@@ -6954,18 +6978,42 @@ function settlePlayerTimeline(
 }
 
 async function processPlayerDeadline(playerId) {
-  const state = players.get(playerId);
+  let netice;
+
+  try {
+    netice =
+      await authoritativeDeadlineProcessor(
+        playerId
+      );
+  }
+  catch (error) {
+    console.error(
+      "[DEADLINE_SCHEDULER] Authoritative commit failed:",
+      {
+        playerId,
+        message:
+          error && error.message
+            ? error.message
+            : String(error)
+      }
+    );
+
+    // Transient Redis/PostgreSQL problemi deadline-i birdəfəlik itirməsin.
+    return nowMs() + 1000;
+  }
+
+  if (!netice) {
+    return null;
+  }
+
+  const state =
+    players.get(
+      playerId
+    );
 
   if (!state) {
     return null;
   }
-
-  const netice =
-    settlePlayerTimeline(
-      state,
-      playerId,
-      nowMs()
-    );
 
   if (netice.stateChanged) {
     pushStateToPlayerConnections(
@@ -6976,7 +7024,8 @@ async function processPlayerDeadline(playerId) {
 
   for (
     const completedResearch of
-    netice.completedResearchList
+    netice.completedResearchList ||
+    []
   ) {
     connections.deliver(
       playerId,
@@ -6985,7 +7034,9 @@ async function processPlayerDeadline(playerId) {
         playerId,
         serverTimeUnixMs: nowMs(),
         payloadJson:
-          JSON.stringify(completedResearch)
+          JSON.stringify(
+            completedResearch
+          )
       },
       send
     );

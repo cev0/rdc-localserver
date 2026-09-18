@@ -14,6 +14,8 @@ on:
       - "koyeb.env.example"
       - "runtime_deadline_scheduler.js"
       - "runtime_deadline_scheduler_testi.js"
+      - "runtime_deadline_authoritative.js"
+      - "runtime_deadline_authoritative_testi.js"
       - "runtime_production_clock.js"
       - "runtime_production_clock_testi.js"
       - "runtime_protocol_envelope.js"
@@ -69,6 +71,8 @@ on:
       - "koyeb.env.example"
       - "runtime_deadline_scheduler.js"
       - "runtime_deadline_scheduler_testi.js"
+      - "runtime_deadline_authoritative.js"
+      - "runtime_deadline_authoritative_testi.js"
       - "runtime_production_clock.js"
       - "runtime_production_clock_testi.js"
       - "runtime_protocol_envelope.js"
@@ -140,6 +144,9 @@ jobs:
 
       - name: Test deadline scheduler
         run: node runtime_deadline_scheduler_testi.js
+
+      - name: Test authoritative deadline commits
+        run: node runtime_deadline_authoritative_testi.js
 
       - name: Test lazy production clock
         run: node runtime_production_clock_testi.js
