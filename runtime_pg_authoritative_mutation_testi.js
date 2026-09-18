@@ -28,7 +28,9 @@ const {
   const sent = [];
   let prepareCount = 0;
   let afterCommitCount = 0;
+  let routedAfterCommitCount = 0;
   let sawDeferredBeforeCommit = false;
+  let sawSideEffectDeferredBeforeCommit = false;
 
   const fakeTransaction =
     async (
@@ -50,6 +52,9 @@ const {
 
       sawDeferredBeforeCommit =
         sent.length === 0;
+
+      sawSideEffectDeferredBeforeCommit =
+        routedAfterCommitCount === 0;
 
       if (
         result &&
@@ -98,11 +103,26 @@ const {
   const result =
     await executor(
       "p1",
-      async ({ send }) => {
+      async ({
+        send,
+        transactionContext,
+        deferAfterCommit
+      }) => {
         assert.strictEqual(
           liveState.marker,
           "db-latest",
           "handler stale RAM deyil, PostgreSQL snapshot ile baslamalidir."
+        );
+
+        assert.ok(
+          transactionContext,
+          "handler PostgreSQL transaction kontekstini almalidir."
+        );
+
+        deferAfterCommit(
+          async () => {
+            routedAfterCommitCount += 1;
+          }
         );
 
         assert.strictEqual(
@@ -147,6 +167,16 @@ const {
   assert.strictEqual(
     sawDeferredBeforeCommit,
     true
+  );
+
+  assert.strictEqual(
+    sawSideEffectDeferredBeforeCommit,
+    true
+  );
+
+  assert.strictEqual(
+    routedAfterCommitCount,
+    1
   );
 
   assert.strictEqual(
@@ -224,9 +254,21 @@ const {
     () =>
       rollbackExecutor(
         "p2",
-        async ({ send }) => {
+        async ({
+          send,
+          deferAfterCommit
+        }) => {
           rollbackLive.resources.food =
             10;
+
+          deferAfterCommit(
+            async () => {
+              rollbackSent.push({
+                type:
+                  "SHOULD_NOT_RUN"
+              });
+            }
+          );
 
           send(ws, {
             type: "build_placed"
