@@ -475,7 +475,13 @@ function gameplayMutationCommandleriniQeydEt(
 
   router.register(
     "train_unit_request",
-    async ({ ws, msg, send, nowMs }) => {
+    async ({
+      ws,
+      msg,
+      send,
+      nowMs,
+      deferAfterCommit
+    }) => {
       const authCheck =
         playerIdUyugunluqYoxla(msg, ws);
 
@@ -610,10 +616,25 @@ function gameplayMutationCommandleriniQeydEt(
         buildingInstanceId
       ] = queueEntry;
 
-      schedulePlayerDeadline(
-        playerId,
-        state
-      );
+      const scheduleDeadline =
+        async () => {
+          schedulePlayerDeadline(
+            playerId,
+            state
+          );
+        };
+
+      if (
+        typeof deferAfterCommit ===
+          "function"
+      ) {
+        deferAfterCommit(
+          scheduleDeadline
+        );
+      }
+      else {
+        await scheduleDeadline();
+      }
 
       send(ws, {
         type: "train_started",
@@ -635,7 +656,8 @@ function gameplayMutationCommandleriniQeydEt(
     },
     {
       authRequired: true,
-      mutation: true
+      mutation: true,
+      postgresAuthoritative: true
     }
   );
 

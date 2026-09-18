@@ -65,12 +65,32 @@ const {
           lockCalls.push(
             playerId
           );
-          return await fn({
-            send:
-              (_ws, payload) => {
-                sent.push(payload);
-              }
-          });
+
+          const afterCommit = [];
+
+          const result =
+            await fn({
+              send:
+                (_ws, payload) => {
+                  sent.push(payload);
+                },
+              deferAfterCommit:
+                (callback) => {
+                  afterCommit.push(
+                    callback
+                  );
+                  return true;
+                }
+            });
+
+          for (
+            const callback of
+            afterCommit
+          ) {
+            await callback();
+          }
+
+          return result;
         }
     });
 
@@ -246,6 +266,53 @@ const {
     lockCalls.length,
     2,
     "Mutation command mismatch olsa bele router mutex daxilinde emal olunur."
+  );
+
+  sent.length = 0;
+  deadlines.length = 0;
+
+  state.buildings.push({
+    instanceId: "fighter-camp-1",
+    buildingId: "fighter_camp",
+    isCompleted: true,
+    hasRoadAccess: true
+  });
+
+  await router.dispatch({
+    type: "train_unit_request",
+    msg: {
+      type: "train_unit_request",
+      playerId: "p1",
+      buildingInstanceId:
+        "fighter-camp-1",
+      unitId: "fighter_lv1",
+      count: 10
+    },
+    ws,
+    send,
+    nowMs: () => 300
+  });
+
+  assert.strictEqual(
+    sent[0].type,
+    "train_started"
+  );
+
+  assert.strictEqual(
+    sent[1].type,
+    "state"
+  );
+
+  assert.deepStrictEqual(
+    deadlines,
+    ["p1"],
+    "Training deadline yalnız authoritative action tamamlandıqdan sonra schedule edilməlidir."
+  );
+
+  assert.strictEqual(
+    lockCalls.length,
+    3,
+    "Training request PostgreSQL-authoritative executor-dan keçməlidir."
   );
 
   const legacyServerCode =
