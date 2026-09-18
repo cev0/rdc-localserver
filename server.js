@@ -3376,6 +3376,12 @@ const {
 const {
   authCommandiniQeydEt
 } = require("./runtime_auth_command");
+const {
+  gameplayMutationCommandleriniQeydEt
+} = require("./runtime_gameplay_mutation_commands");
+const {
+  oyuncuMutasiyaKilidiIleIcraEt
+} = require("./server_oyuncu_mutasiya_kilidi");
 
 const STATE_CENTER_UNLOCK_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
 const STATE_NEW_PLAYER_SOFT_CAP = 200;
@@ -6799,7 +6805,9 @@ async function processPlayerDeadline(playerId) {
 
 const runtimeCommandRouter =
   new RuntimeCommandRouter({
-    name: "gameplay"
+    name: "gameplay",
+    mutationExecutor:
+      oyuncuMutasiyaKilidiIleIcraEt
   });
 
 coreReadCommandleriniQeydEt(
@@ -6824,6 +6832,31 @@ authCommandiniQeydEt(
     makeClientState,
     sendStateLocalMapToPlayer,
     sendWorldMapToPlayer
+  }
+);
+
+gameplayMutationCommandleriniQeydEt(
+  runtimeCommandRouter,
+  {
+    getOrCreatePlayerState,
+    normalizeBuildingId,
+    ensureTechnologyObject,
+    startTechnologyResearch,
+    refreshTechnologyStats,
+    updateServerTime,
+    schedulePlayerDeadline,
+    makeClientState,
+    hasFreeBuilder,
+    isGarageBuildingId,
+    getLevelData,
+    hasEnoughResources,
+    spendResources,
+    getBuilderSlotsRequiredForBuilding,
+    refreshBuilderCapacity,
+    getAdjustedTrainingDurationMs,
+    isUpgradeDisabledBuildingId,
+    getMaxLevelForBuilding,
+    createUpgradeJob
   }
 );
 
