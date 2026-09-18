@@ -3367,6 +3367,12 @@ const {
   ensureProductionClock,
   consumeProductionTicks
 } = require("./runtime_production_clock");
+const {
+  RuntimeCommandRouter
+} = require("./runtime_command_router");
+const {
+  coreReadCommandleriniQeydEt
+} = require("./runtime_core_read_commands");
 
 const STATE_CENTER_UNLOCK_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
 const STATE_NEW_PLAYER_SOFT_CAP = 200;
@@ -6780,6 +6786,30 @@ async function processPlayerDeadline(playerId) {
 ////////////////////////////////////////
 
 
+// ============================================================
+// COMMAND ROUTER
+// ------------------------------------------------------------
+// Legacy switch birden-bire silinmir. Yeni router command-lari
+// hissə-hissə öz handler modullarina daşıyır; tanımadığı type-lar
+// aşağıdakı legacy switch-ə düşür.
+// ============================================================
+
+const runtimeCommandRouter =
+  new RuntimeCommandRouter({
+    name: "gameplay"
+  });
+
+coreReadCommandleriniQeydEt(
+  runtimeCommandRouter,
+  {
+    getOrCreatePlayerState,
+    updateServerTime,
+    makeClientState,
+    buildStateLocalMapPayload,
+    buildWorldMapPayloadForClient
+  }
+);
+
 
 // ============================================================
 // HTTP SERVER
@@ -6876,6 +6906,19 @@ wss.on("connection", (ws, req) => {
     });
 
   if (sifreSifirlamaEmalOlundu) {
+    return;
+  }
+
+  const runtimeCommandEmalOlundu =
+    await runtimeCommandRouter.dispatch({
+      type,
+      msg,
+      ws,
+      send,
+      nowMs
+    });
+
+  if (runtimeCommandEmalOlundu) {
     return;
   }
 
