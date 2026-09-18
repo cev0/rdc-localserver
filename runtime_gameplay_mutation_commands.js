@@ -160,11 +160,6 @@ function gameplayMutationCommandleriniQeydEt(
 
       refreshTechnologyStats(state);
       updateServerTime(state);
-      schedulePlayerDeadline(
-        playerId,
-        state
-      );
-
       send(ws, {
         type: "research_started",
         playerId,
@@ -249,11 +244,6 @@ function gameplayMutationCommandleriniQeydEt(
         );
         return;
       }
-
-      schedulePlayerDeadline(
-        playerId,
-        state
-      );
 
       send(ws, {
         type: "technology_research_started",
@@ -451,11 +441,6 @@ function gameplayMutationCommandleriniQeydEt(
 
       refreshBuilderCapacity(state);
       updateServerTime(state);
-      schedulePlayerDeadline(
-        playerId,
-        state
-      );
-
       send(ws, {
         type: "construction_started",
         playerId,
@@ -809,11 +794,6 @@ function gameplayMutationCommandleriniQeydEt(
       }
 
       refreshBuilderCapacity(state);
-      schedulePlayerDeadline(
-        playerId,
-        state
-      );
-
       send(ws, {
         type: "upgrade_started",
         playerId,
