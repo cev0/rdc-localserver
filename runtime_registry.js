@@ -74,19 +74,76 @@ class PlayerRuntimeRegistry extends MapCompatibleRegistry {
 class ConnectionRuntimeRegistry extends MapCompatibleRegistry {
   constructor() {
     super("connections");
+    this._socketSets = new Map();
   }
 
   /**
-   * Yalniz cari socket-i silir.
+   * Map-compatible get() son (primary) socket-i qaytarir.
+   * Amma registry eyni player ucun bir nece local socket-i de izleyir.
+   */
+  set(playerId, socket) {
+    let sockets = this._socketSets.get(playerId);
+    if (!sockets) {
+      sockets = new Set();
+      this._socketSets.set(playerId, sockets);
+    }
+
+    sockets.add(socket);
+    this._items.set(playerId, socket);
+    return this;
+  }
+
+  forEachSocket(playerId, callback) {
+    const sockets = this._socketSets.get(playerId);
+    if (!sockets || typeof callback !== "function") {
+      return 0;
+    }
+
+    let count = 0;
+    for (const socket of sockets) {
+      callback(socket);
+      count += 1;
+    }
+
+    return count;
+  }
+
+  /**
+   * Yalniz baglanan socket-i silir.
    * Reconnect zamani kohne socket close eventi yeni socket-i registry-den
    * sehvnen silmesin.
    */
   deleteIfCurrent(playerId, socket) {
-    if (this.get(playerId) !== socket) {
+    const sockets = this._socketSets.get(playerId);
+    if (!sockets || !sockets.delete(socket)) {
       return false;
     }
 
-    return this.delete(playerId);
+    if (sockets.size === 0) {
+      this._socketSets.delete(playerId);
+      this._items.delete(playerId);
+      return true;
+    }
+
+    if (this._items.get(playerId) === socket) {
+      let latest = null;
+      for (const candidate of sockets) {
+        latest = candidate;
+      }
+      this._items.set(playerId, latest);
+    }
+
+    return true;
+  }
+
+  delete(playerId) {
+    this._socketSets.delete(playerId);
+    return this._items.delete(playerId);
+  }
+
+  clear() {
+    this._socketSets.clear();
+    this._items.clear();
   }
 }
 
