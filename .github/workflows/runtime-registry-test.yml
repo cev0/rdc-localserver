@@ -17,6 +17,8 @@ on:
       - "runtime_protocol_envelope_testi.js"
       - "runtime_request_idempotency.js"
       - "runtime_request_idempotency_testi.js"
+      - "runtime_pg_authoritative_mutation.js"
+      - "runtime_pg_authoritative_mutation_testi.js"
       - "runtime_ws_guard.js"
       - "runtime_ws_guard_testi.js"
       - "runtime_command_router.js"
@@ -53,6 +55,8 @@ on:
       - "runtime_protocol_envelope_testi.js"
       - "runtime_request_idempotency.js"
       - "runtime_request_idempotency_testi.js"
+      - "runtime_pg_authoritative_mutation.js"
+      - "runtime_pg_authoritative_mutation_testi.js"
       - "runtime_ws_guard.js"
       - "runtime_ws_guard_testi.js"
       - "runtime_command_router.js"
@@ -108,6 +112,9 @@ jobs:
 
       - name: Test request idempotency
         run: node runtime_request_idempotency_testi.js
+
+      - name: Test PostgreSQL authoritative mutation
+        run: node runtime_pg_authoritative_mutation_testi.js
 
       - name: Test command router
         run: node runtime_command_router_testi.js
