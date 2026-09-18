@@ -3593,18 +3593,6 @@ connections.configureRemotePublisher(
     runtimeBus.publishToPlayer(playerId, payload)
 );
 
-runtimeBus.start().catch((error) => {
-  console.error(
-    "[REDIS] Startup error:",
-    error && error.message ? error.message : error
-  );
-
-  if (process.env.REDIS_REQUIRED === "1") {
-    // Required Redis olmadan multi-instance server saglam sayilmir.
-    setImmediate(() => process.exit(1));
-  }
-});
-
 const deadlineScheduler = new RuntimeDeadlineScheduler({
   now: nowMs,
   onDue: processPlayerDeadline
@@ -7236,11 +7224,8 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify({
       ok: redisHealthy,
       time: nowMs(),
-      redis: {
-        enabled: runtimeBus.enabled,
-        required: runtimeBus.required,
-        ready: runtimeBus.ready
-      },
+      redis:
+        runtimeBus.snapshot(),
       websocket: {
         connections:
           typeof wss !== "undefined"
@@ -7458,9 +7443,37 @@ function completeTechnologyResearchForAllPlayers() {
 // SERVER START
 // ============================================================
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log("Server started on " + PORT);
-});
+async function runtimeServeriniBaslat() {
+  try {
+    await runtimeBus.start();
+  }
+  catch (error) {
+    console.error(
+      "[REDIS] Startup error:",
+      error && error.message ? error.message : error
+    );
+
+    if (runtimeBus.required) {
+      // Multi-instance production required Redis olmadan trafik qəbul etmir.
+      setImmediate(
+        () => process.exit(1)
+      );
+      return false;
+    }
+  }
+
+  server.listen(
+    PORT,
+    "0.0.0.0",
+    () => {
+      console.log(
+        "Server started on " + PORT
+      );
+    }
+  );
+
+  return true;
+}
 
 let gracefulShutdownBaslayib = false;
 
@@ -7522,4 +7535,6 @@ process.once(
   "SIGINT",
   () => void gracefulShutdown("SIGINT")
 );
+
+void runtimeServeriniBaslat();
 

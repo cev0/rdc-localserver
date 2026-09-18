@@ -11,6 +11,15 @@ function metnAl(value, fallback = "") {
     : fallback;
 }
 
+function bayraqAktivdir(value) {
+  return value === true ||
+    ["1", "true", "yes", "on"].includes(
+      String(value || "")
+        .trim()
+        .toLowerCase()
+    );
+}
+
 function instanceIdYarat() {
   return (
     metnAl(process.env.KOYEB_INSTANCE_ID) ||
@@ -61,12 +70,14 @@ class RuntimeRedisBus {
         : process.env.REDIS_REQUIRED;
 
     this.required =
-      requiredValue === true ||
-      ["1", "true", "yes", "on"].includes(
-        String(requiredValue || "")
-          .trim()
-          .toLowerCase()
+      bayraqAktivdir(
+        requiredValue
       );
+
+    this.clientFactory =
+      typeof options.clientFactory === "function"
+        ? options.clientFactory
+        : null;
 
     this.onDirectMessage =
       typeof options.onDirectMessage === "function"
@@ -77,6 +88,8 @@ class RuntimeRedisBus {
     this.subscriber = null;
     this.ready = false;
     this.started = false;
+    this.closing = false;
+    this.subscribed = false;
     this.localPlayers = new Set();
     this.refreshTimer = null;
   }
@@ -99,6 +112,7 @@ class RuntimeRedisBus {
     }
 
     this.started = true;
+    this.closing = false;
 
     if (!this.enabled) {
       if (this.required) {
@@ -114,29 +128,27 @@ class RuntimeRedisBus {
     }
 
     try {
-      const { createClient } = require("@redis/client");
+      const createClient =
+        this.clientFactory ||
+        require("@redis/client").createClient;
 
       this.commandClient = createClient({
         url: this.redisUrl
       });
 
-      this.commandClient.on("error", (error) => {
-        console.error(
-          "[REDIS] command client error:",
-          error && error.message ? error.message : error
-        );
-      });
+      this._clientLifecycleQeydEt(
+        this.commandClient,
+        "command"
+      );
 
       await this.commandClient.connect();
 
       this.subscriber = this.commandClient.duplicate();
 
-      this.subscriber.on("error", (error) => {
-        console.error(
-          "[REDIS] subscriber error:",
-          error && error.message ? error.message : error
-        );
-      });
+      this._clientLifecycleQeydEt(
+        this.subscriber,
+        "subscriber"
+      );
 
       await this.subscriber.connect();
 
@@ -147,7 +159,14 @@ class RuntimeRedisBus {
         }
       );
 
-      this.ready = true;
+      this.subscribed = true;
+      this._readyYenile();
+
+      if (!this.ready) {
+        throw new Error(
+          "Redis command/subscriber client-ləri hazır deyil."
+        );
+      }
 
       // Startup davam ederken socket auth olubsa localPlayers artiq dolu ola biler.
       // Redis hazir olan kimi ilk presence yazisini gecikdirmeden et.
@@ -163,6 +182,7 @@ class RuntimeRedisBus {
     }
     catch (error) {
       this.ready = false;
+      this.subscribed = false;
 
       console.error(
         "[REDIS] Runtime bus baslamadi:",
@@ -249,7 +269,20 @@ class RuntimeRedisBus {
     return Number(subscriberCount) > 0;
   }
 
+  snapshot() {
+    return {
+      enabled: this.enabled,
+      required: this.required,
+      ready: this.ready,
+      instanceId: this.instanceId,
+      localPlayers: this.localPlayers.size
+    };
+  }
+
   async close() {
+    this.closing = true;
+    this.ready = false;
+
     if (this.refreshTimer) {
       clearInterval(this.refreshTimer);
       this.refreshTimer = null;
@@ -268,6 +301,7 @@ class RuntimeRedisBus {
 
     this.localPlayers.clear();
     this.ready = false;
+    this.subscribed = false;
 
     if (this.subscriber) {
       try {
@@ -290,6 +324,73 @@ class RuntimeRedisBus {
       }
       this.commandClient = null;
     }
+
+    this.started = false;
+  }
+
+  _clientLifecycleQeydEt(
+    client,
+    role
+  ) {
+    if (
+      !client ||
+      typeof client.on !== "function"
+    ) {
+      return;
+    }
+
+    client.on("error", (error) => {
+      console.error(
+        "[REDIS] " + role + " client error:",
+        error && error.message ? error.message : error
+      );
+    });
+
+    client.on("reconnecting", () => {
+      this.ready = false;
+    });
+
+    client.on("end", () => {
+      this.ready = false;
+    });
+
+    client.on("ready", () => {
+      const evvelki =
+        this.ready;
+
+      this._readyYenile();
+
+      if (
+        !evvelki &&
+        this.ready &&
+        this.subscribed &&
+        !this.closing
+      ) {
+        this._butunPresenceYenile()
+          .catch((error) => {
+            console.error(
+              "[REDIS] reconnect presence refresh error:",
+              error && error.message ? error.message : error
+            );
+          });
+      }
+    });
+  }
+
+  _readyYenile() {
+    this.ready =
+      !this.closing &&
+      this.subscribed &&
+      !!(
+        this.commandClient &&
+        this.commandClient.isReady
+      ) &&
+      !!(
+        this.subscriber &&
+        this.subscriber.isReady
+      );
+
+    return this.ready;
   }
 
   async _presenceYenile(playerId) {
@@ -401,5 +502,6 @@ function createRuntimeRedisBus(options) {
 
 module.exports = {
   RuntimeRedisBus,
-  createRuntimeRedisBus
+  createRuntimeRedisBus,
+  bayraqAktivdir
 };

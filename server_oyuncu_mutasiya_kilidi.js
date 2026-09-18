@@ -14,7 +14,13 @@ const REDIS_URL =
     : "";
 
 const REDIS_REQUIRED =
-  String(process.env.REDIS_REQUIRED || "").trim() === "1";
+  ["1", "true", "yes", "on"].includes(
+    String(
+      process.env.REDIS_REQUIRED || ""
+    )
+      .trim()
+      .toLowerCase()
+  );
 
 const REDIS_NAMESPACE =
   (process.env.REDIS_NAMESPACE || "rdc:v2").trim();
