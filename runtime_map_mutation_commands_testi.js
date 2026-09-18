@@ -298,18 +298,24 @@ const {
 
   assert.strictEqual(
     sent[0].type,
-    "state_center_occupied"
+    "error"
+  );
+
+  assert.strictEqual(
+    sent[0].code,
+    "STATE_CENTER_PERSISTENCE_REQUIRED"
   );
 
   assert.deepStrictEqual(
     localMapPushes,
-    [1, 1],
-    "Legacy teleport commit-den sonra, center occupation isə runtime mutation-dan sonra local map push etməlidir."
+    [1],
+    "Yalnız committed legacy teleport local map push etməlidir."
   );
 
   assert.strictEqual(
     worldPushes.length,
-    1
+    0,
+    "Fail-closed center occupation shared world state-i broadcast etməməlidir."
   );
 
   assert.deepStrictEqual(
@@ -323,8 +329,8 @@ const {
 
   assert.deepStrictEqual(
     locks,
-    ["p1"],
-    "Shared-world occupy route hələ ayrıca world metadata persistence tələb edir."
+    [],
+    "Fail-closed center occupation heç bir mutasiya lock-u və world state yazısı etməməlidir."
   );
 
   const serverCode =
