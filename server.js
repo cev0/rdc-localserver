@@ -39,6 +39,12 @@ const {
   sifreSifirlamaMesajiniEmalEt
 } = require("./sifre_sifirlama_handler");
 
+const {
+  runtimeDeployConfiginiAl,
+  runtimeDeployConfiginiYoxla,
+  runtimeDeployPublicMelumatiniAl
+} = require("./runtime_deploy_config");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -3378,11 +3384,6 @@ const {
   runtimeOxu:
     dovletKonvoyRuntimeOxu
 } = require("./dovlet_konvoy_runtime_postgres");
-const {
-  runtimeDeployConfiginiAl,
-  runtimeDeployConfiginiYoxla,
-  runtimeDeployPublicMelumatiniAl
-} = require("./runtime_deploy_config");
 const {
   RuntimeDeadlineScheduler
 } = require("./runtime_deadline_scheduler");
