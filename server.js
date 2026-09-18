@@ -7142,8 +7142,6 @@ mapMutationCommandleriniQeydEt(
     canMoveBuilding,
     syncResourceSlotOccupancy,
     getWorldStateRuntime,
-    occupyStateCenter,
-    pushWorldMapToAllAuthedPlayers,
     dovletBazalariniBirbasaPostgresdenAlClient,
     dovletBazaKeshiniTemizle
   }
