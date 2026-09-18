@@ -8,6 +8,9 @@ const {
   oyuncuStateMutasiyasiniPostgresIleIcraEt
 } = require("./oyun_state_mutasiya_postgres");
 const {
+  worldStateOyuncuMutasiyasiniPostgresIleIcraEt
+} = require("./world_state_mutasiya_postgres");
+const {
   pvpBazaHucumStartMutasiyasiniIcraEt
 } = require("./pvp_baza_hucum_start_xidmeti");
 const {
@@ -67,6 +70,7 @@ function pvpCanliQaydasiniHazirla() {
     arrivalResolutionEnabled: true,
     combatResolverEnabled: true,
     atomicTwoPlayerSettlementEnabled: true,
+    stateFirstSharedWorldTransactionsEnabled: true,
     defenderSnapshotLockedAtArrival: true,
     attackerSnapshotLockedAtAttackStart: true,
     targetCoordinatesLockedAtAttackStart: true,
@@ -289,7 +293,7 @@ async function autentifikasiyaVeStateHazirla(kontekst, resultType) {
 async function startEmeliyyatiniIcraEt(kontekst, hazir) {
   const { playerId, state } = hazir;
   const now = kontekst.nowMs();
-  const netice = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
+  const netice = await worldStateOyuncuMutasiyasiniPostgresIleIcraEt(
     playerId,
     state,
     async (kilidliState, trx) => pvpBazaHucumStartMutasiyasiniIcraEt(
@@ -337,10 +341,37 @@ async function statusEmeliyyatiniIcraEt(kontekst, hazir) {
   let deyisdi = false;
   let settlement = null;
 
-  const progress = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
+  let progress = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
     playerId,
     state,
     async (kilidliState, trx) => {
+      const aktiv = pvpAktivHucumEmeliyyatiniTap(
+        kilidliState,
+        convoyId
+      );
+
+      const arrivalDue =
+        aktiv &&
+        metnAl(
+          aktiv.status,
+          64
+        ) === PVP_BAZA_STATUSLARI.YOLDA &&
+        tamEded(
+          aktiv.arrivalAtMs
+        ) > 0 &&
+        now >=
+          tamEded(
+            aktiv.arrivalAtMs
+          );
+
+      if (arrivalDue) {
+        return {
+          success: true,
+          deyisdi: false,
+          arrivalDue: true
+        };
+      }
+
       const arrival = await pvpBazaHucumCatmaMutasiyasiniIcraEt(
         kilidliState,
         playerId,
@@ -356,6 +387,7 @@ async function statusEmeliyyatiniIcraEt(kontekst, hazir) {
       return {
         success: true,
         deyisdi: arrival.deyisdi === true || finish.deyisdi === true,
+        arrivalDue: false,
         arrival,
         finish
       };
@@ -372,6 +404,67 @@ async function statusEmeliyyatiniIcraEt(kontekst, hazir) {
     });
     return true;
   }
+
+  if (progress.arrivalDue === true) {
+    progress = await worldStateOyuncuMutasiyasiniPostgresIleIcraEt(
+      playerId,
+      state,
+      async (kilidliState, trx) => {
+        const arrival = await pvpBazaHucumCatmaMutasiyasiniIcraEt(
+          kilidliState,
+          playerId,
+          { convoyId, operationId },
+          trx.client,
+          now,
+          {
+            // Canonical shared-world State lock outer transaction-da
+            // oyunçu lock-undan əvvəl alınıb. Daxildə legacy State lock
+            // təkrar alınmır.
+            dovletKilidiAl:
+              async () => true
+          }
+        );
+
+        if (!arrival || arrival.success !== true) {
+          return arrival;
+        }
+
+        const finish =
+          pvpGeriDonusuYekunlasdir(
+            kilidliState,
+            convoyId,
+            operationId,
+            now
+          );
+
+        if (!finish.success) {
+          return finish;
+        }
+
+        return {
+          success: true,
+          deyisdi:
+            arrival.deyisdi === true ||
+            finish.deyisdi === true,
+          arrivalDue: false,
+          arrival,
+          finish
+        };
+      }
+    );
+
+    if (!progress || progress.success !== true) {
+      gonder(kontekst, "pvp_base_attack_status_result", {
+        success: false,
+        pvpEnabled: true,
+        playerId,
+        blocker: progress && progress.blocker ? progress.blocker : "",
+        message: progress && progress.message ? progress.message : "PvP çatma statusu yenilənmədi."
+      });
+      return true;
+    }
+  }
+
   deyisdi = progress.deyisdi === true;
 
   const active = pvpAktivHucumEmeliyyatiniTap(state, convoyId);

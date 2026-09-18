@@ -4,8 +4,8 @@ const {
   pvpDoyusunuIkiStateUzerindeTetbiqEt
 } = require("./pvp_doyus_settlement_sistemi");
 const {
-  ikiOyuncuStateMutasiyasiniPostgresIleIcraEt
-} = require("./iki_oyuncu_state_mutasiya_postgres");
+  worldStateIkiOyuncuMutasiyasiniPostgresIleIcraEt
+} = require("./world_state_iki_oyuncu_mutasiya_postgres");
 const {
   pvpIkiTerefRaportlariniYarat
 } = require("./pvp_doyus_raport_sistemi");
@@ -36,7 +36,7 @@ async function pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
 ) {
   const runner = secimler && typeof secimler.ikiOyuncuMutasiya === "function"
     ? secimler.ikiOyuncuMutasiya
-    : ikiOyuncuStateMutasiyasiniPostgresIleIcraEt;
+    : worldStateIkiOyuncuMutasiyasiniPostgresIleIcraEt;
   const runnerSecimleri = secimler && secimler.runnerSecimleri
     ? secimler.runnerSecimleri
     : null;
@@ -86,7 +86,13 @@ async function pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
           defenderState,
           lockedDefenderId,
           trx && trx.client,
-          nowMs
+          nowMs,
+          {
+            worldStateLockHeld:
+              !!(trx && trx.worldStateLockHeld),
+            worldStateId:
+              trx && trx.worldStateId
+          }
         );
         innerSettlement.zeroingRelocation = zeroingRelocation;
       }

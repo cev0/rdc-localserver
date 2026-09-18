@@ -106,6 +106,7 @@ function stateHazirla(operation = operationHazirla()) {
     assert.strictEqual(rule.pvpEnabled, true);
     assert.strictEqual(rule.clientCannotSubmitBattleWinner, true);
     assert.strictEqual(rule.clientCannotSubmitCasualties, true);
+    assert.strictEqual(rule.stateFirstSharedWorldTransactionsEnabled, true);
   }
 
   {

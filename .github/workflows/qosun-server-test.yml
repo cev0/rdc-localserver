@@ -100,6 +100,10 @@ on:
       - 'pvp_baza_live_handler_testi.js'
       - 'pvp_baza_report_status_handler.js'
       - 'iki_oyuncu_state_mutasiya_postgres.js'
+      - 'world_state_mutasiya_postgres.js'
+      - 'world_state_transaction_lock.js'
+      - 'world_state_iki_oyuncu_mutasiya_postgres.js'
+      - 'world_state_iki_oyuncu_mutasiya_postgres_testi.js'
       - 'server_missiya_genisletme_v2.js'
       - 'missiya_handler.js'
       - 'missiya_postgres.js'
@@ -178,6 +182,8 @@ jobs:
         run: node pvp_doyus_resolver_testi.js
       - name: PvP atomic settlement testleri
         run: node pvp_doyus_settlement_sistemi_testi.js
+      - name: Shared-world iki-oyuncu State-first transaction testleri
+        run: node world_state_iki_oyuncu_mutasiya_postgres_testi.js
       - name: PvP battle report testleri
         run: node pvp_doyus_raport_sistemi_testi.js
       - name: PvP seher davamliliq testleri
