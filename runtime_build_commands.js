@@ -391,7 +391,8 @@ function buildCommandleriniQeydEt(
     },
     {
       authRequired: true,
-      mutation: true
+      mutation: true,
+      postgresAuthoritative: true
     }
   );
 
