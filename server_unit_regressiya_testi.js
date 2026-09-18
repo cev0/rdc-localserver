@@ -55,6 +55,7 @@ const UNIT_TESTLERI = [
   "oyun_state_cox_oyuncu_kilidi_testi.js",
   "oyun_state_daimilik_korpu_testi.js",
   "oyun_state_mutasiya_postgres_testi.js",
+  "world_state_assignment_postgres_testi.js",
   "pvp_anbar_qoruma_sistemi_testi.js",
   "pvp_baza_hucum_catma_xidmeti_testi.js",
   "pvp_baza_hucum_start_xidmeti_testi.js",

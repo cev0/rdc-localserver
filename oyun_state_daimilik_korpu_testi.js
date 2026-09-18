@@ -223,6 +223,153 @@ function stateKopyala(value) {
     "db-v3"
   );
 
+  {
+    states.set(
+      "new-player",
+      {
+        playerId:
+          "new-player",
+        marker:
+          "local-default",
+        worldPlacement: {
+          stateId: 1,
+          baseX: 10,
+          baseZ: 10
+        }
+      }
+    );
+
+    let placementCalls = 0;
+    let written = false;
+
+    const newPlayerTransaction =
+      async (
+        playerId,
+        liveState,
+        operation
+      ) => {
+        const lockedState =
+          stateKopyala(
+            liveState
+          );
+
+        const result =
+          await operation(
+            lockedState,
+            {
+              playerId,
+              sonSnapshotVar:
+                false,
+              client: {
+                async query() {
+                  throw new Error(
+                    "Injected placement fn olduğuna görə query çağırılmamalıdır."
+                  );
+                }
+              }
+            }
+          );
+
+        written =
+          !!(
+            result &&
+            result.deyisdi ===
+              true
+          );
+
+        for (
+          const key of
+          Object.keys(
+            liveState
+          )
+        ) {
+          delete liveState[key];
+        }
+
+        Object.assign(
+          liveState,
+          lockedState
+        );
+
+        return result;
+      };
+
+    await oyunStateIniBerpaEt(
+      context,
+      "new-player",
+      {
+        transactionExecutor:
+          newPlayerTransaction,
+        worldPlacementEnsureFn:
+          async (
+            _client,
+            lockedState,
+            playerId,
+            nowMs,
+            options
+          ) => {
+            placementCalls += 1;
+
+            assert.strictEqual(
+              playerId,
+              "new-player"
+            );
+
+            assert.strictEqual(
+              options.force,
+              true
+            );
+
+            assert.ok(
+              Number(nowMs) > 0
+            );
+
+            lockedState
+              .worldPlacement = {
+                stateId: 4,
+                baseX: 700,
+                baseZ: 701,
+                assignmentAuthority:
+                  "postgres_v1"
+              };
+
+            return {
+              success: true,
+              deyisdi: true,
+              stateId: 4
+            };
+          }
+      }
+    );
+
+    assert.strictEqual(
+      placementCalls,
+      1,
+      "Snapshot olmayan oyunçunun local provisional placement-i PostgreSQL-authoritative allocator ilə əvəz edilməlidir."
+    );
+
+    assert.strictEqual(
+      written,
+      true,
+      "Authoritative placement restore transaction-da snapshot write tələb etməlidir."
+    );
+
+    assert.strictEqual(
+      states.get(
+        "new-player"
+      ).worldPlacement.stateId,
+      4
+    );
+
+    assert.strictEqual(
+      states.get(
+        "new-player"
+      ).worldPlacement
+        .assignmentAuthority,
+      "postgres_v1"
+    );
+  }
+
   console.log(
     "PASS: gameplay state restore is PostgreSQL-authoritative, cacheable and force-refreshable."
   );

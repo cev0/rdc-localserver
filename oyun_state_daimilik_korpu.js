@@ -6,6 +6,10 @@ const {
 const {
   oyuncuStateMutasiyasiniPostgresIleIcraEt
 } = require("./oyun_state_mutasiya_postgres");
+const {
+  worldStatePlacementEtibarlidir,
+  worldStatePlacementiniTeminEtClient
+} = require("./world_state_assignment_postgres");
 
 const berpaOlunmusOyuncular =
   new Set();
@@ -113,7 +117,7 @@ async function oyunStateIniBerpaEt(
         oyuncuId,
         state,
         async (
-          _lockedState,
+          lockedState,
           transactionContext = {}
         ) => {
           snapshotVar =
@@ -121,8 +125,74 @@ async function oyunStateIniBerpaEt(
               .sonSnapshotVar ===
             true;
 
+          let placementChanged =
+            false;
+
+          const transactionClient =
+            transactionContext &&
+            transactionContext.client;
+
+          const placementEnsureFn =
+            typeof options
+              .worldPlacementEnsureFn ===
+              "function"
+              ? options
+                  .worldPlacementEnsureFn
+              : worldStatePlacementiniTeminEtClient;
+
+          const placementMissing =
+            !worldStatePlacementEtibarlidir(
+              lockedState
+            );
+
+          /*
+           * Snapshot yoxdursa RAM-da yaranmış provisional placement
+           * authoritative sayılmır. Global State/spawn seçimi PostgreSQL
+           * advisory lock altında yenidən aparılır və eyni snapshot transaction-da
+           * persist edilir.
+           */
+          if (
+            transactionClient &&
+            (
+              !snapshotVar ||
+              placementMissing
+            )
+          ) {
+            const placementResult =
+              await placementEnsureFn(
+                transactionClient,
+                lockedState,
+                oyuncuId,
+                typeof kontekst.nowMs ===
+                  "function"
+                  ? kontekst.nowMs()
+                  : Date.now(),
+                {
+                  ...(
+                    options
+                      .worldPlacementOptions &&
+                    typeof options
+                      .worldPlacementOptions ===
+                      "object"
+                      ? options
+                          .worldPlacementOptions
+                      : {}
+                  ),
+                  force: true
+                }
+              );
+
+            placementChanged =
+              !!(
+                placementResult &&
+                placementResult
+                  .deyisdi === true
+              );
+          }
+
           return {
-            deyisdi: false
+            deyisdi:
+              placementChanged
           };
         },
         options.transactionOptions ||

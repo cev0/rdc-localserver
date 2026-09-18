@@ -26,6 +26,9 @@ on:
       - "runtime_pg_authoritative_mutation_testi.js"
       - "oyun_state_daimilik_korpu.js"
       - "oyun_state_daimilik_korpu_testi.js"
+      - "world_state_assignment_postgres.js"
+      - "world_state_assignment_postgres_testi.js"
+      - "miqrasiyalar/20260918_world_state_assignment.sql"
       - "runtime_state_sync.js"
       - "runtime_state_sync_testi.js"
       - "runtime_world_map_sync.js"
@@ -89,6 +92,9 @@ on:
       - "runtime_pg_authoritative_mutation_testi.js"
       - "oyun_state_daimilik_korpu.js"
       - "oyun_state_daimilik_korpu_testi.js"
+      - "world_state_assignment_postgres.js"
+      - "world_state_assignment_postgres_testi.js"
+      - "miqrasiyalar/20260918_world_state_assignment.sql"
       - "runtime_state_sync.js"
       - "runtime_state_sync_testi.js"
       - "runtime_world_map_sync.js"
@@ -174,6 +180,9 @@ jobs:
 
       - name: Test authoritative gameplay state restore
         run: node oyun_state_daimilik_korpu_testi.js
+
+      - name: Test PostgreSQL-authoritative State assignment
+        run: node world_state_assignment_postgres_testi.js
 
       - name: Test cross-instance runtime state sync
         run: node runtime_state_sync_testi.js
