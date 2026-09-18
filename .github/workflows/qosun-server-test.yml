@@ -76,6 +76,7 @@ on:
       - 'pvp_doyus_raport_sistemi.js'
       - 'pvp_doyus_raport_sistemi_testi.js'
       - 'pvp_doyus_raport_settlement_korpu.js'
+      - 'pvp_doyus_raport_settlement_korpu_testi.js'
       - 'pvp_seher_davamliliq_sistemi.js'
       - 'pvp_seher_davamliliq_sistemi_testi.js'
       - 'pvp_zeroing_yerdeyisme_sistemi.js'
@@ -184,6 +185,8 @@ jobs:
         run: node pvp_doyus_settlement_sistemi_testi.js
       - name: Shared-world iki-oyuncu State-first transaction testleri
         run: node world_state_iki_oyuncu_mutasiya_postgres_testi.js
+      - name: PvP settlement relocation revalidation testleri
+        run: node pvp_doyus_raport_settlement_korpu_testi.js
       - name: PvP battle report testleri
         run: node pvp_doyus_raport_sistemi_testi.js
       - name: PvP seher davamliliq testleri
