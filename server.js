@@ -3391,6 +3391,10 @@ const {
   correlatedSendYarat
 } = require("./runtime_protocol_envelope");
 const {
+  RuntimeWebSocketGuard,
+  websocketRuntimeConfigFromEnv
+} = require("./runtime_ws_guard");
+const {
   oyuncuMutasiyaKilidiIleIcraEt
 } = require("./server_oyuncu_mutasiya_kilidi");
 
@@ -3541,9 +3545,21 @@ function safeJsonParse(text) {
   }
 }
 
+const websocketRuntimeConfig =
+  websocketRuntimeConfigFromEnv(
+    process.env
+  );
+
+const websocketGuard =
+  new RuntimeWebSocketGuard(
+    websocketRuntimeConfig
+  );
+
 function send(ws, obj) {
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  ws.send(JSON.stringify(obj));
+  return websocketGuard.sendJson(
+    ws,
+    obj
+  );
 }
 
 const runtimeBus = createRuntimeRedisBus({
@@ -6960,6 +6976,13 @@ const server = http.createServer((req, res) => {
         enabled: runtimeBus.enabled,
         required: runtimeBus.required,
         ready: runtimeBus.ready
+      },
+      websocket: {
+        connections:
+          typeof wss !== "undefined"
+            ? wss.clients.size
+            : 0,
+        ...websocketGuard.snapshot()
       }
     }));
 
@@ -6970,7 +6993,17 @@ const server = http.createServer((req, res) => {
   res.end("RDC WS server is running");
 });
 
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({
+  server,
+  maxPayload:
+    websocketRuntimeConfig.maxPayloadBytes,
+  perMessageDeflate: false
+});
+
+const stopWebSocketHeartbeat =
+  websocketGuard.startHeartbeat(
+    wss
+  );
 
 // ============================================================
 // WS CONNECTIONS
@@ -6982,6 +7015,11 @@ wss.on("connection", (ws, req) => {
   ws._clientId = crypto.randomBytes(6).toString("hex");
   ws._authedPlayerId = null;
 
+  websocketGuard.attach(
+    ws,
+    nowMs()
+  );
+
   console.log("WS connected:", ip);
 
   send(ws, {
@@ -6990,11 +7028,41 @@ wss.on("connection", (ws, req) => {
   });
 
   ws.on("message", async (data) => {
+    const inboundCheck =
+      websocketGuard.acceptInbound(
+        ws,
+        data,
+        nowMs()
+      );
+
+    if (!inboundCheck.ok) {
+      send(ws, {
+        type: "error",
+        code: inboundCheck.code,
+        message: inboundCheck.message
+      });
+
+      try {
+        ws.close(
+          inboundCheck.closeCode,
+          inboundCheck.code
+        );
+      }
+      catch (_) {
+      }
+
+      return;
+    }
+
     const text = data.toString();
     const [msg, err] = safeJsonParse(text);
 
     if (err) {
-      send(ws, { type: "error", message: "Invalid JSON" });
+      send(ws, {
+        type: "error",
+        code: "INVALID_JSON",
+        message: "Invalid JSON"
+      });
       return;
     }
 
@@ -7142,6 +7210,7 @@ async function gracefulShutdown(signal) {
   console.log("[SERVER] Graceful shutdown:", signal);
 
   deadlineScheduler.stop();
+  stopWebSocketHeartbeat();
 
   try {
     await runtimeBus.close();
