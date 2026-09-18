@@ -21,8 +21,9 @@ jobs:
         with:
           node-version: '20'
       - name: Move deploy-config import before first use and add regression guard
-        shell: python
+        shell: bash
         run: |
+          python3 <<'PY'
           from pathlib import Path
           p = Path('server.js')
           s = p.read_text(encoding='utf-8')
@@ -54,16 +55,12 @@ const firstUseIndex = source.indexOf(firstUseNeedle);
 
 assert(importIndex >= 0, "runtime_deploy_config importu tapilmadi");
 assert(firstUseIndex >= 0, "runtimeDeployConfig ilkinlesdirilmesi tapilmadi");
-assert(
-  importIndex < firstUseIndex,
-  "runtime_deploy_config funksiyalari require edilmeden evvel istifade olunur"
-);
-
+assert(importIndex < firstUseIndex, "runtime_deploy_config funksiyalari require edilmeden evvel istifade olunur");
 console.log("runtime deploy import order testi kecdi");
 ''', encoding='utf-8')
 
-          wf = Path('.github/workflows/runtime-deploy-import-order-hotfix.yml')
-          wf.unlink()
+          Path('.github/workflows/runtime-deploy-import-order-hotfix.yml').unlink()
+          PY
       - name: Validate syntax and regression guard
         run: |
           node --check server.js
