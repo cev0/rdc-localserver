@@ -11,6 +11,8 @@ on:
       - "runtime_redis_testi.js"
       - "runtime_deadline_scheduler.js"
       - "runtime_deadline_scheduler_testi.js"
+      - "runtime_production_clock.js"
+      - "runtime_production_clock_testi.js"
       - "mesajlasma_handler.js"
       - "server_oyuncu_mutasiya_kilidi.js"
       - "server_oyuncu_mutasiya_kilidi_testi.js"
@@ -25,6 +27,8 @@ on:
       - "runtime_redis_testi.js"
       - "runtime_deadline_scheduler.js"
       - "runtime_deadline_scheduler_testi.js"
+      - "runtime_production_clock.js"
+      - "runtime_production_clock_testi.js"
       - "mesajlasma_handler.js"
       - "server_oyuncu_mutasiya_kilidi.js"
       - "server_oyuncu_mutasiya_kilidi_testi.js"
@@ -55,6 +59,9 @@ jobs:
 
       - name: Test deadline scheduler
         run: node runtime_deadline_scheduler_testi.js
+
+      - name: Test lazy production clock
+        run: node runtime_production_clock_testi.js
 
       - name: Test player mutation lock
         run: node server_oyuncu_mutasiya_kilidi_testi.js
