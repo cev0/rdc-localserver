@@ -136,6 +136,10 @@ class RuntimeRedisBus {
       );
 
       this.ready = true;
+
+      // Startup davam ederken socket auth olubsa localPlayers artiq dolu ola biler.
+      // Redis hazir olan kimi ilk presence yazisini gecikdirmeden et.
+      await this._butunPresenceYenile();
       this._presenceRefreshBaslat();
 
       console.log(
@@ -234,8 +238,6 @@ class RuntimeRedisBus {
   }
 
   async close() {
-    this.ready = false;
-
     if (this.refreshTimer) {
       clearInterval(this.refreshTimer);
       this.refreshTimer = null;
@@ -243,6 +245,7 @@ class RuntimeRedisBus {
 
     const localIds = Array.from(this.localPlayers);
 
+    // Presence acarlarini Redis baglanmazdan ve ready false olmadan sil.
     for (const playerId of localIds) {
       try {
         await this.unregisterLocalPlayer(playerId);
@@ -252,6 +255,7 @@ class RuntimeRedisBus {
     }
 
     this.localPlayers.clear();
+    this.ready = false;
 
     if (this.subscriber) {
       try {
