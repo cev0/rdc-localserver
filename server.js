@@ -4222,9 +4222,8 @@ function pushStateToPlayerConnections(playerId, state) {
   refreshTechnologyStats(state);
   const clientState = makeClientState(state);
 
-  wss.clients.forEach((client) => {
-    if (client.readyState !== WebSocket.OPEN) return;
-    if (client._authedPlayerId !== playerId) return;
+  connections.forEachSocket(playerId, (client) => {
+    if (!client || client.readyState !== WebSocket.OPEN) return;
 
     send(client, {
       type: "state",
