@@ -3350,6 +3350,17 @@ function hasUnfinishedBuildingOfSameType(state, buildingId) {
 }
 
 const PORT = process.env.PORT || 3001;
+
+const runtimeDeployConfig =
+  runtimeDeployConfiginiYoxla(
+    runtimeDeployConfiginiAl()
+  );
+
+const runtimeDeployPublicInfo =
+  runtimeDeployPublicMelumatiniAl(
+    runtimeDeployConfig
+  );
+
 const {
   players,
   connections
@@ -3357,6 +3368,11 @@ const {
 const {
   createRuntimeRedisBus
 } = require("./runtime_redis");
+const {
+  runtimeDeployConfiginiAl,
+  runtimeDeployConfiginiYoxla,
+  runtimeDeployPublicMelumatiniAl
+} = require("./runtime_deploy_config");
 const {
   RuntimeDeadlineScheduler
 } = require("./runtime_deadline_scheduler");
@@ -7224,6 +7240,8 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify({
       ok: redisHealthy,
       time: nowMs(),
+      deployment:
+        runtimeDeployPublicInfo,
       redis:
         runtimeBus.snapshot(),
       websocket: {

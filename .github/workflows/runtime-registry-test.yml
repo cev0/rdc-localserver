@@ -9,6 +9,9 @@ on:
       - "runtime_registry_testi.js"
       - "runtime_redis.js"
       - "runtime_redis_testi.js"
+      - "runtime_deploy_config.js"
+      - "runtime_deploy_config_testi.js"
+      - "koyeb.env.example"
       - "runtime_deadline_scheduler.js"
       - "runtime_deadline_scheduler_testi.js"
       - "runtime_production_clock.js"
@@ -55,6 +58,9 @@ on:
       - "runtime_registry_testi.js"
       - "runtime_redis.js"
       - "runtime_redis_testi.js"
+      - "runtime_deploy_config.js"
+      - "runtime_deploy_config_testi.js"
+      - "koyeb.env.example"
       - "runtime_deadline_scheduler.js"
       - "runtime_deadline_scheduler_testi.js"
       - "runtime_production_clock.js"
@@ -116,6 +122,9 @@ jobs:
 
       - name: Test Redis runtime bus
         run: node runtime_redis_testi.js
+
+      - name: Test runtime deployment config
+        run: node runtime_deploy_config_testi.js
 
       - name: Test deadline scheduler
         run: node runtime_deadline_scheduler_testi.js
