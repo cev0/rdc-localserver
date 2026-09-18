@@ -431,6 +431,8 @@ function sharedRedisYarat() {
 
     const receivedA = [];
     const receivedB = [];
+    const broadcastsA = [];
+    const broadcastsB = [];
 
     const commandA =
       new FakeRedisClient(
@@ -459,6 +461,11 @@ function sharedRedisYarat() {
           async message =>
             receivedA.push(
               message
+            ),
+        onBroadcastMessage:
+          async message =>
+            broadcastsA.push(
+              message
             )
       });
 
@@ -478,6 +485,11 @@ function sharedRedisYarat() {
         onDirectMessage:
           async message =>
             receivedB.push(
+              message
+            ),
+        onBroadcastMessage:
+          async message =>
+            broadcastsB.push(
               message
             )
       });
@@ -554,6 +566,51 @@ function sharedRedisYarat() {
 
     assert.strictEqual(
       receivedB[0].sourceInstanceId,
+      "instance-a"
+    );
+
+    assert.strictEqual(
+      await busA.publishBroadcast(
+        "state",
+        "1",
+        {
+          type:
+            "state_chat_message",
+          mesajId:
+            "m1"
+        }
+      ),
+      true
+    );
+
+    assert.strictEqual(
+      broadcastsA.length,
+      0,
+      "Broadcast publisher öz mesajını Redis-dən ikinci dəfə almamalıdır."
+    );
+
+    assert.strictEqual(
+      broadcastsB.length,
+      1
+    );
+
+    assert.strictEqual(
+      broadcastsB[0].scope,
+      "state"
+    );
+
+    assert.strictEqual(
+      broadcastsB[0].targetId,
+      "1"
+    );
+
+    assert.strictEqual(
+      broadcastsB[0].payload.type,
+      "state_chat_message"
+    );
+
+    assert.strictEqual(
+      broadcastsB[0].sourceInstanceId,
       "instance-a"
     );
 
@@ -673,7 +730,9 @@ function sharedRedisYarat() {
           "instance-a",
         localPlayers: 2,
         presenceMode:
-          "multi-instance-v2"
+          "multi-instance-v2",
+        broadcastMode:
+          "global-v1"
       }
     );
 
@@ -695,7 +754,7 @@ function sharedRedisYarat() {
     await busB.close();
 
     console.log(
-      "PASS: Redis runtime bus supports rolling-compatible multi-instance presence, fan-out routing and reconnect cleanup."
+      "PASS: Redis runtime bus supports rolling-compatible multi-instance presence, direct routing, broadcast fan-out and reconnect cleanup."
     );
   }
   finally {

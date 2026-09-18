@@ -84,6 +84,11 @@ class RuntimeRedisBus {
         ? options.onDirectMessage
         : null;
 
+    this.onBroadcastMessage =
+      typeof options.onBroadcastMessage === "function"
+        ? options.onBroadcastMessage
+        : null;
+
     this.commandClient = null;
     this.subscriber = null;
     this.ready = false;
@@ -109,6 +114,10 @@ class RuntimeRedisBus {
 
   instanceChannel(instanceId = this.instanceId) {
     return `${this.namespace}:instance:${instanceId}`;
+  }
+
+  broadcastChannel() {
+    return `${this.namespace}:broadcast:v1`;
   }
 
   async start() {
@@ -161,6 +170,13 @@ class RuntimeRedisBus {
         this.instanceChannel(),
         async (raw) => {
           await this._directMesajiEmalEt(raw);
+        }
+      );
+
+      await this.subscriber.subscribe(
+        this.broadcastChannel(),
+        async (raw) => {
+          await this._broadcastMesajiEmalEt(raw);
         }
       );
 
@@ -304,6 +320,52 @@ class RuntimeRedisBus {
     return delivered;
   }
 
+  async publishBroadcast(
+    scope,
+    targetId,
+    payload
+  ) {
+    const normalizedScope =
+      metnAl(scope)
+        .toLowerCase();
+
+    const normalizedTargetId =
+      metnAl(targetId);
+
+    if (
+      !this.ready ||
+      !normalizedScope ||
+      !normalizedTargetId ||
+      !payload ||
+      typeof payload !== "object"
+    ) {
+      return false;
+    }
+
+    const envelope = {
+      version: 1,
+      sourceInstanceId:
+        this.instanceId,
+      scope:
+        normalizedScope,
+      targetId:
+        normalizedTargetId,
+      payload
+    };
+
+    const subscriberCount =
+      await this.commandClient.publish(
+        this.broadcastChannel(),
+        JSON.stringify(
+          envelope
+        )
+      );
+
+    return Number(
+      subscriberCount
+    ) > 0;
+  }
+
   snapshot() {
     return {
       enabled: this.enabled,
@@ -311,7 +373,8 @@ class RuntimeRedisBus {
       ready: this.ready,
       instanceId: this.instanceId,
       localPlayers: this.localPlayers.size,
-      presenceMode: "multi-instance-v2"
+      presenceMode: "multi-instance-v2",
+      broadcastMode: "global-v1"
     };
   }
 
@@ -635,6 +698,65 @@ class RuntimeRedisBus {
     }
 
     await transaction.exec();
+  }
+
+  async _broadcastMesajiEmalEt(raw) {
+    if (
+      !raw ||
+      !this.onBroadcastMessage
+    ) {
+      return;
+    }
+
+    let envelope;
+
+    try {
+      envelope =
+        JSON.parse(raw);
+    }
+    catch (_) {
+      return;
+    }
+
+    if (
+      !envelope ||
+      envelope.version !== 1 ||
+      envelope.sourceInstanceId ===
+        this.instanceId ||
+      !metnAl(envelope.scope) ||
+      !metnAl(envelope.targetId) ||
+      !envelope.payload ||
+      typeof envelope.payload !==
+        "object"
+    ) {
+      return;
+    }
+
+    try {
+      await this.onBroadcastMessage({
+        scope:
+          metnAl(
+            envelope.scope
+          ).toLowerCase(),
+        targetId:
+          metnAl(
+            envelope.targetId
+          ),
+        payload:
+          envelope.payload,
+        sourceInstanceId:
+          envelope.sourceInstanceId ||
+          ""
+      });
+    }
+    catch (error) {
+      console.error(
+        "[REDIS] broadcast message handler error:",
+        error && error.message
+          ? error.message
+          : error
+      );
+    }
   }
 
   async _directMesajiEmalEt(raw) {

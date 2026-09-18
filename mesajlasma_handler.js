@@ -219,14 +219,75 @@ function oyuncuyaGonder(connections, send, playerId, type, yuk) {
     return true;
 }
 
+function oyuncununButunLokalSocketlerineYayimEt(
+    connections,
+    send,
+    playerId,
+    type,
+    yuk
+) {
+    if (
+        !connections ||
+        typeof send !== "function" ||
+        !playerId
+    ) {
+        return 0;
+    }
+
+    if (
+        typeof connections.forEachSocket === "function"
+    ) {
+        return connections.forEachSocket(
+            playerId,
+            socket => {
+                cavabGonder(
+                    send,
+                    socket,
+                    type,
+                    playerId,
+                    yuk
+                );
+            }
+        );
+    }
+
+    if (
+        typeof connections.get !== "function"
+    ) {
+        return 0;
+    }
+
+    const socket =
+        connections.get(playerId);
+
+    if (!socket) {
+        return 0;
+    }
+
+    cavabGonder(
+        send,
+        socket,
+        type,
+        playerId,
+        yuk
+    );
+
+    return 1;
+}
+
 function dovleteYayimEt(connections, send, getOrCreatePlayerState, dovletId, type, yuk) {
     if (!connections || typeof connections.entries !== "function") return 0;
     let say = 0;
-    for (const [digerPlayerId, socket] of connections.entries()) {
-        if (!socket) continue;
+    for (const [digerPlayerId] of connections.entries()) {
         if (dovletIdAl(getOrCreatePlayerState, digerPlayerId) !== dovletId) continue;
-        cavabGonder(send, socket, type, digerPlayerId, yuk);
-        say++;
+
+        say += oyuncununButunLokalSocketlerineYayimEt(
+            connections,
+            send,
+            digerPlayerId,
+            type,
+            yuk
+        );
     }
     return say;
 }
@@ -234,17 +295,145 @@ function dovleteYayimEt(connections, send, getOrCreatePlayerState, dovletId, typ
 function ittifaqaYayimEt(connections, send, getOrCreatePlayerState, ittifaqId, type, yuk) {
     if (!connections || typeof connections.entries !== "function") return 0;
     let say = 0;
-    for (const [digerPlayerId, socket] of connections.entries()) {
-        if (!socket) continue;
+    for (const [digerPlayerId] of connections.entries()) {
         if (ittifaqIdAl(getOrCreatePlayerState, digerPlayerId) !== ittifaqId) continue;
-        cavabGonder(send, socket, type, digerPlayerId, yuk);
-        say++;
+
+        say += oyuncununButunLokalSocketlerineYayimEt(
+            connections,
+            send,
+            digerPlayerId,
+            type,
+            yuk
+        );
     }
     return say;
 }
 
+async function runtimeYayiminiUzaqInstanslaraGonder(
+    runtimeBus,
+    scope,
+    targetId,
+    type,
+    yuk
+) {
+    if (
+        !runtimeBus ||
+        typeof runtimeBus.publishBroadcast !== "function"
+    ) {
+        return false;
+    }
+
+    try {
+        return await runtimeBus.publishBroadcast(
+            scope,
+            String(targetId),
+            {
+                type,
+                yuk: yuk || {}
+            }
+        );
+    }
+    catch (xeta) {
+        console.error(
+            "[MESAJLASMA] Cross-instance broadcast xətası:",
+            xeta && xeta.message
+                ? xeta.message
+                : xeta
+        );
+
+        return false;
+    }
+}
+
+function runtimeYayiminiYereldeGonder(
+    message,
+    deps = {}
+) {
+    if (
+        !message ||
+        !message.payload ||
+        typeof message.payload !== "object"
+    ) {
+        return 0;
+    }
+
+    const {
+        connections,
+        send,
+        getOrCreatePlayerState
+    } = deps;
+
+    const scope =
+        metnAl(message.scope, 32)
+            .toLowerCase();
+
+    const targetId =
+        metnAl(message.targetId, 128);
+
+    const type =
+        metnAl(
+            message.payload.type,
+            128
+        );
+
+    const yuk =
+        message.payload.yuk &&
+        typeof message.payload.yuk === "object"
+            ? message.payload.yuk
+            : {};
+
+    if (
+        !scope ||
+        !targetId ||
+        !type
+    ) {
+        return 0;
+    }
+
+    if (scope === "state") {
+        const dovletId =
+            Number(targetId);
+
+        if (
+            !Number.isInteger(dovletId) ||
+            dovletId <= 0
+        ) {
+            return 0;
+        }
+
+        return dovleteYayimEt(
+            connections,
+            send,
+            getOrCreatePlayerState,
+            dovletId,
+            type,
+            yuk
+        );
+    }
+
+    if (scope === "alliance") {
+        return ittifaqaYayimEt(
+            connections,
+            send,
+            getOrCreatePlayerState,
+            targetId,
+            type,
+            yuk
+        );
+    }
+
+    return 0;
+}
+
 async function mesajlasmaMesajiniEmalEt(kontekst) {
-    const { ws, msg, send, connections, getOrCreatePlayerState } = kontekst || {};
+    const {
+        ws,
+        msg,
+        send,
+        connections,
+        runtimeBus,
+        getOrCreatePlayerState
+    } = kontekst || {};
     if (!ws || !msg || typeof send !== "function") return false;
 
     const type = metnAl(msg.type || kontekst.type, 128).toLowerCase();
@@ -403,7 +592,23 @@ async function mesajlasmaMesajiniEmalEt(kontekst) {
                     metn
                 });
 
-                dovleteYayimEt(connections, send, getOrCreatePlayerState, dovletId, "olke_mesaj_geldi", { mesaj });
+                dovleteYayimEt(
+                    connections,
+                    send,
+                    getOrCreatePlayerState,
+                    dovletId,
+                    "olke_mesaj_geldi",
+                    { mesaj }
+                );
+
+                await runtimeYayiminiUzaqInstanslaraGonder(
+                    runtimeBus,
+                    "state",
+                    dovletId,
+                    "olke_mesaj_geldi",
+                    { mesaj }
+                );
+
                 cavabGonder(send, ws, "olke_mesaj_gonder_result", playerId, {
                     success: true,
                     mesajId: mesaj.mesajId
@@ -452,7 +657,23 @@ async function mesajlasmaMesajiniEmalEt(kontekst) {
                     metn
                 });
 
-                ittifaqaYayimEt(connections, send, getOrCreatePlayerState, ittifaqId, "ittifaq_mesaj_geldi", { mesaj });
+                ittifaqaYayimEt(
+                    connections,
+                    send,
+                    getOrCreatePlayerState,
+                    ittifaqId,
+                    "ittifaq_mesaj_geldi",
+                    { mesaj }
+                );
+
+                await runtimeYayiminiUzaqInstanslaraGonder(
+                    runtimeBus,
+                    "alliance",
+                    ittifaqId,
+                    "ittifaq_mesaj_geldi",
+                    { mesaj }
+                );
+
                 cavabGonder(send, ws, "ittifaq_mesaj_gonder_result", playerId, {
                     success: true,
                     mesajId: mesaj.mesajId
@@ -554,5 +775,9 @@ module.exports = {
     dovletIdAl,
     ittifaqIdAl,
     mesajGoruntulemeIcazesi,
-    neticeTipiniAl
+    neticeTipiniAl,
+    dovleteYayimEt,
+    ittifaqaYayimEt,
+    runtimeYayiminiUzaqInstanslaraGonder,
+    runtimeYayiminiYereldeGonder
 };

@@ -3369,6 +3369,9 @@ const {
   createRuntimeRedisBus
 } = require("./runtime_redis");
 const {
+  runtimeYayiminiYereldeGonder
+} = require("./mesajlasma_handler");
+const {
   runtimeDeployConfiginiAl,
   runtimeDeployConfiginiYoxla,
   runtimeDeployPublicMelumatiniAl
@@ -3632,6 +3635,18 @@ const runtimeBus = createRuntimeRedisBus({
         message.playerId,
         message.payload,
         send
+      );
+    },
+
+  onBroadcastMessage:
+    async (message) => {
+      runtimeYayiminiYereldeGonder(
+        message,
+        {
+          connections,
+          send,
+          getOrCreatePlayerState
+        }
       );
     }
 });
