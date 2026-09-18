@@ -18,6 +18,10 @@ const {
 const {
   worldV2TeleportSaheResurslariniSilClient,
 } = require("./dovlet_xerite_worldv2_resurs_emeliyyat_sistemi");
+const {
+  WORLD_STATE_TELEPORT_LOCK_NAME,
+  worldStateTeleportKilidiniAl,
+} = require("./world_state_transaction_lock");
 
 const WORLDV2_TELEPORT_SORGU = "state_map_v2_base_teleport_request";
 const WORLDV2_TELEPORT_CAVAB = "state_map_v2_base_teleport_result";
@@ -25,7 +29,6 @@ const WORLDV2_TELEPORT_SERHED_PAYI = 4;
 const WORLDV2_BAZA_XANA_ENI = 2;
 const WORLDV2_RESURS_XANA_ENI = 1;
 const WORLDV2_TELEPORT_PREZIDENT_MIN_MESAFE = 45;
-const WORLDV2_TELEPORT_STATE_KILIDI = "worldv2_baza_teleport_state_v1";
 
 function metnAl(deyer, maksimum = 128) {
   return typeof deyer === "string"
@@ -323,9 +326,9 @@ function worldV2TeleportHandleriYarat({
 
           // Fərqli oyunçuların eyni anda eyni boş koordinatı seçməsi bu
           // Dövlət səviyyəli transaction kilidi ilə seriallaşdırılır.
-          await client.query(
-            "SELECT pg_advisory_xact_lock(hashtext($1))",
-            [WORLDV2_TELEPORT_STATE_KILIDI + ":" + placement.stateId],
+          await worldStateTeleportKilidiniAl(
+            client,
+            placement.stateId,
           );
 
           const bazaPaketi = await bazalariKilidliAl(client, placement.stateId);
@@ -423,6 +426,7 @@ module.exports = {
   WORLDV2_BAZA_XANA_ENI,
   WORLDV2_RESURS_XANA_ENI,
   WORLDV2_TELEPORT_PREZIDENT_MIN_MESAFE,
+  WORLD_STATE_TELEPORT_LOCK_NAME,
   teleportYeriYoxla,
   worldV2TeleportHandleriYarat,
   dovletXeriteWorldV2TeleportMesajiniEmalEt,
