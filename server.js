@@ -3958,68 +3958,146 @@ function canTeleportBaseInsideState(stateRuntime, playerId, targetBaseX, targetB
   return { ok: true };
 }
 
-function teleportPlayerBaseInsideState(state, playerId, targetBaseX, targetBaseZ) {
+function applyPlayerBaseTeleportInsideState(
+  state,
+  playerId,
+  targetBaseX,
+  targetBaseZ
+) {
   if (!state || !state.worldPlacement) {
-    return { ok: false, message: "Player world placement not found" };
+    return {
+      ok: false,
+      message:
+        "Player world placement not found"
+    };
   }
 
-  const stateId = Number(state.worldPlacement.stateId);
-  if (!Number.isInteger(stateId) || stateId <= 0) {
-    return { ok: false, message: "Player stateId is invalid" };
+  const stateId =
+    Number(
+      state.worldPlacement.stateId
+    );
+
+  if (
+    !Number.isInteger(stateId) ||
+    stateId <= 0
+  ) {
+    return {
+      ok: false,
+      message:
+        "Player stateId is invalid"
+    };
   }
 
-  const stateRuntime = getWorldStateRuntime(stateId);
+  const stateRuntime =
+    getWorldStateRuntime(
+      stateId
+    );
+
   if (!stateRuntime) {
-    return { ok: false, message: "World state not found" };
+    return {
+      ok: false,
+      message:
+        "World state not found"
+    };
   }
 
-  const check = canTeleportBaseInsideState(stateRuntime, playerId, targetBaseX, targetBaseZ);
-  if (!check.ok) {
-    return check;
-  }
+  const currentBaseX =
+    Number(
+      state.worldPlacement.baseX
+    );
 
-  const currentBaseX = Number(state.worldPlacement.baseX);
-  const currentBaseZ = Number(state.worldPlacement.baseZ);
+  const currentBaseZ =
+    Number(
+      state.worldPlacement.baseZ
+    );
 
-  if (currentBaseX === targetBaseX && currentBaseZ === targetBaseZ) {
+  const centerX =
+    Number(
+      stateRuntime.localMap
+        ?.centerX
+    ) ||
+    STATE_LOCAL_MAP_CONFIG.centerX;
+
+  const centerZ =
+    Number(
+      stateRuntime.localMap
+        ?.centerZ
+    ) ||
+    STATE_LOCAL_MAP_CONFIG.centerZ;
+
+  if (
+    currentBaseX === targetBaseX &&
+    currentBaseZ === targetBaseZ
+  ) {
     return {
       ok: true,
       ignored: true,
       stateId,
       baseX: currentBaseX,
       baseZ: currentBaseZ,
-      zone: getZoneNameForDistance(
-        Math.round(
-          Math.sqrt(
-            getDistanceSquared(
-              currentBaseX,
-              currentBaseZ,
-              Number(stateRuntime.localMap?.centerX) || STATE_LOCAL_MAP_CONFIG.centerX,
-              Number(stateRuntime.localMap?.centerZ) || STATE_LOCAL_MAP_CONFIG.centerZ
+      zone:
+        getZoneNameForDistance(
+          Math.round(
+            Math.sqrt(
+              getDistanceSquared(
+                currentBaseX,
+                currentBaseZ,
+                centerX,
+                centerZ
+              )
             )
           )
         )
-      )
     };
   }
 
-  const centerX = Number(stateRuntime.localMap?.centerX) || STATE_LOCAL_MAP_CONFIG.centerX;
-  const centerZ = Number(stateRuntime.localMap?.centerZ) || STATE_LOCAL_MAP_CONFIG.centerZ;
-  const distance = Math.round(Math.sqrt(getDistanceSquared(targetBaseX, targetBaseZ, centerX, centerZ)));
-  const zone = getZoneNameForDistance(distance);
+  const distance =
+    Math.round(
+      Math.sqrt(
+        getDistanceSquared(
+          targetBaseX,
+          targetBaseZ,
+          centerX,
+          centerZ
+        )
+      )
+    );
 
-  state.worldPlacement.baseX = targetBaseX;
-  state.worldPlacement.baseZ = targetBaseZ;
-  state.worldPlacement.lastTeleportAtMs = nowMs();
-  state.worldPlacement.currentZone = zone;
+  const zone =
+    getZoneNameForDistance(
+      distance
+    );
 
-  if (!state.worldMap || typeof state.worldMap !== "object") {
+  state.worldPlacement.baseX =
+    targetBaseX;
+
+  state.worldPlacement.baseZ =
+    targetBaseZ;
+
+  state.worldPlacement.lastTeleportAtMs =
+    nowMs();
+
+  state.worldPlacement.currentZone =
+    zone;
+
+  if (
+    !state.worldMap ||
+    typeof state.worldMap !==
+      "object"
+  ) {
     state.worldMap = {};
   }
 
-  state.worldMap.activeStateIdForNewPlayers = worldRuntime.activeStateIdForNewPlayers;
-  state.worldMap.currentStateId = stateId;
-  state.worldMap.currentStateSnapshot = makeWorldStateSnapshotForClient(stateRuntime);
+  state.worldMap.activeStateIdForNewPlayers =
+    worldRuntime.activeStateIdForNewPlayers;
+
+  state.worldMap.currentStateId =
+    stateId;
+
+  state.worldMap.currentStateSnapshot =
+    makeWorldStateSnapshotForClient(
+      stateRuntime
+    );
 
   updateServerTime(state);
 
@@ -4030,8 +4108,75 @@ function teleportPlayerBaseInsideState(state, playerId, targetBaseX, targetBaseZ
     baseX: targetBaseX,
     baseZ: targetBaseZ,
     zone,
-    teleportedAtMs: Number(state.worldPlacement.lastTeleportAtMs) || 0
+    teleportedAtMs:
+      Number(
+        state.worldPlacement
+          .lastTeleportAtMs
+      ) || 0
   };
+}
+
+function teleportPlayerBaseInsideState(
+  state,
+  playerId,
+  targetBaseX,
+  targetBaseZ
+) {
+  if (!state || !state.worldPlacement) {
+    return {
+      ok: false,
+      message:
+        "Player world placement not found"
+    };
+  }
+
+  const stateId =
+    Number(
+      state.worldPlacement.stateId
+    );
+
+  if (
+    !Number.isInteger(stateId) ||
+    stateId <= 0
+  ) {
+    return {
+      ok: false,
+      message:
+        "Player stateId is invalid"
+    };
+  }
+
+  const stateRuntime =
+    getWorldStateRuntime(
+      stateId
+    );
+
+  if (!stateRuntime) {
+    return {
+      ok: false,
+      message:
+        "World state not found"
+    };
+  }
+
+  const check =
+    canTeleportBaseInsideState(
+      stateRuntime,
+      playerId,
+      targetBaseX,
+      targetBaseZ
+    );
+
+  if (!check.ok) {
+    return check;
+  }
+
+  return applyPlayerBaseTeleportInsideState(
+    state,
+    playerId,
+    targetBaseX,
+    targetBaseZ
+  );
 }
 
 function ensurePlayerWorldPlacement(state, playerId) {
