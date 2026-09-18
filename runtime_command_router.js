@@ -17,6 +17,11 @@ class RuntimeCommandRouter {
     this.logger =
       options.logger || console;
 
+    this.mutationExecutor =
+      typeof options.mutationExecutor === "function"
+        ? options.mutationExecutor
+        : null;
+
     this._routes = new Map();
     this._metrics = new Map();
   }
@@ -137,10 +142,36 @@ class RuntimeCommandRouter {
         return true;
       }
 
-      await route.handler({
+      const handlerContext = {
         ...context,
         type
-      });
+      };
+
+      if (
+        route.mutation &&
+        this.mutationExecutor
+      ) {
+        const playerId =
+          context.ws &&
+          context.ws._authedPlayerId
+            ? String(
+                context.ws._authedPlayerId
+              )
+            : "";
+
+        await this.mutationExecutor(
+          playerId,
+          async () =>
+            await route.handler(
+              handlerContext
+            )
+        );
+      }
+      else {
+        await route.handler(
+          handlerContext
+        );
+      }
 
       metrics.succeeded += 1;
       return true;
