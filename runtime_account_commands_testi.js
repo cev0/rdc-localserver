@@ -15,6 +15,8 @@ const {
   const pushed = [];
   const states = new Map();
   const mutationPlayers = [];
+  const authoritativePlayers = [];
+  const deferredCallbacks = [];
   const bindCalls = [];
   const emailSendCalls = [];
   const emailConfirmCalls = [];
@@ -29,6 +31,37 @@ const {
         async (playerId, action) => {
           mutationPlayers.push(playerId);
           return await action();
+        },
+
+      authoritativeMutationExecutor:
+        async (
+          playerId,
+          action
+        ) => {
+          authoritativePlayers.push(
+            playerId
+          );
+
+          const result =
+            await action({
+              deferAfterCommit:
+                (callback) => {
+                  deferredCallbacks.push(
+                    callback
+                  );
+                  return true;
+                }
+            });
+
+          while (
+            deferredCallbacks.length > 0
+          ) {
+            const callback =
+              deferredCallbacks.shift();
+            await callback();
+          }
+
+          return result;
         }
     });
 
@@ -293,10 +326,18 @@ const {
     1
   );
 
-  assert.ok(
-    mutationPlayers.includes(
+  assert.deepStrictEqual(
+    mutationPlayers,
+    [],
+    "Player name mutation plain RAM mutation executor-dan keçməməlidir."
+  );
+
+  assert.deepStrictEqual(
+    authoritativePlayers,
+    [
       "player-1"
-    )
+    ],
+    "Player name mutation PostgreSQL-authoritative executor-dan keçməlidir."
   );
 
   console.log(

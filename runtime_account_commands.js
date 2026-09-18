@@ -381,7 +381,8 @@ function accountCommandleriniQeydEt(
       ws,
       msg,
       send,
-      nowMs
+      nowMs,
+      deferAfterCommit
     }) => {
       const authCheck =
         playerIdUyugunluqYoxla(
@@ -490,14 +491,30 @@ function accountCommandleriniQeydEt(
           nowMs()
       });
 
-      pushStateToPlayerConnections(
-        playerId,
-        state
-      );
+      const pushState =
+        async () => {
+          pushStateToPlayerConnections(
+            playerId,
+            state
+          );
+        };
+
+      if (
+        typeof deferAfterCommit ===
+          "function"
+      ) {
+        deferAfterCommit(
+          pushState
+        );
+      }
+      else {
+        await pushState();
+      }
     },
     {
       authRequired: true,
-      mutation: true
+      mutation: true,
+      postgresAuthoritative: true
     }
   );
 
