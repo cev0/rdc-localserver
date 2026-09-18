@@ -196,7 +196,8 @@ function gameplayMutationCommandleriniQeydEt(
     },
     {
       authRequired: true,
-      mutation: true
+      mutation: true,
+      postgresAuthoritative: true
     }
   );
 
@@ -276,7 +277,8 @@ function gameplayMutationCommandleriniQeydEt(
     },
     {
       authRequired: true,
-      mutation: true
+      mutation: true,
+      postgresAuthoritative: true
     }
   );
 
@@ -481,7 +483,8 @@ function gameplayMutationCommandleriniQeydEt(
     },
     {
       authRequired: true,
-      mutation: true
+      mutation: true,
+      postgresAuthoritative: true
     }
   );
 
@@ -841,7 +844,8 @@ function gameplayMutationCommandleriniQeydEt(
     },
     {
       authRequired: true,
-      mutation: true
+      mutation: true,
+      postgresAuthoritative: true
     }
   );
 
