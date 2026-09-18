@@ -55,12 +55,18 @@ class RuntimeRedisBus {
         ) || DEFAULT_PRESENCE_REFRESH_MS
       );
 
+    const requiredValue =
+      options.required !== undefined
+        ? options.required
+        : process.env.REDIS_REQUIRED;
+
     this.required =
-      String(
-        options.required ??
-        process.env.REDIS_REQUIRED ??
-        ""
-      ).trim() === "1";
+      requiredValue === true ||
+      ["1", "true", "yes", "on"].includes(
+        String(requiredValue || "")
+          .trim()
+          .toLowerCase()
+      );
 
     this.onDirectMessage =
       typeof options.onDirectMessage === "function"
