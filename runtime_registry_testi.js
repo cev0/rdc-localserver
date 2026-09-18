@@ -39,13 +39,18 @@ const {
   connections.set("p1", oldSocket);
   connections.set("p1", newSocket);
 
+  const sockets = [];
+  connections.forEachSocket("p1", (socket) => sockets.push(socket));
+  assert.deepStrictEqual(sockets, [oldSocket, newSocket]);
+
   assert.strictEqual(
     connections.deleteIfCurrent("p1", oldSocket),
-    false,
-    "Kohne socket close eventi yeni socket-i silmemelidir."
+    true,
+    "Kohne socket registry-den silinmelidir, amma yeni socket qalmalidir."
   );
 
   assert.strictEqual(connections.get("p1"), newSocket);
+  assert.strictEqual(connections.has("p1"), true);
 
   assert.strictEqual(
     connections.deleteIfCurrent("p1", newSocket),
