@@ -60,4 +60,52 @@ const {
   assert.strictEqual(connections.has("p1"), false);
 })();
 
-console.log("PASS: runtime registry Map contract and reconnect safety.");
+
+
+(function remoteDeliveryFallback() {
+  const connections = new ConnectionRuntimeRegistry();
+  const sent = [];
+  const remote = [];
+
+  connections.configureRemotePublisher(
+    async (playerId, payload) => {
+      remote.push({ playerId, payload });
+      return true;
+    }
+  );
+
+  const localSocket = { id: "local" };
+  connections.set("local-player", localSocket);
+
+  assert.strictEqual(
+    connections.deliver(
+      "local-player",
+      { type: "ping" },
+      (socket, payload) => {
+        sent.push({ socket, payload });
+      }
+    ),
+    true
+  );
+
+  assert.strictEqual(sent.length, 1);
+  assert.strictEqual(remote.length, 0);
+
+  assert.strictEqual(
+    connections.deliver(
+      "remote-player",
+      { type: "remote_ping" },
+      () => {}
+    ),
+    true
+  );
+
+  setImmediate(() => {
+    assert.strictEqual(remote.length, 1);
+    assert.strictEqual(remote[0].playerId, "remote-player");
+    assert.strictEqual(remote[0].payload.type, "remote_ping");
+  });
+})();
+
+
+console.log("PASS: runtime registry Map contract, reconnect safety and remote delivery.");
