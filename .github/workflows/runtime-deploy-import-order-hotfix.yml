@@ -1,8 +1,8 @@
 name: Runtime Deploy Import Order Hotfix
 
 on:
-  push:
-    branches: [server-v2-scalable]
+  pull_request:
+    branches: [main]
     paths:
       - '.github/workflows/runtime-deploy-import-order-hotfix.yml'
 
