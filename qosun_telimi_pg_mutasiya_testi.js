@@ -97,8 +97,7 @@ function stateHazirla() {
 
   assert.strictEqual(preview.success, true);
   assert.deepStrictEqual(preview.costInfo.baseCost, [
-    { type: "food", amount: 350 },
-    { type: "wood", amount: 80 }
+    { type: "food", amount: 1000 }
   ]);
   assert.strictEqual(preview.timeInfo.baseDurationMs, 250000);
   assert.strictEqual(preview.timeInfo.finalDurationMs, 200000);
@@ -124,9 +123,9 @@ function stateHazirla() {
   assert.strictEqual(start.queue.startTimeMs, 1000);
   assert.strictEqual(start.queue.finishTimeMs, 81000);
   assert.deepStrictEqual(start.queue.paidCost, [
-    { type: "food", amount: 70 }
+    { type: "food", amount: 305 }
   ]);
-  assert.strictEqual(state.resources.food, evvelFood - 70);
+  assert.strictEqual(state.resources.food, evvelFood - 305);
 
   const erkendir = qosunTelimleriniYekunlasdir(state, 80000);
   assert.strictEqual(erkendir.deyisdi, false);
@@ -229,8 +228,7 @@ function stateHazirla() {
 
   assert.strictEqual(preview.success, true);
   assert.deepStrictEqual(preview.costInfo.finalCost, [
-    { type: "food", amount: 315 },
-    { type: "wood", amount: 72 }
+    { type: "food", amount: 900 }
   ]);
 })();
 
