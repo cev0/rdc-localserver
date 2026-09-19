@@ -317,6 +317,43 @@ const {
       ),
       "Cross-instance state refresh legacy RAM-only local map sender-ə düşməməlidir."
     );
+
+    const senderBasla =
+      serverKod.indexOf(
+        "async function sendStateLocalMapToPlayer"
+      );
+
+    const senderBitir =
+      serverKod.indexOf(
+        "function sendWorldMapToPlayer",
+        senderBasla
+      );
+
+    assert.ok(
+      senderBasla >= 0 &&
+      senderBitir > senderBasla,
+      "Single-player local map sender tapılmalıdır."
+    );
+
+    const senderBloku =
+      serverKod.slice(
+        senderBasla,
+        senderBitir
+      );
+
+    assert.ok(
+      senderBloku.includes(
+        "buildStateLocalMapPayloadAuthoritative"
+      ),
+      "Auth/login/build local map sender PostgreSQL-authoritative base catalog istifadə etməlidir."
+    );
+
+    assert.ok(
+      !senderBloku.includes(
+        "buildStateLocalMapPayload(stateId"
+      ),
+      "Single-player local map sender legacy RAM-only base kataloquna birbaşa düşməməlidir."
+    );
   }
 
   console.log(

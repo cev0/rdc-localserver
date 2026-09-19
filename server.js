@@ -4847,17 +4847,30 @@ function buildStateLocalMapPayload(stateId, requestingPlayerId = null) {
   };
 }
 
-function sendStateLocalMapToPlayer(ws, playerId) {
-  if (!ws || ws.readyState !== WebSocket.OPEN || !playerId) return;
+async function sendStateLocalMapToPlayer(ws, playerId) {
+  if (!ws || ws.readyState !== WebSocket.OPEN || !playerId) {
+    return false;
+  }
 
   const state = players.get(playerId);
-  if (!state || !state.worldPlacement) return;
+  if (!state || !state.worldPlacement) {
+    return false;
+  }
 
   const stateId = Number(state.worldPlacement.stateId);
-  if (!Number.isInteger(stateId)) return;
+  if (!Number.isInteger(stateId) || stateId <= 0) {
+    return false;
+  }
 
-  const payload = buildStateLocalMapPayload(stateId, playerId);
-  if (!payload) return;
+  const payload =
+    await buildStateLocalMapPayloadAuthoritative(
+      stateId,
+      playerId
+    );
+
+  if (!payload) {
+    return false;
+  }
 
   send(ws, {
     type: "state_local_map",
@@ -4865,6 +4878,8 @@ function sendStateLocalMapToPlayer(ws, playerId) {
     serverTimeUnixMs: nowMs(),
     payloadJson: JSON.stringify(payload)
   });
+
+  return true;
 }
 
 

@@ -124,7 +124,7 @@ function authCommandiniQeydEt(
           )
       });
 
-      sendStateLocalMapToPlayer(
+      await sendStateLocalMapToPlayer(
         ws,
         playerId
       );

@@ -321,7 +321,7 @@ async function oyunStateGonder(
     payloadJson: JSON.stringify(makeClientState(state))
   });
 
-  sendStateLocalMapToPlayer(ws, playerId);
+  await sendStateLocalMapToPlayer(ws, playerId);
   sendWorldMapToPlayer(ws, playerId);
 
   return true;

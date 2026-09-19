@@ -382,7 +382,7 @@ function buildCommandleriniQeydEt(
 
       await deferAfterCommit(
         async () => {
-          sendStateLocalMapToPlayer(
+          await sendStateLocalMapToPlayer(
             ws,
             playerId
           );
