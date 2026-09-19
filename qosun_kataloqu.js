@@ -14,16 +14,18 @@ const BUILDING_LEVEL_BY_TIER = Object.freeze({
 });
 
 const BASE_TRAINING_SECONDS_BY_TIER = Object.freeze({
-  1: 5,
-  2: 6,
-  3: 8,
-  4: 10,
-  5: 13,
-  6: 16,
-  7: 20,
-  8: 25,
-  9: 31,
-  10: 38
+  // Last Shelter v1.250.102 əsas 1070/1071/1072 troop ailələrinin
+  // server-side "time" dəyərləri. Üç əsas sinifdə tier vaxtları eynidir.
+  1: 20,
+  2: 25,
+  3: 33,
+  4: 44,
+  5: 58,
+  6: 75,
+  7: 95,
+  8: 118,
+  9: 144,
+  10: 173
 });
 
 const CLASS_DEFINITIONS = Object.freeze({

@@ -31,8 +31,8 @@ function bina(buildingId, level) {
   });
 
   assert.deepStrictEqual(BASE_TRAINING_SECONDS_BY_TIER, {
-    1: 5, 2: 6, 3: 8, 4: 10, 5: 13,
-    6: 16, 7: 20, 8: 25, 9: 31, 10: 38
+    1: 20, 2: 25, 3: 33, 4: 44, 5: 58,
+    6: 75, 7: 95, 8: 118, 9: 144, 10: 173
   });
 
   for (const classId of ["warrior", "shooter", "vehicle"]) {
@@ -127,8 +127,8 @@ function bina(buildingId, level) {
 
   const timeState = { technology: { stats: { trainingSpeedPct: 20 } } };
   const duration = telimMuddetiniHesabla(timeState, "vehicle_t1", 100);
-  assert.strictEqual(duration.baseDurationMs, 500000);
-  assert.strictEqual(duration.finalDurationMs, 416667);
+  assert.strictEqual(duration.baseDurationMs, 2000000);
+  assert.strictEqual(duration.finalDurationMs, 1666667);
 
   console.log("[QOSUN_KATALOQU_TESTI] OK");
 })();
