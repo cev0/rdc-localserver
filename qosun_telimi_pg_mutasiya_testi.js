@@ -81,8 +81,8 @@ function stateHazirla() {
   const state = stateHazirla();
   assert.strictEqual(
     telimMuddetiniHesabla(state, "warrior_t1", 5),
-    80000,
-    "25% training speed bonus Last Shelter 100 saniyəlik base vaxtı 80 saniyəyə endirməlidir."
+    20000,
+    "25% training speed bonus Last Shelter 25 saniyəlik base vaxtı 20 saniyəyə endirməlidir."
   );
 })();
 
@@ -97,10 +97,11 @@ function stateHazirla() {
 
   assert.strictEqual(preview.success, true);
   assert.deepStrictEqual(preview.costInfo.baseCost, [
-    { type: "food", amount: 1000 }
+    { type: "food", amount: 350 },
+    { type: "iron", amount: 80 }
   ]);
-  assert.strictEqual(preview.timeInfo.baseDurationMs, 250000);
-  assert.strictEqual(preview.timeInfo.finalDurationMs, 200000);
+  assert.strictEqual(preview.timeInfo.baseDurationMs, 60000);
+  assert.strictEqual(preview.timeInfo.finalDurationMs, 48000);
 })();
 
 (function startResursCixirVeYekunlasirTesti() {
@@ -117,21 +118,21 @@ function stateHazirla() {
 
   assert.strictEqual(start.success, true);
   assert.strictEqual(start.deyisdi, true);
-  assert.strictEqual(start.durationMs, 80000);
+  assert.strictEqual(start.durationMs, 20000);
   assert.strictEqual(start.queue.unitId, "warrior_t1");
   assert.strictEqual(start.queue.count, 5);
   assert.strictEqual(start.queue.startTimeMs, 1000);
-  assert.strictEqual(start.queue.finishTimeMs, 81000);
+  assert.strictEqual(start.queue.finishTimeMs, 21000);
   assert.deepStrictEqual(start.queue.paidCost, [
-    { type: "food", amount: 305 }
+    { type: "food", amount: 70 }
   ]);
-  assert.strictEqual(state.resources.food, evvelFood - 305);
+  assert.strictEqual(state.resources.food, evvelFood - 70);
 
-  const erkendir = qosunTelimleriniYekunlasdir(state, 80000);
+  const erkendir = qosunTelimleriniYekunlasdir(state, 20000);
   assert.strictEqual(erkendir.deyisdi, false);
   assert.strictEqual(state.army.troops.warrior_t1, 10);
 
-  const bitdi = qosunTelimleriniYekunlasdir(state, 81000);
+  const bitdi = qosunTelimleriniYekunlasdir(state, 21000);
   assert.strictEqual(bitdi.success, true);
   assert.strictEqual(bitdi.deyisdi, true);
   assert.strictEqual(bitdi.tamamlananlar.length, 1);
@@ -228,7 +229,8 @@ function stateHazirla() {
 
   assert.strictEqual(preview.success, true);
   assert.deepStrictEqual(preview.costInfo.finalCost, [
-    { type: "food", amount: 900 }
+    { type: "food", amount: 315 },
+    { type: "iron", amount: 72 }
   ]);
 })();
 

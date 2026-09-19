@@ -313,7 +313,7 @@ const {
 
   assert.strictEqual(
     state.resources.food,
-    390,
+    860,
     "Direct server fallback troop kataloqunun server-side training xərcini tətbiq etməlidir."
   );
 
