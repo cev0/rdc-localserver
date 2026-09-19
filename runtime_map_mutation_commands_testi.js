@@ -359,8 +359,32 @@ const {
 
   assert.deepStrictEqual(
     statePushes,
+    [],
+    "expand_area_request ayrıca player push planlaşdırmır."
+  );
+
+  sent.length = 0;
+
+  await router.dispatch({
+    type: "expand_base",
+    msg: {
+      type: "expand_base",
+      playerId: "p1"
+    },
+    ws,
+    send,
+    nowMs: () => 125
+  });
+
+  assert.strictEqual(
+    sent[0].type,
+    "base_expanded"
+  );
+
+  assert.deepStrictEqual(
+    statePushes,
     ["p1"],
-    "Post-commit area expansion authoritative player push tamamlanana qədər gözləməlidir."
+    "expand_base post-commit authoritative player push tamamlanana qədər gözləməlidir."
   );
 
   sent.length = 0;
