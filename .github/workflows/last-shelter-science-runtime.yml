@@ -1,0 +1,31 @@
+name: Last Shelter Science Runtime
+
+on:
+  pull_request:
+    paths:
+      - "last_shelter_science_kataloqu.js"
+      - "last_shelter_science_runtime_adapteri.js"
+      - "last_shelter_science_runtime_adapteri_testi.js"
+      - ".github/workflows/last-shelter-science-runtime.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "last_shelter_science_kataloqu.js"
+      - "last_shelter_science_runtime_adapteri.js"
+      - "last_shelter_science_runtime_adapteri_testi.js"
+      - ".github/workflows/last-shelter-science-runtime.yml"
+
+jobs:
+  verified-science-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Node qur
+        uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+      - name: Verified science runtime regression
+        run: node last_shelter_science_runtime_adapteri_testi.js
