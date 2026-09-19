@@ -60,7 +60,13 @@ const SCIENCE_PROTOCOL = Object.freeze({
   queueFullError: "BUILDING_QUEUE_FULL",
   duplicateItemRejected: true,
   serverCalculatesResearchCost: true,
-  serverCalculatesResearchTime: true
+  serverCalculatesResearchTime: true,
+  queueIsOccupiedUntilServerFinishTime: true,
+  successResponseFields: Object.freeze([
+    "resource",
+    "queue",
+    "gold"
+  ])
 });
 
 const RAW_SCIENCE = Object.freeze({

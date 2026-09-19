@@ -54,6 +54,18 @@ assert.strictEqual(
   SCIENCE_PROTOCOL.serverCalculatesResearchTime,
   true
 );
+assert.strictEqual(
+  SCIENCE_PROTOCOL.queueIsOccupiedUntilServerFinishTime,
+  true
+);
+assert.deepStrictEqual(
+  SCIENCE_PROTOCOL.successResponseFields,
+  [
+    "resource",
+    "queue",
+    "gold"
+  ]
+);
 
 assert.deepStrictEqual(
   scienceIdleriAl(),
