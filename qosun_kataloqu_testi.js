@@ -60,7 +60,7 @@ function bina(buildingId, level) {
 
   const warrior1 = qosunMelumatiniAl("warrior_t1");
   assert.strictEqual(warrior1.displayNameAz, "Əsgər");
-  assert.deepStrictEqual(warrior1.costPerUnit, [{ type: "food", amount: 14 }]);
+  assert.deepStrictEqual(warrior1.costPerUnit, [{ type: "food", amount: 61 }]);
   assert.strictEqual(warrior1.stats.attackSpeed, 6);
   assert.strictEqual(warrior1.stats.defense, 14);
   assert.strictEqual(warrior1.stats.hp, 8);
@@ -69,20 +69,45 @@ function bina(buildingId, level) {
 
   const shooter2 = qosunMelumatiniAl("shooter_t2");
   assert.deepStrictEqual(shooter2.costPerUnit, [
-    { type: "food", amount: 32 },
-    { type: "iron", amount: 11 }
+    { type: "food", amount: 90 },
+    { type: "wood", amount: 10 }
   ]);
 
   const vehicle2 = qosunMelumatiniAl("vehicle_t2");
   assert.deepStrictEqual(vehicle2.costPerUnit, [
-    { type: "fuel", amount: 23 },
-    { type: "iron", amount: 12 }
+    { type: "food", amount: 100 }
   ]);
   assert.strictEqual(vehicle2.stats.attackSpeed, 15);
   assert.strictEqual(vehicle2.stats.defense, 11);
   assert.strictEqual(vehicle2.stats.hp, 4);
   assert.strictEqual(vehicle2.stats.marchSpeed, 16.1);
   assert.strictEqual(vehicle2.stats.loadCapacity, 6);
+
+
+  assert.deepStrictEqual(
+    qosunMelumatiniAl("warrior_t6").costPerUnit,
+    [
+      { type: "food", amount: 245 },
+      { type: "iron", amount: 18 }
+    ]
+  );
+
+  assert.deepStrictEqual(
+    qosunMelumatiniAl("shooter_t6").costPerUnit,
+    [
+      { type: "food", amount: 296 },
+      { type: "wood", amount: 35 },
+      { type: "iron", amount: 4 }
+    ]
+  );
+
+  assert.deepStrictEqual(
+    qosunMelumatiniAl("vehicle_t6").costPerUnit,
+    [
+      { type: "food", amount: 271 },
+      { type: "iron", amount: 15 }
+    ]
+  );
 
   const shooter10 = qosunMelumatiniAl("shooter_t10");
   assert.strictEqual(shooter10.stats.attackSpeed, 65);
@@ -126,20 +151,18 @@ function bina(buildingId, level) {
   const costState = { technology: { stats: { trainingCostReductionPct: 10 } } };
   const cost = telimXerciniHesabla(costState, "warrior_t2", 10);
   assert.deepStrictEqual(cost.baseCost, [
-    { type: "food", amount: 350 },
-    { type: "wood", amount: 80 }
+    { type: "food", amount: 1000 }
   ]);
   assert.deepStrictEqual(cost.finalCost, [
-    { type: "food", amount: 315 },
-    { type: "wood", amount: 72 }
+    { type: "food", amount: 900 }
   ]);
 
   const classCostState = { technology: { stats: { shooterTrainingCostReductionPct: 20 } } };
   const shooterCost = telimXerciniHesabla(classCostState, "shooter_t2", 10);
   assert.strictEqual(shooterCost.reductionPct, 20);
   assert.deepStrictEqual(shooterCost.finalCost, [
-    { type: "food", amount: 256 },
-    { type: "iron", amount: 88 }
+    { type: "food", amount: 720 },
+    { type: "wood", amount: 80 }
   ]);
 
   const timeState = { technology: { stats: { trainingSpeedPct: 20 } } };

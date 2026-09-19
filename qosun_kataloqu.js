@@ -139,13 +139,18 @@ const VEHICLE_STATS = [
   [90, 65, 21, 8.2, 16.1, 10, 0.12]
 ];
 
+// Last Shelter v1.250.102 server dump resource costs.
+ // T1-T6 rows are mapped losslessly because their stone cost is 0.
+ // T7-T10 stay on the current RDC values until the server resource model
+ // gains the original Last Shelter stone semantics; do not silently fold
+ // stone into another resource.
 const WARRIOR_COSTS = [
-  { food: 14 },
-  { food: 35, wood: 8 },
-  { food: 56, wood: 12 },
-  { food: 75, wood: 16 },
-  { food: 93, wood: 20 },
-  { food: 112, wood: 25 },
+  { food: 61 },
+  { food: 100 },
+  { food: 119, wood: 31 },
+  { food: 169, iron: 7 },
+  { food: 164, wood: 57, iron: 9 },
+  { food: 245, iron: 18 },
   { food: 131, wood: 29 },
   { food: 149, wood: 34 },
   { food: 168, wood: 39 },
@@ -153,12 +158,12 @@ const WARRIOR_COSTS = [
 ];
 
 const SHOOTER_COSTS = [
-  { food: 14 },
-  { food: 32, iron: 11 },
-  { food: 36, iron: 19 },
-  { food: 50, iron: 25 },
-  { food: 62, iron: 31 },
-  { food: 74, iron: 37 },
+  { food: 57 },
+  { food: 90, wood: 10 },
+  { food: 130, wood: 14 },
+  { food: 185, wood: 20, iron: 2 },
+  { food: 241, wood: 27, iron: 3 },
+  { food: 296, wood: 35, iron: 4 },
   { food: 86, iron: 43 },
   { food: 99, iron: 49 },
   { food: 113, iron: 56 },
@@ -166,12 +171,12 @@ const SHOOTER_COSTS = [
 ];
 
 const VEHICLE_COSTS = [
-  { fuel: 14 },
-  { fuel: 23, iron: 12 },
-  { fuel: 37, iron: 17 },
-  { fuel: 50, iron: 23 },
-  { fuel: 62, iron: 29 },
-  { fuel: 75, iron: 35 },
+  { food: 57 },
+  { food: 100 },
+  { food: 155 },
+  { food: 175, wood: 20, iron: 2 },
+  { food: 228, wood: 27, iron: 5 },
+  { food: 271, iron: 15 },
   { fuel: 88, iron: 41 },
   { fuel: 99, iron: 49 },
   { fuel: 113, iron: 57 },
