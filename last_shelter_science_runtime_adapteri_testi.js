@@ -28,46 +28,55 @@ assert.deepStrictEqual(
   { ok: false, code: "SCIENCE_ALREADY_RESEARCHED" }
 );
 
-const plan = verifiedScienceResearchPlanHazirla(
-  { queues: [], science: {} },
-  { itemId: "901000", quuid: "q-verified", gold: 7 },
-  1000
-);
-assert.strictEqual(plan.ok, true);
-assert.strictEqual(plan.protocol, "science.research");
-assert.strictEqual(plan.itemId, "901000");
-assert.strictEqual(plan.queue.uuid, "q-verified");
-assert.strictEqual(plan.queue.type, "SCIENCE");
-assert.strictEqual(plan.queue.startUnixMs, 1000);
-assert.strictEqual(plan.queue.finishUnixMs, 91000);
-assert.strictEqual(plan.researchTimeSeconds, 90);
-assert.strictEqual(plan.buildingCondition, "403001");
-assert.deepStrictEqual(plan.researchNeed, [
-  { typeCode: 0, amount: 0 }, { typeCode: 1, amount: 0 }, { typeCode: 2, amount: 0 },
-  { typeCode: 3, amount: 0 }, { typeCode: 14, amount: 1000 }
-]);
-assert.strictEqual(plan.optionalGold, 7);
-assert.strictEqual(plan.effect.para1, "801");
-assert.strictEqual(plan.source, "last_shelter_v1.250.102_verified");
+const VERIFIED_NODES = [
+  { itemId: "901000", seconds: 90, para1: "801", quality: 1 },
+  { itemId: "901100", seconds: 90, para1: "802", quality: 1 },
+  { itemId: "901200", seconds: 180, para1: "803", quality: 2 },
+  { itemId: "901300", seconds: 180, para1: "804", quality: 2 }
+];
 
-const state = { queues: [], science: {} };
-const applied = verifiedScienceResearchPlaniniStateEt(state, plan);
-assert.strictEqual(applied.ok, true);
-assert.strictEqual(state.queues.length, 1);
-assert.strictEqual(state.queues[0].status, "running");
-assert.strictEqual(state.queues[0].itemId, "901000");
-assert.strictEqual(scienceQueueMesguldur(state), true);
-assert.deepStrictEqual(verifiedScienceResearchYekunlasdir(state, 90000), []);
-const completed = verifiedScienceResearchYekunlasdir(state, 91000);
-assert.strictEqual(completed.length, 1);
-assert.strictEqual(completed[0].itemId, "901000");
-assert.strictEqual(state.science["901000"], 1);
-assert.strictEqual(state.queues[0].status, "completed");
-assert.strictEqual(scienceQueueMesguldur(state), false);
-assert.strictEqual(scienceArtıqArasdirilib(state, "901000"), true);
-assert.deepStrictEqual(
-  verifiedScienceResearchPlanHazirla(state, { itemId: "901000", quuid: "q-repeat" }, 92000),
-  { ok: false, code: "SCIENCE_ALREADY_RESEARCHED" }
-);
+for (const node of VERIFIED_NODES) {
+  const nodeState = { queues: [], science: {} };
+  const nodePlan = verifiedScienceResearchPlanHazirla(
+    nodeState,
+    { itemId: node.itemId, quuid: `q-${node.itemId}`, gold: 7 },
+    1000
+  );
+  assert.strictEqual(nodePlan.ok, true, node.itemId);
+  assert.strictEqual(nodePlan.protocol, "science.research");
+  assert.strictEqual(nodePlan.itemId, node.itemId);
+  assert.strictEqual(nodePlan.queue.uuid, `q-${node.itemId}`);
+  assert.strictEqual(nodePlan.queue.type, "SCIENCE");
+  assert.strictEqual(nodePlan.queue.startUnixMs, 1000);
+  assert.strictEqual(nodePlan.queue.finishUnixMs, 1000 + node.seconds * 1000);
+  assert.strictEqual(nodePlan.researchTimeSeconds, node.seconds);
+  assert.strictEqual(nodePlan.buildingCondition, "403001");
+  assert.deepStrictEqual(nodePlan.researchNeed, [
+    { typeCode: 0, amount: 0 }, { typeCode: 1, amount: 0 }, { typeCode: 2, amount: 0 },
+    { typeCode: 3, amount: 0 }, { typeCode: 14, amount: 1000 }
+  ]);
+  assert.strictEqual(nodePlan.optionalGold, 7);
+  assert.strictEqual(nodePlan.effect.para1, node.para1);
+  assert.strictEqual(nodePlan.source, "last_shelter_v1.250.102_verified");
 
-console.log("PASS: verified Last Shelter science runtime adapter enforces queue, catalog and completion semantics.");
+  const appliedNode = verifiedScienceResearchPlaniniStateEt(nodeState, nodePlan);
+  assert.strictEqual(appliedNode.ok, true);
+  assert.strictEqual(scienceQueueMesguldur(nodeState), true);
+  assert.deepStrictEqual(
+    verifiedScienceResearchYekunlasdir(nodeState, nodePlan.queue.finishUnixMs - 1),
+    []
+  );
+  const completedNode = verifiedScienceResearchYekunlasdir(nodeState, nodePlan.queue.finishUnixMs);
+  assert.strictEqual(completedNode.length, 1);
+  assert.strictEqual(completedNode[0].itemId, node.itemId);
+  assert.strictEqual(nodeState.science[node.itemId], 1);
+  assert.strictEqual(nodeState.queues[0].status, "completed");
+  assert.strictEqual(scienceQueueMesguldur(nodeState), false);
+  assert.strictEqual(scienceArtıqArasdirilib(nodeState, node.itemId), true);
+  assert.deepStrictEqual(
+    verifiedScienceResearchPlanHazirla(nodeState, { itemId: node.itemId, quuid: `repeat-${node.itemId}` }, nodePlan.queue.finishUnixMs + 1),
+    { ok: false, code: "SCIENCE_ALREADY_RESEARCHED" }
+  );
+}
+
+console.log("PASS: all verified Last Shelter science nodes enforce exact queue, timing, effect and completion semantics.");
