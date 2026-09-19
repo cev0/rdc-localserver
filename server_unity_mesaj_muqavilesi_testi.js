@@ -118,7 +118,11 @@ const serverRuntimeFayllari = fs.readdirSync(serverKoku)
   .filter(ad =>
     ad === "server.js" ||
     ad.endsWith("_handler.js") ||
-    /^server_.*genisletme.*\.js$/.test(ad)
+    /^server_.*genisletme.*\.js$/.test(ad) ||
+    (
+      /^runtime_.*\.js$/.test(ad) &&
+      !ad.endsWith("_testi.js")
+    )
   )
   .map(ad => path.join(serverKoku, ad));
 

@@ -121,9 +121,23 @@ async function ikiOyuncuStateMutasiyasiniPostgresIleIcraEt(
     throw new Error("İki-oyunçu state mutation əməliyyatı yoxdur.");
   }
 
-  const hovuz = secimler && secimler.hovuz
-    ? secimler.hovuz
+  const options = secimler && typeof secimler === "object"
+    ? secimler
+    : {};
+
+  const hovuz = options.hovuz
+    ? options.hovuz
     : proqramHovuzunuAl();
+
+  const transactionHazirla =
+    typeof options.transactionHazirla === "function"
+      ? options.transactionHazirla
+      : null;
+
+  const lockedStatesYoxla =
+    typeof options.lockedStatesYoxla === "function"
+      ? options.lockedStatesYoxla
+      : null;
 
   if (!hovuz || typeof hovuz.connect !== "function") {
     throw new Error("İki-oyunçu state mutation üçün PostgreSQL hovuzu yoxdur.");
@@ -134,9 +148,30 @@ async function ikiOyuncuStateMutasiyasiniPostgresIleIcraEt(
   let stateler = null;
   let cavab;
   let commitOlundu = false;
+  let transactionHazirliq = null;
 
   try {
     await client.query("BEGIN");
+
+    const ilkinPlayerIds = [
+      birinci.playerId,
+      ikinci.playerId
+    ].sort();
+
+    if (transactionHazirla) {
+      transactionHazirliq =
+        await transactionHazirla(
+          client,
+          {
+            playerIds:
+              ilkinPlayerIds.slice(),
+            birinciPlayerId:
+              birinci.playerId,
+            ikinciPlayerId:
+              ikinci.playerId
+          }
+        );
+    }
 
     const kilidSirasi = await postgresOyuncuKilidleriniSiraliAl(
       client,
@@ -159,7 +194,7 @@ async function ikiOyuncuStateMutasiyasiniPostgresIleIcraEt(
       );
     }
 
-    cavab = await emeliyyat(stateler, {
+    const transactionKonteksti = {
       client,
       playerIds: kilidSirasi.slice(),
       birinciPlayerId: birinci.playerId,
@@ -167,8 +202,21 @@ async function ikiOyuncuStateMutasiyasiniPostgresIleIcraEt(
       snapshotVarByPlayerId: {
         [birinci.playerId]: !!snapshotlar[birinci.playerId],
         [ikinci.playerId]: !!snapshotlar[ikinci.playerId]
-      }
-    });
+      },
+      transactionHazirliq
+    };
+
+    if (lockedStatesYoxla) {
+      await lockedStatesYoxla(
+        stateler,
+        transactionKonteksti
+      );
+    }
+
+    cavab = await emeliyyat(
+      stateler,
+      transactionKonteksti
+    );
 
     const deyisenPlayerIdleri = deyisenPlayerIdleriniHazirla(
       cavab && cavab.deyisenPlayerIdleri,

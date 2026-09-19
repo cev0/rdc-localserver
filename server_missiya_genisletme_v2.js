@@ -7,6 +7,9 @@ const { missiyaMesajiniEmalEt } = require("./missiya_handler");
 const {
   oyuncuMutasiyaKilidiIleIcraEt
 } = require("./server_oyuncu_mutasiya_kilidi");
+const {
+  runtimeStateInvalidationGonder
+} = require("./runtime_state_sync");
 
 require("./qehreman_recruit_qayda_override");
 
@@ -75,8 +78,6 @@ const OYUNCU_MUTASIYA_MESAJLARI = new Set([
   "technology_hero_remove_request",
   "development_hero_assign_request",
   "development_hero_remove_request",
-  "research_start",
-  "technology_research_start",
   "convoy_hero_assign_request",
   "convoy_hero_remove_request",
   "convoy_troops_set_request",
@@ -105,17 +106,8 @@ const OYUNCU_MUTASIYA_MESAJLARI = new Set([
   "battle_report_save_request",
   "battle_report_delete_request",
   "xestexana_sagaltma_request",
-  "expand_area_request",
-  "expand_base",
-  "build_request",
-  "train_unit_request",
   "troop_training_preview_request",
   "troop_training_status_request",
-  "upgrade_request",
-  "base_teleport_request",
-  "move_request",
-  "connect_road_request",
-  "start_construction_request"
 ]);
 
 const esasHesabLoginMesajiniEmalEt = hesabLoginModulu.hesabLoginMesajiniEmalEt;
@@ -170,10 +162,38 @@ async function gameplayMesajZenciriniIcraEt(kontekst) {
 hesabLoginModulu.hesabLoginMesajiniEmalEt = async function(kontekst) {
   const type = metnAl(kontekst && kontekst.type, 128);
   const playerId = metnAl(kontekst && kontekst.ws && kontekst.ws._authedPlayerId, 128);
+
   if (!playerId || !OYUNCU_MUTASIYA_MESAJLARI.has(type)) {
     return await gameplayMesajZenciriniIcraEt(kontekst);
   }
-  return await oyuncuMutasiyaKilidiIleIcraEt(playerId, async () => await gameplayMesajZenciriniIcraEt(kontekst));
+
+  return await oyuncuMutasiyaKilidiIleIcraEt(
+    playerId,
+    async () => {
+      const handled =
+        await gameplayMesajZenciriniIcraEt(
+          kontekst
+        );
+
+      if (handled === true) {
+        await runtimeStateInvalidationGonder(
+          kontekst && kontekst.runtimeBus,
+          playerId,
+          {
+            type:
+              type ||
+              "legacy_state_commit",
+            committedAtMs:
+              typeof kontekst.nowMs === "function"
+                ? kontekst.nowMs()
+                : Date.now()
+          }
+        );
+      }
+
+      return handled;
+    }
+  );
 };
 
 const { dovletQaydalariniTetbiqEt } = require("./server_dovlet_patch");

@@ -3,11 +3,17 @@
 const assert = require("assert");
 const protokol = require("./server_unity_message_contract.json");
 const {
+    ConnectionRuntimeRegistry
+} = require("./runtime_registry");
+const {
     DESTEKLENEN_MESAJ_NOVLERI,
     dovletIdAl,
     ittifaqIdAl,
     mesajGoruntulemeIcazesi,
-    neticeTipiniAl
+    neticeTipiniAl,
+    dovleteYayimEt,
+    ittifaqaYayimEt,
+    runtimeYayiminiYereldeGonder
 } = require("./mesajlasma_handler");
 const {
     oyunDiliDesteklenir,
@@ -131,4 +137,133 @@ const legacyIttifaqMesaji = {
 };
 assert.strictEqual(mesajGoruntulemeIcazesi(legacyIttifaqMesaji, "legacy", saxtaState), true);
 
-console.log("[MESAJLASMA_TEST] OK");
+{
+    const connections =
+        new ConnectionRuntimeRegistry();
+
+    const p1a = { id: "p1-a" };
+    const p1b = { id: "p1-b" };
+    const p2 = { id: "p2" };
+    const p3 = { id: "p3" };
+
+    connections.set("p1", p1a);
+    connections.set("p1", p1b);
+    connections.set("p2", p2);
+    connections.set("p3", p3);
+
+    const sent = [];
+
+    const send =
+        (ws, payload) => {
+            sent.push({
+                socketId: ws.id,
+                payload
+            });
+        };
+
+    const stateCount =
+        dovleteYayimEt(
+            connections,
+            send,
+            saxtaState,
+            1,
+            "olke_mesaj_geldi",
+            {
+                mesaj: {
+                    mesajId: "state-1"
+                }
+            }
+        );
+
+    assert.strictEqual(
+        stateCount,
+        3,
+        "Eyni Dövlət mesajı həmin Dövlətdəki bütün local socket-lərə getməlidir."
+    );
+
+    assert.deepStrictEqual(
+        sent.map(x => x.socketId).sort(),
+        [
+            "p1-a",
+            "p1-b",
+            "p2"
+        ]
+    );
+
+    sent.length = 0;
+
+    const allianceCount =
+        ittifaqaYayimEt(
+            connections,
+            send,
+            saxtaState,
+            "ittifaq-1",
+            "ittifaq_mesaj_geldi",
+            {
+                mesaj: {
+                    mesajId:
+                        "alliance-1"
+                }
+            }
+        );
+
+    assert.strictEqual(
+        allianceCount,
+        3
+    );
+
+    assert.deepStrictEqual(
+        sent.map(x => x.socketId).sort(),
+        [
+            "p1-a",
+            "p1-b",
+            "p2"
+        ]
+    );
+
+    sent.length = 0;
+
+    const remoteCount =
+        runtimeYayiminiYereldeGonder(
+            {
+                scope: "state",
+                targetId: "1",
+                payload: {
+                    type:
+                        "olke_mesaj_geldi",
+                    yuk: {
+                        mesaj: {
+                            mesajId:
+                                "remote-state-1"
+                        }
+                    }
+                }
+            },
+            {
+                connections,
+                send,
+                getOrCreatePlayerState:
+                    saxtaState
+            }
+        );
+
+    assert.strictEqual(
+        remoteCount,
+        3
+    );
+
+    assert.strictEqual(
+        sent.length,
+        3
+    );
+
+    assert.ok(
+        sent.every(
+            x =>
+                x.payload.type ===
+                "olke_mesaj_geldi"
+        )
+    );
+}
+
+console.log("[MESAJLASMA_TEST] multi-instance state/alliance broadcast OK");

@@ -23,8 +23,6 @@ const fs = require("fs");
 const path = require("path");
 const {
   hesabYaratVeBagla,
-  hesabPlayerIdIleTap,
-  clientHesabMelumati,
   emailTesdiqKoduHazirla,
   emailTesdiqKodunuYoxla
 } = require("./hesab_yaddasi_postgres");
@@ -40,6 +38,16 @@ const {
 const {
   sifreSifirlamaMesajiniEmalEt
 } = require("./sifre_sifirlama_handler");
+
+const {
+  runtimeDeployConfiginiAl,
+  runtimeDeployConfiginiYoxla,
+  runtimeDeployPublicMelumatiniAl
+} = require("./runtime_deploy_config");
+
+const {
+  lastShelterServerBaslangicResurslariniAl
+} = require("./last_shelter_baslangic_resurslari");
 
 // ============================================================
 // TEMP BUILDING LEVEL DATA
@@ -664,13 +672,18 @@ function startTechnologyResearch(state, techId) {
   };
 }
 
-function completeTechnologyResearchForState(state) {
+function completeTechnologyResearchForState(
+  state,
+  atTimeMs = nowMs()
+) {
   ensureTechnologyObject(state);
 
   const research = state.technology.currentResearch;
   if (!research) return null;
 
-  const now = nowMs();
+  const now =
+    Math.max(0, Number(atTimeMs) || nowMs());
+
   if (now < research.endsAtMs) return null;
 
   const techId = normalizeBuildingId(research.techId);
@@ -696,7 +709,9 @@ function ensureResourcesObject(state) {
       food: 0,
       water: 0,
       wood: 0,
+      stone: 0,
       iron: 0,
+      silver: 0,
       fuel: 0,
       electricity: 0,
       money: 0,
@@ -708,9 +723,12 @@ function ensureResourcesObject(state) {
     "food",
     "water",
     "wood",
+    "stone",
     "iron",
+    "silver",
     "fuel",
     "electricity",
+    "diamond",
     "money",
     "chips"
   ];
@@ -2309,7 +2327,9 @@ function getBaseResourceCaps() {
     food: 100000,
     water: 100000,
     wood: 100000,
+    stone: 100000,
     iron: 100000,
+    silver: 100000,
     fuel: 100000,
     electricity: 100000,
     money: 100000,
@@ -3347,8 +3367,111 @@ function hasUnfinishedBuildingOfSameType(state, buildingId) {
 }
 
 const PORT = process.env.PORT || 3001;
-const players = new Map();
-const connections = new Map();
+
+const runtimeDeployConfig =
+  runtimeDeployConfiginiYoxla(
+    runtimeDeployConfiginiAl()
+  );
+
+const runtimeDeployPublicInfo =
+  runtimeDeployPublicMelumatiniAl(
+    runtimeDeployConfig
+  );
+
+const {
+  players,
+  connections
+} = require("./runtime_registry");
+const {
+  createRuntimeRedisBus
+} = require("./runtime_redis");
+const {
+  runtimeYayiminiYereldeGonder
+} = require("./mesajlasma_handler");
+const {
+  dinamikLayerRuntimeMelumatiniHazirla
+} = require("./dovlet_xerite_layer_handler");
+const {
+  runtimeOxu:
+    dovletKonvoyRuntimeOxu
+} = require("./dovlet_konvoy_runtime_postgres");
+const {
+  RuntimeDeadlineScheduler
+} = require("./runtime_deadline_scheduler");
+const {
+  authoritativeDeadlineProcessorYarat
+} = require("./runtime_deadline_authoritative");
+const {
+  DEFAULT_PRODUCTION_TICK_MS,
+  ensureProductionClock,
+  consumeProductionTicks
+} = require("./runtime_production_clock");
+const {
+  RuntimeCommandRouter
+} = require("./runtime_command_router");
+const {
+  coreReadCommandleriniQeydEt
+} = require("./runtime_core_read_commands");
+const {
+  authCommandiniQeydEt
+} = require("./runtime_auth_command");
+const {
+  gameplayMutationCommandleriniQeydEt
+} = require("./runtime_gameplay_mutation_commands");
+const {
+  buildCommandleriniQeydEt
+} = require("./runtime_build_commands");
+const {
+  mapMutationCommandleriniQeydEt
+} = require("./runtime_map_mutation_commands");
+const {
+  accountCommandleriniQeydEt
+} = require("./runtime_account_commands");
+const {
+  requestIdAl,
+  correlatedSendYarat
+} = require("./runtime_protocol_envelope");
+const {
+  RuntimeWebSocketGuard,
+  websocketRuntimeConfigFromEnv
+} = require("./runtime_ws_guard");
+const {
+  stateIdempotencyExecutorYarat
+} = require("./runtime_request_idempotency");
+const {
+  occupyStateCenterPostgresClient
+} = require("./world_state_center_postgres");
+const {
+  postgresAuthoritativeMutationExecutorYarat
+} = require("./runtime_pg_authoritative_mutation");
+const {
+  runtimeStateSyncControllerYarat
+} = require("./runtime_state_sync");
+const {
+  runtimeWorldMapSyncControllerYarat
+} = require("./runtime_world_map_sync");
+const {
+  worldStateOyuncuMutasiyasiniPostgresIleIcraEt
+} = require("./world_state_mutasiya_postgres");
+const {
+  worldStateMetadatalariniAl,
+  worldStatePlayerSaylariniAl
+} = require("./world_state_assignment_postgres");
+const {
+  dovletBazalariniAl,
+  dovletBazalariniBirbasaPostgresdenAlClient,
+  dovletBazaKeshiniTemizle
+} = require("./dovlet_baza_kataloqu_postgres");
+const {
+  oyuncuMutasiyaKilidiIleIcraEt
+} = require("./server_oyuncu_mutasiya_kilidi");
+const {
+  pvpZeroingRecallDeadlineAtMs,
+  pvpZeroingPendingRecalliniBerpaEt
+} = require("./pvp_zeroing_recall_deadline");
+const {
+  pvpZeroingKonvoyRecalliniPostCommitIcraEt
+} = require("./pvp_zeroing_konvoy_recall_postcommit");
 
 const STATE_CENTER_UNLOCK_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
 const STATE_NEW_PLAYER_SOFT_CAP = 200;
@@ -3497,10 +3620,135 @@ function safeJsonParse(text) {
   }
 }
 
+const websocketRuntimeConfig =
+  websocketRuntimeConfigFromEnv(
+    process.env
+  );
+
+const websocketGuard =
+  new RuntimeWebSocketGuard(
+    websocketRuntimeConfig
+  );
+
 function send(ws, obj) {
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  ws.send(JSON.stringify(obj));
+  return websocketGuard.sendJson(
+    ws,
+    obj
+  );
 }
+
+const runtimeStateSync =
+  runtimeStateSyncControllerYarat({
+    getOrCreatePlayerState,
+    updateServerTime,
+    withPlayerLock:
+      oyuncuMutasiyaKilidiIleIcraEt,
+    hasLocalPlayer:
+      playerId =>
+        connections.has(
+          playerId
+        ),
+    schedulePlayerDeadline,
+    pushStateToPlayerConnections
+  });
+
+connections.configureLastLocalDisconnectHandler(
+  playerId =>
+    runtimeStateSync
+      .markStale(
+        playerId
+      )
+);
+
+const runtimeWorldMapSync =
+  runtimeWorldMapSyncControllerYarat({
+    getWorldStateRuntime,
+    clearBaseCache:
+      dovletBazaKeshiniTemizle,
+    pushStateLocalMap:
+      pushStateLocalMapToStatePlayersAuthoritative,
+    pushWorldMap:
+      async () => {
+        await pushWorldMapToAllAuthedPlayers();
+      },
+    pushDynamicMap:
+      pushStateDynamicMapToStatePlayers,
+    nowMs
+  });
+
+const runtimeBus = createRuntimeRedisBus({
+  onDirectMessage:
+    async (message) => {
+      const stateSyncHandled =
+        await runtimeStateSync
+          .handleDirect(
+            message
+          );
+
+      if (stateSyncHandled) {
+        return;
+      }
+
+      connections.deliverLocal(
+        message.playerId,
+        message.payload,
+        send
+      );
+    },
+
+  onBroadcastMessage:
+    async (message) => {
+      const worldMapHandled =
+        await runtimeWorldMapSync
+          .handleBroadcast(
+            message
+          );
+
+      if (worldMapHandled) {
+        return;
+      }
+
+      runtimeYayiminiYereldeGonder(
+        message,
+        {
+          connections,
+          send,
+          getOrCreatePlayerState
+        }
+      );
+    }
+});
+
+connections.configureRemotePublisher(
+  (playerId, payload) =>
+    runtimeBus.publishToPlayer(playerId, payload)
+);
+
+const authoritativeDeadlineProcessor =
+  authoritativeDeadlineProcessorYarat({
+    getPlayerState:
+      playerId =>
+        players.get(
+          playerId
+        ),
+    withPlayerLock:
+      oyuncuMutasiyaKilidiIleIcraEt,
+    settlePlayerTimeline,
+    nowMs,
+    publishInvalidation:
+      (playerId, metadata) =>
+        runtimeStateSync
+          .publishInvalidation(
+            runtimeBus,
+            playerId,
+            metadata
+          )
+  });
+
+const deadlineScheduler = new RuntimeDeadlineScheduler({
+  now: nowMs,
+  onDue: processPlayerDeadline
+});
 
 function updateServerTime(state) {
   state.serverTimeUnixMs = nowMs();
@@ -3516,9 +3764,35 @@ function getDistanceSquared(ax, az, bx, bz) {
   return dx * dx + dz * dz;
 }
 
-function createWorldStateRuntime(stateId) {
-  const createdAtMs = nowMs();
-  const centerUnlockAtMs = createdAtMs + STATE_CENTER_UNLOCK_DELAY_MS;
+function createWorldStateRuntime(
+  stateId,
+  metadata = null
+) {
+  const info =
+    metadata &&
+    typeof metadata === "object"
+      ? metadata
+      : {};
+
+  const createdAtMs =
+    Math.max(
+      0,
+      Number(
+        info.createdAtMs
+      ) || nowMs()
+    );
+
+  const centerUnlockAtMs =
+    Math.max(
+      createdAtMs,
+      Number(
+        info.centerUnlockAtMs
+      ) ||
+      (
+        createdAtMs +
+        STATE_CENTER_UNLOCK_DELAY_MS
+      )
+    );
 
   const localMap = {
     width: STATE_LOCAL_MAP_CONFIG.width,
@@ -3532,13 +3806,27 @@ function createWorldStateRuntime(stateId) {
 
   return {
     stateId,
-    displayName: makeStateDisplayName(stateId),
+    displayName:
+      (
+        typeof info.displayName ===
+          "string" &&
+        info.displayName.trim()
+      )
+        ? info.displayName.trim()
+        : makeStateDisplayName(
+            stateId
+          ),
     createdAtMs,
     centerUnlockAtMs,
-    presidentPlayerId: null,
-    presidentAllianceId: null,
+    presidentPlayerId:
+      info.presidentPlayerId ||
+      null,
+    presidentAllianceId:
+      info.presidentAllianceId ||
+      null,
     activeForNewPlayers: false,
-    isOpen: true,
+    isOpen:
+      info.isOpen !== false,
     playerIds: [],
     localMap,
     worldObjects: createStateWorldObjects(stateId, localMap),
@@ -3547,11 +3835,255 @@ function createWorldStateRuntime(stateId) {
       z: localMap.centerZ,
       unlockAtMs: centerUnlockAtMs,
       isUnlocked: false,
-      occupiedByPlayerId: null,
-      occupiedByAllianceId: null,
-      occupiedAtMs: 0
+      occupiedByPlayerId:
+        info.presidentPlayerId ||
+        null,
+      occupiedByAllianceId:
+        info.presidentAllianceId ||
+        null,
+      occupiedAtMs:
+        Math.max(
+          0,
+          Number(
+            info.occupiedAtMs
+          ) || 0
+        )
     }
   };
+}
+
+function worldRuntimeMetadatalariniTetbiqEt(
+  metadataList
+) {
+  const list =
+    Array.isArray(
+      metadataList
+    )
+      ? metadataList
+      : [];
+
+  if (
+    !worldRuntime.states ||
+    typeof worldRuntime.states !==
+      "object"
+  ) {
+    worldRuntime.states = {};
+  }
+
+  let maxStateId = 0;
+  let activeStateId = 0;
+
+  for (const metadata of list) {
+    const stateId =
+      Number(
+        metadata &&
+        metadata.stateId
+      );
+
+    if (
+      !Number.isInteger(
+        stateId
+      ) ||
+      stateId <= 0
+    ) {
+      continue;
+    }
+
+    maxStateId =
+      Math.max(
+        maxStateId,
+        stateId
+      );
+
+    if (
+      metadata.isOpen !== false
+    ) {
+      activeStateId =
+        Math.max(
+          activeStateId,
+          stateId
+        );
+    }
+
+    const existing =
+      worldRuntime.states[
+        String(stateId)
+      ];
+
+    const runtime =
+      createWorldStateRuntime(
+        stateId,
+        metadata
+      );
+
+    runtime.revision =
+      Math.max(
+        0,
+        Number(
+          metadata &&
+          metadata.revision
+        ) || 0
+      );
+
+    if (
+      existing &&
+      Array.isArray(
+        existing.playerIds
+      )
+    ) {
+      runtime.playerIds =
+        Array.from(
+          new Set(
+            existing.playerIds
+              .filter(Boolean)
+          )
+        );
+    }
+
+    worldRuntime.states[
+      String(stateId)
+    ] = runtime;
+  }
+
+  if (maxStateId > 0) {
+    worldRuntime.nextStateId =
+      Math.max(
+        worldRuntime.nextStateId,
+        maxStateId + 1
+      );
+  }
+
+  if (activeStateId > 0) {
+    worldRuntime
+      .activeStateIdForNewPlayers =
+        activeStateId;
+  }
+
+  if (list.length > 0) {
+    refreshWorldRuntimeFlags();
+  }
+
+  return list.length;
+}
+
+function worldStateRuntimeiniPlacementdenTeminEt(
+  placement
+) {
+  const stateId =
+    Number(
+      placement &&
+      placement.stateId
+    );
+
+  if (
+    !Number.isInteger(stateId) ||
+    stateId <= 0
+  ) {
+    return null;
+  }
+
+  let runtime =
+    worldRuntime.states[
+      String(stateId)
+    ];
+
+  const metadata = {
+    stateId,
+    displayName:
+      placement.stateName ||
+      makeStateDisplayName(
+        stateId
+      ),
+    createdAtMs:
+      Number(
+        placement.stateCreatedAtMs
+      ) || 0,
+    centerUnlockAtMs:
+      Number(
+        placement.centerUnlockAtMs
+      ) || 0,
+    isOpen: true
+  };
+
+  if (!runtime) {
+    runtime =
+      createWorldStateRuntime(
+        stateId,
+        metadata
+      );
+
+    worldRuntime.states[
+      String(stateId)
+    ] = runtime;
+  }
+  else {
+    if (
+      metadata.createdAtMs > 0
+    ) {
+      runtime.createdAtMs =
+        metadata.createdAtMs;
+    }
+
+    if (
+      metadata.centerUnlockAtMs > 0
+    ) {
+      runtime.centerUnlockAtMs =
+        metadata.centerUnlockAtMs;
+
+      if (
+        runtime.centerBuilding
+      ) {
+        runtime.centerBuilding
+          .unlockAtMs =
+            metadata
+              .centerUnlockAtMs;
+      }
+    }
+
+    if (
+      metadata.displayName
+    ) {
+      runtime.displayName =
+        metadata.displayName;
+    }
+  }
+
+  worldRuntime.nextStateId =
+    Math.max(
+      worldRuntime.nextStateId,
+      stateId + 1
+    );
+
+  const currentMax =
+    Math.max(
+      0,
+      ...Object.values(
+        worldRuntime.states
+      )
+        .filter(
+          item =>
+            item &&
+            item.isOpen !== false
+        )
+        .map(
+          item =>
+            Number(
+              item.stateId
+            ) || 0
+        )
+    );
+
+  if (
+    stateId >= currentMax
+  ) {
+    worldRuntime
+      .activeStateIdForNewPlayers =
+        stateId;
+  }
+
+  refreshWorldRuntimeFlags();
+
+  return runtime;
 }
 
 function ensureWorldRuntime() {
@@ -3655,20 +4187,55 @@ function openNextWorldState() {
 function getOrCreateActiveWorldStateForNewPlayers() {
   ensureWorldRuntime();
 
-  let activeState = getWorldStateRuntime(worldRuntime.activeStateIdForNewPlayers);
+  let activeState =
+    getWorldStateRuntime(
+      worldRuntime
+        .activeStateIdForNewPlayers
+    );
+
   if (!activeState) {
-    activeState = openNextWorldState();
+    activeState =
+      openNextWorldState();
   }
 
-  if (getWorldStatePlayerCount(activeState) >= STATE_NEW_PLAYER_SOFT_CAP) {
-    activeState = openNextWorldState();
-  }
-
+  /*
+   * Soft-cap əsasında yeni State açmaq artıq local RAM authority deyil.
+   * Bu funksiya yalnız snapshot olmayan oyunçu üçün provisional placement verir;
+   * real State seçimi world_state_assignment_postgres.js daxilində global lock
+   * altında aparılır.
+   */
   return activeState;
 }
 
 function registerPlayerInWorldState(playerId, stateRuntime) {
   if (!playerId || !stateRuntime) return;
+
+  /*
+   * Authoritative restore oyunçunu başqa State-ə keçiribsə provisional/local
+   * registry üzvlüyünü köhnə State-dən çıxarırıq.
+   */
+  for (
+    const otherRuntime of
+    Object.values(
+      worldRuntime.states || {}
+    )
+  ) {
+    if (
+      !otherRuntime ||
+      !Array.isArray(
+        otherRuntime.playerIds
+      )
+    ) {
+      continue;
+    }
+
+    otherRuntime.playerIds =
+      otherRuntime.playerIds
+        .filter(
+          id =>
+            id !== playerId
+        );
+  }
 
   if (!Array.isArray(stateRuntime.playerIds)) {
     stateRuntime.playerIds = [];
@@ -3791,25 +4358,133 @@ function buildWorldMapPayloadForClient() {
   };
 }
 
+async function buildWorldMapPayloadForClientAuthoritative() {
+  const [
+    metadata,
+    counts
+  ] =
+    await Promise.all([
+      worldStateMetadatalariniAl(),
+      worldStatePlayerSaylariniAl()
+    ]);
+
+  worldRuntimeMetadatalariniTetbiqEt(
+    metadata
+  );
+
+  if (
+    !Array.isArray(metadata) ||
+    metadata.length === 0
+  ) {
+    const emptyPayload =
+      buildWorldMapPayloadForClient();
+
+    emptyPayload.states =
+      emptyPayload.states.map(
+        state => ({
+          ...state,
+          playerCount: 0
+        })
+      );
+
+    emptyPayload.authority =
+      "postgres_empty_bootstrap";
+
+    return emptyPayload;
+  }
+
+  const states =
+    metadata
+      .map(item => {
+        const runtime =
+          getWorldStateRuntime(
+            item.stateId
+          );
+
+        const snapshot =
+          makeWorldStateSnapshotForClient(
+            runtime
+          );
+
+        if (!snapshot) {
+          return null;
+        }
+
+        snapshot.playerCount =
+          counts.get(
+            item.stateId
+          ) ||
+          0;
+
+        return snapshot;
+      })
+      .filter(Boolean);
+
+  return {
+    activeStateIdForNewPlayers:
+      worldRuntime
+        .activeStateIdForNewPlayers,
+    stateCount:
+      states.length,
+    states,
+    authority:
+      "postgres_snapshot"
+  };
+}
+
 function applyWorldPlacementToPlayerState(state, stateRuntime, spawnInfo) {
   if (!state || !stateRuntime || !spawnInfo) return;
 
+  const existingPlacement =
+    state.worldPlacement &&
+    typeof state.worldPlacement ===
+      "object"
+      ? state.worldPlacement
+      : {};
+
   state.worldPlacement = {
+    ...existingPlacement,
     stateId: stateRuntime.stateId,
     stateName: stateRuntime.displayName,
     baseX: spawnInfo.baseX,
     baseZ: spawnInfo.baseZ,
-    spawnZone: spawnInfo.spawnZone || "outer",
-    stateCreatedAtMs: stateRuntime.createdAtMs,
-    centerUnlockAtMs: stateRuntime.centerUnlockAtMs,
-    centerBuildingX: Number(stateRuntime.centerBuilding?.x) || STATE_LOCAL_MAP_CONFIG.centerX,
-    centerBuildingZ: Number(stateRuntime.centerBuilding?.z) || STATE_LOCAL_MAP_CONFIG.centerZ
+    spawnZone:
+      spawnInfo.spawnZone ||
+      existingPlacement.spawnZone ||
+      "outer",
+    stateCreatedAtMs:
+      stateRuntime.createdAtMs,
+    centerUnlockAtMs:
+      stateRuntime.centerUnlockAtMs,
+    centerBuildingX:
+      Number(
+        stateRuntime.centerBuilding?.x
+      ) ||
+      STATE_LOCAL_MAP_CONFIG.centerX,
+    centerBuildingZ:
+      Number(
+        stateRuntime.centerBuilding?.z
+      ) ||
+      STATE_LOCAL_MAP_CONFIG.centerZ
   };
 
   state.worldMap = {
-    activeStateIdForNewPlayers: worldRuntime.activeStateIdForNewPlayers,
-    currentStateId: stateRuntime.stateId,
-    currentStateSnapshot: makeWorldStateSnapshotForClient(stateRuntime)
+    ...(
+      state.worldMap &&
+      typeof state.worldMap ===
+        "object"
+        ? state.worldMap
+        : {}
+    ),
+    activeStateIdForNewPlayers:
+      worldRuntime
+        .activeStateIdForNewPlayers,
+    currentStateId:
+      stateRuntime.stateId,
+    currentStateSnapshot:
+      makeWorldStateSnapshotForClient(
+        stateRuntime
+      )
   };
 }
 
@@ -3860,68 +4535,146 @@ function canTeleportBaseInsideState(stateRuntime, playerId, targetBaseX, targetB
   return { ok: true };
 }
 
-function teleportPlayerBaseInsideState(state, playerId, targetBaseX, targetBaseZ) {
+function applyPlayerBaseTeleportInsideState(
+  state,
+  playerId,
+  targetBaseX,
+  targetBaseZ
+) {
   if (!state || !state.worldPlacement) {
-    return { ok: false, message: "Player world placement not found" };
+    return {
+      ok: false,
+      message:
+        "Player world placement not found"
+    };
   }
 
-  const stateId = Number(state.worldPlacement.stateId);
-  if (!Number.isInteger(stateId) || stateId <= 0) {
-    return { ok: false, message: "Player stateId is invalid" };
+  const stateId =
+    Number(
+      state.worldPlacement.stateId
+    );
+
+  if (
+    !Number.isInteger(stateId) ||
+    stateId <= 0
+  ) {
+    return {
+      ok: false,
+      message:
+        "Player stateId is invalid"
+    };
   }
 
-  const stateRuntime = getWorldStateRuntime(stateId);
+  const stateRuntime =
+    getWorldStateRuntime(
+      stateId
+    );
+
   if (!stateRuntime) {
-    return { ok: false, message: "World state not found" };
+    return {
+      ok: false,
+      message:
+        "World state not found"
+    };
   }
 
-  const check = canTeleportBaseInsideState(stateRuntime, playerId, targetBaseX, targetBaseZ);
-  if (!check.ok) {
-    return check;
-  }
+  const currentBaseX =
+    Number(
+      state.worldPlacement.baseX
+    );
 
-  const currentBaseX = Number(state.worldPlacement.baseX);
-  const currentBaseZ = Number(state.worldPlacement.baseZ);
+  const currentBaseZ =
+    Number(
+      state.worldPlacement.baseZ
+    );
 
-  if (currentBaseX === targetBaseX && currentBaseZ === targetBaseZ) {
+  const centerX =
+    Number(
+      stateRuntime.localMap
+        ?.centerX
+    ) ||
+    STATE_LOCAL_MAP_CONFIG.centerX;
+
+  const centerZ =
+    Number(
+      stateRuntime.localMap
+        ?.centerZ
+    ) ||
+    STATE_LOCAL_MAP_CONFIG.centerZ;
+
+  if (
+    currentBaseX === targetBaseX &&
+    currentBaseZ === targetBaseZ
+  ) {
     return {
       ok: true,
       ignored: true,
       stateId,
       baseX: currentBaseX,
       baseZ: currentBaseZ,
-      zone: getZoneNameForDistance(
-        Math.round(
-          Math.sqrt(
-            getDistanceSquared(
-              currentBaseX,
-              currentBaseZ,
-              Number(stateRuntime.localMap?.centerX) || STATE_LOCAL_MAP_CONFIG.centerX,
-              Number(stateRuntime.localMap?.centerZ) || STATE_LOCAL_MAP_CONFIG.centerZ
+      zone:
+        getZoneNameForDistance(
+          Math.round(
+            Math.sqrt(
+              getDistanceSquared(
+                currentBaseX,
+                currentBaseZ,
+                centerX,
+                centerZ
+              )
             )
           )
         )
-      )
     };
   }
 
-  const centerX = Number(stateRuntime.localMap?.centerX) || STATE_LOCAL_MAP_CONFIG.centerX;
-  const centerZ = Number(stateRuntime.localMap?.centerZ) || STATE_LOCAL_MAP_CONFIG.centerZ;
-  const distance = Math.round(Math.sqrt(getDistanceSquared(targetBaseX, targetBaseZ, centerX, centerZ)));
-  const zone = getZoneNameForDistance(distance);
+  const distance =
+    Math.round(
+      Math.sqrt(
+        getDistanceSquared(
+          targetBaseX,
+          targetBaseZ,
+          centerX,
+          centerZ
+        )
+      )
+    );
 
-  state.worldPlacement.baseX = targetBaseX;
-  state.worldPlacement.baseZ = targetBaseZ;
-  state.worldPlacement.lastTeleportAtMs = nowMs();
-  state.worldPlacement.currentZone = zone;
+  const zone =
+    getZoneNameForDistance(
+      distance
+    );
 
-  if (!state.worldMap || typeof state.worldMap !== "object") {
+  state.worldPlacement.baseX =
+    targetBaseX;
+
+  state.worldPlacement.baseZ =
+    targetBaseZ;
+
+  state.worldPlacement.lastTeleportAtMs =
+    nowMs();
+
+  state.worldPlacement.currentZone =
+    zone;
+
+  if (
+    !state.worldMap ||
+    typeof state.worldMap !==
+      "object"
+  ) {
     state.worldMap = {};
   }
 
-  state.worldMap.activeStateIdForNewPlayers = worldRuntime.activeStateIdForNewPlayers;
-  state.worldMap.currentStateId = stateId;
-  state.worldMap.currentStateSnapshot = makeWorldStateSnapshotForClient(stateRuntime);
+  state.worldMap.activeStateIdForNewPlayers =
+    worldRuntime.activeStateIdForNewPlayers;
+
+  state.worldMap.currentStateId =
+    stateId;
+
+  state.worldMap.currentStateSnapshot =
+    makeWorldStateSnapshotForClient(
+      stateRuntime
+    );
 
   updateServerTime(state);
 
@@ -3932,8 +4685,75 @@ function teleportPlayerBaseInsideState(state, playerId, targetBaseX, targetBaseZ
     baseX: targetBaseX,
     baseZ: targetBaseZ,
     zone,
-    teleportedAtMs: Number(state.worldPlacement.lastTeleportAtMs) || 0
+    teleportedAtMs:
+      Number(
+        state.worldPlacement
+          .lastTeleportAtMs
+      ) || 0
   };
+}
+
+function teleportPlayerBaseInsideState(
+  state,
+  playerId,
+  targetBaseX,
+  targetBaseZ
+) {
+  if (!state || !state.worldPlacement) {
+    return {
+      ok: false,
+      message:
+        "Player world placement not found"
+    };
+  }
+
+  const stateId =
+    Number(
+      state.worldPlacement.stateId
+    );
+
+  if (
+    !Number.isInteger(stateId) ||
+    stateId <= 0
+  ) {
+    return {
+      ok: false,
+      message:
+        "Player stateId is invalid"
+    };
+  }
+
+  const stateRuntime =
+    getWorldStateRuntime(
+      stateId
+    );
+
+  if (!stateRuntime) {
+    return {
+      ok: false,
+      message:
+        "World state not found"
+    };
+  }
+
+  const check =
+    canTeleportBaseInsideState(
+      stateRuntime,
+      playerId,
+      targetBaseX,
+      targetBaseZ
+    );
+
+  if (!check.ok) {
+    return check;
+  }
+
+  return applyPlayerBaseTeleportInsideState(
+    state,
+    playerId,
+    targetBaseX,
+    targetBaseZ
+  );
 }
 
 function ensurePlayerWorldPlacement(state, playerId) {
@@ -3942,14 +4762,43 @@ function ensurePlayerWorldPlacement(state, playerId) {
   let stateRuntime = null;
   let spawnInfo = null;
 
-  if (state && state.worldPlacement && Number.isInteger(Number(state.worldPlacement.stateId))) {
-    stateRuntime = getWorldStateRuntime(Number(state.worldPlacement.stateId));
+  if (
+    state &&
+    state.worldPlacement &&
+    Number.isInteger(
+      Number(
+        state.worldPlacement.stateId
+      )
+    )
+  ) {
+    const placementStateId =
+      Number(
+        state.worldPlacement.stateId
+      );
+
+    stateRuntime =
+      worldRuntime.states[
+        String(
+          placementStateId
+        )
+      ] ||
+      worldStateRuntimeiniPlacementdenTeminEt(
+        state.worldPlacement
+      );
 
     if (stateRuntime) {
       spawnInfo = {
-        baseX: Number(state.worldPlacement.baseX),
-        baseZ: Number(state.worldPlacement.baseZ),
-        spawnZone: state.worldPlacement.spawnZone || "outer"
+        baseX:
+          Number(
+            state.worldPlacement.baseX
+          ),
+        baseZ:
+          Number(
+            state.worldPlacement.baseZ
+          ),
+        spawnZone:
+          state.worldPlacement.spawnZone ||
+          "outer"
       };
     }
   }
@@ -3962,11 +4811,16 @@ function ensurePlayerWorldPlacement(state, playerId) {
     spawnInfo = pickRandomSpawnForState(stateRuntime);
   }
 
-  registerPlayerInWorldState(playerId, stateRuntime);
-  applyWorldPlacementToPlayerState(state, stateRuntime, spawnInfo);
+  registerPlayerInWorldState(
+    playerId,
+    stateRuntime
+  );
 
-  // active state dolubsa növbəti yeni gələnlər üçün yeni state açılsın
-  getOrCreateActiveWorldStateForNewPlayers();
+  applyWorldPlacementToPlayerState(
+    state,
+    stateRuntime,
+    spawnInfo
+  );
 }
 
 
@@ -4095,17 +4949,30 @@ function buildStateLocalMapPayload(stateId, requestingPlayerId = null) {
   };
 }
 
-function sendStateLocalMapToPlayer(ws, playerId) {
-  if (!ws || ws.readyState !== WebSocket.OPEN || !playerId) return;
+async function sendStateLocalMapToPlayer(ws, playerId) {
+  if (!ws || ws.readyState !== WebSocket.OPEN || !playerId) {
+    return false;
+  }
 
   const state = players.get(playerId);
-  if (!state || !state.worldPlacement) return;
+  if (!state || !state.worldPlacement) {
+    return false;
+  }
 
   const stateId = Number(state.worldPlacement.stateId);
-  if (!Number.isInteger(stateId)) return;
+  if (!Number.isInteger(stateId) || stateId <= 0) {
+    return false;
+  }
 
-  const payload = buildStateLocalMapPayload(stateId, playerId);
-  if (!payload) return;
+  const payload =
+    await buildStateLocalMapPayloadAuthoritative(
+      stateId,
+      playerId
+    );
+
+  if (!payload) {
+    return false;
+  }
 
   send(ws, {
     type: "state_local_map",
@@ -4113,49 +4980,350 @@ function sendStateLocalMapToPlayer(ws, playerId) {
     serverTimeUnixMs: nowMs(),
     payloadJson: JSON.stringify(payload)
   });
+
+  return true;
 }
 
 
-function sendWorldMapToPlayer(ws, playerId) {
-  if (!ws || ws.readyState !== WebSocket.OPEN || !playerId) return;
+async function sendWorldMapToPlayer(ws, playerId) {
+  if (!ws || ws.readyState !== WebSocket.OPEN || !playerId) {
+    return false;
+  }
+
+  const payload =
+    await buildWorldMapPayloadForClientAuthoritative();
+
+  if (!payload) {
+    return false;
+  }
 
   send(ws, {
     type: "world_map",
     playerId,
     serverTimeUnixMs: nowMs(),
-    payloadJson: JSON.stringify(buildWorldMapPayloadForClient())
+    payloadJson: JSON.stringify(payload)
   });
+
+  return true;
 }
 
-function pushStateLocalMapToStatePlayers(stateId) {
-  if (!Number.isInteger(Number(stateId))) return;
+function stateLocalMapBazalariniAuthoritativeHazirla(
+  rawBases,
+  requestingPlayerId = null
+) {
+  return (
+    Array.isArray(rawBases)
+      ? rawBases
+      : []
+  ).map(item => ({
+    ...item,
+    zone:
+      item && item.zoneId
+        ? item.zoneId
+        : "outer",
+    spawnZone:
+      item && item.zoneId
+        ? item.zoneId
+        : "outer",
+    isSelf:
+      !!(
+        requestingPlayerId &&
+        item &&
+        item.playerId ===
+          requestingPlayerId
+      )
+  }));
+}
 
-  const payload = buildStateLocalMapPayload(Number(stateId), null);
-  if (!payload) return;
+async function buildStateLocalMapPayloadAuthoritative(
+  stateId,
+  requestingPlayerId = null,
+  bazaPaketi = null
+) {
+  const sid =
+    Number(stateId);
 
-  for (const ws of wss.clients) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) continue;
+  if (
+    !Number.isInteger(sid) ||
+    sid <= 0
+  ) {
+    return null;
+  }
 
-    const playerId = ws._authedPlayerId;
-    if (!playerId) continue;
+  const payload =
+    buildStateLocalMapPayload(
+      sid,
+      requestingPlayerId
+    );
 
-    const playerState = players.get(playerId);
-    if (!playerState || !playerState.worldPlacement) continue;
-    if (Number(playerState.worldPlacement.stateId) !== Number(stateId)) continue;
+  if (!payload) {
+    return null;
+  }
 
-    const perPlayerPayload = buildStateLocalMapPayload(Number(stateId), playerId);
+  try {
+    const paket =
+      bazaPaketi ||
+      await dovletBazalariniAl(
+        sid,
+        nowMs()
+      );
 
-    send(ws, {
-      type: "state_local_map",
-      playerId,
-      serverTimeUnixMs: nowMs(),
-      payloadJson: JSON.stringify(perPlayerPayload)
-    });
+    const bases =
+      stateLocalMapBazalariniAuthoritativeHazirla(
+        paket &&
+        paket.bases,
+        requestingPlayerId
+      );
+
+    payload.bases =
+      bases;
+
+    payload.playerCount =
+      bases.length;
+
+    payload.authority =
+      "postgres_snapshot";
+
+    return payload;
+  }
+  catch (error) {
+    console.error(
+      "[STATE_LOCAL_MAP] PostgreSQL base catalog unavailable:",
+      {
+        stateId: sid,
+        message:
+          error && error.message
+            ? error.message
+            : String(error)
+      }
+    );
+
+    // PostgreSQL authoritative rejimdə köhnə local RAM baza siyahısını
+    // client-ə düzgün xəritə kimi təqdim etmirik. Caller null-u error/skip
+    // kimi idarə edir və növbəti uğurlu read authoritative snapshot qaytarır.
+    return null;
   }
 }
 
-function pushWorldMapToAllAuthedPlayers() {
-  const payload = JSON.stringify(buildWorldMapPayloadForClient());
+async function pushStateLocalMapToStatePlayersAuthoritative(
+  stateId
+) {
+  const sid =
+    Number(stateId);
+
+  if (
+    !Number.isInteger(sid) ||
+    sid <= 0
+  ) {
+    return 0;
+  }
+
+  let bazaPaketi = null;
+
+  try {
+    bazaPaketi =
+      await dovletBazalariniAl(
+        sid,
+        nowMs()
+      );
+  }
+  catch (error) {
+    console.error(
+      "[STATE_LOCAL_MAP] Authoritative catalog read failed:",
+      {
+        stateId: sid,
+        message:
+          error && error.message
+            ? error.message
+            : String(error)
+      }
+    );
+
+    // Bir PostgreSQL xətasını hər local socket üçün yenidən sorğuya
+    // çevirmirik; stale RAM xəritəsi də broadcast edilmir.
+    return 0;
+  }
+
+  let sentCount = 0;
+
+  for (const ws of wss.clients) {
+    if (
+      !ws ||
+      ws.readyState !==
+        WebSocket.OPEN
+    ) {
+      continue;
+    }
+
+    const playerId =
+      ws._authedPlayerId;
+
+    if (!playerId) {
+      continue;
+    }
+
+    const playerState =
+      players.get(
+        playerId
+      );
+
+    if (
+      !playerState ||
+      !playerState.worldPlacement ||
+      Number(
+        playerState
+          .worldPlacement
+          .stateId
+      ) !== sid
+    ) {
+      continue;
+    }
+
+    const payload =
+      await buildStateLocalMapPayloadAuthoritative(
+        sid,
+        playerId,
+        bazaPaketi
+      );
+
+    if (!payload) {
+      continue;
+    }
+
+    send(ws, {
+      type:
+        "state_local_map",
+      playerId,
+      serverTimeUnixMs:
+        nowMs(),
+      payloadJson:
+        JSON.stringify(
+          payload
+        )
+    });
+
+    sentCount += 1;
+  }
+
+  return sentCount;
+}
+
+async function pushStateDynamicMapToStatePlayers(
+  stateId
+) {
+  const sid =
+    Number(stateId);
+
+  if (
+    !Number.isInteger(sid) ||
+    sid <= 0
+  ) {
+    return 0;
+  }
+
+  let runtime;
+
+  try {
+    runtime =
+      await dovletKonvoyRuntimeOxu(
+        sid
+      );
+  }
+  catch (error) {
+    console.error(
+      "[STATE_DYNAMIC_MAP] Runtime read failed:",
+      {
+        stateId: sid,
+        message:
+          error && error.message
+            ? error.message
+            : String(error)
+      }
+    );
+
+    return 0;
+  }
+
+  const currentNow =
+    nowMs();
+
+  let sentCount = 0;
+
+  for (const ws of wss.clients) {
+    if (
+      !ws ||
+      ws.readyState !==
+        WebSocket.OPEN
+    ) {
+      continue;
+    }
+
+    const playerId =
+      ws._authedPlayerId;
+
+    if (!playerId) {
+      continue;
+    }
+
+    const playerState =
+      players.get(
+        playerId
+      );
+
+    if (
+      !playerState ||
+      !playerState.worldPlacement ||
+      Number(
+        playerState
+          .worldPlacement
+          .stateId
+      ) !== sid
+    ) {
+      continue;
+    }
+
+    const info =
+      dinamikLayerRuntimeMelumatiniHazirla(
+        runtime,
+        sid,
+        playerId,
+        currentNow
+      );
+
+    send(ws, {
+      type:
+        "state_map_dynamic_result",
+      playerId,
+      success: true,
+      serverTimeUnixMs:
+        currentNow,
+      info,
+      payloadJson:
+        JSON.stringify(
+          info
+        )
+    });
+
+    sentCount += 1;
+  }
+
+  return sentCount;
+}
+
+async function pushWorldMapToAllAuthedPlayers() {
+  const worldMap =
+    await buildWorldMapPayloadForClientAuthoritative();
+
+  if (!worldMap) {
+    return 0;
+  }
+
+  const payload =
+    JSON.stringify(
+      worldMap
+    );
+
+  let sentCount = 0;
 
   for (const ws of wss.clients) {
     if (!ws || ws.readyState !== WebSocket.OPEN) continue;
@@ -4167,7 +5335,11 @@ function pushWorldMapToAllAuthedPlayers() {
       serverTimeUnixMs: nowMs(),
       payloadJson: payload
     });
+
+    sentCount += 1;
   }
+
+  return sentCount;
 }
 
 function makeClientState(state) {
@@ -4200,7 +5372,15 @@ bazaMelumatlariniYenile(state);
   ensureTechnologyObject(state);
   refreshTechnologyStats(state);
 
+  // State client-e cixmazdan evvel resurs istehsalini cari vaxta qeder
+  // bir defe hesabla. Her 5 saniye butun player-leri scan etmeye ehtiyac yoxdur.
+  processProductionForState(state, nowMs());
+
   const clientState = JSON.parse(JSON.stringify(state));
+
+  // Server-authoritative runtime metadatasi client-e cixmir.
+  delete clientState.productionRuntime;
+  delete clientState.serverRequestIdempotency;
 
   if (
     clientState.army &&
@@ -4213,16 +5393,18 @@ bazaMelumatlariniYenile(state);
   return clientState;
 }
 
-function pushStateToPlayerConnections(playerId, state) {
+async function pushStateToPlayerConnections(playerId, state) {
   refreshResourceCaps(state);
   refreshSpecialStats(state);
   ensureTechnologyObject(state);
   refreshTechnologyStats(state);
   const clientState = makeClientState(state);
+  const sockets = [];
 
-  wss.clients.forEach((client) => {
-    if (client.readyState !== WebSocket.OPEN) return;
-    if (client._authedPlayerId !== playerId) return;
+  connections.forEachSocket(playerId, (client) => {
+    if (!client || client.readyState !== WebSocket.OPEN) return;
+
+    sockets.push(client);
 
     send(client, {
       type: "state",
@@ -4230,10 +5412,70 @@ function pushStateToPlayerConnections(playerId, state) {
       serverTimeUnixMs: nowMs(),
       payloadJson: JSON.stringify(clientState)
     });
-
-    sendStateLocalMapToPlayer(client, playerId);
-    sendWorldMapToPlayer(client, playerId);
   });
+
+  if (sockets.length === 0) {
+    return 0;
+  }
+
+  const stateId =
+    Number(
+      state &&
+      state.worldPlacement &&
+      state.worldPlacement.stateId
+    );
+
+  let localMapPayload = null;
+
+  if (
+    Number.isInteger(stateId) &&
+    stateId > 0
+  ) {
+    localMapPayload =
+      await buildStateLocalMapPayloadAuthoritative(
+        stateId,
+        playerId
+      );
+  }
+
+  const worldMapPayload =
+    await buildWorldMapPayloadForClientAuthoritative();
+
+  for (const client of sockets) {
+    if (
+      localMapPayload &&
+      client &&
+      client.readyState === WebSocket.OPEN
+    ) {
+      send(client, {
+        type: "state_local_map",
+        playerId,
+        serverTimeUnixMs: nowMs(),
+        payloadJson:
+          JSON.stringify(
+            localMapPayload
+          )
+      });
+    }
+
+    if (
+      worldMapPayload &&
+      client &&
+      client.readyState === WebSocket.OPEN
+    ) {
+      send(client, {
+        type: "world_map",
+        playerId,
+        serverTimeUnixMs: nowMs(),
+        payloadJson:
+          JSON.stringify(
+            worldMapPayload
+          )
+      });
+    }
+  }
+
+  return sockets.length;
 }
 
 
@@ -4341,16 +5583,14 @@ function makeDefaultState(playerId) {
 
     serverTimeUnixMs: nowMs(),
 
-    resources: {
-      food: 50000,
-      water: 50000,
-      wood: 50000,
-      iron: 50000,
-      fuel: 50000,
-      electricity: 50000,
-      money: 50000,
-      chips: 50000
+    // Server-only, PostgreSQL snapshot-da saxlanilan lazy istehsal saatı.
+    productionRuntime: {
+      tickMs: DEFAULT_PRODUCTION_TICK_MS,
+      lastSettledAtMs: nowMs()
     },
+
+    resources:
+      lastShelterServerBaslangicResurslariniAl(),
 
     oyuncuStatusu: {
       almaz: 0,
@@ -4481,6 +5721,27 @@ function getOrCreatePlayerState(playerId) {
   ensureTechnologyObject(state);
   refreshTechnologyStats(state);
   ensureMissionState(state);
+
+  ensureProductionClock(
+    state,
+    nowMs(),
+    DEFAULT_PRODUCTION_TICK_MS
+  );
+
+  // Snapshot-dan qayıdan oyunçuda keçmiş build/research/training deadline-ları
+  // ola bilər. Sadəcə production-u "indi"yə gətirmək düzgün olmazdı:
+  // əvvəl event vaxtlarına qədər istehsal, sonra event, sonra yeni rate ilə
+  // qalan vaxt hesablanmalıdır.
+  settlePlayerTimeline(
+    state,
+    playerId,
+    nowMs()
+  );
+
+  schedulePlayerDeadline(
+    playerId,
+    state
+  );
 
   return state;
 }
@@ -4983,8 +6244,26 @@ function getProductionRule(buildingId, buildingLevel) {
   }
 }
 
-function processProductionForState(state) {
-  if (!state || !Array.isArray(state.buildings)) return false;
+function processProductionForState(
+  state,
+  targetTimeMs = nowMs()
+) {
+  if (!state || !Array.isArray(state.buildings)) {
+    return false;
+  }
+
+  const clock = consumeProductionTicks(
+    state,
+    targetTimeMs,
+    DEFAULT_PRODUCTION_TICK_MS
+  );
+
+  const tickCount =
+    Math.max(0, Number(clock.ticks) || 0);
+
+  if (tickCount <= 0) {
+    return false;
+  }
 
   ensureResourcesObject(state);
   refreshResourceCaps(state);
@@ -4997,38 +6276,85 @@ function processProductionForState(state) {
   for (const building of state.buildings) {
     if (!building) continue;
 
-    // Yalnız tamamlanmış bina istehsal edir
+    // Yalnız tamamlanmış bina istehsal edir.
     if (!building.isCompleted) continue;
 
-    // Yoldan ayrılmış bina istehsal etməsin
+    // Yoldan ayrılmış bina istehsal etməsin.
     if (building.hasRoadAccess === false) continue;
 
-    const level = Math.max(1, Number(building.level) || 1);
-    const rule = getProductionRule(building.buildingId, level);
+    const level =
+      Math.max(1, Number(building.level) || 1);
+
+    const rule =
+      getProductionRule(
+        building.buildingId,
+        level
+      );
 
     if (!rule) continue;
 
     const key = rule.resourceType;
-    if (typeof state.resources[key] !== "number") continue;
 
-    const baseAmount = Math.max(0, Number(rule.amountPerTick) || 0);
-    const technologyProductionPct = Math.max(0, Number(state.technology?.stats?.productionPct) || 0);
-    const { stateUcunBinaIstehsaliniHesabla } = require("./resurs_inkisaf_korpu");
-    const productionCalculation = stateUcunBinaIstehsaliniHesabla(
-      state,
-      building.instanceId,
-      baseAmount,
-      technologyProductionPct
-    );
-    const addAmount = Math.max(0, Number(productionCalculation.finalAmount) || 0);
-    if (addAmount <= 0) continue;
+    if (
+      typeof state.resources[key] !==
+      "number"
+    ) {
+      continue;
+    }
 
-    const cap = typeof state.resourceCaps?.[key] === "number"
-      ? state.resourceCaps[key]
-      : Number.POSITIVE_INFINITY;
+    const baseAmount =
+      Math.max(
+        0,
+        Number(rule.amountPerTick) || 0
+      );
 
-    const before = Number(state.resources[key]) || 0;
-    const after = Math.min(cap, before + addAmount);
+    const technologyProductionPct =
+      Math.max(
+        0,
+        Number(
+          state.technology?.stats?.productionPct
+        ) || 0
+      );
+
+    const {
+      stateUcunBinaIstehsaliniHesabla
+    } = require("./resurs_inkisaf_korpu");
+
+    const productionCalculation =
+      stateUcunBinaIstehsaliniHesabla(
+        state,
+        building.instanceId,
+        baseAmount,
+        technologyProductionPct
+      );
+
+    const perTick =
+      Math.max(
+        0,
+        Number(
+          productionCalculation.finalAmount
+        ) || 0
+      );
+
+    if (perTick <= 0) continue;
+
+    const totalAdd =
+      perTick * tickCount;
+
+    const cap =
+      typeof state.resourceCaps?.[key] ===
+      "number"
+        ? state.resourceCaps[key]
+        : Number.POSITIVE_INFINITY;
+
+    const before =
+      Number(state.resources[key]) || 0;
+
+    const after =
+      Math.min(
+        cap,
+        before + totalAdd
+      );
 
     if (after !== before) {
       state.resources[key] = after;
@@ -5037,21 +6363,60 @@ function processProductionForState(state) {
   }
 
   const specialTickBonuses = [
-    { key: "money", amount: Math.max(0, Number(state.specialStats?.moneyPerTickBonus) || 0) },
-    { key: "chips", amount: Math.max(0, Number(state.specialStats?.chipsPerTickBonus) || 0) },
-    { key: "electricity", amount: Math.max(0, Number(state.specialStats?.electricityPerTickBonus) || 0) }
+    {
+      key: "money",
+      amount: Math.max(
+        0,
+        Number(
+          state.specialStats?.moneyPerTickBonus
+        ) || 0
+      )
+    },
+    {
+      key: "chips",
+      amount: Math.max(
+        0,
+        Number(
+          state.specialStats?.chipsPerTickBonus
+        ) || 0
+      )
+    },
+    {
+      key: "electricity",
+      amount: Math.max(
+        0,
+        Number(
+          state.specialStats
+            ?.electricityPerTickBonus
+        ) || 0
+      )
+    }
   ];
 
   for (const bonus of specialTickBonuses) {
     if (bonus.amount <= 0) continue;
-    if (typeof state.resources[bonus.key] !== "number") continue;
 
-    const cap = typeof state.resourceCaps?.[bonus.key] === "number"
-      ? state.resourceCaps[bonus.key]
-      : Number.POSITIVE_INFINITY;
+    if (
+      typeof state.resources[bonus.key] !==
+      "number"
+    ) {
+      continue;
+    }
 
-    const before = Number(state.resources[bonus.key]) || 0;
-    const after = Math.min(cap, before + bonus.amount);
+    const cap =
+      typeof state.resourceCaps?.[bonus.key] ===
+      "number"
+        ? state.resourceCaps[bonus.key]
+        : Number.POSITIVE_INFINITY;
+
+    const before =
+      Number(state.resources[bonus.key]) || 0;
+
+    const after =
+      Math.min(
+        cap,
+        before + bonus.amount * tickCount
+      );
 
     if (after !== before) {
       state.resources[bonus.key] = after;
@@ -5059,22 +6424,13 @@ function processProductionForState(state) {
     }
   }
 
+  // Clock həmişə irəli gedir, hətta anbar dolu olsa belə.
+  // Beləliklə cap açıldıqdan sonra keçmiş dolu vaxt yenidən hesablanmır.
   if (changed) {
     updateServerTime(state);
   }
 
   return changed;
-}
-
-function processProductionForAllPlayers() {
-  for (const [playerId, state] of players) {
-    const changed = processProductionForState(state);
-
-    if (changed) {
-      pushStateToPlayerConnections(playerId, state);
-      console.log("[SERVER] Production pushed for player:", playerId);
-    }
-  }
 }
 
 // ============================================================
@@ -6176,18 +7532,19 @@ function createUpgradeJob(state, building) {
   return job;
 }
 
-function completeFinishedJobsForState(state) {
+function completeFinishedJobsForState(
+  state,
+  atTimeMs = nowMs()
+) {
   if (!state || !state.builders || !Array.isArray(state.builders.jobs)) return false;
   if (!Array.isArray(state.buildings)) return false;
 
   ensureTechnologyObject(state);
 
-  const now = nowMs();
+  const now =
+    Math.max(0, Number(atTimeMs) || nowMs());
+
   let changed = false;
-  const completedResearch = completeTechnologyResearchForState(state);
-  if (completedResearch) {
-    changed = true;
-  }
 
   for (const job of state.builders.jobs) {
     if (!job) continue;
@@ -6239,21 +7596,763 @@ if (changed) {
   return changed;
 }
 
-function completeFinishedJobsForAllPlayers() {
-  for (const [playerId, state] of players) {
-    const changed = completeFinishedJobsForState(state);
+function nextPlayerDeadlineAtMs(state) {
+  if (!state || typeof state !== "object") {
+    return null;
+  }
 
-    if (changed) {
-      pushStateToPlayerConnections(playerId, state);
-      console.log("[SERVER] Build completed for player:", playerId);
+  let next = Number.POSITIVE_INFINITY;
+
+  const zeroingRecallDueAt =
+    pvpZeroingRecallDeadlineAtMs(
+      state,
+      nowMs()
+    );
+
+  if (
+    Number.isFinite(
+      Number(zeroingRecallDueAt)
+    ) &&
+    Number(zeroingRecallDueAt) > 0
+  ) {
+    next = Math.min(
+      next,
+      Number(zeroingRecallDueAt)
+    );
+  }
+
+  const researchEndsAt =
+    Number(
+      state.technology &&
+      state.technology.currentResearch &&
+      state.technology.currentResearch.endsAtMs
+    );
+
+  if (
+    Number.isFinite(researchEndsAt) &&
+    researchEndsAt > 0
+  ) {
+    next = Math.min(next, researchEndsAt);
+  }
+
+  const jobs =
+    state.builders &&
+    Array.isArray(state.builders.jobs)
+      ? state.builders.jobs
+      : [];
+
+  for (const job of jobs) {
+    if (!job || job.isCompleted) continue;
+
+    const endsAt = Number(job.endsAtMs);
+    if (Number.isFinite(endsAt) && endsAt > 0) {
+      next = Math.min(next, endsAt);
     }
   }
+
+  const queues =
+    state.army &&
+    state.army.trainingQueues &&
+    typeof state.army.trainingQueues === "object"
+      ? state.army.trainingQueues
+      : null;
+
+  if (queues) {
+    for (const queue of Object.values(queues)) {
+      if (!queue) continue;
+
+      const finishAt = Number(queue.finishTimeMs);
+      if (
+        Number.isFinite(finishAt) &&
+        finishAt > 0
+      ) {
+        next = Math.min(next, finishAt);
+      }
+    }
+  }
+
+  return Number.isFinite(next)
+    ? next
+    : null;
+}
+
+function schedulePlayerDeadline(playerId, state) {
+  const nextDueAt =
+    nextPlayerDeadlineAtMs(state);
+
+  if (nextDueAt == null) {
+    deadlineScheduler.cancel(playerId);
+    return null;
+  }
+
+  deadlineScheduler.schedule(
+    playerId,
+    nextDueAt
+  );
+
+  return nextDueAt;
+}
+
+function processTrainingQueuesForState(
+  state,
+  playerId,
+  atTimeMs = nowMs()
+) {
+  if (
+    !state ||
+    !state.army ||
+    !state.army.trainingQueues ||
+    typeof state.army.trainingQueues !== "object"
+  ) {
+    return false;
+  }
+
+  if (!state.army.troops) {
+    state.army.troops = {};
+  }
+
+  const now =
+    Math.max(0, Number(atTimeMs) || nowMs());
+
+  let changed = false;
+
+  for (
+    const buildingInstanceId of
+    Object.keys(state.army.trainingQueues)
+  ) {
+    const queue =
+      state.army.trainingQueues[
+        buildingInstanceId
+      ];
+
+    if (!queue) continue;
+    if (now < Number(queue.finishTimeMs || 0)) {
+      continue;
+    }
+
+    const unitId = queue.unitId;
+    const count =
+      Math.max(0, Number(queue.count) || 0);
+
+    if (
+      typeof state.army.troops[unitId] !==
+      "number"
+    ) {
+      state.army.troops[unitId] = 0;
+    }
+
+    state.army.troops[unitId] += count;
+
+    delete state.army.trainingQueues[
+      buildingInstanceId
+    ];
+
+    changed = true;
+
+    console.log("[TRAIN_FINISHED]", {
+      playerId,
+      buildingInstanceId,
+      unitId,
+      added: count,
+      newTotal: state.army.troops[unitId]
+    });
+  }
+
+  if (changed) {
+    updateServerTime(state);
+  }
+
+  return changed;
+}
+
+function settlePlayerTimeline(
+  state,
+  playerId,
+  targetTimeMs = nowMs()
+) {
+  if (!state) {
+    return {
+      stateChanged: false,
+      builderChanged: false,
+      completedResearchList: [],
+      nextDueAtMs: null
+    };
+  }
+
+  const targetNow =
+    Math.max(
+      0,
+      Number(targetTimeMs) || nowMs()
+    );
+
+  let stateChanged = false;
+  let builderChangedAny = false;
+  const completedResearchList = [];
+
+  // Korlanmis state sonsuz loop yaratmasin.
+  let guard = 0;
+
+  while (guard < 1000) {
+    guard += 1;
+
+    const nextDueAt =
+      nextPlayerDeadlineAtMs(state);
+
+    if (
+      nextDueAt == null ||
+      nextDueAt > targetNow
+    ) {
+      break;
+    }
+
+    // Deadline-dan bir millisaniye evvele qeder kohne istehsal rate-i.
+    if (
+      processProductionForState(
+        state,
+        Math.max(0, nextDueAt - 1)
+      )
+    ) {
+      stateChanged = true;
+    }
+
+    const completedResearch =
+      completeTechnologyResearchForState(
+        state,
+        nextDueAt
+      );
+
+    const builderChanged =
+      completeFinishedJobsForState(
+        state,
+        nextDueAt
+      );
+
+    const trainingChanged =
+      processTrainingQueuesForState(
+        state,
+        playerId,
+        nextDueAt
+      );
+
+    const eventChanged =
+      !!completedResearch ||
+      builderChanged ||
+      trainingChanged;
+
+    if (!eventChanged) {
+      console.warn(
+        "[DEADLINE_SCHEDULER] Due deadline state-i deyismedi:",
+        {
+          playerId,
+          nextDueAt
+        }
+      );
+      break;
+    }
+
+    if (completedResearch) {
+      completedResearchList.push(
+        completedResearch
+      );
+    }
+
+    if (builderChanged) {
+      builderChangedAny = true;
+    }
+
+    stateChanged = true;
+
+    // Production tick event vaxtina tam dusurse yeni state/rate ile hesablanir.
+    if (
+      processProductionForState(
+        state,
+        nextDueAt
+      )
+    ) {
+      stateChanged = true;
+    }
+  }
+
+  if (guard >= 1000) {
+    console.error(
+      "[DEADLINE_SCHEDULER] Guard limit catdi:",
+      playerId
+    );
+  }
+
+  // Son event-den cari vaxta qeder qalan production tick-leri.
+  if (
+    processProductionForState(
+      state,
+      targetNow
+    )
+  ) {
+    stateChanged = true;
+  }
+
+  return {
+    stateChanged,
+    builderChanged:
+      builderChangedAny,
+    completedResearchList,
+    nextDueAtMs:
+      nextPlayerDeadlineAtMs(state)
+  };
+}
+
+async function processPlayerDeadline(playerId) {
+  let state =
+    players.get(
+      playerId
+    );
+
+  if (!state) {
+    return null;
+  }
+
+  try {
+    const zeroingRecall =
+      await pvpZeroingPendingRecalliniBerpaEt({
+        state,
+        playerId,
+        nowMs:
+          nowMs(),
+        recallFn:
+          pvpZeroingKonvoyRecalliniPostCommitIcraEt,
+        refreshFn:
+          async id => {
+            runtimeStateSync
+              .markStale(
+                id
+              );
+
+            return await runtimeStateSync
+              .ensureFresh(
+                id,
+                {
+                  force: true,
+                  push: true
+                }
+              );
+          }
+      });
+
+    if (
+      zeroingRecall &&
+      zeroingRecall.handled === true
+    ) {
+      state =
+        players.get(
+          playerId
+        );
+
+      if (!state) {
+        return null;
+      }
+    }
+  }
+  catch (error) {
+    console.error(
+      "[PVP_ZEROING_DEADLINE_RECALL] Pending recall retry failed:",
+      {
+        playerId,
+        message:
+          error && error.message
+            ? error.message
+            : String(error)
+      }
+    );
+
+    return nowMs() + 1000;
+  }
+
+  let netice;
+
+  try {
+    netice =
+      await authoritativeDeadlineProcessor(
+        playerId
+      );
+  }
+  catch (error) {
+    console.error(
+      "[DEADLINE_SCHEDULER] Authoritative commit failed:",
+      {
+        playerId,
+        message:
+          error && error.message
+            ? error.message
+            : String(error)
+      }
+    );
+
+    // Transient Redis/PostgreSQL problemi deadline-i birdəfəlik itirməsin.
+    return nowMs() + 1000;
+  }
+
+  if (!netice) {
+    return null;
+  }
+
+  state =
+    players.get(
+      playerId
+    );
+
+  if (!state) {
+    return null;
+  }
+
+  if (netice.stateChanged) {
+    await pushStateToPlayerConnections(
+      playerId,
+      state
+    );
+  }
+
+  for (
+    const completedResearch of
+    netice.completedResearchList ||
+    []
+  ) {
+    connections.deliver(
+      playerId,
+      {
+        type: "technology_research_completed",
+        playerId,
+        serverTimeUnixMs: nowMs(),
+        payloadJson:
+          JSON.stringify(
+            completedResearch
+          )
+      },
+      send
+    );
+
+    console.log(
+      "[TECH_RESEARCH_COMPLETED]",
+      {
+        playerId,
+        techId:
+          completedResearch.techId,
+        targetLevel:
+          completedResearch.targetLevel
+      }
+    );
+  }
+
+  if (netice.builderChanged) {
+    console.log(
+      "[SERVER] Build completed for player:",
+      playerId
+    );
+  }
+
+  return netice.nextDueAtMs;
 }
 
 
 
 ////////////////////////////////////////
 
+
+// ============================================================
+// COMMAND ROUTER
+// ------------------------------------------------------------
+// WebSocket command-lari modular handler-lere route olunur.
+// server.js daxilinde legacy gameplay switch artiq yoxdur.
+// ============================================================
+
+const runtimeIdempotencyExecutor =
+  stateIdempotencyExecutorYarat({
+    getPlayerState:
+      getOrCreatePlayerState,
+    nowMs
+  });
+
+const postgresAuthoritativeMutationExecutor =
+  postgresAuthoritativeMutationExecutorYarat({
+    getOrCreatePlayerState,
+    prepareLockedState:
+      async (
+        state,
+        playerId
+      ) => {
+        settlePlayerTimeline(
+          state,
+          playerId,
+          nowMs()
+        );
+      },
+    afterCommit:
+      async (
+        playerId,
+        state,
+        metadata
+      ) => {
+        schedulePlayerDeadline(
+          playerId,
+          state
+        );
+
+        if (
+          metadata &&
+          metadata.changed === true
+        ) {
+          await runtimeStateSync
+            .publishInvalidation(
+              runtimeBus,
+              playerId,
+              {
+                type:
+                  metadata.type ||
+                  "state_commit",
+                committedAtMs:
+                  nowMs()
+              }
+            );
+        }
+      }
+  });
+
+const runtimeAuthoritativeMutationExecutor =
+  async (
+    playerId,
+    action,
+    metadata
+  ) =>
+    await oyuncuMutasiyaKilidiIleIcraEt(
+      playerId,
+      async () =>
+        await postgresAuthoritativeMutationExecutor(
+          playerId,
+          action,
+          metadata
+        )
+    );
+
+const worldStatePostgresAuthoritativeMutationExecutor =
+  postgresAuthoritativeMutationExecutorYarat({
+    getOrCreatePlayerState,
+    transactionExecutor:
+      worldStateOyuncuMutasiyasiniPostgresIleIcraEt,
+    prepareLockedState:
+      async (
+        state,
+        playerId
+      ) => {
+        settlePlayerTimeline(
+          state,
+          playerId,
+          nowMs()
+        );
+      },
+    afterCommit:
+      async (
+        playerId,
+        state,
+        metadata
+      ) => {
+        schedulePlayerDeadline(
+          playerId,
+          state
+        );
+
+        if (
+          metadata &&
+          metadata.changed === true
+        ) {
+          await runtimeStateSync
+            .publishInvalidation(
+              runtimeBus,
+              playerId,
+              {
+                type:
+                  metadata.type ||
+                  "state_commit",
+                committedAtMs:
+                  nowMs()
+              }
+            );
+        }
+      }
+  });
+
+const runtimeWorldStateAuthoritativeMutationExecutor =
+  async (
+    playerId,
+    action,
+    metadata
+  ) =>
+    await oyuncuMutasiyaKilidiIleIcraEt(
+      playerId,
+      async () =>
+        await worldStatePostgresAuthoritativeMutationExecutor(
+          playerId,
+          action,
+          metadata
+        )
+    );
+
+const runtimeCommandRouter =
+  new RuntimeCommandRouter({
+    name: "gameplay",
+    mutationExecutor:
+      oyuncuMutasiyaKilidiIleIcraEt,
+    authoritativeMutationExecutor:
+      runtimeAuthoritativeMutationExecutor,
+    worldStateAuthoritativeMutationExecutor:
+      runtimeWorldStateAuthoritativeMutationExecutor,
+    idempotencyExecutor:
+      runtimeIdempotencyExecutor
+  });
+
+coreReadCommandleriniQeydEt(
+  runtimeCommandRouter,
+  {
+    getOrCreatePlayerState,
+    ensureFreshPlayerState:
+      playerId =>
+        runtimeStateSync
+          .ensureFresh(
+            playerId
+          ),
+    updateServerTime,
+    makeClientState,
+    buildStateLocalMapPayloadAuthoritative,
+    buildWorldMapPayloadForClientAuthoritative
+  }
+);
+
+authCommandiniQeydEt(
+  runtimeCommandRouter,
+  {
+    connections,
+    runtimeBus,
+    getOrCreatePlayerState,
+    ensureFreshPlayerState:
+      playerId =>
+        runtimeStateSync
+          .ensureFresh(
+            playerId
+          ),
+    updateServerTime,
+    schedulePlayerDeadline,
+    makeClientState,
+    sendStateLocalMapToPlayer,
+    sendWorldMapToPlayer
+  }
+);
+
+gameplayMutationCommandleriniQeydEt(
+  runtimeCommandRouter,
+  {
+    getOrCreatePlayerState,
+    normalizeBuildingId,
+    ensureTechnologyObject,
+    startTechnologyResearch,
+    refreshTechnologyStats,
+    updateServerTime,
+    schedulePlayerDeadline,
+    makeClientState,
+    hasFreeBuilder,
+    isGarageBuildingId,
+    getLevelData,
+    hasEnoughResources,
+    spendResources,
+    getBuilderSlotsRequiredForBuilding,
+    refreshBuilderCapacity,
+    getAdjustedTrainingDurationMs,
+    isUpgradeDisabledBuildingId,
+    getMaxLevelForBuilding,
+    createUpgradeJob
+  }
+);
+
+buildCommandleriniQeydEt(
+  runtimeCommandRouter,
+  {
+    getOrCreatePlayerState,
+    normalizeBuildingId,
+    removeRoadAtCell,
+    checkUnlockRequirements,
+    countPlacedBuildingsOfType,
+    getMaxPlacedCountForBuilding,
+    getAllowedPlacedCountForBuilding,
+    getNextUnlockCountRequirement,
+    hasUnfinishedBuildingOfSameType,
+    canPlaceBuilding,
+    isGarageBuildingId,
+    getLevelData,
+    hasEnoughResources,
+    spendResources,
+    placeBuildingWithoutStarting,
+    syncResourceSlotOccupancy,
+    refreshRoadAccessForBuildings,
+    refreshBuilderCapacity,
+    makeClientState,
+    sendStateLocalMapToPlayer,
+    sendWorldMapToPlayer
+  }
+);
+
+mapMutationCommandleriniQeydEt(
+  runtimeCommandRouter,
+  {
+    getOrCreatePlayerState,
+    ensureMapState,
+    expandUnlockedArea,
+    updateServerTime,
+    makeClientState,
+    normalizeBuildingId,
+    refreshRoadAccessForBuildings,
+    findRoadPathAStar,
+    createRoadsAlongPath,
+    pushStateToPlayerConnections,
+    teleportPlayerBaseInsideState,
+    applyPlayerBaseTeleportInsideState,
+    pushStateLocalMapToStatePlayers:
+      pushStateLocalMapToStatePlayersAuthoritative,
+    publishStateMapRefresh:
+      (stateId, reason) =>
+        runtimeWorldMapSync
+          .publishBaseRefresh(
+            runtimeBus,
+            stateId,
+            reason
+          ),
+    publishCenterUpdate:
+      (stateId, result) =>
+        runtimeWorldMapSync
+          .publishCenterUpdate(
+            runtimeBus,
+            stateId,
+            result
+          ),
+    canMoveThisBuilding,
+    canMoveBuilding,
+    syncResourceSlotOccupancy,
+    getWorldStateRuntime,
+    dovletBazalariniBirbasaPostgresdenAlClient,
+    dovletBazaKeshiniTemizle,
+    occupyStateCenterPostgresClient,
+    pushWorldMapToAllAuthedPlayers
+  }
+);
+
+accountCommandleriniQeydEt(
+  runtimeCommandRouter,
+  {
+    hesabYaratVeBagla,
+    emailTesdiqKoduHazirla,
+    tesdiqKoduEmailiGonder,
+    emailTesdiqKodunuYoxla,
+    getOrCreatePlayerState,
+    oyuncuProfiliniTeminEt,
+    updateServerTime,
+    pushStateToPlayerConnections
+  }
+);
 
 
 // ============================================================
@@ -6262,8 +8361,33 @@ function completeFinishedJobsForAllPlayers() {
 
 const server = http.createServer((req, res) => {
   if (req.url === "/health") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true, time: nowMs() }));
+    const redisHealthy =
+      !runtimeBus.required ||
+      (runtimeBus.enabled && runtimeBus.ready);
+
+    const statusCode =
+      redisHealthy ? 200 : 503;
+
+    res.writeHead(statusCode, {
+      "Content-Type": "application/json"
+    });
+
+    res.end(JSON.stringify({
+      ok: redisHealthy,
+      time: nowMs(),
+      deployment:
+        runtimeDeployPublicInfo,
+      redis:
+        runtimeBus.snapshot(),
+      websocket: {
+        connections:
+          typeof wss !== "undefined"
+            ? wss.clients.size
+            : 0,
+        ...websocketGuard.snapshot()
+      }
+    }));
+
     return;
   }
 
@@ -6271,7 +8395,17 @@ const server = http.createServer((req, res) => {
   res.end("RDC WS server is running");
 });
 
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({
+  server,
+  maxPayload:
+    websocketRuntimeConfig.maxPayloadBytes,
+  perMessageDeflate: false
+});
+
+const stopWebSocketHeartbeat =
+  websocketGuard.startHeartbeat(
+    wss
+  );
 
 // ============================================================
 // WS CONNECTIONS
@@ -6283,6 +8417,11 @@ wss.on("connection", (ws, req) => {
   ws._clientId = crypto.randomBytes(6).toString("hex");
   ws._authedPlayerId = null;
 
+  websocketGuard.attach(
+    ws,
+    nowMs()
+  );
+
   console.log("WS connected:", ip);
 
   send(ws, {
@@ -6291,27 +8430,72 @@ wss.on("connection", (ws, req) => {
   });
 
   ws.on("message", async (data) => {
+    const inboundCheck =
+      websocketGuard.acceptInbound(
+        ws,
+        data,
+        nowMs()
+      );
+
+    if (!inboundCheck.ok) {
+      send(ws, {
+        type: "error",
+        code: inboundCheck.code,
+        message: inboundCheck.message
+      });
+
+      try {
+        ws.close(
+          inboundCheck.closeCode,
+          inboundCheck.code
+        );
+      }
+      catch (_) {
+      }
+
+      return;
+    }
+
     const text = data.toString();
     const [msg, err] = safeJsonParse(text);
 
     if (err) {
-      send(ws, { type: "error", message: "Invalid JSON" });
+      send(ws, {
+        type: "error",
+        code: "INVALID_JSON",
+        message: "Invalid JSON"
+      });
       return;
     }
 
     console.log("[SERVER PARSED TYPE]", msg.type);
 
     const type = msg.type;
+    const requestId =
+      requestIdAl(msg);
+
+    const cavabGonder =
+      correlatedSendYarat(
+        send,
+        requestId
+      );
 
     const hesabLoginEmalOlundu =
     await hesabLoginMesajiniEmalEt({
       type,
       msg,
       ws,
-      send,
+      send: cavabGonder,
       nowMs,
       connections,
+      runtimeBus,
       getOrCreatePlayerState,
+      ensureFreshPlayerState:
+        playerId =>
+          runtimeStateSync
+            .ensureFresh(
+              playerId
+            ),
       updateServerTime,
       makeClientState,
       sendStateLocalMapToPlayer,
@@ -6327,7 +8511,7 @@ wss.on("connection", (ws, req) => {
       type,
       msg,
       ws,
-      send,
+      send: cavabGonder,
       nowMs
     });
 
@@ -6335,2199 +8519,39 @@ wss.on("connection", (ws, req) => {
     return;
   }
 
-  switch (type) {
-
-
-
-
-
-
-
-
-
-
-case "research_start": {
-        const playerId =
-          (msg.playerId && typeof msg.playerId === "string" && msg.playerId) ||
-          ws._authedPlayerId;
-
-        if (!playerId) {
-          send(ws, { type: "error", message: "Not authed. Send auth first." });
-          break;
-        }
-
-        const buildingInstanceId = msg.buildingInstanceId;
-        const techId = msg.techId;
-
-        if (!buildingInstanceId || typeof buildingInstanceId !== "string") {
-          send(ws, { type: "error", message: "Missing buildingInstanceId" });
-          break;
-        }
-
-        if (!techId || typeof techId !== "string") {
-          send(ws, { type: "error", message: "Missing techId" });
-          break;
-        }
-
-        const state = getOrCreatePlayerState(playerId);
-        ensureTechnologyObject(state);
-
-        const institute = Array.isArray(state.buildings)
-          ? state.buildings.find(
-              (b) =>
-                b &&
-                b.instanceId === buildingInstanceId &&
-                normalizeBuildingId(b.buildingId) === "institute"
-            )
-          : null;
-
-        if (!institute) {
-          send(ws, { type: "error", message: "Institute building not found" });
-          break;
-        }
-
-        if (!institute.isCompleted) {
-          send(ws, { type: "error", message: "Institute is not completed yet" });
-          break;
-        }
-
-        if (institute.hasRoadAccess === false) {
-          send(ws, { type: "error", message: "Institute must be road connected" });
-          break;
-        }
-
-        const started = startTechnologyResearch(state, techId);
-
-        if (!started || !started.ok) {
-          send(ws, {
-            type: "error",
-            message: started && started.message
-              ? started.message
-              : "Research could not be started"
-          });
-          break;
-        }
-
-        refreshTechnologyStats(state);
-        updateServerTime(state);
-
-        send(ws, {
-          type: "research_started",
-          playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify({
-            buildingInstanceId,
-            techId: normalizeBuildingId(techId),
-            targetLevel: started.research.targetLevel,
-            startedAtMs: started.research.startedAtMs,
-            durationMs: started.research.durationMs,
-            endsAtMs: started.research.endsAtMs
-          })
-        });
-
-        send(ws, {
-          type: "state",
-          playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify(makeClientState(state))
-        });
-
-        console.log("[TECH_RESEARCH_STARTED]", {
-          playerId,
-          buildingInstanceId,
-          techId: normalizeBuildingId(techId),
-          targetLevel: started.research.targetLevel,
-          endsAtMs: started.research.endsAtMs
-        });
-
-        break;
-      }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      case "expand_area_request": {
-        const playerId =
-          (msg.playerId && typeof msg.playerId === "string" && msg.playerId) ||
-          ws._authedPlayerId;
-
-        if (!playerId) {
-          send(ws, { type: "error", message: "Not authed. Send auth first." });
-          break;
-        }
-
-        const direction = msg.direction;
-
-        if (
-          direction !== "right" &&
-          direction !== "bottom" &&
-          direction !== "left" &&
-          direction !== "top"
-        ) {
-          send(ws, { type: "error", message: "Invalid expansion direction" });
-          break;
-        }
-
-        const state = getOrCreatePlayerState(playerId);
-        ensureMapState(state);
-
-        const ok = expandUnlockedArea(state, direction, 8, 8);
-        if (!ok) {
-          send(ws, { type: "error", message: "Expansion failed" });
-          break;
-        }
-
-        updateServerTime(state);
-
-        send(ws, {
-          type: "area_expanded",
-          playerId: playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify({
-            direction: direction,
-            unlockedMinX: state.map.unlockedMinX,
-            unlockedMaxX: state.map.unlockedMaxX,
-            unlockedMinZ: state.map.unlockedMinZ,
-            unlockedMaxZ: state.map.unlockedMaxZ,
-            unlockedBlocks: state.map.unlockedBlocks
-          })
-        });
-
-        send(ws, {
-          type: "state",
-          playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify(makeClientState(state))
-        });
-
-        console.log("[AREA_EXPANDED]", {
-          playerId,
-          direction,
-          unlockedBlocks: state.map.unlockedBlocks,
-          unlockedMinX: state.map.unlockedMinX,
-          unlockedMaxX: state.map.unlockedMaxX,
-          unlockedMinZ: state.map.unlockedMinZ,
-          unlockedMaxZ: state.map.unlockedMaxZ
-        });
-
-        break;
-      }
-
-      case "connect_road_request": {
-        const playerId =
-          (msg.playerId && typeof msg.playerId === "string" && msg.playerId) ||
-          ws._authedPlayerId;
-
-        if (!playerId) {
-          send(ws, { type: "error", message: "Not authed. Send auth first." });
-          break;
-        }
-
-        const buildingInstanceId = msg.buildingInstanceId;
-
-        if (!buildingInstanceId || typeof buildingInstanceId !== "string") {
-          send(ws, { type: "error", message: "Missing buildingInstanceId" });
-          break;
-        }
-
-        const state = getOrCreatePlayerState(playerId);
-
-        const building = state.buildings.find(
-          (b) => b && b.instanceId === buildingInstanceId
-        );
-
-        if (!building) {
-          send(ws, { type: "error", message: "Building not found" });
-          break;
-        }
-
-        const id = normalizeBuildingId(building.buildingId);
-        if (id === "hq" || id === "road") {
-          send(ws, { type: "error", message: "Invalid target for road connection" });
-          break;
-        }
-
-        refreshRoadAccessForBuildings(state);
-        if (building.hasRoadAccess) {
-          send(ws, { type: "error", message: "Building already connected to road" });
-          break;
-        }
-
-        const path = findRoadPathAStar(state, buildingInstanceId);
-
-        if (!path || path.length === 0) {
-          send(ws, { type: "error", message: "Road path not found" });
-          break;
-        }
-
-        const createdRoads = createRoadsAlongPath(state, path);
-        refreshRoadAccessForBuildings(state);
-
-        send(ws, {
-          type: "road_connected",
-          playerId: playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify({
-            buildingInstanceId: buildingInstanceId,
-            createdRoadCount: createdRoads.length
-          })
-        });
-
-        send(ws, {
-          type: "state",
-          playerId: playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify(makeClientState(state))
-        });
-
-        console.log("[SERVER] Road connected for building:", buildingInstanceId, "created roads =", createdRoads.length);
-        break;
-      }
-
-      case "start_construction_request": {
-        const playerId =
-          (msg.playerId && typeof msg.playerId === "string" && msg.playerId) ||
-          ws._authedPlayerId;
-
-        if (!playerId) {
-          send(ws, { type: "error", message: "Not authed. Send auth first." });
-          break;
-        }
-
-        const buildingInstanceId = msg.buildingInstanceId;
-
-        if (!buildingInstanceId || typeof buildingInstanceId !== "string") {
-          send(ws, { type: "error", message: "Missing buildingInstanceId" });
-          break;
-        }
-
-        const state = getOrCreatePlayerState(playerId);
-
-        const building = state.buildings.find(
-          b => b && b.instanceId === buildingInstanceId
-        );
-
-        if (!building) {
-          send(ws, { type: "error", message: "Building not found" });
-          break;
-        }
-
-        if (!hasFreeBuilder(state, building.buildingId)) {
-          send(ws, { type: "error", message: "All builders are busy" });
-          break;
-        }
-
-        const buildingId = normalizeBuildingId(building.buildingId);
-
-        if (buildingId === "road" || buildingId === "hq" || isGarageBuildingId(buildingId)) {
-          send(ws, { type: "error", message: "This building cannot start construction" });
-          break;
-        }
-
-        if (building.isCompleted) {
-          send(ws, { type: "error", message: "Building already completed" });
-          break;
-        }
-
-        if (building.buildFinishTimeMs > 0) {
-          send(ws, { type: "error", message: "Construction already started" });
-          break;
-        }
-
-        if (!building.hasRoadAccess) {
-          send(ws, { type: "error", message: "Road required before construction" });
-          break;
-        }
-
-        const targetLevel = Math.max(1, Number(building.level) || 1);
-        const levelData = getLevelData(building.buildingId, targetLevel);
-
-        const check = hasEnoughResources(state, levelData.cost);
-        if (!check.ok) {
-          send(ws, {
-            type: "error",
-            message: `Not enough ${check.resource}. Need ${check.need}, have ${check.have}`
-          });
-          break;
-        }
-
-        spendResources(state, levelData.cost);
-
-        const durationMs = Math.max(0, Math.round((Number(levelData.buildTimeSeconds) || 0) * 1000));
-        const now = nowMs();
-
-        building.buildFinishTimeMs = now + durationMs;
-        building.isCompleted = false;
-
-        const jobId = crypto.randomBytes(8).toString("hex");
-
-        state.builders.jobs.push({
-          jobId: jobId,
-          kind: "build",
-          buildingInstanceId: building.instanceId,
-          buildingId: building.buildingId,
-          x: building.x,
-          z: building.z,
-          targetLevel: targetLevel,
-          startedAtMs: now,
-          durationMs: durationMs,
-          endsAtMs: now + durationMs,
-          isCompleted: false,
-          builderSlotsRequired: getBuilderSlotsRequiredForBuilding(building.buildingId)
-        });
-
-        refreshBuilderCapacity(state);
-        updateServerTime(state);
-
-        send(ws, {
-          type: "construction_started",
-          playerId: playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify({
-            buildingInstanceId: building.instanceId,
-            buildingId: building.buildingId,
-            targetLevel: targetLevel,
-            endsAtMs: building.buildFinishTimeMs
-          })
-        });
-
-        send(ws, {
-          type: "state",
-          playerId: playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify(makeClientState(state))
-        });
-
-        console.log("[SERVER] Construction started:", {
-          instanceId: building.instanceId,
-          buildingId: building.buildingId,
-          targetLevel,
-          durationMs
-        });
-
-        break;
-      }
-
-      case "expand_base": {
-        const playerId =
-          (msg.playerId && typeof msg.playerId === "string" && msg.playerId) ||
-          ws._authedPlayerId;
-
-        if (!playerId) {
-          send(ws, { type: "error", message: "Not authed." });
-          break;
-        }
-
-        const state = getOrCreatePlayerState(playerId);
-
-        if (!state.map) {
-          send(ws, { type: "error", message: "Map not initialized" });
-          break;
-        }
-
-        state.map.unlockedMinX -= 2;
-        state.map.unlockedMaxX += 2;
-        state.map.unlockedMinZ -= 2;
-        state.map.unlockedMaxZ += 2;
-
-        updateServerTime(state);
-
-        send(ws, {
-          type: "base_expanded",
-          playerId: playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify(state.map)
-        });
-
-        pushStateToPlayerConnections(playerId, state);
-
-        console.log("[SERVER] Base expanded for player:", playerId);
-        break;
-      }
-
-      case "build_request": {
-        const playerId =
-          (msg.playerId && typeof msg.playerId === "string" && msg.playerId) ||
-          ws._authedPlayerId;
-
-        if (!playerId) {
-          send(ws, { type: "error", message: "Not authed. Send auth first." });
-          break;
-        }
-
-        const buildingId = msg.buildingId;
-        const x = msg.x;
-        const z = msg.z;
-
-        if (!buildingId || typeof buildingId !== "string") {
-          send(ws, { type: "error", message: "Missing buildingId" });
-          break;
-        }
-
-        if (typeof x !== "number" || typeof z !== "number") {
-          send(ws, { type: "error", message: "Invalid x/z" });
-          break;
-        }
-
-        const state = getOrCreatePlayerState(playerId);
-        const normalizedBuildingId = normalizeBuildingId(buildingId);
-
-        // Road delete client tərəfdə build request vasitəsilə xüsusi buildingId kimi göndərilir.
-        // Məsələn: road_delete, x, z
-        if (normalizedBuildingId === "road_delete") {
-          const result = removeRoadAtCell(state, x, z);
-          if (!result.ok) {
-            send(ws, { type: "error", message: result.message });
-            break;
-          }
-
-          send(ws, {
-            type: "road_deleted",
-            playerId: playerId,
-            serverTimeUnixMs: nowMs(),
-            payloadJson: JSON.stringify({
-              x: x,
-              z: z,
-              buildingId: "road"
-            })
-          });
-
-          send(ws, {
-            type: "state",
-            playerId: playerId,
-            serverTimeUnixMs: nowMs(),
-            payloadJson: JSON.stringify(makeClientState(state))
-          });
-
-          break;
-        }
-
-        const unlockCheck = checkUnlockRequirements(state, normalizedBuildingId);
-        if (!unlockCheck.ok) {
-          send(ws, { type: "error", message: unlockCheck.message });
-          break;
-        }
-
-        const currentPlacedCount = countPlacedBuildingsOfType(state, normalizedBuildingId);
-        const maxPlacedCount = getMaxPlacedCountForBuilding(normalizedBuildingId);
-        const allowedPlacedCountNow = getAllowedPlacedCountForBuilding(state, normalizedBuildingId);
-
-        if (currentPlacedCount >= maxPlacedCount) {
-          send(ws, {
-            type: "error",
-            message: "This building has reached its max placed count"
-          });
-          break;
-        }
-
-        if (currentPlacedCount >= allowedPlacedCountNow) {
-          const nextUnlock = getNextUnlockCountRequirement(state, normalizedBuildingId);
-          const msg = nextUnlock
-            ? `HQ level ${nextUnlock.requiredMainBuildingLevel} required to place more of this building`
-            : "Current HQ level does not allow placing more of this building";
-
-          send(ws, {
-            type: "error",
-            message: msg
-          });
-          break;
-        }
-
-        if (hasUnfinishedBuildingOfSameType(state, buildingId)) {
-          send(ws, {
-            type: "error",
-            message: "You already have an unfinished building of this type"
-          });
-          break;
-        }
-
-        console.log("[BUILD_REQUEST - PLACE ONLY]", { buildingId, x, z });
-        console.log("[CAN_PLACE]", canPlaceBuilding(state, buildingId, x, z));
-
-        if (!canPlaceBuilding(state, buildingId, x, z)) {
-          send(ws, { type: "error", message: "Placement blocked" });
-          break;
-        }
-
-        if (normalizedBuildingId === "road" || isGarageBuildingId(normalizedBuildingId)) {
-          const levelData = getLevelData(buildingId, 1);
-
-          const check = hasEnoughResources(state, levelData.cost);
-          if (!check.ok) {
-            send(ws, {
-              type: "error",
-              message: `Not enough ${check.resource}. Need ${check.need}, have ${check.have}`
-            });
-            break;
-          }
-
-          spendResources(state, levelData.cost);
-        }
-
-const building = placeBuildingWithoutStarting(state, buildingId, x, z);
-
-// Yeni bina yerləşəndən sonra slot occupancy yenilə
-syncResourceSlotOccupancy(state);
-
-// Yeni bina yerləşəndən sonra bütün road access dəyərlərini yenidən hesablayırıq
-refreshRoadAccessForBuildings(state);
-refreshBuilderCapacity(state);
-
-        send(ws, {
-          type: "build_placed",
-          playerId: playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify({
-            buildingInstanceId: building.instanceId,
-            buildingId: building.buildingId,
-            x: building.x,
-            z: building.z,
-            level: building.level,
-            isCompleted: building.isCompleted,
-            buildFinishTimeMs: building.buildFinishTimeMs
-          })
-        });
-
-
-        
-
-        send(ws, {
-          type: "state",
-          playerId: playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify(makeClientState(state))
-        });
-
-        sendStateLocalMapToPlayer(ws, playerId);
-        sendWorldMapToPlayer(ws, playerId);
-
-        break;
-      }
-
-
-      //////////////////////////////////////////
-
-
-      case "train_unit_request": {
-        const playerId =
-          (msg.playerId && typeof msg.playerId === "string" && msg.playerId) ||
-          ws._authedPlayerId;
-
-        if (!playerId) {
-          send(ws, { type: "error", message: "Not authed. Send auth first." });
-          break;
-        }
-
-        const buildingInstanceId = msg.buildingInstanceId;
-        const unitId = msg.unitId;
-        const count = msg.count;
-
-        if (!buildingInstanceId || typeof buildingInstanceId !== "string") {
-          send(ws, { type: "error", message: "Missing buildingInstanceId" });
-          break;
-        }
-
-        if (!unitId || typeof unitId !== "string") {
-          send(ws, { type: "error", message: "Missing unitId" });
-          break;
-        }
-
-        if (typeof count !== "number" || count <= 0) {
-          send(ws, { type: "error", message: "Invalid count" });
-          break;
-        }
-
-        const state = getOrCreatePlayerState(playerId);
-
-        if (!state.army) {
-          state.army = {
-            troops: {
-              fighter_lv1: 0, fighter_lv2: 0, fighter_lv3: 0, fighter_lv4: 0, fighter_lv5: 0,
-              fighter_lv6: 0, fighter_lv7: 0, fighter_lv8: 0, fighter_lv9: 0, fighter_lv10: 0,
-
-              shooter_lv1: 0, shooter_lv2: 0, shooter_lv3: 0, shooter_lv4: 0, shooter_lv5: 0,
-              shooter_lv6: 0, shooter_lv7: 0, shooter_lv8: 0, shooter_lv9: 0, shooter_lv10: 0,
-
-              vehicle_lv1: 0, vehicle_lv2: 0, vehicle_lv3: 0, vehicle_lv4: 0, vehicle_lv5: 0,
-              vehicle_lv6: 0, vehicle_lv7: 0, vehicle_lv8: 0, vehicle_lv9: 0, vehicle_lv10: 0
-            },
-            trainingQueues: {}
-          };
-        }
-
-        if (!state.army.trainingQueues) {
-          state.army.trainingQueues = {};
-        }
-
-        const building = state.buildings.find(
-          b => b && b.instanceId === buildingInstanceId
-        );
-
-        if (!building) {
-          send(ws, { type: "error", message: "Building not found" });
-          break;
-        }
-
-        const buildingId = normalizeBuildingId(building.buildingId);
-
-        const isTrainingBuilding =
-          buildingId === "fighter_camp" ||
-          buildingId === "shooter_camp" ||
-          buildingId === "vehicle_factory";
-
-        if (!isTrainingBuilding) {
-          send(ws, { type: "error", message: "This building cannot train units" });
-          break;
-        }
-
-        if (!building.isCompleted) {
-          send(ws, { type: "error", message: "Building is not completed" });
-          break;
-        }
-
-        if (state.army.trainingQueues[buildingInstanceId]) {
-          send(ws, { type: "error", message: "Training queue already busy" });
-          break;
-        }
-
-        const now = nowMs();
-        const durationMs = getAdjustedTrainingDurationMs(state, count * 5000);
-
-        const queueEntry = {
-          buildingInstanceId,
-          unitId,
-          count,
-          startTimeMs: now,
-          finishTimeMs: now + durationMs
-        };
-
-        state.army.trainingQueues[buildingInstanceId] = queueEntry;
-
-        console.log("[TRAIN_STARTED]", queueEntry);
-
-        send(ws, {
-          type: "train_started",
-          playerId,
-          serverTimeUnixMs: now,
-          payloadJson: JSON.stringify(queueEntry)
-        });
-
-        send(ws, {
-          type: "state",
-          playerId,
-          serverTimeUnixMs: now,
-          payloadJson: JSON.stringify(makeClientState(state))
-        });
-
-        break;
-      }
-      function processTrainingQueues() {
-  const now = nowMs();
-
-  for (const [playerId, state] of players) {
-    if (!state || !state.army || !state.army.trainingQueues)
-      continue;
-
-    const queues = state.army.trainingQueues;
-
-    for (const buildingInstanceId of Object.keys(queues)) {
-      const q = queues[buildingInstanceId];
-      if (!q)
-        continue;
-
-      if (q.finishTimeMs > now)
-        continue;
-
-      // TRAINING BITDI
-      const unitId = q.unitId;
-      const count = q.count;
-
-      if (!state.army.troops[unitId])
-        state.army.troops[unitId] = 0;
-
-      state.army.troops[unitId] += count;
-
-      console.log("[TRAIN_FINISHED]", playerId, unitId, count);
-
-      delete queues[buildingInstanceId];
-
-      // clientə yeni state göndər
-      const ws = playerSockets.get(playerId);
-      if (ws) {
-        send(ws, {
-          type: "state",
-          playerId,
-          serverTimeUnixMs: now,
-          payloadJson: JSON.stringify(makeClientState(state))
-        });
-      }
-    }
-  }
-}
-
-      case "upgrade_request": {
-        const playerId =
-          (msg.playerId && typeof msg.playerId === "string" && msg.playerId) ||
-          ws._authedPlayerId;
-
-        if (!playerId) {
-          send(ws, { type: "error", message: "Not authed. Send auth first." });
-          break;
-        }
-
-        const buildingInstanceId = msg.buildingInstanceId;
-
-        if (!buildingInstanceId || typeof buildingInstanceId !== "string") {
-          send(ws, { type: "error", message: "Missing buildingInstanceId" });
-          break;
-        }
-
-        const state = getOrCreatePlayerState(playerId);
-
-        const building = state.buildings.find(
-          (b) => b && b.instanceId === buildingInstanceId
-        );
-
-        if (!building) {
-          send(ws, { type: "error", message: "Building not found" });
-          break;
-        }
-
-        if (!hasFreeBuilder(state, building.buildingId)) {
-          send(ws, { type: "error", message: "All builders are busy" });
-          break;
-        }
-
-        const buildingId = normalizeBuildingId(building.buildingId);
-
-        if (buildingId === "road" || isUpgradeDisabledBuildingId(buildingId)) {
-          send(ws, { type: "error", message: "This building cannot be upgraded" });
-          break;
-        }
-
-        if (!building.isCompleted) {
-          send(ws, { type: "error", message: "Building is already busy" });
-          break;
-        }
-
-        if (!building.hasRoadAccess) {
-          send(ws, { type: "error", message: "Road connection required before upgrade" });
-          break;
-        }
-
-        const currentLevel = Math.max(1, Number(building.level) || 1);
-        const maxLevel = getMaxLevelForBuilding(building.buildingId);
-
-        if (currentLevel >= maxLevel) {
-          send(ws, { type: "error", message: "Building already at max level" });
-          break;
-        }
-
-        const targetLevel = currentLevel + 1;
-        const levelData = getLevelData(building.buildingId, targetLevel);
-
-        const check = hasEnoughResources(state, levelData.cost);
-        if (!check.ok) {
-          send(ws, {
-            type: "error",
-            message: `Not enough ${check.resource}. Need ${check.need}, have ${check.have}`
-          });
-          break;
-        }
-
-        spendResources(state, levelData.cost);
-
-        const job = createUpgradeJob(state, building);
-
-        if (!job) {
-          send(ws, { type: "error", message: "Building already at max level" });
-          break;
-        }
-
-        refreshBuilderCapacity(state);
-
-        send(ws, {
-          type: "upgrade_started",
-          playerId: playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify({
-            jobId: job.jobId,
-            buildingInstanceId: building.instanceId,
-            buildingId: building.buildingId,
-            currentLevel: currentLevel,
-            targetLevel: job.targetLevel,
-            endsAtMs: job.endsAtMs
-          })
-        });
-
-        send(ws, {
-          type: "state",
-          playerId: playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify(makeClientState(state))
-        });
-
-        console.log("[SERVER] Upgrade started:", {
-          instanceId: building.instanceId,
-          buildingId: building.buildingId,
-          currentLevel,
-          targetLevel: job.targetLevel,
-          durationMs: job.durationMs
-        });
-
-        break;
-      }
-
-
-case "technology_research_start": {
-  const playerId =
-    (msg.playerId && typeof msg.playerId === "string" && msg.playerId) ||
-    ws._authedPlayerId;
-
-  if (!playerId) {
-    send(ws, { type: "error", message: "Not authed. Send auth first." });
-    break;
+  const runtimeCommandEmalOlundu =
+    await runtimeCommandRouter.dispatch({
+      type,
+      msg,
+      ws,
+      send: cavabGonder,
+      nowMs
+    });
+
+  if (runtimeCommandEmalOlundu) {
+    return;
   }
 
-  const techId = typeof msg.techId === "string" ? msg.techId.trim() : "";
-
-  if (!techId) {
-    send(ws, { type: "error", message: "Missing techId" });
-    break;
-  }
-
-  const state = getOrCreatePlayerState(playerId);
-  const result = startTechnologyResearch(state, techId);
-
-  if (!result.ok) {
-    send(ws, { type: "error", message: result.message || "Technology research could not start" });
-    break;
-  }
-
-  send(ws, {
-    type: "technology_research_started",
-    playerId,
-    serverTimeUnixMs: nowMs(),
-    payloadJson: JSON.stringify(result.research)
+  cavabGonder(ws, {
+    type: "error",
+    code: "UNKNOWN_COMMAND",
+    message: "Unknown type"
   });
-
-  send(ws, {
-    type: "state",
-    playerId,
-    serverTimeUnixMs: nowMs(),
-    payloadJson: JSON.stringify(makeClientState(state))
-  });
-
-  console.log("[TECH_RESEARCH_STARTED]", {
-    playerId,
-    techId: result.research.techId,
-    targetLevel: result.research.targetLevel,
-    endsAtMs: result.research.endsAtMs
-  });
-
-  break;
-}
-
-
-      case "base_teleport_request": {
-        const playerId =
-          (msg.playerId && typeof msg.playerId === "string" && msg.playerId) ||
-          ws._authedPlayerId;
-
-        if (!playerId) {
-          send(ws, { type: "error", message: "Not authed. Send auth first." });
-          break;
-        }
-
-        const targetBaseX = Number.isInteger(msg.x) ? msg.x : parseInt(msg.x, 10);
-        const targetBaseZ = Number.isInteger(msg.z) ? msg.z : parseInt(msg.z, 10);
-
-        if (!Number.isInteger(targetBaseX) || !Number.isInteger(targetBaseZ)) {
-          send(ws, { type: "error", message: "Invalid base teleport coordinates" });
-          break;
-        }
-
-        const state = getOrCreatePlayerState(playerId);
-        const result = teleportPlayerBaseInsideState(state, playerId, targetBaseX, targetBaseZ);
-
-        if (!result.ok) {
-          send(ws, { type: "error", message: result.message || "Base teleport failed" });
-          break;
-        }
-
-        send(ws, {
-          type: result.ignored ? "base_teleport_ignored" : "base_teleported",
-          playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify(result)
-        });
-
-        pushStateToPlayerConnections(playerId, state);
-        pushStateLocalMapToStatePlayers(result.stateId);
-
-        console.log("[BASE_TELEPORT]", {
-          playerId,
-          stateId: result.stateId,
-          baseX: result.baseX,
-          baseZ: result.baseZ,
-          zone: result.zone,
-          ignored: !!result.ignored
-        });
-
-        break;
-      }
-
-      case "move_request": {
-        const playerId =
-          (msg.playerId && typeof msg.playerId === "string" && msg.playerId) ||
-          ws._authedPlayerId;
-
-        if (!playerId) {
-          send(ws, { type: "error", message: "Not authed. Send auth first." });
-          break;
-        }
-
-        const state = getOrCreatePlayerState(playerId);
-        if (!state || !Array.isArray(state.buildings)) {
-          send(ws, { type: "error", message: "Player state not found." });
-          break;
-        }
-
-        const instanceId =
-          typeof msg.buildingInstanceId === "string"
-            ? msg.buildingInstanceId.trim()
-            : "";
-
-        const newX = Number.isInteger(msg.x) ? msg.x : parseInt(msg.x, 10);
-        const newZ = Number.isInteger(msg.z) ? msg.z : parseInt(msg.z, 10);
-
-        if (!instanceId) {
-          send(ws, { type: "error", message: "buildingInstanceId is required." });
-          break;
-        }
-
-        if (!Number.isInteger(newX) || !Number.isInteger(newZ)) {
-          send(ws, { type: "error", message: "Invalid move target coordinates." });
-          break;
-        }
-
-        const movingBuilding = state.buildings.find(
-          (b) => b && b.instanceId === instanceId
-        );
-
-        if (!movingBuilding) {
-          send(ws, { type: "error", message: "Building instance not found." });
-          break;
-        }
-
-        if (!canMoveThisBuilding(movingBuilding)) {
-          send(ws, { type: "error", message: "This building cannot be moved." });
-          break;
-        }
-
-        if (movingBuilding.x === newX && movingBuilding.z === newZ) {
-          send(ws, {
-            type: "move_ignored",
-            buildingInstanceId: instanceId,
-            x: newX,
-            z: newZ,
-            reason: "same_position"
-          });
-          break;
-        }
-
-        if (!canMoveBuilding(state, movingBuilding, newX, newZ)) {
-          send(ws, {
-            type: "error",
-            message: "Target area is occupied."
-          });
-          break;
-        }
-
-       movingBuilding.x = newX;
-movingBuilding.z = newZ;
-movingBuilding.updatedAt = nowMs();
-
-syncResourceSlotOccupancy(state);
-refreshRoadAccessForBuildings(state);
-updateServerTime(state);
-
-        send(ws, {
-          type: "move_applied",
-          playerId: playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify({
-            buildingInstanceId: instanceId,
-            x: newX,
-            z: newZ
-          })
-        });
-
-        send(ws, {
-          type: "state",
-          playerId: playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify(makeClientState(state))
-        });
-
-        console.log("[SERVER] Building moved:", instanceId, "->", newX, newZ);
-        break;
-      }
-
-      case "hello":
-        send(ws, {
-          type: "hello",
-          serverTimeUnixMs: nowMs()
-        });
-        break;
-
-      case "ping":
-        send(ws, {
-          type: "pong",
-          serverTimeUnixMs: nowMs()
-        });
-        break;
-
-      case "auth": {
-        let playerId = msg.playerId;
-
-        if (!playerId) {
-          playerId = crypto.randomBytes(12).toString("hex");
-        }
-
-        ws._authedPlayerId = playerId;
-        connections.set(playerId, ws);
-
-        const state = getOrCreatePlayerState(playerId);
-        updateServerTime(state);
-
-        send(ws, {
-          type: "ack",
-          playerId: playerId,
-          serverTimeUnixMs: nowMs()
-        });
-
-        send(ws, {
-          type: "state",
-          playerId: playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify(makeClientState(state))
-        });
-
-        sendStateLocalMapToPlayer(ws, playerId);
-        sendWorldMapToPlayer(ws, playerId);
-
-        break;
-      }
-
-
-      // ========================================================
-      // HESABI E-POÇTA BAĞLA
-      // --------------------------------------------------------
-      // Client:
-      // {
-      //   type: "account_bind_request",
-      //   playerId: "...",
-      //   email: "...",
-      //   sifre: "..."
-      // }
-      //
-        
-      // Təhlükəsizlik:
-      // həqiqi playerId yalnız ws._authedPlayerId-dən götürülür.
-      // ========================================================
-
-      case "account_bind_request": {
-        const playerId =
-          ws._authedPlayerId;
-
-        // -----------------------------------------------
-        // 1. WebSocket autentifikasiya olunmayıb
-        // -----------------------------------------------
-
-        if (!playerId) {
-          send(ws, {
-            type: "account_bind_result",
-            playerId: null,
-            success: false,
-            message: "Oyunçu autentifikasiya olunmayıb.",
-            serverTimeUnixMs: nowMs()
-          });
-
-          break;
-        }
-
-
-        // -----------------------------------------------
-        // 2. Client başqa playerId göndərməyə çalışırsa
-        // blokla.
-        // -----------------------------------------------
-
-        if (
-          msg.playerId &&
-          typeof msg.playerId === "string" &&
-          msg.playerId !== playerId
-        ) {
-          send(ws, {
-            type: "account_bind_result",
-            playerId: playerId,
-            success: false,
-            message: "Oyunçu ID uyğun deyil.",
-            serverTimeUnixMs: nowMs()
-          });
-
-          break;
-        }
-
-
-        // -----------------------------------------------
-        // 3. Email
-        // -----------------------------------------------
-
-        const email =
-          typeof msg.email === "string"
-            ? msg.email.trim()
-            : "";
-
-
-        // -----------------------------------------------
-        // 4. Şifrə
-        // -----------------------------------------------
-
-        // Şifrəni trim ETMİRİK.
-        // İstifadəçinin daxil etdiyi şifrə olduğu kimi qalmalıdır.
-        const sifre =
-          typeof msg.sifre === "string"
-            ? msg.sifre
-            : "";
-
-
-        // -----------------------------------------------
-        // 5. Hesab moduluna ötür
-        // -----------------------------------------------
-
-        let netice;
-
-        try {
-          netice =
-        await hesabYaratVeBagla(
-        playerId,
-        email,
-        sifre
-        );
-        }
-        catch (xeta) {
-          console.error(
-            "[HESAB] Hesab bağlama xətası:",
-            xeta
-          );
-
-          send(ws, {
-            type: "account_bind_result",
-            playerId: playerId,
-            success: false,
-            message:
-              "Hesab yaradılarkən server xətası baş verdi.",
-            serverTimeUnixMs: nowMs()
-          });
-
-          break;
-        }
-
-
-        // -----------------------------------------------
-        // 6. Uğursuz nəticə
-        // -----------------------------------------------
-
-        if (
-          !netice ||
-          netice.success !== true
-        ) {
-          send(ws, {
-            type: "account_bind_result",
-            playerId: playerId,
-            success: false,
-            message:
-              netice && netice.message
-                ? netice.message
-                : "Hesab bağlana bilmədi.",
-            serverTimeUnixMs: nowMs()
-          });
-
-          break;
-        }
-
-
-        // -----------------------------------------------
-        // 7. Client-ə təhlükəsiz hesab məlumatı
-        // -----------------------------------------------
-
-        const hesab =
-          netice.account || {};
-
-
-        send(ws, {
-          type: "account_bind_result",
-
-          playerId:
-            playerId,
-
-          success:
-            true,
-
-          message:
-            netice.message ||
-            "Hesab uğurla bağlandı.",
-
-          accountId:
-            hesab.accountId || "",
-
-          primaryEmail:
-            hesab.primaryEmail || "",
-
-          secondaryEmail:
-            hesab.secondaryEmail || "",
-
-          emailVerified:
-            hesab.emailVerified === true,
-
-          serverTimeUnixMs:
-            nowMs()
-        });
-
-
-        console.log(
-          "[HESAB] Account bind uğurlu:",
-          {
-            playerId:
-              playerId,
-
-            accountId:
-              hesab.accountId || ""
-          }
-        );
-
-
-        break;
-      }
-
-
-// ========================================================
-// HESAB MƏLUMATINI OXU
-// --------------------------------------------------------
-// Client yalnız sorğu göndərir.
-// Həqiqi playerId socket autentifikasiyasından götürülür.
-// ========================================================
-
-case "account_info_request": {
-  const playerId =
-    ws._authedPlayerId;
-
-
-  // -----------------------------------------------------
-  // 1. Autentifikasiya
-  // -----------------------------------------------------
-
-  if (!playerId) {
-    send(ws, {
-      type: "account_info_result",
-
-      playerId: null,
-
-      success: false,
-      isBound: false,
-
-      message:
-        "Oyunçu autentifikasiya olunmayıb.",
-
-      accountId: "",
-      primaryEmail: "",
-      secondaryEmail: "",
-      emailVerified: false,
-
-      serverTimeUnixMs:
-        nowMs()
-    });
-
-    break;
-  }
-
-
-  // -----------------------------------------------------
-  // 2. Client başqa playerId göndərə bilməz
-  // -----------------------------------------------------
-
-  if (
-    msg.playerId &&
-    typeof msg.playerId === "string" &&
-    msg.playerId !== playerId
-  ) {
-    send(ws, {
-      type: "account_info_result",
-
-      playerId:
-        playerId,
-
-      success: false,
-      isBound: false,
-
-      message:
-        "Oyunçu ID uyğun deyil.",
-
-      accountId: "",
-      primaryEmail: "",
-      secondaryEmail: "",
-      emailVerified: false,
-
-      serverTimeUnixMs:
-        nowMs()
-    });
-
-    break;
-  }
-
-
-  // -----------------------------------------------------
-  // 3. Hesabı tap
-  // -----------------------------------------------------
-
-  let hesab = null;
-
-  try {
-    const tapilanHesab =
-  await hesabPlayerIdIleTap(
-    playerId
-  );
-
-    hesab =
-      tapilanHesab
-        ? clientHesabMelumati(
-            tapilanHesab
-          )
-        : null;
-  }
-  catch (xeta) {
-    console.error(
-      "[HESAB] Hesab məlumatı oxunarkən xəta:",
-      xeta
-    );
-
-    send(ws, {
-      type: "account_info_result",
-
-      playerId:
-        playerId,
-
-      success: false,
-      isBound: false,
-
-      message:
-        "Hesab məlumatı oxuna bilmədi.",
-
-      accountId: "",
-      primaryEmail: "",
-      secondaryEmail: "",
-      emailVerified: false,
-
-      serverTimeUnixMs:
-        nowMs()
-    });
-
-    break;
-  }
-
-
-  // -----------------------------------------------------
-  // 4. Oyun hesabı hələ bağlanmayıb
-  // -----------------------------------------------------
-
-  if (!hesab) {
-    send(ws, {
-      type: "account_info_result",
-
-      playerId:
-        playerId,
-
-      success: true,
-      isBound: false,
-
-      message:
-        "Oyun hesabı hələ bağlanmayıb.",
-
-      accountId: "",
-      primaryEmail: "",
-      secondaryEmail: "",
-      emailVerified: false,
-
-      serverTimeUnixMs:
-        nowMs()
-    });
-
-    break;
-  }
-
-
-  // -----------------------------------------------------
-  // 5. Bağlanmış hesab
-  // -----------------------------------------------------
-
-  send(ws, {
-    type: "account_info_result",
-
-    playerId:
-      playerId,
-
-    success:
-      true,
-
-    isBound:
-      true,
-
-    message:
-      "Hesab məlumatı alındı.",
-
-    accountId:
-      hesab.accountId || "",
-
-    primaryEmail:
-      hesab.primaryEmail || "",
-
-    secondaryEmail:
-      hesab.secondaryEmail || "",
-
-    emailVerified:
-      hesab.emailVerified === true,
-
-    serverTimeUnixMs:
-      nowMs()
-  });
-
-
-  console.log(
-    "[HESAB] Hesab məlumatı göndərildi:",
-    {
-      playerId:
-        playerId
-    }
-  );
-
-
-  break;
-}
-
-
-// ========================================================
-// EMAIL TƏSDİQ KODU GÖNDƏR
-// ========================================================
-
-case "account_email_verification_send_request": {
-  const playerId =
-    ws._authedPlayerId;
-
-
-  if (!playerId) {
-    send(ws, {
-      type:
-        "account_email_verification_send_result",
-
-      success:
-        false,
-
-      message:
-        "Oyunçu autentifikasiya olunmayıb.",
-
-      serverTimeUnixMs:
-        nowMs()
-    });
-
-    break;
-  }
-
-
-  const netice =
-  await emailTesdiqKoduHazirla(
-    playerId
-  );
-
-
-  if (!netice.success) {
-    send(ws, {
-      type:
-        "account_email_verification_send_result",
-
-      playerId:
-        playerId,
-
-      success:
-        false,
-
-      message:
-        netice.message || "",
-
-      retryAfterSeconds:
-  Math.ceil(
-    Number(
-      netice.retryAfterMs || 0
-    ) / 1000
-  ),
-
-      serverTimeUnixMs:
-        nowMs()
-    });
-
-    break;
-  }
-
-
-  if (netice.alreadyVerified) {
-    send(ws, {
-      type:
-        "account_email_verification_send_result",
-
-      playerId:
-        playerId,
-
-      success:
-        true,
-
-      alreadyVerified:
-        true,
-
-      message:
-        netice.message,
-
-      serverTimeUnixMs:
-        nowMs()
-    });
-
-    break;
-  }
-
-
-  const emailNeticesi =
-    await tesdiqKoduEmailiGonder(
-      netice.email,
-      netice.kod
-    );
-
-
-  if (!emailNeticesi.success) {
-    send(ws, {
-      type:
-        "account_email_verification_send_result",
-
-      playerId:
-        playerId,
-
-      success:
-        false,
-
-      message:
-        emailNeticesi.message,
-
-      serverTimeUnixMs:
-        nowMs()
-    });
-
-    break;
-  }
-
-
-  const devRejimi =
-  String(
-    process.env.EMAIL_DEV_LOG_CODE || ""
-  )
-    .trim()
-    .toLowerCase() === "true";
-
-
-send(ws, {
-  type:
-    "account_email_verification_send_result",
-
-  playerId:
-    playerId,
-
-  success:
-    true,
-
-  alreadyVerified:
-    false,
-
-  message:
-    devRejimi
-      ? "DEV rejimi: təsdiq kodu yaradıldı."
-      : "Təsdiq kodu e-poçt ünvanınıza göndərildi.",
-
-  // YALNIZ DEV rejimində client-ə gedir.
-  // Production-da boş string olur.
-  devCode:
-    devRejimi
-      ? String(netice.kod || "")
-      : "",
-
-  expiresAtMs:
-    Number(
-      netice.expiresAtMs || 0
-    ),
-
-  serverTimeUnixMs:
-    nowMs()
-});
-
-
-  break;
-}
-
-
-// ========================================================
-// EMAIL TƏSDİQ KODUNU YOXLAMA
-// ========================================================
-
-case "account_email_verification_confirm_request": {
-  const playerId =
-    ws._authedPlayerId;
-
-
-  if (!playerId) {
-    send(ws, {
-      type:
-        "account_email_verification_confirm_result",
-
-      success:
-        false,
-
-      message:
-        "Oyunçu autentifikasiya olunmayıb.",
-
-      emailVerified:
-        false,
-
-      serverTimeUnixMs:
-        nowMs()
-    });
-
-    break;
-  }
-
-
-  const kod =
-    typeof msg.kod === "string"
-      ? msg.kod.trim()
-      : "";
-
-
-  const netice =
-  await emailTesdiqKodunuYoxla(
-    playerId,
-    kod
-  );
-
-
-  const hesab =
-    netice.account || null;
-
-
-  send(ws, {
-    type:
-      "account_email_verification_confirm_result",
-
-    playerId:
-      playerId,
-
-    success:
-      netice.success === true,
-
-    alreadyVerified:
-      netice.alreadyVerified === true,
-
-    expired:
-      netice.expired === true,
-
-    tooManyAttempts:
-      netice.tooManyAttempts === true,
-
-    attemptsRemaining:
-      Number(
-        netice.attemptsRemaining || 0
-      ),
-
-    message:
-      netice.message || "",
-
-    emailVerified:
-      Boolean(
-        hesab &&
-        hesab.emailVerified
-      ),
-
-    primaryEmail:
-      hesab
-        ? hesab.primaryEmail || ""
-        : "",
-
-    serverTimeUnixMs:
-      nowMs()
-  });
-
-
-  break;
-}
-
-        
-      case "player_name_change_request": {
-        // Oyunçunun kimliyi yalnız autentifikasiya olunmuş WebSocket-dən götürülür.
-        const playerId = ws._authedPlayerId;
-
-        if (!playerId) {
-          send(ws, {
-            type: "player_name_change_result",
-            playerId: null,
-            success: false,
-            message: "Not authed"
-          });
-          break;
-        }
-
-        // Client başqa playerId göndərərək başqa oyunçunun adını dəyişə bilməz.
-        if (
-          msg.playerId &&
-          typeof msg.playerId === "string" &&
-          msg.playerId !== playerId
-        ) {
-          send(ws, {
-            type: "player_name_change_result",
-            playerId: playerId,
-            success: false,
-            message: "Player ID mismatch"
-          });
-          break;
-        }
-
-        const yeniAd =
-          typeof msg.yeniAd === "string"
-            ? msg.yeniAd.trim()
-            : "";
-
-        if (!yeniAd) {
-          send(ws, {
-            type: "player_name_change_result",
-            playerId: playerId,
-            success: false,
-            message: "Ad boş ola bilməz"
-          });
-          break;
-        }
-
-        if (yeniAd.length < 3) {
-          send(ws, {
-            type: "player_name_change_result",
-            playerId: playerId,
-            success: false,
-            message: "Ad minimum 3 simvol olmalıdır"
-          });
-          break;
-        }
-
-        if (yeniAd.length > 16) {
-          send(ws, {
-            type: "player_name_change_result",
-            playerId: playerId,
-            success: false,
-            message: "Ad maksimum 16 simvol ola bilər"
-          });
-          break;
-        }
-
-        const state = getOrCreatePlayerState(playerId);
-        oyuncuProfiliniTeminEt(state);
-
-        if (
-          String(state.oyuncuAdi || "").toLowerCase() ===
-          yeniAd.toLowerCase()
-        ) {
-          send(ws, {
-            type: "player_name_change_result",
-            playerId: playerId,
-            success: false,
-            message: "Yeni ad cari addan fərqli olmalıdır"
-          });
-          break;
-        }
-
-        const kohneAd = state.oyuncuAdi;
-
-        // Yalnız server authoritative state-i dəyişir.
-        state.oyuncuAdi = yeniAd;
-        updateServerTime(state);
-
-        send(ws, {
-          type: "player_name_change_result",
-          playerId: playerId,
-          success: true,
-          oyuncuAdi: yeniAd,
-          message: "Oyunçu adı dəyişdirildi",
-          serverTimeUnixMs: nowMs()
-        });
-
-        // Eyni oyunçunun bütün aktiv bağlantılarına yenilənmiş state göndərilir.
-        pushStateToPlayerConnections(playerId, state);
-
-        console.log("[OYUNCU_ADI_DEYISDI]", {
-          playerId: playerId,
-          kohneAd: kohneAd,
-          yeniAd: yeniAd
-        });
-
-        break;
-      }
-
-      case "get_state": {
-        const playerId = ws._authedPlayerId;
-
-        if (!playerId) {
-          send(ws, { type: "error", message: "Not authed" });
-          return;
-        }
-
-        const state = getOrCreatePlayerState(playerId);
-        updateServerTime(state);
-
-        send(ws, {
-          type: "state",
-          playerId: playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify(makeClientState(state))
-        });
-
-        break;
-      }
-
-
-case "occupy_state_center_request": {
-        const playerId =
-          (msg.playerId && typeof msg.playerId === "string" && msg.playerId) ||
-          ws._authedPlayerId;
-
-        if (!playerId) {
-          send(ws, { type: "error", message: "Not authed. Send auth first." });
-          break;
-        }
-
-        const playerState = getOrCreatePlayerState(playerId);
-        if (!playerState || !playerState.worldPlacement) {
-          send(ws, { type: "error", message: "Player world placement not found" });
-          break;
-        }
-
-        const stateId = Number.isInteger(msg.stateId) ? msg.stateId : Number(playerState.worldPlacement.stateId);
-        const stateRuntime = getWorldStateRuntime(stateId);
-
-        if (!stateRuntime) {
-          send(ws, { type: "error", message: "World state not found" });
-          break;
-        }
-
-        if (Number(playerState.worldPlacement.stateId) !== Number(stateId)) {
-          send(ws, { type: "error", message: "Player is not inside this state" });
-          break;
-        }
-
-        const result = occupyStateCenter(stateRuntime, playerId, null);
-        if (!result.ok) {
-          send(ws, { type: "error", message: result.message || "Occupation failed" });
-          break;
-        }
-
-        send(ws, {
-          type: "state_center_occupied",
-          playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify(result)
-        });
-
-        pushStateLocalMapToStatePlayers(stateId);
-        pushWorldMapToAllAuthedPlayers();
-
-        break;
-      }
-
-      case "get_state_local_map": {
-        const playerId =
-          (msg.playerId && typeof msg.playerId === "string" && msg.playerId) ||
-          ws._authedPlayerId;
-
-        if (!playerId) {
-          send(ws, { type: "error", message: "Not authed. Send auth first." });
-          break;
-        }
-
-        const state = getOrCreatePlayerState(playerId);
-        if (!state || !state.worldPlacement) {
-          send(ws, { type: "error", message: "Player world placement not found" });
-          break;
-        }
-
-        const requestedStateId = Number.isInteger(msg.stateId) ? msg.stateId : Number(state.worldPlacement.stateId);
-        const payload = buildStateLocalMapPayload(requestedStateId, playerId);
-
-        if (!payload) {
-          send(ws, { type: "error", message: "State local map not found" });
-          break;
-        }
-
-        send(ws, {
-          type: "state_local_map",
-          playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify(payload)
-        });
-
-        break;
-      }
-
-      case "get_world_map": {
-  const playerId = ws._authedPlayerId;
-
-  if (!playerId) {
-    send(ws, { type: "error", message: "Not authed" });
-    break;
-  }
-
-  const state = getOrCreatePlayerState(playerId);
-  updateServerTime(state);
-
-  send(ws, {
-    type: "world_map",
-    playerId,
-    serverTimeUnixMs: nowMs(),
-    payloadJson: JSON.stringify(buildWorldMapPayloadForClient())
-  });
-
-  break;
-}
-
-      case "mission_reward_claim_request": {
-        const playerId =
-          (
-            msg.playerId &&
-            typeof msg.playerId === "string" &&
-            msg.playerId
-          ) ||
-          ws._authedPlayerId;
-
-        const missionId =
-          normalizeMissionId(
-            msg.missionId
-          );
-
-        // Oyunçu auth olmayıb.
-        if (!playerId) {
-          send(ws, {
-            type: "mission_reward_claim_result",
-            playerId: null,
-            missionId: missionId,
-            success: false,
-            alreadyClaimed: false,
-            message: "Not authed. Send auth first.",
-            rewards: []
-          });
-
-          break;
-        }
-
-        // Missiya ID-si boşdur.
-        if (!missionId) {
-          send(ws, {
-            type: "mission_reward_claim_result",
-            playerId: playerId,
-            missionId: "",
-            success: false,
-            alreadyClaimed: false,
-            message: "Missing missionId",
-            rewards: []
-          });
-
-          break;
-        }
-
-        const state =
-          getOrCreatePlayerState(
-            playerId
-          );
-
-        const result =
-          claimMissionReward(
-            state,
-            missionId
-          );
-
-        /*
-         * Nəticəni həmin Unity clientinə göndəririk.
-         */
-        send(ws, {
-          type: "mission_reward_claim_result",
-          playerId: playerId,
-          missionId: result.missionId,
-          success: !!result.success,
-          alreadyClaimed: !!result.alreadyClaimed,
-          message: result.message || "",
-          rewards:
-            Array.isArray(result.rewards)
-              ? result.rewards
-              : []
-        });
-
-        if (result.success) {
-          /*
-           * Resurs dəyişdiyi üçün yeni state-i
-           * oyunçunun bütün bağlantılarına göndəririk.
-           */
-          pushStateToPlayerConnections(
-            playerId,
-            state
-          );
-
-          console.log(
-            "[MISSION_REWARD_CLAIMED]",
-            {
-              playerId: playerId,
-              missionId: result.missionId,
-              rewards: result.rewards
-            }
-          );
-        } else {
-          console.log(
-            "[MISSION_REWARD_REJECTED]",
-            {
-              playerId: playerId,
-              missionId: result.missionId,
-              alreadyClaimed:
-                result.alreadyClaimed,
-              message:
-                result.message
-            }
-          );
-        }
-
-        break;
-      }
-
-        
-      case "save_state": {
-        const playerId = ws._authedPlayerId;
-
-        if (!playerId) {
-          send(ws, { type: "error", message: "Not authed" });
-          return;
-        }
-
-        const payloadJson = msg.payloadJson;
-        const [incoming, parseErr] = safeJsonParse(payloadJson);
-
-        if (parseErr) {
-          send(ws, { type: "error", message: "payloadJson invalid" });
-          return;
-        }
-
-        incoming.playerId = playerId;
-
-        // Bu dəyərlər server-authoritative qalır.
-        // Unity-dən gələn save_state onların üzərinə yaza bilməz.
-        const movcudVeziyyet =
-          players.get(playerId);
-
-        if (movcudVeziyyet) {
-          oyuncuProfiliniTeminEt(
-            movcudVeziyyet
-          );
-
-          oyuncuStatusunuTeminEt(
-            movcudVeziyyet
-          );
-
-          ensureMissionState(
-            movcudVeziyyet
-          );
-
-          /*
-           * Oyunçu profil məlumatları server-authoritative qalır.
-           * Client save_state ilə adı və ittifaq adını özbaşına dəyişə bilməz.
-           */
-          incoming.oyuncuAdi =
-            movcudVeziyyet.oyuncuAdi;
-
-          incoming.ittifaqAdi =
-            movcudVeziyyet.ittifaqAdi;
-
-          /*
-           * Oyunçu statusu server-authoritative qalır.
-           */
-          incoming.oyuncuStatusu = {
-            almaz:
-              movcudVeziyyet.oyuncuStatusu.almaz,
-
-            vipSeviyesi:
-              movcudVeziyyet.oyuncuStatusu.vipSeviyesi,
-
-            oyuncuGucu:
-              movcudVeziyyet.oyuncuStatusu.oyuncuGucu
-          };
-
-          /*
-           * Client özündən claimedRewardIds göndərib
-           * server məlumatının üzərinə yaza bilməsin.
-           */
-          incoming.missions = JSON.parse(
-            JSON.stringify(
-              movcudVeziyyet.missions
-            )
-          );
-        }
-
-        oyuncuProfiliniTeminEt(incoming);
-        oyuncuStatusunuTeminEt(incoming);
-        ensureMissionState(incoming);
-        ensureMapState(incoming);
-        ensurePlayerWorldPlacement(incoming, playerId);
-        ensureResourcesObject(incoming);
-        refreshRoadAccessForBuildings(incoming);
-        refreshResourceCaps(incoming);
-        refreshSpecialStats(incoming);
-        updateServerTime(incoming);
-
-        players.set(playerId, incoming);
-
-        send(ws, {
-          type: "save_ok",
-          playerId: playerId
-        });
-
-        sendStateLocalMapToPlayer(ws, playerId);
-        sendWorldMapToPlayer(ws, playerId);
-
-        break;
-      }
-
-      default:
-        send(ws, { type: "error", message: "Unknown type" });
-    }
   });
 
   ws.on("close", () => {
     const playerId = ws._authedPlayerId;
-    if (playerId && connections.get(playerId) === ws) {
-      connections.delete(playerId);
+    if (playerId) {
+      connections.deleteIfCurrent(playerId, ws);
+
+      if (!connections.has(playerId)) {
+        runtimeBus.unregisterLocalPlayer(playerId).catch((error) => {
+          console.error(
+            "[REDIS] Presence unregister error:",
+            error && error.message ? error.message : error
+          );
+        });
+      }
     }
 
     console.log("WS closed");
@@ -8536,108 +8560,151 @@ case "occupy_state_center_request": {
 
 
 
-function completeTechnologyResearchForAllPlayers() {
-  for (const [playerId, state] of players) {
-    const completed = completeTechnologyResearchForState(state);
-
-    if (!completed) continue;
-
-    pushStateToPlayerConnections(playerId, state);
-
-    const ws = connections.get(playerId);
-    if (ws) {
-      send(ws, {
-        type: "technology_research_completed",
-        playerId,
-        serverTimeUnixMs: nowMs(),
-        payloadJson: JSON.stringify(completed)
-      });
-    }
-
-    console.log("[TECH_RESEARCH_COMPLETED]", {
-      playerId,
-      techId: completed.techId,
-      targetLevel: completed.targetLevel
-    });
-  }
-}
-
 // ============================================================
-// LOOPS
+// RUNTIME SCHEDULING
+// ------------------------------------------------------------
+// Construction / research / training artıq bütün player-ləri
+// hər saniyə scan etmir. RuntimeDeadlineScheduler yalnız aktiv
+// deadline olan player-ləri vaxtı çatanda oyadır.
+//
+// Resource production 5 saniyəlik iqtisadiyyat semantikasını saxlayır,
+// amma artıq global scan yoxdur: elapsed-time/lazy settlement işləyir.
 // ============================================================
 
-setInterval(() => {
-  const now = nowMs();
-
-  players.forEach((state, playerId) => {
-    if (!state || !state.army || !state.army.trainingQueues)
-      return;
-
-    let stateChanged = false;
-
-    for (const buildingInstanceId in state.army.trainingQueues) {
-      const queue = state.army.trainingQueues[buildingInstanceId];
-      if (!queue)
-        continue;
-
-      if (now >= queue.finishTimeMs) {
-        console.log("[TRAIN_FINISHED]", queue);
-
-        if (!state.army.troops) {
-          state.army.troops = {};
-        }
-
-        if (typeof state.army.troops[queue.unitId] !== "number") {
-          state.army.troops[queue.unitId] = 0;
-        }
-
-        state.army.troops[queue.unitId] += queue.count;
-        delete state.army.trainingQueues[buildingInstanceId];
-
-        console.log("[TRAIN_REWARD_ADDED]", {
-          playerId,
-          unitId: queue.unitId,
-          added: queue.count,
-          newTotal: state.army.troops[queue.unitId]
-        });
-
-        stateChanged = true;
-      }
-    }
-
-    if (stateChanged) {
-      updateServerTime(state);
-
-      const ws = connections.get(playerId);
-      if (ws) {
-        send(ws, {
-          type: "state",
-          playerId,
-          serverTimeUnixMs: nowMs(),
-          payloadJson: JSON.stringify(makeClientState(state))
-        });
-      }
-    }
-  });
-}, 1000);
-
-setInterval(() => {
-  completeTechnologyResearchForAllPlayers();
-}, 1000);
-
-setInterval(() => {
-  completeFinishedJobsForAllPlayers();
-}, 1000);
-
-setInterval(() => {
-  processProductionForAllPlayers();
-}, 5000);
+// City production is lazy/elapsed-time based; global player scan yoxdur.
 
 // ============================================================
 // SERVER START
 // ============================================================
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log("Server started on " + PORT);
-});
+async function runtimeServeriniBaslat() {
+  try {
+    const metadata =
+      await worldStateMetadatalariniAl();
+
+    worldRuntimeMetadatalariniTetbiqEt(
+      metadata
+    );
+
+    console.log(
+      "[WORLD_STATE_RUNTIME] PostgreSQL metadata yükləndi:",
+      {
+        stateCount:
+          metadata.length,
+        activeStateIdForNewPlayers:
+          worldRuntime
+            .activeStateIdForNewPlayers
+      }
+    );
+  }
+  catch (error) {
+    console.error(
+      "[WORLD_STATE_RUNTIME] Startup metadata load failed:",
+      error &&
+      error.message
+        ? error.message
+        : error
+    );
+
+    // Multi-instance State allocation local RAM fallback-a düşməməlidir.
+    setImmediate(
+      () => process.exit(1)
+    );
+
+    return false;
+  }
+
+  try {
+    await runtimeBus.start();
+  }
+  catch (error) {
+    console.error(
+      "[REDIS] Startup error:",
+      error && error.message ? error.message : error
+    );
+
+    if (runtimeBus.required) {
+      // Multi-instance production required Redis olmadan trafik qəbul etmir.
+      setImmediate(
+        () => process.exit(1)
+      );
+      return false;
+    }
+  }
+
+  server.listen(
+    PORT,
+    "0.0.0.0",
+    () => {
+      console.log(
+        "Server started on " + PORT
+      );
+    }
+  );
+
+  return true;
+}
+
+let gracefulShutdownBaslayib = false;
+
+async function gracefulShutdown(signal) {
+  if (gracefulShutdownBaslayib) {
+    return;
+  }
+
+  gracefulShutdownBaslayib = true;
+
+  console.log("[SERVER] Graceful shutdown:", signal);
+
+  deadlineScheduler.stop();
+  stopWebSocketHeartbeat();
+
+  try {
+    await runtimeBus.close();
+  }
+  catch (error) {
+    console.error(
+      "[REDIS] Shutdown error:",
+      error && error.message ? error.message : error
+    );
+  }
+
+  try {
+    wss.clients.forEach((client) => {
+      try {
+        if (client.readyState === WebSocket.OPEN) {
+          client.close(1001, "server_shutdown");
+        }
+      }
+      catch (_) {
+      }
+    });
+  }
+  catch (_) {
+  }
+
+  server.close(() => {
+    process.exit(0);
+  });
+
+  const forcedExit = setTimeout(() => {
+    process.exit(1);
+  }, 8000);
+
+  if (typeof forcedExit.unref === "function") {
+    forcedExit.unref();
+  }
+}
+
+process.once(
+  "SIGTERM",
+  () => void gracefulShutdown("SIGTERM")
+);
+
+process.once(
+  "SIGINT",
+  () => void gracefulShutdown("SIGINT")
+);
+
+void runtimeServeriniBaslat();
 

@@ -22,7 +22,7 @@ muddet = telimMuddetiniInkIsaflaHesabla(500, 1000, 1000);
 assert.strictEqual(muddet.effectiveDurationMs, 1000);
 
 const state = {
-  resources: { food: 999999, wood: 999999, iron: 999999, fuel: 999999, money: 999999 },
+  resources: { food: 999999, wood: 999999, stone: 999999, iron: 999999, fuel: 999999, money: 999999 },
   buildings: [
     {
       instanceId: "camp-1",

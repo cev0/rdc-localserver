@@ -54,7 +54,13 @@ function bosMovqeSec(stateId, playerId, zeroedAtMs, occupied) {
   throw new Error("Zeroing üçün təhlükəsiz boş Dövlət xəritə mövqeyi tapılmadı.");
 }
 
-async function zeroingiTetbiqEt(defenderState, defenderPlayerId, client, nowMs = Date.now()) {
+async function zeroingiTetbiqEt(
+  defenderState,
+  defenderPlayerId,
+  client,
+  nowMs = Date.now(),
+  secimler = null
+) {
   if (!defenderState || !defenderState.pvpCity || defenderState.pvpCity.zeroingPending !== true) {
     return { success: true, changed: false, zeroed: false };
   }
@@ -63,7 +69,18 @@ async function zeroingiTetbiqEt(defenderState, defenderPlayerId, client, nowMs =
   const wp = defenderState.worldPlacement;
   if (!pid || !wp) throw new Error("Zeroing üçün müdafiəçi worldPlacement tapılmadı.");
   const stateId = Math.max(1, tamEded(wp.stateId) || 1);
-  await dovletYerdeyismeKilidiniAlClient(client, stateId);
+  const options = secimler && typeof secimler === "object" ? secimler : {};
+  const outerWorldStateId = tamEded(options.worldStateId);
+
+  if (options.worldStateLockHeld === true) {
+    if (outerWorldStateId > 0 && outerWorldStateId !== stateId) {
+      throw new Error("Zeroing shared-world lock stateId uyğunsuzluğu aşkarlandı.");
+    }
+  }
+  else {
+    await dovletYerdeyismeKilidiniAlClient(client, stateId);
+  }
+
   const occupied = await cariBazaMovqeleriniAl(client, stateId, pid);
   const oldX = Number(wp.baseX) || 0, oldZ = Number(wp.baseZ) || 0;
   const point = bosMovqeSec(stateId, pid, tamEded(defenderState.pvpCity.zeroedAtMs) || tamEded(nowMs), occupied);

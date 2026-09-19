@@ -3,7 +3,9 @@
 const { pvpMudafieciSnapshotiniHazirla } = require("./pvp_doyus_snapshot_sistemi");
 const { pvpDoyusuHesabla } = require("./pvp_doyus_resolver");
 const { serverItkiPlaniniTetbiqEt, yungulYaralilariBerpaEt } = require("./doyus_xestexana_korpu");
-const { ikiOyuncuStateMutasiyasiniPostgresIleIcraEt } = require("./iki_oyuncu_state_mutasiya_postgres");
+const {
+  worldStateIkiOyuncuMutasiyasiniPostgresIleIcraEt
+} = require("./world_state_iki_oyuncu_mutasiya_postgres");
 const { stateTeminEt } = require("./konvoy_emeliyyat_sistemi");
 const { PVP_BAZA_STATUSLARI } = require("./pvp_baza_hedef_qaydasi");
 const { legacyQosunIdSiniCanonicalEt } = require("./qosun_doyus_stat_sistemi");
@@ -177,7 +179,9 @@ function pvpDoyusunuIkiStateUzerindeTetbiqEt(attackerState, defenderState, convo
 }
 
 async function pvpDoyusSettlementiniPostgresIleIcraEt(attacker, defender, convoyId, operationId = "", nowMs = Date.now(), secimler = null) {
-  const runner = secimler && typeof secimler.ikiOyuncuMutasiya === "function" ? secimler.ikiOyuncuMutasiya : ikiOyuncuStateMutasiyasiniPostgresIleIcraEt;
+  const runner = secimler && typeof secimler.ikiOyuncuMutasiya === "function"
+    ? secimler.ikiOyuncuMutasiya
+    : worldStateIkiOyuncuMutasiyasiniPostgresIleIcraEt;
   const runnerSecimleri = secimler && secimler.runnerSecimleri ? secimler.runnerSecimleri : null;
   return await runner(attacker, defender, async stateler => {
     const attackerId = metnAl(attacker && attacker.playerId, 128);

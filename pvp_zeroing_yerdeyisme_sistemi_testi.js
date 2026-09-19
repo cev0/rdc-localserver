@@ -39,5 +39,31 @@ const state = {
   assert.strictEqual(state.worldPlacement.lastTeleportReason, "pvp_zeroing");
   assert.notStrictEqual(`${state.worldPlacement.baseX}:${state.worldPlacement.baseZ}`, "600:800");
   assert.ok(queries.some(x => String(x.sql).includes("pg_advisory_xact_lock")));
+
+  queries.length = 0;
+
+  const outerLockedState = {
+    worldPlacement: { stateId: 1, baseX: 610, baseZ: 810 },
+    pvpCity: { version: 1, maxDurability: 10000, durability: 0, zeroingPending: true, zeroedAtMs: 22345 }
+  };
+
+  const outerLocked = await zeroingiTetbiqEt(
+    outerLockedState,
+    "player_a",
+    fakeClient,
+    30000,
+    {
+      worldStateLockHeld: true,
+      worldStateId: 1
+    }
+  );
+
+  assert.strictEqual(outerLocked.success, true);
+  assert.strictEqual(outerLocked.zeroed, true);
+  assert.ok(
+    !queries.some(x => String(x.sql).includes("pg_advisory_xact_lock")),
+    "Outer canonical World State lock varsa zeroing legacy State lock-u təkrar almamalıdır."
+  );
+
   console.log("pvp_zeroing_yerdeyisme_sistemi_testi: OK");
 })().catch(err => { console.error(err); process.exit(1); });
