@@ -31,6 +31,9 @@ const {
 const {
   runtimeDynamicMapRefreshGonder,
 } = require("./runtime_world_map_sync");
+const {
+  konvoyPublicProyeksiyaSinxronunuRetryIleIcraEt,
+} = require("./konvoy_public_projection_retry");
 
 const RECALL_REQUEST = "convoy_operation_recall_request";
 const RECALL_RESULT = "convoy_operation_recall_result";
@@ -214,30 +217,26 @@ function publicProyeksiyaniArxaPlandaYenile(
   const stateId = dovletIdAl(state);
   const active = kopyala(aktivEmeliyyatlariAl(state)) || {};
 
-  Promise.resolve(
-    oyuncuKonvoylariniSinxronEt(
-      stateId,
-      playerId,
-      active,
-      nowMs,
-    ),
-  )
-    .then(async netice => {
-      if (
-        netice &&
-        netice.success === true
-      ) {
+  void konvoyPublicProyeksiyaSinxronunuRetryIleIcraEt({
+    syncFn:
+      async () =>
+        await oyuncuKonvoylariniSinxronEt(
+          stateId,
+          playerId,
+          active,
+          nowMs,
+        ),
+    refreshFn:
+      async () =>
         await runtimeDynamicMapRefreshGonder(
           runtimeBus,
           stateId,
           "convoy_operation_recall_request",
           () => nowMs,
-        );
-      }
-    })
-    .catch(xeta => {
-      console.error("[KONVOY_RECALL_PUBLIC_SYNC]", xeta);
-    });
+        ),
+    logger:
+      console
+  });
 }
 
 handler.konvoyEmeliyyatMesajiniEmalEt = async function(kontekst) {
