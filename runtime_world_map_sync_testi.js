@@ -2,6 +2,10 @@
 
 const assert =
   require("assert");
+const fs =
+  require("fs");
+const path =
+  require("path");
 
 const {
   RUNTIME_STATE_MAP_REFRESH_TYPE,
@@ -265,6 +269,55 @@ const {
     }),
     false
   );
+
+
+  {
+    const serverKod =
+      fs.readFileSync(
+        path.join(
+          __dirname,
+          "server.js"
+        ),
+        "utf8"
+      );
+
+    const basla =
+      serverKod.indexOf(
+        "async function pushStateToPlayerConnections"
+      );
+
+    const bitir =
+      serverKod.indexOf(
+        "//////////////////////////////////////////////////////////////////////",
+        basla
+      );
+
+    assert.ok(
+      basla >= 0 &&
+      bitir > basla,
+      "Player state push funksiyası tapılmalıdır."
+    );
+
+    const pushBloku =
+      serverKod.slice(
+        basla,
+        bitir
+      );
+
+    assert.ok(
+      pushBloku.includes(
+        "buildStateLocalMapPayloadAuthoritative"
+      ),
+      "Cross-instance state refresh PostgreSQL-authoritative local map payload göndərməlidir."
+    );
+
+    assert.ok(
+      !pushBloku.includes(
+        "sendStateLocalMapToPlayer("
+      ),
+      "Cross-instance state refresh legacy RAM-only local map sender-ə düşməməlidir."
+    );
+  }
 
   console.log(
     "PASS: world-map runtime sync broadcasts base refresh and center authority across instances."

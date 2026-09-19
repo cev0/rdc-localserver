@@ -5269,15 +5269,18 @@ bazaMelumatlariniYenile(state);
   return clientState;
 }
 
-function pushStateToPlayerConnections(playerId, state) {
+async function pushStateToPlayerConnections(playerId, state) {
   refreshResourceCaps(state);
   refreshSpecialStats(state);
   ensureTechnologyObject(state);
   refreshTechnologyStats(state);
   const clientState = makeClientState(state);
+  const sockets = [];
 
   connections.forEachSocket(playerId, (client) => {
     if (!client || client.readyState !== WebSocket.OPEN) return;
+
+    sockets.push(client);
 
     send(client, {
       type: "state",
@@ -5285,10 +5288,61 @@ function pushStateToPlayerConnections(playerId, state) {
       serverTimeUnixMs: nowMs(),
       payloadJson: JSON.stringify(clientState)
     });
-
-    sendStateLocalMapToPlayer(client, playerId);
-    sendWorldMapToPlayer(client, playerId);
   });
+
+  if (sockets.length === 0) {
+    return 0;
+  }
+
+  const stateId =
+    Number(
+      state &&
+      state.worldPlacement &&
+      state.worldPlacement.stateId
+    );
+
+  let localMapPayload = null;
+
+  if (
+    Number.isInteger(stateId) &&
+    stateId > 0
+  ) {
+    localMapPayload =
+      await buildStateLocalMapPayloadAuthoritative(
+        stateId,
+        playerId
+      );
+  }
+
+  for (const client of sockets) {
+    if (
+      localMapPayload &&
+      client &&
+      client.readyState === WebSocket.OPEN
+    ) {
+      send(client, {
+        type: "state_local_map",
+        playerId,
+        serverTimeUnixMs: nowMs(),
+        payloadJson:
+          JSON.stringify(
+            localMapPayload
+          )
+      });
+    }
+
+    if (
+      client &&
+      client.readyState === WebSocket.OPEN
+    ) {
+      sendWorldMapToPlayer(
+        client,
+        playerId
+      );
+    }
+  }
+
+  return sockets.length;
 }
 
 
