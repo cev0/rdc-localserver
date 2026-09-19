@@ -1,6 +1,8 @@
 "use strict";
 
 const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
 
 const {
   RDC_TO_LAST_SHELTER_BUILDING_TYPE,
@@ -196,6 +198,135 @@ assert.deepStrictEqual(
 assert.strictEqual(
   mainBuildingLeveliniAl(6),
   null
+);
+
+
+const activeDefinitions =
+  JSON.parse(
+    fs.readFileSync(
+      path.join(
+        __dirname,
+        "building_definitions.json"
+      ),
+      "utf8"
+    )
+  );
+
+const activeList =
+  Array.isArray(activeDefinitions)
+    ? activeDefinitions
+    : (
+      activeDefinitions.definitions ||
+      activeDefinitions.buildings ||
+      []
+    );
+
+const activeHq =
+  activeList.find(
+    item =>
+      String(
+        item &&
+        item.id ||
+        ""
+      ).toLowerCase() === "hq"
+  );
+
+assert.ok(
+  activeHq,
+  "Aktiv HQ definition olmalıdır."
+);
+assert.strictEqual(
+  activeHq.maxLevel,
+  5,
+  "Yalnız Last Shelter-dən təsdiqlənmiş 1-5 səviyyələr aktiv qalmalıdır."
+);
+assert.strictEqual(
+  activeHq.lastShelterMaxLevel,
+  25,
+  "Original Last Shelter HQ maksimumu 25 kimi saxlanmalıdır."
+);
+assert.strictEqual(
+  activeHq.levels.length,
+  5
+);
+
+for (
+  let level = 1;
+  level <= 5;
+  level += 1
+) {
+  const active =
+    activeHq.levels[
+      level - 1
+    ];
+
+  const reference =
+    mainBuildingLeveliniAl(
+      level
+    );
+
+  assert.ok(reference);
+  assert.strictEqual(
+    active.level,
+    level
+  );
+  assert.strictEqual(
+    active.buildTimeSeconds,
+    reference.buildTimeSeconds
+  );
+
+  const activeCost =
+    Object.fromEntries(
+      (active.cost || [])
+        .map(
+          item => [
+            item.type,
+            Number(item.amount) || 0
+          ]
+        )
+    );
+
+  for (
+    const resource of [
+      "wood",
+      "stone",
+      "iron",
+      "food",
+      "money",
+      "electricity",
+      "silver"
+    ]
+  ) {
+    assert.strictEqual(
+      Number(
+        activeCost[
+          resource
+        ] || 0
+      ),
+      Number(
+        reference.cost[
+          resource
+        ] || 0
+      ),
+      `HQ level ${level} ${resource} xərci Last Shelter ilə eyni olmalıdır.`
+    );
+  }
+}
+
+const serverSource =
+  fs.readFileSync(
+    path.join(
+      __dirname,
+      "server.js"
+    ),
+    "utf8"
+  );
+
+assert.ok(
+  /silver\s*:\s*0/.test(
+    serverSource
+  ),
+  "Server state Last Shelter silver resursunu saxlamalıdır."
 );
 
 console.log(
