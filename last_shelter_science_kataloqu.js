@@ -46,6 +46,23 @@ function researchNeedParseEt(raw) {
     });
 }
 
+const SCIENCE_PROTOCOL = Object.freeze({
+  researchRequest: "science.research",
+  upgradeRequest: "science.upgrade",
+  directRequest: "science.directly",
+  researchFields: Object.freeze({
+    itemId: "itemId",
+    queueUuid: "quuid",
+    optionalGold: "gold"
+  }),
+  queueType: "SCIENCE",
+  queueRequired: true,
+  queueFullError: "BUILDING_QUEUE_FULL",
+  duplicateItemRejected: true,
+  serverCalculatesResearchCost: true,
+  serverCalculatesResearchTime: true
+});
+
 const RAW_SCIENCE = Object.freeze({
   "901000": Object.freeze({
     itemId: "901000",
@@ -134,6 +151,7 @@ function scienceIdleriAl() {
 }
 
 module.exports = {
+  SCIENCE_PROTOCOL,
   RAW_SCIENCE,
   researchNeedParseEt,
   scienceMelumatiniAl,

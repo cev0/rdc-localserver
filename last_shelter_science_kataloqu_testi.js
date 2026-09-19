@@ -3,11 +3,57 @@
 const assert = require("assert");
 
 const {
+  SCIENCE_PROTOCOL,
   RAW_SCIENCE,
   researchNeedParseEt,
   scienceMelumatiniAl,
   scienceIdleriAl
 } = require("./last_shelter_science_kataloqu");
+
+assert.strictEqual(
+  SCIENCE_PROTOCOL.researchRequest,
+  "science.research"
+);
+assert.strictEqual(
+  SCIENCE_PROTOCOL.upgradeRequest,
+  "science.upgrade"
+);
+assert.strictEqual(
+  SCIENCE_PROTOCOL.directRequest,
+  "science.directly"
+);
+assert.deepStrictEqual(
+  SCIENCE_PROTOCOL.researchFields,
+  {
+    itemId: "itemId",
+    queueUuid: "quuid",
+    optionalGold: "gold"
+  }
+);
+assert.strictEqual(
+  SCIENCE_PROTOCOL.queueType,
+  "SCIENCE"
+);
+assert.strictEqual(
+  SCIENCE_PROTOCOL.queueRequired,
+  true
+);
+assert.strictEqual(
+  SCIENCE_PROTOCOL.queueFullError,
+  "BUILDING_QUEUE_FULL"
+);
+assert.strictEqual(
+  SCIENCE_PROTOCOL.duplicateItemRejected,
+  true
+);
+assert.strictEqual(
+  SCIENCE_PROTOCOL.serverCalculatesResearchCost,
+  true
+);
+assert.strictEqual(
+  SCIENCE_PROTOCOL.serverCalculatesResearchTime,
+  true
+);
 
 assert.deepStrictEqual(
   scienceIdleriAl(),
