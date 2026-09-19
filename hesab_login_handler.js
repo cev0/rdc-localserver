@@ -322,7 +322,7 @@ async function oyunStateGonder(
   });
 
   await sendStateLocalMapToPlayer(ws, playerId);
-  sendWorldMapToPlayer(ws, playerId);
+  await sendWorldMapToPlayer(ws, playerId);
 
   return true;
 }

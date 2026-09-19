@@ -354,6 +354,67 @@ const {
       ),
       "Single-player local map sender legacy RAM-only base kataloquna birbaşa düşməməlidir."
     );
+
+    const worldSenderBasla =
+      serverKod.indexOf(
+        "async function sendWorldMapToPlayer"
+      );
+
+    const worldSenderBitir =
+      serverKod.indexOf(
+        "function pushStateLocalMapToStatePlayers",
+        worldSenderBasla
+      );
+
+    assert.ok(
+      worldSenderBasla >= 0 &&
+      worldSenderBitir > worldSenderBasla,
+      "Single-player world map sender tapılmalıdır."
+    );
+
+    const worldSenderBloku =
+      serverKod.slice(
+        worldSenderBasla,
+        worldSenderBitir
+      );
+
+    assert.ok(
+      worldSenderBloku.includes(
+        "buildWorldMapPayloadForClientAuthoritative"
+      ),
+      "Auth/login/build world map sender PostgreSQL-authoritative metadata və player counts istifadə etməlidir."
+    );
+
+    assert.ok(
+      !worldSenderBloku.includes(
+        "buildWorldMapPayloadForClient()"
+      ),
+      "Single-player world map sender legacy RAM-only world snapshot-a düşməməlidir."
+    );
+
+    const worldBroadcastBasla =
+      serverKod.indexOf(
+        "async function pushWorldMapToAllAuthedPlayers"
+      );
+
+    const worldBroadcastBitir =
+      serverKod.indexOf(
+        "function makeClientState",
+        worldBroadcastBasla
+      );
+
+    const worldBroadcastBloku =
+      serverKod.slice(
+        worldBroadcastBasla,
+        worldBroadcastBitir
+      );
+
+    assert.ok(
+      worldBroadcastBloku.includes(
+        "buildWorldMapPayloadForClientAuthoritative"
+      ),
+      "Cross-instance center update broadcast authoritative world snapshot istifadə etməlidir."
+    );
   }
 
   console.log(

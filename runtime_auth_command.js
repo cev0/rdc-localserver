@@ -129,7 +129,7 @@ function authCommandiniQeydEt(
         playerId
       );
 
-      sendWorldMapToPlayer(
+      await sendWorldMapToPlayer(
         ws,
         playerId
       );

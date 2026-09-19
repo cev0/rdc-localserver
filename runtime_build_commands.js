@@ -387,7 +387,7 @@ function buildCommandleriniQeydEt(
             playerId
           );
 
-          sendWorldMapToPlayer(
+          await sendWorldMapToPlayer(
             ws,
             playerId
           );

@@ -3651,7 +3651,7 @@ const runtimeWorldMapSync =
       pushStateLocalMapToStatePlayersAuthoritative,
     pushWorldMap:
       async () => {
-        pushWorldMapToAllAuthedPlayers();
+        await pushWorldMapToAllAuthedPlayers();
       },
     pushDynamicMap:
       pushStateDynamicMapToStatePlayers,
@@ -4958,15 +4958,26 @@ async function sendStateLocalMapToPlayer(ws, playerId) {
 }
 
 
-function sendWorldMapToPlayer(ws, playerId) {
-  if (!ws || ws.readyState !== WebSocket.OPEN || !playerId) return;
+async function sendWorldMapToPlayer(ws, playerId) {
+  if (!ws || ws.readyState !== WebSocket.OPEN || !playerId) {
+    return false;
+  }
+
+  const payload =
+    await buildWorldMapPayloadForClientAuthoritative();
+
+  if (!payload) {
+    return false;
+  }
 
   send(ws, {
     type: "world_map",
     playerId,
     serverTimeUnixMs: nowMs(),
-    payloadJson: JSON.stringify(buildWorldMapPayloadForClient())
+    payloadJson: JSON.stringify(payload)
   });
+
+  return true;
 }
 
 function pushStateLocalMapToStatePlayers(stateId) {
@@ -5292,8 +5303,20 @@ async function pushStateDynamicMapToStatePlayers(
   return sentCount;
 }
 
-function pushWorldMapToAllAuthedPlayers() {
-  const payload = JSON.stringify(buildWorldMapPayloadForClient());
+async function pushWorldMapToAllAuthedPlayers() {
+  const worldMap =
+    await buildWorldMapPayloadForClientAuthoritative();
+
+  if (!worldMap) {
+    return 0;
+  }
+
+  const payload =
+    JSON.stringify(
+      worldMap
+    );
+
+  let sentCount = 0;
 
   for (const ws of wss.clients) {
     if (!ws || ws.readyState !== WebSocket.OPEN) continue;
@@ -5305,7 +5328,11 @@ function pushWorldMapToAllAuthedPlayers() {
       serverTimeUnixMs: nowMs(),
       payloadJson: payload
     });
+
+    sentCount += 1;
   }
+
+  return sentCount;
 }
 
 function makeClientState(state) {
@@ -5404,6 +5431,9 @@ async function pushStateToPlayerConnections(playerId, state) {
       );
   }
 
+  const worldMapPayload =
+    await buildWorldMapPayloadForClientAuthoritative();
+
   for (const client of sockets) {
     if (
       localMapPayload &&
@@ -5422,13 +5452,19 @@ async function pushStateToPlayerConnections(playerId, state) {
     }
 
     if (
+      worldMapPayload &&
       client &&
       client.readyState === WebSocket.OPEN
     ) {
-      sendWorldMapToPlayer(
-        client,
-        playerId
-      );
+      send(client, {
+        type: "world_map",
+        playerId,
+        serverTimeUnixMs: nowMs(),
+        payloadJson:
+          JSON.stringify(
+            worldMapPayload
+          )
+      });
     }
   }
 
