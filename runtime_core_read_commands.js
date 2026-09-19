@@ -56,7 +56,7 @@ function coreReadCommandleriniQeydEt(
     updateServerTime,
     makeClientState,
     buildStateLocalMapPayloadAuthoritative,
-    buildWorldMapPayloadForClient
+    buildWorldMapPayloadForClientAuthoritative
   } = deps || {};
 
   if (
@@ -248,7 +248,7 @@ function coreReadCommandleriniQeydEt(
         serverTimeUnixMs: nowMs(),
         payloadJson:
           JSON.stringify(
-            buildWorldMapPayloadForClient()
+            await buildWorldMapPayloadForClientAuthoritative()
           )
       });
     },

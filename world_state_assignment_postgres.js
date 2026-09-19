@@ -403,36 +403,31 @@ async function worldStateMetadataTeminEtClient(
   return metadata;
 }
 
-async function worldStatePlayerSaylariniAlClient(
-  client
-) {
-  const result =
-    await client.query(
-      `
-      WITH son_snapshot AS (
-        SELECT DISTINCT ON (oyuncu_id)
-          oyuncu_id,
-          detallar
-        FROM hesab_audit_jurnali
-        WHERE hadise_novu = $1
-        ORDER BY oyuncu_id, id DESC
-      )
-      SELECT
-        (detallar #>> '{state,worldPlacement,stateId}')::integer AS state_id,
-        COUNT(*)::integer AS player_count
-      FROM son_snapshot
-      WHERE
-        detallar #>> '{state,worldPlacement,stateId}'
-          ~ '^[1-9][0-9]*$'
-      GROUP BY
-        (detallar #>> '{state,worldPlacement,stateId}')::integer
-      ORDER BY state_id ASC
-      `,
-      [
-        SNAPSHOT_HADISE_NOVU
-      ]
-    );
+const WORLD_STATE_PLAYER_COUNTS_SQL =
+  `
+  WITH son_snapshot AS (
+    SELECT DISTINCT ON (oyuncu_id)
+      oyuncu_id,
+      detallar
+    FROM hesab_audit_jurnali
+    WHERE hadise_novu = $1
+    ORDER BY oyuncu_id, id DESC
+  )
+  SELECT
+    (detallar #>> '{state,worldPlacement,stateId}')::integer AS state_id,
+    COUNT(*)::integer AS player_count
+  FROM son_snapshot
+  WHERE
+    detallar #>> '{state,worldPlacement,stateId}'
+      ~ '^[1-9][0-9]*$'
+  GROUP BY
+    (detallar #>> '{state,worldPlacement,stateId}')::integer
+  ORDER BY state_id ASC
+  `;
 
+function worldStatePlayerSayNeticesiniHazirla(
+  result
+) {
   const counts =
     new Map();
 
@@ -461,6 +456,46 @@ async function worldStatePlayerSaylariniAlClient(
   }
 
   return counts;
+}
+
+async function worldStatePlayerSaylariniAlClient(
+  client
+) {
+  if (
+    !client ||
+    typeof client.query !==
+      "function"
+  ) {
+    throw new Error(
+      "Dövlət player count transaction client-i yoxdur."
+    );
+  }
+
+  const result =
+    await client.query(
+      WORLD_STATE_PLAYER_COUNTS_SQL,
+      [
+        SNAPSHOT_HADISE_NOVU
+      ]
+    );
+
+  return worldStatePlayerSayNeticesiniHazirla(
+    result
+  );
+}
+
+async function worldStatePlayerSaylariniAl() {
+  const result =
+    await sorguEt(
+      WORLD_STATE_PLAYER_COUNTS_SQL,
+      [
+        SNAPSHOT_HADISE_NOVU
+      ]
+    );
+
+  return worldStatePlayerSayNeticesiniHazirla(
+    result
+  );
 }
 
 async function worldStateBazalariniAlClient(
@@ -1035,7 +1070,9 @@ module.exports = {
   worldStateMetadatalariniAlClient,
   worldStateMetadatalariniAl,
   worldStateMetadataTeminEtClient,
+  worldStatePlayerSayNeticesiniHazirla,
   worldStatePlayerSaylariniAlClient,
+  worldStatePlayerSaylariniAl,
   worldStateBazalariniAlClient,
   spawnUyqundur,
   spawnSec,

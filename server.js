@@ -3443,7 +3443,8 @@ const {
   worldStateOyuncuMutasiyasiniPostgresIleIcraEt
 } = require("./world_state_mutasiya_postgres");
 const {
-  worldStateMetadatalariniAl
+  worldStateMetadatalariniAl,
+  worldStatePlayerSaylariniAl
 } = require("./world_state_assignment_postgres");
 const {
   dovletBazalariniAl,
@@ -4327,6 +4328,80 @@ function buildWorldMapPayloadForClient() {
     activeStateIdForNewPlayers: worldRuntime.activeStateIdForNewPlayers,
     stateCount: states.length,
     states
+  };
+}
+
+async function buildWorldMapPayloadForClientAuthoritative() {
+  const [
+    metadata,
+    counts
+  ] =
+    await Promise.all([
+      worldStateMetadatalariniAl(),
+      worldStatePlayerSaylariniAl()
+    ]);
+
+  worldRuntimeMetadatalariniTetbiqEt(
+    metadata
+  );
+
+  if (
+    !Array.isArray(metadata) ||
+    metadata.length === 0
+  ) {
+    const emptyPayload =
+      buildWorldMapPayloadForClient();
+
+    emptyPayload.states =
+      emptyPayload.states.map(
+        state => ({
+          ...state,
+          playerCount: 0
+        })
+      );
+
+    emptyPayload.authority =
+      "postgres_empty_bootstrap";
+
+    return emptyPayload;
+  }
+
+  const states =
+    metadata
+      .map(item => {
+        const runtime =
+          getWorldStateRuntime(
+            item.stateId
+          );
+
+        const snapshot =
+          makeWorldStateSnapshotForClient(
+            runtime
+          );
+
+        if (!snapshot) {
+          return null;
+        }
+
+        snapshot.playerCount =
+          counts.get(
+            item.stateId
+          ) ||
+          0;
+
+        return snapshot;
+      })
+      .filter(Boolean);
+
+  return {
+    activeStateIdForNewPlayers:
+      worldRuntime
+        .activeStateIdForNewPlayers,
+    stateCount:
+      states.length,
+    states,
+    authority:
+      "postgres_snapshot"
   };
 }
 
@@ -8039,7 +8114,7 @@ coreReadCommandleriniQeydEt(
     updateServerTime,
     makeClientState,
     buildStateLocalMapPayloadAuthoritative,
-    buildWorldMapPayloadForClient
+    buildWorldMapPayloadForClientAuthoritative
   }
 );
 

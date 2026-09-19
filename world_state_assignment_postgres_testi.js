@@ -6,6 +6,7 @@ const assert =
 const {
   WORLD_STATE_ASSIGNMENT_LOCK_NAME,
   worldStatePlacementEtibarlidir,
+  worldStatePlayerSaylariniAlClient,
   spawnUyqundur,
   worldStatePlacementiniTeminEtClient
 } = require("./world_state_assignment_postgres");
@@ -537,6 +538,37 @@ function metadataRow(
       client.queries.length,
       0,
       "Etibarlı persistent placement lazımsız global assignment lock almamalıdır."
+    );
+  }
+
+
+  {
+    const client =
+      new FakeClient({
+        counts: [
+          [1, 12],
+          [2, 34]
+        ]
+      });
+
+    const counts =
+      await worldStatePlayerSaylariniAlClient(
+        client
+      );
+
+    assert.strictEqual(
+      counts.get(1),
+      12
+    );
+
+    assert.strictEqual(
+      counts.get(2),
+      34
+    );
+
+    assert.strictEqual(
+      counts.size,
+      2
     );
   }
 

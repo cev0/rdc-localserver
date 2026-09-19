@@ -20,6 +20,7 @@ const {
   const sent = [];
   const states = new Map();
   const localMapReads = [];
+  let worldMapReads = 0;
 
   function getOrCreatePlayerState(playerId) {
     if (!states.has(playerId)) {
@@ -62,10 +63,16 @@ const {
             authority: "postgres_snapshot"
           };
         },
-      buildWorldMapPayloadForClient:
-        () => ({
-          states: [1, 2, 3]
-        })
+      buildWorldMapPayloadForClientAuthoritative:
+        async () => {
+          worldMapReads += 1;
+          return {
+            authority:
+              "postgres_snapshot",
+            states:
+              [1, 2, 3]
+          };
+        }
     }
   );
 
@@ -211,6 +218,41 @@ const {
   assert.strictEqual(
     mismatch.code,
     "PLAYER_ID_MISMATCH"
+  );
+
+
+  await router.dispatch({
+    type: "get_world_map",
+    msg: {
+      type: "get_world_map"
+    },
+    ws,
+    send,
+    nowMs: () => 350
+  });
+
+  const worldMapResult = sent.pop();
+
+  assert.strictEqual(
+    worldMapResult.type,
+    "world_map"
+  );
+
+  assert.strictEqual(
+    worldMapReads,
+    1
+  );
+
+  assert.deepStrictEqual(
+    JSON.parse(
+      worldMapResult.payloadJson
+    ),
+    {
+      authority:
+        "postgres_snapshot",
+      states:
+        [1, 2, 3]
+    }
   );
 
   const unauthWs = {
