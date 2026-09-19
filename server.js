@@ -3454,6 +3454,13 @@ const {
 const {
   oyuncuMutasiyaKilidiIleIcraEt
 } = require("./server_oyuncu_mutasiya_kilidi");
+const {
+  pvpZeroingRecallDeadlineAtMs,
+  pvpZeroingPendingRecalliniBerpaEt
+} = require("./pvp_zeroing_recall_deadline");
+const {
+  pvpZeroingKonvoyRecalliniPostCommitIcraEt
+} = require("./pvp_zeroing_konvoy_recall_postcommit");
 
 const STATE_CENTER_UNLOCK_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
 const STATE_NEW_PLAYER_SOFT_CAP = 200;
@@ -7584,6 +7591,24 @@ function nextPlayerDeadlineAtMs(state) {
 
   let next = Number.POSITIVE_INFINITY;
 
+  const zeroingRecallDueAt =
+    pvpZeroingRecallDeadlineAtMs(
+      state,
+      nowMs()
+    );
+
+  if (
+    Number.isFinite(
+      Number(zeroingRecallDueAt)
+    ) &&
+    Number(zeroingRecallDueAt) > 0
+  ) {
+    next = Math.min(
+      next,
+      Number(zeroingRecallDueAt)
+    );
+  }
+
   const researchEndsAt =
     Number(
       state.technology &&
@@ -7864,6 +7889,71 @@ function settlePlayerTimeline(
 }
 
 async function processPlayerDeadline(playerId) {
+  let state =
+    players.get(
+      playerId
+    );
+
+  if (!state) {
+    return null;
+  }
+
+  try {
+    const zeroingRecall =
+      await pvpZeroingPendingRecalliniBerpaEt({
+        state,
+        playerId,
+        nowMs:
+          nowMs(),
+        recallFn:
+          pvpZeroingKonvoyRecalliniPostCommitIcraEt,
+        refreshFn:
+          async id => {
+            runtimeStateSync
+              .markStale(
+                id
+              );
+
+            return await runtimeStateSync
+              .ensureFresh(
+                id,
+                {
+                  force: true,
+                  push: true
+                }
+              );
+          }
+      });
+
+    if (
+      zeroingRecall &&
+      zeroingRecall.handled === true
+    ) {
+      state =
+        players.get(
+          playerId
+        );
+
+      if (!state) {
+        return null;
+      }
+    }
+  }
+  catch (error) {
+    console.error(
+      "[PVP_ZEROING_DEADLINE_RECALL] Pending recall retry failed:",
+      {
+        playerId,
+        message:
+          error && error.message
+            ? error.message
+            : String(error)
+      }
+    );
+
+    return nowMs() + 1000;
+  }
+
   let netice;
 
   try {
@@ -7892,7 +7982,7 @@ async function processPlayerDeadline(playerId) {
     return null;
   }
 
-  const state =
+  state =
     players.get(
       playerId
     );
