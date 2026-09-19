@@ -85,6 +85,7 @@ const UNIT_TESTLERI = [
   "qosun_telimi_pg_mutasiya_testi.js",
   "qosun_telimi_tikinti_yekunlasma_regressiya_testi.js",
   "resurs_hesabati_mutasiya_regressiya_testi.js",
+  "resurs_stone_schema_testi.js",
   "runtime_deadline_authoritative_testi.js",
   "resurs_inkisaf_korpu_testi.js",
   "resurs_inkisaf_runtime_inteqrasiya_testi.js",
