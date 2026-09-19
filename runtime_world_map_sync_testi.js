@@ -455,6 +455,117 @@ const {
     );
   }
 
+
+  {
+    let hydratedRuntime = null;
+    const hydrateOrder = [];
+
+    const hydrateController =
+      runtimeWorldMapSyncControllerYarat({
+        getWorldStateRuntime:
+          stateId =>
+            stateId === 11
+              ? hydratedRuntime
+              : null,
+
+        clearBaseCache() {},
+
+        pushStateLocalMap:
+          async stateId => {
+            hydrateOrder.push(
+              "local:" + stateId
+            );
+
+            assert.ok(
+              hydratedRuntime,
+              "Yeni State local-map push-dan əvvəl authoritative world-map refresh ilə hydrate edilməlidir."
+            );
+
+            assert.strictEqual(
+              hydratedRuntime
+                .centerBuilding
+                .occupiedByPlayerId,
+              "p11"
+            );
+          },
+
+        pushWorldMap:
+          async () => {
+            hydrateOrder.push(
+              "world"
+            );
+
+            hydratedRuntime = {
+              stateId: 11,
+              centerUnlockAtMs: 5000,
+              centerBuilding: {
+                unlockAtMs: 5000,
+                isUnlocked: true,
+                occupiedByPlayerId: null,
+                occupiedByAllianceId: null,
+                occupiedAtMs: 0
+              },
+              presidentPlayerId: null,
+              presidentAllianceId: null
+            };
+          },
+
+        pushDynamicMap:
+          async () => {},
+
+        nowMs:
+          () => 12000,
+
+        logger: {
+          error() {}
+        }
+      });
+
+    assert.strictEqual(
+      await hydrateController
+        .handleBroadcast({
+          scope: "world-state",
+          targetId: "11",
+          payload: {
+            type:
+              RUNTIME_STATE_CENTER_UPDATE_TYPE,
+            occupiedByPlayerId:
+              "p11",
+            occupiedByAllianceId:
+              "a11",
+            occupiedAtMs:
+              11000,
+            centerUnlockAtMs:
+              5000,
+            revision:
+              4
+          }
+        }),
+      true
+    );
+
+    assert.deepStrictEqual(
+      hydrateOrder,
+      [
+        "world",
+        "local:11"
+      ],
+      "Center update yeni State üçün əvvəl authoritative metadata hydrate etməli, sonra local map push etməlidir."
+    );
+
+    assert.strictEqual(
+      hydratedRuntime
+        .presidentPlayerId,
+      "p11"
+    );
+
+    assert.strictEqual(
+      hydratedRuntime
+        .presidentAllianceId,
+      "a11"
+    );
+  }
+
   console.log(
     "PASS: world-map runtime sync broadcasts base refresh and center authority across instances."
   );

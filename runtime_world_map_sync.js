@@ -406,7 +406,7 @@ function runtimeWorldMapSyncControllerYarat(
       payload.type ===
         RUNTIME_STATE_CENTER_UPDATE_TYPE
     ) {
-      const stateRuntime =
+      let stateRuntime =
         getWorldStateRuntime(
           sid
         );
@@ -419,11 +419,30 @@ function runtimeWorldMapSyncControllerYarat(
         );
       }
 
+      // Yeni State başqa instance-da yaradılıbsa bu instance-in local runtime-ı
+      // broadcast gələn anda hələ mövcud olmaya bilər. Authoritative world-map
+      // refresh əvvəl metadata-nı hydrate edir; sonra center payload-u həmin yeni
+      // runtime-a tətbiq edib local map-i göndəririk.
+      await pushWorldMap();
+
+      if (!stateRuntime) {
+        stateRuntime =
+          getWorldStateRuntime(
+            sid
+          );
+
+        if (stateRuntime) {
+          centerUpdateTetbiqEt(
+            stateRuntime,
+            payload,
+            nowMs()
+          );
+        }
+      }
+
       await pushStateLocalMap(
         sid
       );
-
-      await pushWorldMap();
 
       return true;
     }
