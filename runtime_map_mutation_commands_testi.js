@@ -485,7 +485,8 @@ const {
   assert.deepStrictEqual(
     authoritativeLocks,
     [
-      "p1:expand_area_request"
+      "p1:expand_area_request",
+      "p1:expand_base"
     ],
     "Player-local map mutation player PostgreSQL authoritative executor-da qalmalıdır."
   );
