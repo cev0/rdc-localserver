@@ -32,6 +32,7 @@ const CLASS_DEFINITIONS = Object.freeze({
     classId: "warrior",
     displayNameAz: "Savaşçı",
     buildingId: "fighter_camp",
+    lastShelterArmyPrefix: "1070",
     tier9ResearchId: "unlock_warrior_t9",
     tier10ResearchId: "unlock_warrior_t10",
     consumptionResourceId: "food"
@@ -40,6 +41,7 @@ const CLASS_DEFINITIONS = Object.freeze({
     classId: "shooter",
     displayNameAz: "Nişançı",
     buildingId: "shooter_camp",
+    lastShelterArmyPrefix: "1072",
     tier9ResearchId: "unlock_shooter_t9",
     tier10ResearchId: "unlock_shooter_t10",
     consumptionResourceId: "food"
@@ -48,6 +50,7 @@ const CLASS_DEFINITIONS = Object.freeze({
     classId: "vehicle",
     displayNameAz: "Hərbi Maşın",
     buildingId: "vehicle_factory",
+    lastShelterArmyPrefix: "1071",
     tier9ResearchId: "unlock_vehicle_t9",
     tier10ResearchId: "unlock_vehicle_t10",
     consumptionResourceId: "food"
@@ -198,8 +201,11 @@ function buildClassUnits(classDef, names, statsRows, costRows) {
   return names.map((displayNameAz, index) => {
     const tier = index + 1;
     const stats = statsRows[index];
+    const lastShelterArmyId = `${classDef.lastShelterArmyPrefix}${String(index).padStart(2, "0")}`;
     return Object.freeze({
       unitId: `${classDef.classId}_t${tier}`,
+      lastShelterArmyId,
+      lastShelterArmyFamily: classDef.lastShelterArmyPrefix,
       classId: classDef.classId,
       classDisplayNameAz: classDef.displayNameAz,
       displayNameAz,
@@ -379,6 +385,8 @@ function telimMuddetiniHesabla(state, unitId, rawCount) {
 function kataloquClientUcunHazirla() {
   return UNITS.map(unit => ({
     unitId: unit.unitId,
+    lastShelterArmyId: unit.lastShelterArmyId,
+    lastShelterArmyFamily: unit.lastShelterArmyFamily,
     classId: unit.classId,
     classDisplayNameAz: unit.classDisplayNameAz,
     displayNameAz: unit.displayNameAz,
