@@ -4980,33 +4980,6 @@ async function sendWorldMapToPlayer(ws, playerId) {
   return true;
 }
 
-function pushStateLocalMapToStatePlayers(stateId) {
-  if (!Number.isInteger(Number(stateId))) return;
-
-  const payload = buildStateLocalMapPayload(Number(stateId), null);
-  if (!payload) return;
-
-  for (const ws of wss.clients) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) continue;
-
-    const playerId = ws._authedPlayerId;
-    if (!playerId) continue;
-
-    const playerState = players.get(playerId);
-    if (!playerState || !playerState.worldPlacement) continue;
-    if (Number(playerState.worldPlacement.stateId) !== Number(stateId)) continue;
-
-    const perPlayerPayload = buildStateLocalMapPayload(Number(stateId), playerId);
-
-    send(ws, {
-      type: "state_local_map",
-      playerId,
-      serverTimeUnixMs: nowMs(),
-      payloadJson: JSON.stringify(perPlayerPayload)
-    });
-  }
-}
-
 function stateLocalMapBazalariniAuthoritativeHazirla(
   rawBases,
   requestingPlayerId = null
@@ -7597,18 +7570,6 @@ if (changed) {
   return changed;
 }
 
-function completeFinishedJobsForAllPlayers() {
-  for (const [playerId, state] of players) {
-    const changed = completeFinishedJobsForState(state);
-
-    if (changed) {
-      pushStateToPlayerConnections(playerId, state);
-      console.log("[SERVER] Build completed for player:", playerId);
-    }
-  }
-}
-
-
 function nextPlayerDeadlineAtMs(state) {
   if (!state || typeof state !== "object") {
     return null;
@@ -8489,32 +8450,6 @@ wss.on("connection", (ws, req) => {
 });
 
 
-
-function completeTechnologyResearchForAllPlayers() {
-  for (const [playerId, state] of players) {
-    const completed = completeTechnologyResearchForState(state);
-
-    if (!completed) continue;
-
-    pushStateToPlayerConnections(playerId, state);
-
-    const ws = connections.get(playerId);
-    if (ws) {
-      send(ws, {
-        type: "technology_research_completed",
-        playerId,
-        serverTimeUnixMs: nowMs(),
-        payloadJson: JSON.stringify(completed)
-      });
-    }
-
-    console.log("[TECH_RESEARCH_COMPLETED]", {
-      playerId,
-      techId: completed.techId,
-      targetLevel: completed.targetLevel
-    });
-  }
-}
 
 // ============================================================
 // RUNTIME SCHEDULING
