@@ -168,10 +168,6 @@ const {
 
     refreshBuilderCapacity() {},
 
-    getAdjustedTrainingDurationMs:
-      (_target, duration) =>
-        duration,
-
     isUpgradeDisabledBuildingId:
       () => false,
 
@@ -274,6 +270,7 @@ const {
   state.buildings.push({
     instanceId: "fighter-camp-1",
     buildingId: "fighter_camp",
+    level: 1,
     isCompleted: true,
     hasRoadAccess: true
   });
@@ -301,6 +298,45 @@ const {
   assert.strictEqual(
     sent[1].type,
     "state"
+  );
+
+  const startedQueue =
+    JSON.parse(
+      sent[0].payloadJson
+    );
+
+  assert.strictEqual(
+    startedQueue.unitId,
+    "warrior_t1",
+    "Legacy fighter_lv1 alias əsas troop kataloqunun canonical unitId-sinə çevrilməlidir."
+  );
+
+  assert.strictEqual(
+    state.resources.food,
+    860,
+    "Direct server fallback troop kataloqunun server-side training xərcini tətbiq etməlidir."
+  );
+
+  const routedCode =
+    fs.readFileSync(
+      require.resolve(
+        "./runtime_gameplay_mutation_commands.js"
+      ),
+      "utf8"
+    );
+
+  assert.ok(
+    routedCode.includes(
+      "qosunTeliminiBaslat"
+    ),
+    "Direct runtime route əsas troop training sisteminə delegate etməlidir."
+  );
+
+  assert.ok(
+    !routedCode.includes(
+      "count * 5000"
+    ),
+    "Troop training üçün ayrıca 5 saniyəlik legacy formula qalmamalıdır."
   );
 
   assert.deepStrictEqual(

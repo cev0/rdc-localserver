@@ -4,6 +4,9 @@ const crypto = require("crypto");
 const {
   playerIdUyugunluqYoxla
 } = require("./runtime_core_read_commands");
+const {
+  qosunTeliminiBaslat
+} = require("./qosun_telimi_sistemi");
 
 function errorGonder(send, ws, message, code) {
   send(ws, {
@@ -37,7 +40,6 @@ function gameplayMutationCommandleriniQeydEt(
     spendResources,
     getBuilderSlotsRequiredForBuilding,
     refreshBuilderCapacity,
-    getAdjustedTrainingDurationMs,
     isUpgradeDisabledBuildingId,
     getMaxLevelForBuilding,
     createUpgradeJob
@@ -59,7 +61,6 @@ function gameplayMutationCommandleriniQeydEt(
     spendResources,
     getBuilderSlotsRequiredForBuilding,
     refreshBuilderCapacity,
-    getAdjustedTrainingDurationMs,
     isUpgradeDisabledBuildingId,
     getMaxLevelForBuilding,
     createUpgradeJob
@@ -533,88 +534,38 @@ function gameplayMutationCommandleriniQeydEt(
       const state =
         getOrCreatePlayerState(playerId);
 
-      if (!state.army) {
-        state.army = {
-          troops: {},
-          trainingQueues: {}
-        };
-      }
+      const now = nowMs();
 
-      if (!state.army.troops) {
-        state.army.troops = {};
-      }
-
-      if (!state.army.trainingQueues) {
-        state.army.trainingQueues = {};
-      }
-
-      const building =
-        Array.isArray(state.buildings)
-          ? state.buildings.find(
-              b =>
-                b &&
-                b.instanceId === buildingInstanceId
-            )
-          : null;
-
-      if (!building) {
-        errorGonder(send, ws, "Building not found");
-        return;
-      }
-
-      const buildingId =
-        normalizeBuildingId(
-          building.buildingId
+      // Direct server.js fallback da əsas gameplay extension ilə eyni
+      // server-authoritative troop kataloqundan istifadə edir. Beləliklə
+      // training vaxtı, unlock, xərc və unit canonicalization üçün ayrıca
+      // legacy formula qalmır.
+      const trainingResult =
+        qosunTeliminiBaslat(
+          state,
+          buildingInstanceId,
+          unitId,
+          count,
+          now
         );
 
-      const isTrainingBuilding =
-        buildingId === "fighter_camp" ||
-        buildingId === "shooter_camp" ||
-        buildingId === "vehicle_factory";
-
-      if (!isTrainingBuilding) {
+      if (
+        !trainingResult ||
+        trainingResult.success !== true
+      ) {
         errorGonder(
           send,
           ws,
-          "This building cannot train units"
+          trainingResult &&
+          trainingResult.message
+            ? trainingResult.message
+            : "Training could not be started"
         );
         return;
       }
 
-      if (!building.isCompleted) {
-        errorGonder(send, ws, "Building is not completed");
-        return;
-      }
-
-      if (
-        state.army.trainingQueues[
-          buildingInstanceId
-        ]
-      ) {
-        errorGonder(send, ws, "Training queue already busy");
-        return;
-      }
-
-      const now = nowMs();
-
-      const durationMs =
-        getAdjustedTrainingDurationMs(
-          state,
-          count * 5000
-        );
-
-      const queueEntry = {
-        buildingInstanceId,
-        unitId,
-        count,
-        startTimeMs: now,
-        finishTimeMs:
-          now + durationMs
-      };
-
-      state.army.trainingQueues[
-        buildingInstanceId
-      ] = queueEntry;
+      const queueEntry =
+        trainingResult.queue;
 
       const scheduleDeadline =
         async () => {
