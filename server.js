@@ -5061,7 +5061,7 @@ async function buildStateLocalMapPayloadAuthoritative(
   }
   catch (error) {
     console.error(
-      "[STATE_LOCAL_MAP] PostgreSQL base catalog fallback:",
+      "[STATE_LOCAL_MAP] PostgreSQL base catalog unavailable:",
       {
         stateId: sid,
         message:
@@ -5071,7 +5071,10 @@ async function buildStateLocalMapPayloadAuthoritative(
       }
     );
 
-    return payload;
+    // PostgreSQL authoritative rejimdə köhnə local RAM baza siyahısını
+    // client-ə düzgün xəritə kimi təqdim etmirik. Caller null-u error/skip
+    // kimi idarə edir və növbəti uğurlu read authoritative snapshot qaytarır.
+    return null;
   }
 }
 
@@ -5108,6 +5111,10 @@ async function pushStateLocalMapToStatePlayersAuthoritative(
             : String(error)
       }
     );
+
+    // Bir PostgreSQL xətasını hər local socket üçün yenidən sorğuya
+    // çevirmirik; stale RAM xəritəsi də broadcast edilmir.
+    return 0;
   }
 
   let sentCount = 0;

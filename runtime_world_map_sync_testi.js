@@ -415,6 +415,44 @@ const {
       ),
       "Cross-instance center update broadcast authoritative world snapshot istifadə etməlidir."
     );
+
+    const authoritativeBasla =
+      serverKod.indexOf(
+        "async function buildStateLocalMapPayloadAuthoritative"
+      );
+
+    const authoritativeBitir =
+      serverKod.indexOf(
+        "async function pushStateLocalMapToStatePlayersAuthoritative",
+        authoritativeBasla
+      );
+
+    const authoritativeBloku =
+      serverKod.slice(
+        authoritativeBasla,
+        authoritativeBitir
+      );
+
+    assert.ok(
+      authoritativeBloku.includes(
+        "PostgreSQL base catalog unavailable"
+      ),
+      "Authoritative local-map read DB xətasını ayrıca qeyd etməlidir."
+    );
+
+    assert.ok(
+      authoritativeBloku.includes(
+        "return null;"
+      ),
+      "PostgreSQL base catalog xətasında stale RAM local-map fallback göndərilməməlidir."
+    );
+
+    assert.ok(
+      !authoritativeBloku.includes(
+        "PostgreSQL base catalog fallback"
+      ),
+      "Legacy RAM fallback mesajı authoritative path-də qalmamalıdır."
+    );
   }
 
   console.log(
