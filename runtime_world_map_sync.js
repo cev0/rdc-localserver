@@ -51,6 +51,23 @@ function centerUpdateTetbiqEt(
     stateRuntime.centerBuilding = {};
   }
 
+  const incomingRevision =
+    tamEded(
+      payload.revision
+    );
+
+  const currentRevision =
+    tamEded(
+      stateRuntime.revision
+    );
+
+  if (
+    incomingRevision > 0 &&
+    currentRevision > incomingRevision
+  ) {
+    return false;
+  }
+
   const occupiedByPlayerId =
     typeof payload.occupiedByPlayerId ===
       "string"
@@ -113,6 +130,14 @@ function centerUpdateTetbiqEt(
   stateRuntime.presidentAllianceId =
     occupiedByAllianceId ||
     null;
+
+  if (incomingRevision > 0) {
+    stateRuntime.revision =
+      Math.max(
+        currentRevision,
+        incomingRevision
+      );
+  }
 
   return true;
 }

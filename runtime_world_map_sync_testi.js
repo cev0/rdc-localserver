@@ -69,6 +69,80 @@ const {
     "p1"
   );
 
+
+  {
+    const revisionRuntime = {
+      stateId: 9,
+      revision: 5,
+      centerUnlockAtMs: 1000,
+      centerBuilding: {
+        unlockAtMs: 1000,
+        isUnlocked: true,
+        occupiedByPlayerId: "new_player",
+        occupiedByAllianceId: "new_alliance",
+        occupiedAtMs: 5000
+      },
+      presidentPlayerId: "new_player",
+      presidentAllianceId: "new_alliance"
+    };
+
+    assert.strictEqual(
+      centerUpdateTetbiqEt(
+        revisionRuntime,
+        {
+          occupiedByPlayerId: "old_player",
+          occupiedByAllianceId: "old_alliance",
+          occupiedAtMs: 4000,
+          centerUnlockAtMs: 1000,
+          revision: 4
+        },
+        6000
+      ),
+      false,
+      "Köhnə center revision daha yeni runtime state-in üstünə yazılmamalıdır."
+    );
+
+    assert.strictEqual(
+      revisionRuntime.presidentPlayerId,
+      "new_player"
+    );
+
+    assert.strictEqual(
+      revisionRuntime.presidentAllianceId,
+      "new_alliance"
+    );
+
+    assert.strictEqual(
+      revisionRuntime.revision,
+      5
+    );
+
+    assert.strictEqual(
+      centerUpdateTetbiqEt(
+        revisionRuntime,
+        {
+          occupiedByPlayerId: "latest_player",
+          occupiedByAllianceId: "latest_alliance",
+          occupiedAtMs: 7000,
+          centerUnlockAtMs: 1000,
+          revision: 6
+        },
+        8000
+      ),
+      true
+    );
+
+    assert.strictEqual(
+      revisionRuntime.presidentPlayerId,
+      "latest_player"
+    );
+
+    assert.strictEqual(
+      revisionRuntime.revision,
+      6
+    );
+  }
+
   const cacheClears = [];
   const statePushes = [];
   const dynamicPushes = [];
@@ -452,6 +526,13 @@ const {
         "PostgreSQL base catalog fallback"
       ),
       "Legacy RAM fallback mesajı authoritative path-də qalmamalıdır."
+    );
+
+    assert.ok(
+      serverKod.includes(
+        "runtime.revision ="
+      ),
+      "PostgreSQL world-state metadata revision local runtime-a hydrate edilməlidir."
     );
   }
 

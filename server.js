@@ -3905,6 +3905,15 @@ function worldRuntimeMetadatalariniTetbiqEt(
         metadata
       );
 
+    runtime.revision =
+      Math.max(
+        0,
+        Number(
+          metadata &&
+          metadata.revision
+        ) || 0
+      );
+
     if (
       existing &&
       Array.isArray(
