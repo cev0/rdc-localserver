@@ -50,9 +50,9 @@ const {
   const stats = qosunDoyusStatlariniHesabla(snapshot);
 
   assert.strictEqual(stats.totalTroops, 170);
-  assert.strictEqual(stats.totalAttack, 100 * 38 + 50 * 68 + 20 * 32);
-  assert.strictEqual(stats.totalDefense, 100 * 22 + 50 * 34 + 20 * 17);
-  assert.strictEqual(stats.totalHp, 100 * 9 + 50 * 10 + 20 * 7);
+  assert.strictEqual(stats.totalAttack, 100 * 32 + 50 * 73 + 20 * 31);
+  assert.strictEqual(stats.totalDefense, 100 * 33 + 50 * 34 + 20 * 17);
+  assert.strictEqual(stats.totalHp, 100 * 10 + 50 * 10 + 20 * 7);
   assert.strictEqual(stats.totalBattlePower, 100 * 3.2 + 50 * 4.9 + 20 * 2.5);
   assert.strictEqual(qosunGucunuHesabla(snapshot), 615);
   assert.strictEqual(stats.classes.warrior.troopCount, 100);
