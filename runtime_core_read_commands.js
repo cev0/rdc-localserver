@@ -55,7 +55,7 @@ function coreReadCommandleriniQeydEt(
     ensureFreshPlayerState,
     updateServerTime,
     makeClientState,
-    buildStateLocalMapPayload,
+    buildStateLocalMapPayloadAuthoritative,
     buildWorldMapPayloadForClient
   } = deps || {};
 
@@ -195,7 +195,7 @@ function coreReadCommandleriniQeydEt(
             );
 
       const payload =
-        buildStateLocalMapPayload(
+        await buildStateLocalMapPayloadAuthoritative(
           requestedStateId,
           playerId
         );

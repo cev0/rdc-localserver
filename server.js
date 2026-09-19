@@ -8038,7 +8038,7 @@ coreReadCommandleriniQeydEt(
           ),
     updateServerTime,
     makeClientState,
-    buildStateLocalMapPayload,
+    buildStateLocalMapPayloadAuthoritative,
     buildWorldMapPayloadForClient
   }
 );

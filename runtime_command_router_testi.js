@@ -19,6 +19,7 @@ const {
 
   const sent = [];
   const states = new Map();
+  const localMapReads = [];
 
   function getOrCreatePlayerState(playerId) {
     if (!states.has(playerId)) {
@@ -48,11 +49,19 @@ const {
         serverTimeUnixMs:
           state.serverTimeUnixMs
       }),
-      buildStateLocalMapPayload:
-        (stateId, playerId) => ({
-          stateId,
-          playerId
-        }),
+      buildStateLocalMapPayloadAuthoritative:
+        async (stateId, playerId) => {
+          localMapReads.push({
+            stateId,
+            playerId
+          });
+
+          return {
+            stateId,
+            playerId,
+            authority: "postgres_snapshot"
+          };
+        },
       buildWorldMapPayloadForClient:
         () => ({
           states: [1, 2, 3]
@@ -142,6 +151,47 @@ const {
     {
       playerId: "p1",
       serverTimeUnixMs: 12345
+    }
+  );
+
+
+  await router.dispatch({
+    type: "get_state_local_map",
+    msg: {
+      type: "get_state_local_map",
+      playerId: "p1",
+      stateId: 7
+    },
+    ws,
+    send,
+    nowMs: () => 250
+  });
+
+  const localMapResult = sent.pop();
+
+  assert.strictEqual(
+    localMapResult.type,
+    "state_local_map"
+  );
+
+  assert.deepStrictEqual(
+    localMapReads,
+    [
+      {
+        stateId: 7,
+        playerId: "p1"
+      }
+    ]
+  );
+
+  assert.deepStrictEqual(
+    JSON.parse(
+      localMapResult.payloadJson
+    ),
+    {
+      stateId: 7,
+      playerId: "p1",
+      authority: "postgres_snapshot"
     }
   );
 
