@@ -42,6 +42,9 @@ function bina(buildingId, level) {
       const unit = qosunMelumatiniAl(`${classId}_t${tier}`);
       assert.ok(unit, `${classId}_t${tier} kataloqda olmalıdır`);
       assert.strictEqual(unit.tier, tier);
+      const expectedPrefix = classId === "warrior" ? "1070" : classId === "vehicle" ? "1071" : "1072";
+      assert.strictEqual(unit.lastShelterArmyFamily, expectedPrefix);
+      assert.strictEqual(unit.lastShelterArmyId, `${expectedPrefix}${String(tier - 1).padStart(2, "0")}`);
       assert.strictEqual(unit.requiredBuildingLevel, BUILDING_LEVEL_BY_TIER[tier]);
       assert.strictEqual(unit.baseTrainingSeconds, BASE_TRAINING_SECONDS_BY_TIER[tier]);
       assert.ok(unit.stats.battlePower > 0);
@@ -56,6 +59,9 @@ function bina(buildingId, level) {
   const clientCatalog = kataloquClientUcunHazirla();
   assert.strictEqual(clientCatalog.length, 30);
   assert.strictEqual(clientCatalog[0].unitId, "warrior_t1");
+  assert.strictEqual(clientCatalog[0].lastShelterArmyId, "107000");
+  assert.strictEqual(clientCatalog[10].lastShelterArmyId, "107200");
+  assert.strictEqual(clientCatalog[20].lastShelterArmyId, "107100");
   assert.ok(clientCatalog[0].stats.consumption);
 
   const warrior1 = qosunMelumatiniAl("warrior_t1");
