@@ -313,8 +313,8 @@ const {
 
   assert.strictEqual(
     state.resources.food,
-    860,
-    "Direct server fallback troop kataloqunun server-side training xərcini tətbiq etməlidir."
+    390,
+    "Direct server fallback troop kataloqu Last Shelter warrior_t1 üçün 61 food/vahid server-side training xərcini tətbiq etməlidir."
   );
 
   const routedCode =
