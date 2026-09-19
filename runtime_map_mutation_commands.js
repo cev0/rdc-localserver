@@ -378,7 +378,7 @@ function mapMutationCommandleriniQeydEt(
 
       await deferAfterCommit(
         async () => {
-          pushStateToPlayerConnections(
+          await pushStateToPlayerConnections(
             playerId,
             state
           );
@@ -580,7 +580,7 @@ function mapMutationCommandleriniQeydEt(
             stateId
           );
 
-          pushStateToPlayerConnections(
+          await pushStateToPlayerConnections(
             playerId,
             state
           );

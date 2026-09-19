@@ -155,7 +155,15 @@ const {
         },
 
       pushStateToPlayerConnections:
-        (playerId, state) => {
+        async (playerId, state) => {
+          await new Promise(
+            resolve =>
+              setTimeout(
+                resolve,
+                5
+              )
+          );
+
           pushed.push({
             playerId,
             state: {

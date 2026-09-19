@@ -493,7 +493,7 @@ function accountCommandleriniQeydEt(
 
       const pushState =
         async () => {
-          pushStateToPlayerConnections(
+          await pushStateToPlayerConnections(
             playerId,
             state
           );

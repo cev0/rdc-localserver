@@ -17,6 +17,7 @@ const {
   const worldAuthoritativeLocks = [];
   const sent = [];
   const localMapPushes = [];
+  const statePushes = [];
   const worldPushes = [];
   const stateMapBroadcasts = [];
   const centerBroadcasts = [];
@@ -181,7 +182,21 @@ const {
       createRoadsAlongPath:
         () => [{ id: "road-1" }],
 
-      pushStateToPlayerConnections() {},
+      async pushStateToPlayerConnections(
+        playerId
+      ) {
+        await new Promise(
+          resolve =>
+            setTimeout(
+              resolve,
+              5
+            )
+        );
+
+        statePushes.push(
+          playerId
+        );
+      },
 
       teleportPlayerBaseInsideState:
         () => ({
@@ -342,6 +357,12 @@ const {
     "state"
   );
 
+  assert.deepStrictEqual(
+    statePushes,
+    ["p1"],
+    "Post-commit area expansion authoritative player push tamamlanana qədər gözləməlidir."
+  );
+
   sent.length = 0;
 
   await router.dispatch({
@@ -370,6 +391,12 @@ const {
   assert.strictEqual(
     state.worldPlacement.baseZ,
     100
+  );
+
+  assert.deepStrictEqual(
+    statePushes,
+    ["p1", "p1"],
+    "Teleport post-commit ardıcıllığı authoritative player push-u tamamlamadan map broadcast-a keçməməlidir."
   );
 
   sent.length = 0;

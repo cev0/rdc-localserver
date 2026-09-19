@@ -7898,7 +7898,7 @@ async function processPlayerDeadline(playerId) {
   }
 
   if (netice.stateChanged) {
-    pushStateToPlayerConnections(
+    await pushStateToPlayerConnections(
       playerId,
       state
     );
