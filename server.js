@@ -45,6 +45,10 @@ const {
   runtimeDeployPublicMelumatiniAl
 } = require("./runtime_deploy_config");
 
+const {
+  lastShelterServerBaslangicResurslariniAl
+} = require("./last_shelter_baslangic_resurslari");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -724,6 +728,7 @@ function ensureResourcesObject(state) {
     "silver",
     "fuel",
     "electricity",
+    "diamond",
     "money",
     "chips"
   ];
@@ -5584,18 +5589,8 @@ function makeDefaultState(playerId) {
       lastSettledAtMs: nowMs()
     },
 
-    resources: {
-      food: 50000,
-      water: 50000,
-      wood: 50000,
-      stone: 0,
-      iron: 50000,
-      silver: 0,
-      fuel: 50000,
-      electricity: 50000,
-      money: 50000,
-      chips: 50000
-    },
+    resources:
+      lastShelterServerBaslangicResurslariniAl(),
 
     oyuncuStatusu: {
       almaz: 0,
