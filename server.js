@@ -3633,6 +3633,14 @@ const runtimeStateSync =
     pushStateToPlayerConnections
   });
 
+connections.configureLastLocalDisconnectHandler(
+  playerId =>
+    runtimeStateSync
+      .markStale(
+        playerId
+      )
+);
+
 const runtimeWorldMapSync =
   runtimeWorldMapSyncControllerYarat({
     getWorldStateRuntime,

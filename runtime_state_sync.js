@@ -182,6 +182,24 @@ function runtimeStateSyncControllerYarat(
     options.logger ||
     console;
 
+  function markStale(
+    playerId
+  ) {
+    const id =
+      metnAl(
+        playerId,
+        128
+      );
+
+    if (!id) {
+      return false;
+    }
+
+    return markStaleFn(
+      id
+    );
+  }
+
   async function ensureFresh(
     playerId,
     secimler = null
@@ -205,7 +223,7 @@ function runtimeStateSyncControllerYarat(
         : {};
 
     if (opts.force === true) {
-      markStaleFn(
+      markStale(
         id
       );
     }
@@ -296,7 +314,7 @@ function runtimeStateSyncControllerYarat(
       return true;
     }
 
-    markStaleFn(
+    markStale(
       playerId
     );
 
@@ -338,6 +356,7 @@ function runtimeStateSyncControllerYarat(
   }
 
   return {
+    markStale,
     ensureFresh,
     publishInvalidation,
     handleDirect

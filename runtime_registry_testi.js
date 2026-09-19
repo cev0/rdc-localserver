@@ -36,6 +36,16 @@ const {
   const oldSocket = { id: "old" };
   const newSocket = { id: "new" };
 
+  const disconnectedPlayers = [];
+
+  connections.configureLastLocalDisconnectHandler(
+    playerId => {
+      disconnectedPlayers.push(
+        playerId
+      );
+    }
+  );
+
   connections.set("p1", oldSocket);
   connections.set("p1", newSocket);
 
@@ -51,6 +61,11 @@ const {
 
   assert.strictEqual(connections.get("p1"), newSocket);
   assert.strictEqual(connections.has("p1"), true);
+  assert.deepStrictEqual(
+    disconnectedPlayers,
+    [],
+    "Eyni player üçün başqa local socket qalırsa cache stale edilməməlidir."
+  );
 
   assert.strictEqual(
     connections.deleteIfCurrent("p1", newSocket),
@@ -58,6 +73,11 @@ const {
   );
 
   assert.strictEqual(connections.has("p1"), false);
+  assert.deepStrictEqual(
+    disconnectedPlayers,
+    ["p1"],
+    "Son local socket çıxanda player runtime cache stale işarələnməlidir."
+  );
 })();
 
 

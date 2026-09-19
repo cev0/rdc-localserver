@@ -76,6 +76,7 @@ class ConnectionRuntimeRegistry extends MapCompatibleRegistry {
     super("connections");
     this._socketSets = new Map();
     this._remotePublisher = null;
+    this._lastLocalDisconnectHandler = null;
   }
 
   configureRemotePublisher(publisher) {
@@ -83,6 +84,33 @@ class ConnectionRuntimeRegistry extends MapCompatibleRegistry {
       typeof publisher === "function"
         ? publisher
         : null;
+  }
+
+  configureLastLocalDisconnectHandler(handler) {
+    this._lastLocalDisconnectHandler =
+      typeof handler === "function"
+        ? handler
+        : null;
+  }
+
+  _lastLocalDisconnectQeydEt(playerId) {
+    if (!this._lastLocalDisconnectHandler) {
+      return;
+    }
+
+    try {
+      this._lastLocalDisconnectHandler(
+        playerId
+      );
+    }
+    catch (error) {
+      console.error(
+        "[RUNTIME_REGISTRY] Last local disconnect handler failed:",
+        error && error.message
+          ? error.message
+          : error
+      );
+    }
   }
 
   /**
@@ -173,6 +201,9 @@ class ConnectionRuntimeRegistry extends MapCompatibleRegistry {
     if (sockets.size === 0) {
       this._socketSets.delete(playerId);
       this._items.delete(playerId);
+      this._lastLocalDisconnectQeydEt(
+        playerId
+      );
       return true;
     }
 
@@ -188,8 +219,19 @@ class ConnectionRuntimeRegistry extends MapCompatibleRegistry {
   }
 
   delete(playerId) {
-    this._socketSets.delete(playerId);
-    return this._items.delete(playerId);
+    const hadLocalSockets =
+      this._socketSets.delete(playerId);
+
+    const deleted =
+      this._items.delete(playerId);
+
+    if (hadLocalSockets) {
+      this._lastLocalDisconnectQeydEt(
+        playerId
+      );
+    }
+
+    return deleted;
   }
 
   clear() {
