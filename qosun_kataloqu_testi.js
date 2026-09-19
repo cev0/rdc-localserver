@@ -61,6 +61,11 @@ function bina(buildingId, level) {
   const warrior1 = qosunMelumatiniAl("warrior_t1");
   assert.strictEqual(warrior1.displayNameAz, "Əsgər");
   assert.deepStrictEqual(warrior1.costPerUnit, [{ type: "food", amount: 14 }]);
+  assert.strictEqual(warrior1.stats.attackSpeed, 6);
+  assert.strictEqual(warrior1.stats.defense, 14);
+  assert.strictEqual(warrior1.stats.hp, 8);
+  assert.strictEqual(warrior1.stats.marchSpeed, 8);
+  assert.strictEqual(warrior1.stats.loadCapacity, 8);
 
   const shooter2 = qosunMelumatiniAl("shooter_t2");
   assert.deepStrictEqual(shooter2.costPerUnit, [
@@ -73,6 +78,18 @@ function bina(buildingId, level) {
     { type: "fuel", amount: 23 },
     { type: "iron", amount: 12 }
   ]);
+  assert.strictEqual(vehicle2.stats.attackSpeed, 15);
+  assert.strictEqual(vehicle2.stats.defense, 11);
+  assert.strictEqual(vehicle2.stats.hp, 4);
+  assert.strictEqual(vehicle2.stats.marchSpeed, 16.1);
+  assert.strictEqual(vehicle2.stats.loadCapacity, 6);
+
+  const shooter10 = qosunMelumatiniAl("shooter_t10");
+  assert.strictEqual(shooter10.stats.attackSpeed, 65);
+  assert.strictEqual(shooter10.stats.defense, 49);
+  assert.strictEqual(shooter10.stats.hp, 15);
+  assert.strictEqual(shooter10.stats.marchSpeed, 8);
+  assert.strictEqual(shooter10.stats.loadCapacity, 12);
 
   assert.strictEqual(qosunKilidiniYoxla({}, bina("fighter_camp", 4), "warrior_t3").success, false);
   assert.strictEqual(qosunKilidiniYoxla({}, bina("fighter_camp", 5), "warrior_t3").success, true);
