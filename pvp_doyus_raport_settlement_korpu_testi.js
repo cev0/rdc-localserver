@@ -131,6 +131,7 @@ function defenderStateHazirla(
 
     let runnerCagirildi =
       0;
+    const sharedSyncCalls = [];
 
     const result =
       await pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
@@ -187,6 +188,34 @@ function defenderStateHazirla(
               throw new Error(
                 "zeroing recall işləməməlidir"
               );
+            },
+
+          sharedSyncFn:
+            async (
+              client,
+              stateId,
+              playerId,
+              activeOperations,
+              nowMs
+            ) => {
+              sharedSyncCalls.push({
+                client,
+                stateId,
+                playerId,
+                activeOperations:
+                  JSON.parse(
+                    JSON.stringify(
+                      activeOperations
+                    )
+                  ),
+                nowMs
+              });
+
+              return {
+                success: true,
+                deyisdi: true,
+                count: 1
+              };
             }
         }
       );
@@ -214,6 +243,35 @@ function defenderStateHazirla(
     assert.strictEqual(
       result.reason,
       "target_relocated_before_settlement"
+    );
+
+    assert.strictEqual(
+      sharedSyncCalls.length,
+      1,
+      "Relocated-target camp state və shared convoy projection eyni transaction-da sinxron edilməlidir."
+    );
+
+    assert.strictEqual(
+      sharedSyncCalls[0].stateId,
+      1
+    );
+
+    assert.strictEqual(
+      sharedSyncCalls[0].playerId,
+      "oyuncu_a"
+    );
+
+    assert.strictEqual(
+      sharedSyncCalls[0].nowMs,
+      6000
+    );
+
+    assert.strictEqual(
+      sharedSyncCalls[0]
+        .activeOperations
+        .konvoy_1
+        .status,
+      "camping_at_abandoned_target"
     );
 
     assert.deepStrictEqual(

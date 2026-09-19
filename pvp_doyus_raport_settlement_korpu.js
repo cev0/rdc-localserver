@@ -27,6 +27,9 @@ const {
 const {
   stateTeminEt
 } = require("./konvoy_emeliyyat_sistemi");
+const {
+  oyuncuKonvoylariniSinxronEtClient
+} = require("./dovlet_konvoy_runtime_postgres");
 
 function metnAl(v, max = 128) {
   return typeof v === "string" ? v.trim().slice(0, max).toLowerCase() : "";
@@ -50,6 +53,75 @@ function kopyala(v) {
   return v == null
     ? null
     : JSON.parse(JSON.stringify(v));
+}
+
+function dovletIdAl(state) {
+  const n =
+    Number(
+      state &&
+      state.worldPlacement &&
+      state.worldPlacement.stateId
+    );
+
+  return Number.isInteger(n) &&
+    n > 0
+      ? n
+      : 1;
+}
+
+function aktivEmeliyyatlariAl(state) {
+  const active =
+    state &&
+    state.konvoyEmeliyyatlari &&
+    state.konvoyEmeliyyatlari.activeByConvoy;
+
+  return active &&
+    typeof active === "object" &&
+    !Array.isArray(active)
+      ? active
+      : {};
+}
+
+async function attackerProjectionunuTransactiondaSinxronEt(
+  syncFn,
+  trx,
+  attackerState,
+  attackerId,
+  nowMs
+) {
+  if (
+    typeof syncFn !== "function" ||
+    !trx ||
+    !trx.client
+  ) {
+    throw new Error(
+      "PvP settlement shared convoy projection sync məlumatı natamamdır."
+    );
+  }
+
+  const netice =
+    await syncFn(
+      trx.client,
+      dovletIdAl(attackerState),
+      attackerId,
+      aktivEmeliyyatlariAl(
+        attackerState
+      ),
+      nowMs
+    );
+
+  if (
+    !netice ||
+    netice.success !== true
+  ) {
+    throw new Error(
+      netice && netice.message
+        ? netice.message
+        : "PvP settlement attacker convoy projection sinxron edilə bilmədi."
+    );
+  }
+
+  return netice;
 }
 
 function settlementdenEvvelHedefiYoxla(
@@ -318,6 +390,9 @@ async function pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
   const postCommitRecallFn = secimler && typeof secimler.postCommitRecallFn === "function"
     ? secimler.postCommitRecallFn
     : pvpZeroingKonvoyRecalliniPostCommitIcraEt;
+  const sharedSyncFn = secimler && typeof secimler.sharedSyncFn === "function"
+    ? secimler.sharedSyncFn
+    : oyuncuKonvoylariniSinxronEtClient;
 
   const defenderId = metnAl(defender && defender.playerId, 128);
 
@@ -357,6 +432,15 @@ async function pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
       camp.deyisenPlayerIdleri = [
         attackerId
       ];
+
+      camp.sharedConvoySync =
+        await attackerProjectionunuTransactiondaSinxronEt(
+          sharedSyncFn,
+          trx,
+          attackerState,
+          attackerId,
+          nowMs
+        );
 
       return camp;
     }
@@ -441,6 +525,15 @@ async function pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
         : "";
     }
 
+    innerSettlement.sharedConvoySync =
+      await attackerProjectionunuTransactiondaSinxronEt(
+        sharedSyncFn,
+        trx,
+        attackerState,
+        attackerId,
+        nowMs
+      );
+
     return innerSettlement;
   }, runnerSecimleri);
 
@@ -474,6 +567,7 @@ async function pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt(
 }
 
 module.exports = {
+  attackerProjectionunuTransactiondaSinxronEt,
   settlementdenEvvelHedefiYoxla,
   relokasiyaKampiniTetbiqEt,
   pvpDoyusSettlementVeRaportlariniPostgresIleIcraEt
