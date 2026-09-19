@@ -9,6 +9,10 @@ const serverKod = fs.readFileSync(
   "utf8"
 );
 
+const {
+  lastShelterServerBaslangicResurslariniAl
+} = require("./last_shelter_baslangic_resurslari");
+
 function blokAl(startText, endText) {
   const start = serverKod.indexOf(startText);
   const end = serverKod.indexOf(endText, start + startText.length);
@@ -44,8 +48,15 @@ const defaultBloku = blokAl(
   "function getOrCreatePlayerState"
 );
 assert.ok(
-  defaultBloku.includes("stone: 0"),
-  "Yeni oyunçu state-i stone sahəsini explicit saxlamalıdır."
+  defaultBloku.includes(
+    "lastShelterServerBaslangicResurslariniAl()"
+  ),
+  "Yeni oyunçu resursları Last Shelter başlanğıc kataloqundan gəlməlidir."
+);
+assert.strictEqual(
+  lastShelterServerBaslangicResurslariniAl().stone,
+  1500,
+  "Yeni oyunçu Last Shelter qaydasına görə 1500 daşla başlamalıdır."
 );
 
 const spendBloku = blokAl(
