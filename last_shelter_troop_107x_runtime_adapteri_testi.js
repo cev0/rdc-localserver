@@ -1,0 +1,63 @@
+"use strict";
+
+const assert = require("assert");
+const { TROOP_107X } = require("./last_shelter_troop_107x_reference");
+const {
+  verified107xProjection,
+  applyVerified107xToRdcUnit,
+  applyVerified107xBatch,
+  verified107xIds
+} = require("./last_shelter_troop_107x_runtime_adapteri");
+
+const ids = verified107xIds();
+assert.deepStrictEqual(ids, ["107000", "107001", "107002", "107003", "107004", "107005", "107006", "107007"]);
+
+for (const id of ids) {
+  const source = TROOP_107X[id];
+  const projection = verified107xProjection(id);
+  assert(projection, `missing projection ${id}`);
+  assert.strictEqual(projection.baseTrainingSeconds, source.time);
+  assert.strictEqual(projection.stats.attack, source.attack);
+  assert.strictEqual(projection.stats.attackSpeed, source.attack);
+  assert.strictEqual(projection.stats.defense, source.defen);
+  assert.strictEqual(projection.stats.hp, source.health);
+  assert.strictEqual(projection.stats.battlePower, source.power);
+  assert.strictEqual(projection.stats.marchSpeed, source.speed);
+  assert.strictEqual(projection.stats.loadCapacity, source.load);
+  assert.strictEqual(projection.stats.upkeep, source.upkeep);
+  assert.strictEqual(projection.stats.healResource, source.heal_res);
+  assert.strictEqual(projection.stats.healTime, source.heal_time);
+
+  const costs = Object.fromEntries(projection.costPerUnit.map(x => [x.type, x.amount]));
+  for (const resource of ["food", "wood", "stone", "iron"]) {
+    if (source[resource] > 0) assert.strictEqual(costs[resource], source[resource]);
+    else assert.strictEqual(costs[resource], undefined);
+  }
+}
+
+const legacy = {
+  unitId: "warrior_t8",
+  lastShelterArmyId: "107007",
+  baseTrainingSeconds: 999,
+  costPerUnit: [{ type: "food", amount: 999 }],
+  stats: { attackSpeed: 999, defense: 999, hp: 999, consumption: { resourceId: "food", amount: 999 } },
+  requiredBuildingLevel: 22
+};
+const overlaid = applyVerified107xToRdcUnit(legacy);
+assert.strictEqual(overlaid.unitId, legacy.unitId);
+assert.strictEqual(overlaid.requiredBuildingLevel, 22, "unverified unlock metadata must be preserved, not invented");
+assert.strictEqual(overlaid.baseTrainingSeconds, 118);
+assert.strictEqual(overlaid.stats.attack, 70);
+assert.strictEqual(overlaid.stats.attackSpeed, 70);
+assert.strictEqual(overlaid.stats.defense, 41);
+assert.strictEqual(overlaid.stats.hp, 15);
+assert.strictEqual(overlaid.stats.consumption.amount, TROOP_107X["107007"].upkeep);
+assert.deepStrictEqual(Object.fromEntries(overlaid.costPerUnit.map(x => [x.type, x.amount])), { food: 203, wood: 108, stone: 4, iron: 25 });
+assert.strictEqual(overlaid.lastShelterVerified, true);
+
+const unknown = { unitId: "x", lastShelterArmyId: "107999", stats: { attackSpeed: 1 } };
+assert.strictEqual(applyVerified107xToRdcUnit(unknown), unknown, "unknown reference ids must not receive guessed values");
+assert.deepStrictEqual(applyVerified107xBatch([unknown]), [unknown]);
+assert.deepStrictEqual(applyVerified107xBatch(null), []);
+
+console.log("Last Shelter 107x runtime adapter regression: OK");
