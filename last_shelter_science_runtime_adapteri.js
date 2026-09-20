@@ -14,14 +14,35 @@ function tamEded(value, fallback = 0) {
   return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : fallback;
 }
 
+function scienceQueueTipidir(queue) {
+  return metnAl(queue && (queue.type || queue.queueType), 32).toUpperCase() === SCIENCE_PROTOCOL.queueType;
+}
+
+function queueBosdur(queue) {
+  const status = metnAl(queue && queue.status, 32).toLowerCase();
+  return !status || status === "free" || status === "completed" || status === "done" || status === "cancelled";
+}
+
 function scienceQueueMesguldur(state) {
   const queues = Array.isArray(state && state.queues) ? state.queues : [];
-  return queues.some(queue => {
-    if (!queue || typeof queue !== "object") return false;
-    const type = metnAl(queue.type || queue.queueType, 32).toUpperCase();
-    const status = metnAl(queue.status, 32).toLowerCase();
-    return type === SCIENCE_PROTOCOL.queueType && status !== "completed" && status !== "done" && status !== "cancelled";
-  });
+  return queues.some(queue => scienceQueueTipidir(queue) && !queueBosdur(queue));
+}
+
+function scienceQueueSec(state, queueUuid) {
+  const queues = Array.isArray(state && state.queues) ? state.queues : [];
+  const uuid = metnAl(queueUuid, 128);
+
+  if (uuid) {
+    const queue = queues.find(item => metnAl(item && item.uuid, 128) === uuid);
+    if (!queue || !scienceQueueTipidir(queue) || !queueBosdur(queue)) return null;
+    return queue;
+  }
+
+  // ScienceService.researchOneScience blank quuid -> getFreeQueue(... SCIENCE, 1).
+  // Prefer the verified primary queue (qid=1); if qid is absent, preserve list order.
+  const freeScience = queues.filter(queue => scienceQueueTipidir(queue) && queueBosdur(queue));
+  return freeScience.find(queue => tamEded(queue && (queue.qid || queue.queueId), 0) === 1) ||
+    freeScience.find(queue => tamEded(queue && (queue.qid || queue.queueId), 0) === 0) || null;
 }
 
 function scienceArtıqArasdirilib(state, itemId) {
@@ -44,7 +65,7 @@ function scienceArtıqArasdirilib(state, itemId) {
 
 function verifiedScienceResearchPlanHazirla(state, request, nowUnixMs = Date.now()) {
   const itemId = metnAl(request && request.itemId, 32);
-  const queueUuid = metnAl(request && (request.quuid || request.queueUuid), 128);
+  const requestedQueueUuid = metnAl(request && (request.quuid || request.queueUuid), 128);
   const optionalGold = tamEded(request && request.gold, 0);
 
   if (!itemId) return { ok: false, code: "SCIENCE_ITEM_ID_REQUIRED" };
@@ -52,17 +73,15 @@ function verifiedScienceResearchPlanHazirla(state, request, nowUnixMs = Date.now
   const science = scienceMelumatiniAl(itemId);
   if (!science) return { ok: false, code: "SCIENCE_ITEM_UNVERIFIED" };
 
-  if (SCIENCE_PROTOCOL.queueRequired && !queueUuid) {
-    return { ok: false, code: "SCIENCE_QUEUE_UUID_REQUIRED" };
-  }
-
-  if (SCIENCE_PROTOCOL.queueRequired && scienceQueueMesguldur(state)) {
-    return { ok: false, code: SCIENCE_PROTOCOL.queueFullError };
-  }
+  const selectedQueue = scienceQueueSec(state, requestedQueueUuid);
+  if (!selectedQueue) return { ok: false, code: SCIENCE_PROTOCOL.queueFullError };
 
   if (SCIENCE_PROTOCOL.duplicateItemRejected && scienceArtıqArasdirilib(state, itemId)) {
     return { ok: false, code: "SCIENCE_ALREADY_RESEARCHED" };
   }
+
+  const queueUuid = metnAl(selectedQueue.uuid, 128);
+  if (!queueUuid) return { ok: false, code: SCIENCE_PROTOCOL.queueFullError };
 
   const startUnixMs = tamEded(nowUnixMs, Date.now());
   const finishUnixMs = startUnixMs + science.researchTimeSeconds * 1000;
@@ -71,7 +90,13 @@ function verifiedScienceResearchPlanHazirla(state, request, nowUnixMs = Date.now
     ok: true,
     protocol: SCIENCE_PROTOCOL.researchRequest,
     itemId,
-    queue: { uuid: queueUuid, type: SCIENCE_PROTOCOL.queueType, startUnixMs, finishUnixMs },
+    queue: {
+      uuid: queueUuid,
+      qid: tamEded(selectedQueue.qid || selectedQueue.queueId, 0),
+      type: SCIENCE_PROTOCOL.queueType,
+      startUnixMs,
+      finishUnixMs
+    },
     optionalGold,
     buildingCondition: science.buildingCondition,
     researchNeedRaw: science.researchNeedRaw,
@@ -95,27 +120,30 @@ function verifiedScienceResearchPlaniniStateEt(state, plan) {
   if (!scienceMelumatiniAl(plan.itemId)) {
     return { ok: false, code: "SCIENCE_ITEM_UNVERIFIED" };
   }
-  if (scienceQueueMesguldur(state)) {
-    return { ok: false, code: SCIENCE_PROTOCOL.queueFullError };
-  }
   if (scienceArtıqArasdirilib(state, plan.itemId)) {
     return { ok: false, code: "SCIENCE_ALREADY_RESEARCHED" };
   }
 
   if (!Array.isArray(state.queues)) state.queues = [];
-  const queue = {
-    uuid: metnAl(plan.queue && plan.queue.uuid, 128),
-    type: SCIENCE_PROTOCOL.queueType,
-    status: "running",
-    itemId: metnAl(plan.itemId, 32),
-    startUnixMs: tamEded(plan.queue && plan.queue.startUnixMs),
-    finishUnixMs: tamEded(plan.queue && plan.queue.finishUnixMs),
-    source: "last_shelter_v1.250.102_verified"
-  };
-  if (!queue.uuid || !queue.itemId || queue.finishUnixMs < queue.startUnixMs) {
+  const queueUuid = metnAl(plan.queue && plan.queue.uuid, 128);
+  const queue = state.queues.find(item => metnAl(item && item.uuid, 128) === queueUuid);
+  if (!queue || !scienceQueueTipidir(queue) || !queueBosdur(queue)) {
+    return { ok: false, code: SCIENCE_PROTOCOL.queueFullError };
+  }
+
+  const itemId = metnAl(plan.itemId, 32);
+  const startUnixMs = tamEded(plan.queue && plan.queue.startUnixMs);
+  const finishUnixMs = tamEded(plan.queue && plan.queue.finishUnixMs);
+  if (!queueUuid || !itemId || finishUnixMs < startUnixMs) {
     return { ok: false, code: "SCIENCE_PLAN_INVALID" };
   }
-  state.queues.push(queue);
+
+  queue.type = SCIENCE_PROTOCOL.queueType;
+  queue.status = "running";
+  queue.itemId = itemId;
+  queue.startUnixMs = startUnixMs;
+  queue.finishUnixMs = finishUnixMs;
+  queue.source = "last_shelter_v1.250.102_verified";
   return { ok: true, queue: { ...queue } };
 }
 
@@ -128,7 +156,7 @@ function verifiedScienceResearchYekunlasdir(state, nowUnixMs = Date.now()) {
 
   const completed = [];
   for (const queue of state.queues) {
-    if (!queue || metnAl(queue.type || queue.queueType, 32).toUpperCase() !== SCIENCE_PROTOCOL.queueType) continue;
+    if (!queue || !scienceQueueTipidir(queue)) continue;
     if (metnAl(queue.status, 32).toLowerCase() !== "running") continue;
     const itemId = metnAl(queue.itemId, 32);
     if (!scienceMelumatiniAl(itemId)) continue;
@@ -144,6 +172,7 @@ function verifiedScienceResearchYekunlasdir(state, nowUnixMs = Date.now()) {
 
 module.exports = {
   scienceQueueMesguldur,
+  scienceQueueSec,
   scienceArtıqArasdirilib,
   verifiedScienceResearchPlanHazirla,
   verifiedScienceResearchPlaniniStateEt,
