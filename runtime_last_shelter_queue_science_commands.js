@@ -38,6 +38,10 @@ function serverVaxtiAl(nowMs) {
   return typeof nowMs === "function" ? nowMs() : Date.now();
 }
 
+function clone(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+
 function queueListesiAl(state) {
   const direct = state && Array.isArray(state.queues) ? state.queues : null;
   if (direct) return direct;
@@ -73,6 +77,16 @@ function scienceTopologyProjectionHazirla() {
   return scienceTopologyIdleriniAl()
     .map(id=>scienceTopologyMelumatiniAl(id))
     .filter(Boolean);
+}
+
+// Research completion is server-authoritative in state.science. Expose a
+// detached snapshot so clients can resync completed levels without mutating
+// persisted state or inferring levels from queue history.
+function scienceRuntimeProjectionHazirla(state) {
+  const science = state && state.science;
+  if (Array.isArray(science)) return clone(science);
+  if (science && typeof science === "object") return clone(science);
+  return {};
 }
 
 function lastShelterQueueScienceCommandleriniQeydEt(router,deps) {
@@ -116,6 +130,17 @@ function lastShelterQueueScienceCommandleriniQeydEt(router,deps) {
     send(ws,{type:"science.topology",playerId:authCheck.playerId,serverTimeUnixMs:serverVaxtiAl(nowMs),topology});
   },{authRequired:true,mutation:false});
 
+  router.register("science.state",async ({ws,msg,send,nowMs})=>{
+    const authCheck=authYoxla(ws,msg,send); if(!authCheck) return;
+    const state=getOrCreatePlayerState(authCheck.playerId);
+    send(ws,{
+      type:"science.state",
+      playerId:authCheck.playerId,
+      serverTimeUnixMs:serverVaxtiAl(nowMs),
+      science:scienceRuntimeProjectionHazirla(state)
+    });
+  },{authRequired:true,mutation:false});
+
   router.register("science.prerequisite",async ({ws,msg,send,nowMs})=>{
     const authCheck=authYoxla(ws,msg,send); if(!authCheck) return;
     const state=getOrCreatePlayerState(authCheck.playerId);
@@ -151,5 +176,6 @@ module.exports={
   queueSnapshotHazirla,
   scienceCatalogProjectionHazirla,
   scienceTopologyProjectionHazirla,
+  scienceRuntimeProjectionHazirla,
   lastShelterQueueScienceCommandleriniQeydEt
 };
