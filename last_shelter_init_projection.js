@@ -48,6 +48,11 @@ const {
   LAST_SHELTER_REPAY_REFERENCE
 } = require("./last_shelter_repay_reference");
 
+const {
+  getVerifiedStoreReward,
+  getVerifiedStoreRewardIds
+} = require("./last_shelter_store_resource_rewards");
+
 const LONG_MAX_STRING = "9223372036854775807";
 
 function clone(value) {
@@ -397,6 +402,13 @@ function sevenDaysProjectionHazirla(state, uid = "") {
   };
 }
 
+function storeProjectionHazirla() {
+  return getVerifiedStoreRewardIds().map(id => ({
+    id:String(id),
+    reward:getVerifiedStoreReward(id)
+  }));
+}
+
 function repayProjectionHazirla(state) {
   const runtime =
     state &&
@@ -630,6 +642,8 @@ function lastShelterVerifiedInitProjectionHazirla(
       initTruckProjectionHazirla(state),
     world:
       worldProjectionHazirla(state),
+    store:
+      storeProjectionHazirla(),
     activity:
       activityReferenceProjectionHazirla(),
     firstPayReward:
@@ -677,6 +691,7 @@ module.exports = {
   helicopterProjectionHazirla,
   worldProjectionHazirla,
   sevenDaysProjectionHazirla,
+  storeProjectionHazirla,
   repayProjectionHazirla,
   auxiliaryProjectionHazirla,
   lastShelterVerifiedInitProjectionHazirla
