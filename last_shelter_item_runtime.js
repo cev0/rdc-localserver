@@ -5,6 +5,9 @@ const {
   originalGoodAl
 } = require("./last_shelter_goods_reference");
 const {
+  goodsStructureAl
+} = require("./last_shelter_goods_structure_reference");
+const {
   itemBuyPlaniniHazirla
 } = require("./last_shelter_item_buy_contract");
 const {
@@ -28,6 +31,22 @@ function positiveInt(value) {
   return Number.isFinite(n) && n > 0
     ? Math.trunc(n)
     : 0;
+}
+
+function verifiedGoodsRuntimeConfigAl(itemId) {
+  const original =
+    originalGoodAl(itemId);
+  const structure =
+    goodsStructureAl(itemId);
+
+  if (!original && !structure) {
+    return null;
+  }
+
+  return {
+    ...(structure || {}),
+    ...(original || {})
+  };
 }
 
 function goodsItemProjectionHazirla(goods, itemId, count, uuidFactory) {
@@ -117,10 +136,10 @@ function lastShelterItemBuyIcraEt(
       ? String(params.itemId).trim()
       : "";
 
-  const goods =
+  const originalGoods =
     originalGoodAl(itemId);
 
-  if (!goods) {
+  if (!originalGoods) {
     return {
       success: false,
       code: "INVALID_OPT",
@@ -129,6 +148,11 @@ function lastShelterItemBuyIcraEt(
         "Bu item ucun original Last Shelter goods.xml qiymeti tesdiqlenmeyib."
     };
   }
+
+  const goods =
+    verifiedGoodsRuntimeConfigAl(
+      itemId
+    );
 
   const plan =
     itemBuyPlaniniHazirla(
@@ -212,6 +236,7 @@ function lastShelterItemBuyIcraEt(
 }
 
 module.exports = {
+  verifiedGoodsRuntimeConfigAl,
   goodsItemProjectionHazirla,
   normalItemElaveEt,
   lastShelterItemBuyIcraEt
