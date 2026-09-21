@@ -15,6 +15,9 @@ const {
 const {
   goldInitProjectionHazirla
 } = require("./last_shelter_gold_wallet");
+const {
+  activityReferenceProjectionHazirla
+} = require("./last_shelter_activity_reference");
 
 const {
   LAST_SHELTER_FIRST_PAY_REWARD,
@@ -602,6 +605,8 @@ function lastShelterVerifiedInitProjectionHazirla(
       initTruckProjectionHazirla(state),
     world:
       worldProjectionHazirla(state),
+    activity:
+      activityReferenceProjectionHazirla(),
     firstPayReward:
       clone(LAST_SHELTER_FIRST_PAY_REWARD),
     onlineDuration:
