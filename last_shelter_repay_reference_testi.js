@@ -5,7 +5,8 @@ const {
   LAST_SHELTER_REPAY_REFERENCE,
   repayRewardThresholdAl,
   repayEligibleRewardsAl,
-  repayRuntimeDefaultHazirla
+  repayRuntimeDefaultHazirla,
+  lastShelterRepayRuntimeTeminEt
 } = require("./last_shelter_repay_reference");
 
 assert.deepStrictEqual(
@@ -46,6 +47,22 @@ assert.deepStrictEqual(
 
 assert.deepStrictEqual(
   repayRuntimeDefaultHazirla(),
+  {payPoint:0,claimedPoints:[]}
+);
+
+const runtimeState={
+  lastShelterRepay:{
+    payPoint:"2000.9",
+    claimedPoints:[2000,"400",400,-1,"bad"]
+  }
+};
+assert.deepStrictEqual(
+  lastShelterRepayRuntimeTeminEt(runtimeState),
+  {payPoint:2000,claimedPoints:[400,2000]}
+);
+const emptyState={};
+assert.deepStrictEqual(
+  lastShelterRepayRuntimeTeminEt(emptyState),
   {payPoint:0,claimedPoints:[]}
 );
 
