@@ -15,6 +15,9 @@ const {
   const sent = [];
   const lockCalls = [];
   const deadlines = [];
+  let levelDataOverride = null;
+  let buildingSpendCalls = 0;
+  let upgradeJobCalls = 0;
 
   const state = {
     playerId: "p1",
@@ -151,17 +154,20 @@ const {
       () => false,
 
     getLevelData:
-      () => ({
-        cost: [],
-        buildTimeSeconds: 1
-      }),
+      () =>
+        levelDataOverride || {
+          cost: [],
+          buildTimeSeconds: 1
+        },
 
     hasEnoughResources:
       () => ({
         ok: true
       }),
 
-    spendResources() {},
+    spendResources() {
+      buildingSpendCalls += 1;
+    },
 
     getBuilderSlotsRequiredForBuilding:
       () => 1,
@@ -175,12 +181,15 @@ const {
       () => 10,
 
     createUpgradeJob:
-      () => ({
-        jobId: "job-1",
-        targetLevel: 2,
-        endsAtMs: 2000,
-        durationMs: 1000
-      })
+      () => {
+        upgradeJobCalls += 1;
+        return {
+          jobId: "job-1",
+          targetLevel: 2,
+          endsAtMs: 2000,
+          durationMs: 1000
+        };
+      }
   };
 
   gameplayMutationCommandleriniQeydEt(
@@ -316,6 +325,52 @@ const {
     390,
     "Direct server fallback troop kataloqu Last Shelter warrior_t1 üçün 61 food/vahid server-side training xərcini tətbiq etməlidir."
   );
+
+  sent.length = 0;
+  levelDataOverride = {
+    source:
+      "last_shelter_verified_level_gap",
+    unavailable: true,
+    targetLevel: 6,
+    cost: []
+  };
+
+  state.buildings.push({
+    instanceId: "hq-1",
+    buildingId: "hq",
+    level: 5,
+    isCompleted: true,
+    hasRoadAccess: true
+  });
+
+  await router.dispatch({
+    type: "upgrade_request",
+    msg: {
+      type: "upgrade_request",
+      playerId: "p1",
+      buildingInstanceId: "hq-1"
+    },
+    ws,
+    send,
+    nowMs: () => 400
+  });
+
+  assert.strictEqual(
+    sent[0].code,
+    "BUILDING_LEVEL_REFERENCE_INCOMPLETE"
+  );
+  assert.strictEqual(
+    buildingSpendCalls,
+    0,
+    "Verified level gap zamanı resurs çıxılmamalıdır."
+  );
+  assert.strictEqual(
+    upgradeJobCalls,
+    0,
+    "Verified level gap zamanı upgrade job yaranmamalıdır."
+  );
+
+  levelDataOverride = null;
 
   const routedCode =
     fs.readFileSync(
