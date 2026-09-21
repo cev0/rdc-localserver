@@ -6,12 +6,16 @@ on:
     paths:
       - 'last_shelter_init_projection.js'
       - 'last_shelter_init_projection_testi.js'
+      - 'last_shelter_troop_transfer_progression_reference.js'
+      - 'last_shelter_troop_transfer_progression_reference_testi.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-init-projection.yml'
   pull_request:
     paths:
       - 'last_shelter_init_projection.js'
       - 'last_shelter_init_projection_testi.js'
+      - 'last_shelter_troop_transfer_progression_reference.js'
+      - 'last_shelter_troop_transfer_progression_reference_testi.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-init-projection.yml'
 
@@ -23,4 +27,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - run: node last_shelter_troop_transfer_progression_reference_testi.js
       - run: node last_shelter_init_projection_testi.js
