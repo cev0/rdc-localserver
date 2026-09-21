@@ -145,7 +145,7 @@ const UNIT_TESTLERI = [
   "xerite_dusmen_qaydalari_testi.js",
   "xerite_resurs_toplama_pg_mutasiya_testi.js",
   "xestexana_inkisaf_override_testi.js",
-  "xestexana_pg_mutasiya_testi.js"
+  "xestexana_pg_mutasiya_testi.js",
   "last_shelter_fresh_init_envelope_reference_testi.js",
   "last_shelter_item_tuning_kataloqu_testi.js",
   "last_shelter_missile_kataloqu_testi.js",
