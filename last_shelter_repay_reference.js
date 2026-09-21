@@ -200,9 +200,49 @@ function repayRuntimeDefaultHazirla() {
   };
 }
 
+function lastShelterRepayRuntimeTeminEt(state) {
+  if (!state || typeof state !== "object") {
+    return null;
+  }
+
+  if (
+    !state.lastShelterRepay ||
+    typeof state.lastShelterRepay !== "object" ||
+    Array.isArray(state.lastShelterRepay)
+  ) {
+    state.lastShelterRepay =
+      repayRuntimeDefaultHazirla();
+  }
+
+  const runtime =
+    state.lastShelterRepay;
+
+  runtime.payPoint =
+    Math.max(
+      0,
+      Math.trunc(
+        Number(runtime.payPoint) || 0
+      )
+    );
+
+  runtime.claimedPoints =
+    Array.isArray(runtime.claimedPoints)
+      ? Array.from(
+          new Set(
+            runtime.claimedPoints
+              .map(value=>Math.trunc(Number(value)))
+              .filter(value=>Number.isFinite(value) && value >= 0)
+          )
+        ).sort((a,b)=>a-b)
+      : [];
+
+  return runtime;
+}
+
 module.exports = {
   LAST_SHELTER_REPAY_REFERENCE,
   repayRewardThresholdAl,
   repayEligibleRewardsAl,
-  repayRuntimeDefaultHazirla
+  repayRuntimeDefaultHazirla,
+  lastShelterRepayRuntimeTeminEt
 };
