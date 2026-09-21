@@ -1,13 +1,14 @@
 "use strict";
 
 /*
- * Verified Last Shelter v1.250.x 107000-107007 troop rows recovered from the
- * reference server's init army payloads.  Only fields that were stable across
- * the inspected reference snapshots are preserved here.  `free` is deliberately
- * excluded because it is player-owned mutable quantity, not troop configuration.
+ * Verified Last Shelter v1.250.x 107x troop rows recovered from the reference
+ * server's init army payloads. Only fields stable across inspected reference
+ * snapshots are preserved. `free` is deliberately excluded because it is a
+ * player-owned mutable quantity, not troop configuration.
  *
- * Do not infer unlock buildings/levels from the numeric id: those contracts are
- * kept separate until their source rows/handlers are verified.
+ * 107319 is intentionally not promoted yet: its observed speed changes between
+ * reference snapshots, so the static/effect split must be verified first.
+ * Do not infer unlock buildings/levels from numeric ids.
  */
 
 const TROOP_107X = Object.freeze({
@@ -18,7 +19,10 @@ const TROOP_107X = Object.freeze({
   "107004": Object.freeze({ upkeep: 1.0416666269302368, heal_res: 30, wood: 57, range: 0, speed: 9, stone: 0, defen: 22, health: 9, iron: 9, march: 0, time: 58, level: 0, food: 164, heal_time: 40, power: 3.200000047683716, load: 10, attack: 38, move: 10 }),
   "107005": Object.freeze({ upkeep: 1.25, heal_res: 40, wood: 0, range: 0, speed: 8, stone: 0, defen: 56, health: 22, iron: 18, march: 0, time: 75, level: 0, food: 245, heal_time: 32, power: 4, load: 10, attack: 24, move: 10 }),
   "107006": Object.freeze({ upkeep: 1.4583333730697632, heal_res: 50, wood: 0, range: 0, speed: 8, stone: 3, defen: 68, health: 26, iron: 22, march: 0, time: 95, level: 0, food: 253, heal_time: 26, power: 4.900000095367432, load: 11, attack: 29, move: 10 }),
-  "107007": Object.freeze({ upkeep: 1.6666666269302368, heal_res: 50, wood: 108, range: 0, speed: 9, stone: 4, defen: 41, health: 15, iron: 25, march: 0, time: 118, level: 0, food: 203, heal_time: 22, power: 5.900000095367432, load: 11, attack: 70, move: 10 })
+  "107007": Object.freeze({ upkeep: 1.6666666269302368, heal_res: 50, wood: 108, range: 0, speed: 9, stone: 4, defen: 41, health: 15, iron: 25, march: 0, time: 118, level: 0, food: 203, heal_time: 22, power: 5.900000095367432, load: 11, attack: 70, move: 10 }),
+  "107019": Object.freeze({ upkeep: 1.6666666269302368, heal_res: 100, wood: 0, range: 0, speed: 8, stone: 12, defen: 127, health: 44, iron: 95, march: 0, time: 173, level: 0, food: 300, heal_time: 25, power: 9, load: 12, attack: 36, move: 10 }),
+  "107119": Object.freeze({ upkeep: 1.6666666269302368, heal_res: 100, wood: 0, range: 0, speed: 16.100000381469727, stone: 13, defen: 53, health: 22, iron: 160, march: 0, time: 173, level: 0, food: 0, heal_time: 25, power: 9, load: 10, attack: 102, move: 10 }),
+  "107219": Object.freeze({ upkeep: 1.6666666269302368, heal_res: 100, wood: 0, range: 50, speed: 8, stone: 19, defen: 42, health: 16, iron: 75, march: 0, time: 173, level: 0, food: 155, heal_time: 25, power: 9, load: 12, attack: 72, move: 10 })
 });
 
 function troop107xAl(id) {
