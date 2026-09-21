@@ -1,0 +1,30 @@
+name: Last Shelter Alliance Runtime Contract
+
+on:
+  push:
+    branches: [server-v2-scalable]
+    paths:
+      - 'last_shelter_alliance_runtime_contract.js'
+      - 'last_shelter_alliance_runtime_contract_testi.js'
+      - 'server.js'
+      - 'ittifaq_kimliyi_sistemi.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-alliance-runtime-contract.yml'
+  pull_request:
+    paths:
+      - 'last_shelter_alliance_runtime_contract.js'
+      - 'last_shelter_alliance_runtime_contract_testi.js'
+      - 'server.js'
+      - 'ittifaq_kimliyi_sistemi.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-alliance-runtime-contract.yml'
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node last_shelter_alliance_runtime_contract_testi.js
