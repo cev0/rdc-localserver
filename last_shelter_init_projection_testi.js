@@ -6,6 +6,9 @@ const {
   lastShelterResourceRuntimeDefaultHazirla
 } = require("./last_shelter_resource_runtime");
 const {
+  lastShelterGoldWalletDefaultHazirla
+} = require("./last_shelter_gold_wallet");
+const {
   starterGeneralHazirla
 } = require("./last_shelter_hero_reference");
 const {
@@ -49,6 +52,8 @@ let seq = 0;
 const uuid = () => "test-uuid-" + (++seq);
 
 const state = {
+  lastShelterGoldWallet:
+    lastShelterGoldWalletDefaultHazirla(),
   lastShelterResourceRuntime:
     lastShelterResourceRuntimeDefaultHazirla(
       1789659007819
@@ -91,6 +96,19 @@ const payload =
     state,
     { uid:"27817000002" }
   );
+
+assert.deepStrictEqual(
+  payload.user,
+  {
+    uid:"27817000002",
+    gold:40,
+    gold1:40,
+    paidGold:0
+  }
+);
+assert.strictEqual(payload.user.gold,40);
+assert.strictEqual(payload.user.gold1,40);
+assert.strictEqual(payload.user.paidGold,0);
 
 assert.strictEqual(payload.building.length,2);
 assert.strictEqual(payload.buildListConfig.length,10);
