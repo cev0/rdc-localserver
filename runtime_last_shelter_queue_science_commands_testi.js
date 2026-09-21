@@ -150,8 +150,7 @@ class FakeRouter {
     ws,
     msg:{
       playerId:"p1",
-      itemId:"901000",
-      quuid:"science-1"
+      itemId:"901000"
     },
     send,
     nowMs:()=>1000
