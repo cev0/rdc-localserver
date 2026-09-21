@@ -4,7 +4,8 @@ const assert = require("assert");
 
 const {
   verifiedLastShelterBuildingLevelDataAl,
-  verifiedLastShelterBuildingMaxLevelAl
+  verifiedLastShelterBuildingMaxLevelAl,
+  verifiedLastShelterBuildingLevelStatusAl
 } = require("./last_shelter_building_runtime_overlay");
 
 const level1 =
@@ -112,6 +113,28 @@ assert.strictEqual(
     6
   ),
   null
+);
+assert.deepStrictEqual(
+  verifiedLastShelterBuildingLevelStatusAl(
+    "hq",
+    6
+  ),
+  {
+    mapped:true,
+    buildingId:"hq",
+    buildingTypeId:"400000",
+    targetLevel:6,
+    maxLevel:25,
+    verified:false,
+    withinDeclaredMax:true
+  }
+);
+assert.strictEqual(
+  verifiedLastShelterBuildingLevelStatusAl(
+    "hq",
+    5
+  ).verified,
+  true
 );
 assert.strictEqual(
   verifiedLastShelterBuildingLevelDataAl(
