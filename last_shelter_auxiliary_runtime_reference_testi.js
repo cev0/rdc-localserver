@@ -79,12 +79,16 @@ assert.deepStrictEqual(runtime.hospital,[]);
 assert.deepStrictEqual(runtime.defenseInfo,[]);
 assert.strictEqual(runtime.cargo.rewardTime,0);
 assert.strictEqual(runtime.lottery.todayCount,0);
+assert.strictEqual(runtime.repayinfo.payPoint,0);
+assert.deepStrictEqual(runtime.repayinfo.claimedPoints,[]);
 
 const state = {};
 const first = lastShelterAuxiliaryRuntimeTeminEt(state);
 first.mine.exp = 11;
+first.repayinfo.payPoint = 400;
 const second = lastShelterAuxiliaryRuntimeTeminEt(state);
 assert.strictEqual(first,second);
 assert.strictEqual(second.mine.exp,11);
+assert.strictEqual(second.repayinfo.payPoint,400);
 
 console.log("PASS: verified Last Shelter auxiliary fresh-account runtime references are preserved.");
