@@ -51,6 +51,7 @@ const UNIT_TESTLERI = [
   "konvoy_yola_hazirliq_sistemi_testi.js",
   "last_shelter_baslangic_resurslari_testi.js",
   "last_shelter_building_kataloqu_testi.js",
+  "last_shelter_item_buy_contract_testi.js",
   "last_shelter_queue_kataloqu_testi.js",
   "last_shelter_resurs_kataloqu_testi.js",
   "last_shelter_science_kataloqu_testi.js",
