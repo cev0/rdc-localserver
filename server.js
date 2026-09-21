@@ -78,6 +78,11 @@ const {
   lastShelterCityRuntimeTeminEt
 } = require("./last_shelter_starter_city_reference");
 
+const {
+  lastShelterEngagementRuntimeDefaultHazirla,
+  lastShelterEngagementRuntimeTeminEt
+} = require("./last_shelter_engagement_reward_reference");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -5650,6 +5655,9 @@ function makeDefaultState(playerId) {
     lastShelterCityRuntime:
       starterCityRuntimeHazirla(),
 
+    lastShelterEngagementRuntime:
+      lastShelterEngagementRuntimeDefaultHazirla(),
+
     resources:
       lastShelterServerBaslangicResurslariniAl(),
 
@@ -5793,6 +5801,9 @@ function getOrCreatePlayerState(playerId) {
     state
   );
   lastShelterCityRuntimeTeminEt(
+    state
+  );
+  lastShelterEngagementRuntimeTeminEt(
     state
   );
 
