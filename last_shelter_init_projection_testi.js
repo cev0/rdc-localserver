@@ -141,6 +141,37 @@ assert.strictEqual(
 assert.strictEqual(payload.truckInfo.length,1);
 assert.strictEqual(payload.truckInfo[0].xmlId,"20001001");
 
+assert.strictEqual(payload.store.length,401);
+assert.deepStrictEqual(
+  payload.store.find(x => x.id === "200500"),
+  {
+    id:"200500",
+    reward:[
+      {value:{id:"200331",num:2},type:7},
+      {value:{id:"200301",num:2},type:7}
+    ]
+  }
+);
+assert.deepStrictEqual(
+  payload.store.find(x => x.id === "200560"),
+  {
+    id:"200560",
+    reward:[
+      {value:2000,type:0},
+      {value:2000,type:3}
+    ]
+  }
+);
+assert.deepStrictEqual(
+  payload.store.find(x => x.id === "209612"),
+  {
+    id:"209612",
+    reward:[
+      {value:{id:"203362",num:1},type:7}
+    ]
+  }
+);
+
 assert.strictEqual(payload.task.length,205);
 assert.strictEqual(
   payload.task.filter(x => x.type1 === 49).length,
