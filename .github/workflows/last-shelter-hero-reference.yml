@@ -6,6 +6,8 @@ on:
     paths:
       - 'last_shelter_hero_reference.js'
       - 'last_shelter_hero_reference_testi.js'
+      - 'runtime_last_shelter_hero_commands.js'
+      - 'runtime_last_shelter_hero_commands_testi.js'
       - 'server.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-hero-reference.yml'
@@ -13,6 +15,8 @@ on:
     paths:
       - 'last_shelter_hero_reference.js'
       - 'last_shelter_hero_reference_testi.js'
+      - 'runtime_last_shelter_hero_commands.js'
+      - 'runtime_last_shelter_hero_commands_testi.js'
       - 'server.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-hero-reference.yml'
@@ -26,3 +30,4 @@ jobs:
         with:
           node-version: '20'
       - run: node last_shelter_hero_reference_testi.js
+      - run: node runtime_last_shelter_hero_commands_testi.js
