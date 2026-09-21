@@ -6,12 +6,18 @@ on:
     paths:
       - 'last_shelter_worldcup_reference.js'
       - 'last_shelter_worldcup_reference_testi.js'
+      - 'runtime_last_shelter_worldcup_commands.js'
+      - 'runtime_last_shelter_worldcup_commands_testi.js'
+      - 'server.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-worldcup-reference.yml'
   pull_request:
     paths:
       - 'last_shelter_worldcup_reference.js'
       - 'last_shelter_worldcup_reference_testi.js'
+      - 'runtime_last_shelter_worldcup_commands.js'
+      - 'runtime_last_shelter_worldcup_commands_testi.js'
+      - 'server.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-worldcup-reference.yml'
 
@@ -24,3 +30,4 @@ jobs:
         with:
           node-version: '20'
       - run: node last_shelter_worldcup_reference_testi.js
+      - run: node runtime_last_shelter_worldcup_commands_testi.js
