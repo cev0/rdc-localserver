@@ -2,8 +2,26 @@
 
 const assert = require("assert");
 const {
+  verifiedGoodsRuntimeConfigAl,
   lastShelterItemBuyIcraEt
 } = require("./last_shelter_item_runtime");
+
+const merged200200 =
+  verifiedGoodsRuntimeConfigAl("200200");
+
+assert.strictEqual(merged200200.price,150);
+assert.strictEqual(merged200200.type,2);
+assert.strictEqual(merged200200.para1,1);
+assert.strictEqual(merged200200.para2,1);
+assert.strictEqual(merged200200.para3,3600);
+assert.strictEqual(merged200200.useAll,1);
+
+const structuralOnly =
+  verifiedGoodsRuntimeConfigAl("200201");
+
+assert.strictEqual(structuralOnly.price,undefined);
+assert.strictEqual(structuralOnly.type,2);
+assert.strictEqual(structuralOnly.para3,300);
 
 const state = {
   lastShelterGoldWallet:{
