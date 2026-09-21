@@ -88,6 +88,48 @@ const ITEM_TUNING = Object.freeze({
     k4: 25,
     k5: 1800,
     k6: 0.05
+  }),
+  timed_event: Object.freeze({
+    k1: 0.01,
+    k2: 0.1,
+    k3: 0.05,
+    k4: 0.18,
+    k5: 1
+  }),
+  scoutmark_time: Object.freeze({
+    k1: 10
+  }),
+  enforce_guide_training_time: Object.freeze({
+    k1: 2
+  }),
+  four_kind_speedup_switch: Object.freeze({
+    k1: "0|",
+    k2: "1|",
+    k3: "2|",
+    k4: "3|1-10000"
+  }),
+  truck_stay_time: Object.freeze({
+    k1: 15
+  }),
+  recourse_refresh_time: Object.freeze({
+    k1: 600
+  }),
+  global_timer: Object.freeze({
+    k1: 20
+  }),
+  wonder_acceleration: Object.freeze({
+    k1: 999
+  }),
+  killerevent_starttime: Object.freeze({
+    k1: 2
+  }),
+  monster_life_time: Object.freeze({
+    k1: 7200,
+    k2: 21300
+  }),
+  preliminaries_time: Object.freeze({
+    k1: 259200,
+    k2: 3600
   })
 });
 
