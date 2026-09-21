@@ -129,6 +129,8 @@ assert.strictEqual(payload.heroTemplates.length,21);
 assert.strictEqual(payload.userGenerals.length,1);
 assert.strictEqual(payload.userGenerals[0].generalId,"240020");
 assert.strictEqual(payload.troopTranList.length,4);
+assert.strictEqual(payload.troopTranList[0].level,0);
+assert.strictEqual(payload.troopTranList[0].total,10);
 assert.strictEqual(payload.fort.length,20);
 assert.strictEqual(
   payload.fort.find(x => x.id === "107900").free,
@@ -362,6 +364,60 @@ assert.strictEqual(
   serialized.includes("baseBuildingLevel"),
   false,
   "Ambiguous captured baseBuildingLevel must not be promoted without a verified semantic contract."
+);
+
+const developedState =
+  JSON.parse(JSON.stringify(state));
+developedState.troopTransferRuntime[0].level = 6;
+developedState.troopTransferRuntime[0].total = 10;
+developedState.troopTransferRuntime[0].power = 0;
+developedState.troopTransferRuntime[0].exp = 777;
+developedState.troopTransferRuntime[0].todayTranTimes = 3;
+
+const developedPayload =
+  lastShelterVerifiedInitProjectionHazirla(
+    developedState,
+    { uid:"27817000003" }
+  );
+
+assert.strictEqual(
+  developedPayload.troopTranList[0].level,
+  6
+);
+assert.strictEqual(
+  developedPayload.troopTranList[0].total,
+  50
+);
+assert.strictEqual(
+  developedPayload.troopTranList[0].power,
+  244
+);
+assert.strictEqual(
+  developedPayload.troopTranList[0].exp,
+  777
+);
+assert.strictEqual(
+  developedPayload.troopTranList[0].todayTranTimes,
+  3
+);
+assert.strictEqual(
+  developedPayload.troopTranList[0]
+    .details
+    .find(x=>x.id==="109034")
+    .level,
+  1
+);
+assert.deepStrictEqual(
+  developedPayload.troopTranList[0]
+    .details
+    .find(x=>x.id==="109034")
+    .effects,
+  {
+    "1561":-5,
+    "1531":-5,
+    "1541":-5,
+    "1551":-5
+  }
 );
 
 payload.building[0].power = 999999;
