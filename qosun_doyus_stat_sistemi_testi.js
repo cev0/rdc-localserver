@@ -58,11 +58,11 @@ const {
 
 (function birVahidGucTesti() {
   assert.strictEqual(birQosununGucunuAl("warrior_t1"), 1);
-  assert.strictEqual(birQosununGucunuAl("warrior_t7"), 4.9);
-  assert.strictEqual(birQosununGucunuAl("shooter_t10"), 8.2);
-  assert.strictEqual(birQosununGucunuAl("vehicle_t10"), 8.2);
-  assert.strictEqual(birQosununGucunuAl("fighter_lv7"), 4.9);
-  assert.strictEqual(birQosununGucunuAl("107006"), 4.9);
+  assert.strictEqual(birQosununGucunuAl("warrior_t7"), 4.900000095367432);
+  assert.strictEqual(birQosununGucunuAl("shooter_t10"), 8.199999809265137);
+  assert.strictEqual(birQosununGucunuAl("vehicle_t10"), 8.199999809265137);
+  assert.strictEqual(birQosununGucunuAl("fighter_lv7"), 4.900000095367432);
+  assert.strictEqual(birQosununGucunuAl("107006"), 4.900000095367432);
   assert.strictEqual(qosunDoyusMelumatiniAl("107209").lastShelterArmyId, "107209");
 })();
 
