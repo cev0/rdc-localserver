@@ -1,0 +1,30 @@
+name: Last Shelter Science Prerequisites
+
+on:
+  push:
+    branches: [server-v2-scalable]
+    paths:
+      - 'last_shelter_science_full_rows_*.js'
+      - 'last_shelter_science_full_topology.js'
+      - 'last_shelter_science_prerequisite_runtime.js'
+      - 'last_shelter_science_prerequisite_runtime_testi.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-science-prerequisites.yml'
+  pull_request:
+    paths:
+      - 'last_shelter_science_full_rows_*.js'
+      - 'last_shelter_science_full_topology.js'
+      - 'last_shelter_science_prerequisite_runtime.js'
+      - 'last_shelter_science_prerequisite_runtime_testi.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-science-prerequisites.yml'
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node last_shelter_science_prerequisite_runtime_testi.js
