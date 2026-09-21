@@ -4,6 +4,11 @@ const {
   repayRuntimeDefaultHazirla
 } = require("./last_shelter_repay_reference");
 
+const {
+  freshInitAuxRuntimeDefaultHazirla,
+  freshInitAuxRuntimeTeminEt
+} = require("./last_shelter_fresh_init_aux_reference");
+
 /*
  * Verified Last Shelter v1.250.102 auxiliary fresh-account runtime fields.
  *
@@ -156,7 +161,11 @@ function lotteryEntryListParseEt(raw) {
 }
 
 function lastShelterAuxiliaryRuntimeDefaultHazirla() {
+  const freshInitAux =
+    freshInitAuxRuntimeDefaultHazirla();
+
   return {
+    ...freshInitAux,
     currentCapacity:0,
     maxCapacity:0,
     cityDefValue:0,
@@ -200,6 +209,10 @@ function lastShelterAuxiliaryRuntimeTeminEt(state) {
   }
 
   const runtime = state.lastShelterAuxiliaryRuntime;
+
+  freshInitAuxRuntimeTeminEt(
+    runtime
+  );
 
   for (const key of ["armyFormation","hospital","defenseInfo","worldFortress","careerInfo"]) {
     if (!Array.isArray(runtime[key])) {
