@@ -44,6 +44,10 @@ const {
   LAST_SHELTER_CARGO_REFERENCE
 } = require("./last_shelter_auxiliary_runtime_reference");
 
+const {
+  LAST_SHELTER_REPAY_REFERENCE
+} = require("./last_shelter_repay_reference");
+
 const LONG_MAX_STRING = "9223372036854775807";
 
 function clone(value) {
@@ -393,6 +397,27 @@ function sevenDaysProjectionHazirla(state, uid = "") {
   };
 }
 
+function repayProjectionHazirla(state) {
+  const runtime =
+    state &&
+    state.lastShelterAuxiliaryRuntime &&
+    state.lastShelterAuxiliaryRuntime.repayinfo &&
+    typeof state.lastShelterAuxiliaryRuntime.repayinfo === "object"
+      ? state.lastShelterAuxiliaryRuntime.repayinfo
+      : {};
+
+  return {
+    startTime:
+      LAST_SHELTER_REPAY_REFERENCE.observedWindow.startTime,
+    payPoint:
+      nonNegativeInt(runtime.payPoint,0),
+    endTime:
+      LAST_SHELTER_REPAY_REFERENCE.observedWindow.endTime,
+    payRewards:
+      clone(LAST_SHELTER_REPAY_REFERENCE.payRewards)
+  };
+}
+
 function auxiliaryProjectionHazirla(state) {
   const runtime =
     state &&
@@ -630,6 +655,10 @@ function lastShelterVerifiedInitProjectionHazirla(
         state,
         uid
       ),
+    repayinfo:
+      repayProjectionHazirla(
+        state
+      ),
     alliance:
       alliance.alliance &&
       typeof alliance.alliance === "object" &&
@@ -648,6 +677,7 @@ module.exports = {
   helicopterProjectionHazirla,
   worldProjectionHazirla,
   sevenDaysProjectionHazirla,
+  repayProjectionHazirla,
   auxiliaryProjectionHazirla,
   lastShelterVerifiedInitProjectionHazirla
 };
