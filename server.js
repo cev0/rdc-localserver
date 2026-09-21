@@ -73,6 +73,11 @@ const {
   lastShelterAllianceRuntimeTeminEt
 } = require("./last_shelter_alliance_runtime_contract");
 
+const {
+  starterCityRuntimeHazirla,
+  lastShelterCityRuntimeTeminEt
+} = require("./last_shelter_starter_city_reference");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -5639,6 +5644,12 @@ function makeDefaultState(playerId) {
     lastShelterAllianceRuntime:
       lastShelterAllianceRuntimeDefaultHazirla(),
 
+    // Numeric Last Shelter city/building snapshot is persisted in parallel
+    // with the legacy RDC map/building engine until that engine is fully
+    // replaced by verified numeric building rules.
+    lastShelterCityRuntime:
+      starterCityRuntimeHazirla(),
+
     resources:
       lastShelterServerBaslangicResurslariniAl(),
 
@@ -5779,6 +5790,9 @@ function getOrCreatePlayerState(playerId) {
     state
   );
   lastShelterAllianceRuntimeTeminEt(
+    state
+  );
+  lastShelterCityRuntimeTeminEt(
     state
   );
 
