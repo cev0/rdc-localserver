@@ -20,6 +20,7 @@ function authCommandiniQeydEt(
     updateServerTime,
     schedulePlayerDeadline,
     makeClientState,
+    makeLastShelterResourcePayload,
     makeLastShelterInitPayload,
     sendStateLocalMapToPlayer,
     sendWorldMapToPlayer
@@ -124,6 +125,30 @@ function authCommandiniQeydEt(
             makeClientState(state)
           )
       });
+
+      if (
+        typeof makeLastShelterResourcePayload ===
+        "function"
+      ) {
+        const resourcePayload =
+          makeLastShelterResourcePayload(
+            state,
+            nowMs()
+          );
+
+        send(ws, {
+          type: "SynUserResource",
+          playerId,
+          serverTimeUnixMs:
+            nowMs(),
+          payload:
+            resourcePayload,
+          payloadJson:
+            JSON.stringify(
+              resourcePayload
+            )
+        });
+      }
 
       if (
         typeof makeLastShelterInitPayload ===
