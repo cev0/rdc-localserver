@@ -1,0 +1,31 @@
+name: Last Shelter Science Visibility
+
+on:
+  push:
+    branches: [server-v2-scalable]
+    paths:
+      - 'last_shelter_science_visibility_reference.js'
+      - 'last_shelter_science_visibility_reference_testi.js'
+      - 'last_shelter_init_projection.js'
+      - 'last_shelter_init_projection_testi.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-science-visibility.yml'
+  pull_request:
+    paths:
+      - 'last_shelter_science_visibility_reference.js'
+      - 'last_shelter_science_visibility_reference_testi.js'
+      - 'last_shelter_init_projection.js'
+      - 'last_shelter_init_projection_testi.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-science-visibility.yml'
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node last_shelter_science_visibility_reference_testi.js
+      - run: node last_shelter_init_projection_testi.js
