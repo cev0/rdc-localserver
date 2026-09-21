@@ -21,3 +21,5 @@ jobs:
         with:
           node-version: 20
       - run: node last_shelter_missile_kataloqu_testi.js
+      - run: node last_shelter_missile_runtime_testi.js
+      - run: node last_shelter_init_projection_testi.js
