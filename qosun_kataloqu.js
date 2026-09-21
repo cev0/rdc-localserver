@@ -1,5 +1,9 @@
 "use strict";
 
+const {
+  applyVerified107xBatch
+} = require("./last_shelter_troop_107x_runtime_adapteri");
+
 const BUILDING_LEVEL_BY_TIER = Object.freeze({
   1: 1,
   2: 2,
@@ -142,10 +146,11 @@ const SHOOTER_STATS = [
 ];
 
 // Last Shelter v1.250.102 təmiz/new-account troop resource costs.
-// Warrior 107000..107009 yalnız food+iron istifadə etdiyi üçün tam uyğunlaşdırılıb.
-// Shooter/vehicle T2+ orijinalda stone tələb edir. RDC resource modelində stone
-// ayrıca authoritative resurs kimi əlavə olunana qədər həmin tier-lərdə əvvəlki
-// fallback cost saxlanılır; stone başqa resursa çevrilmir.
+// 107000..107209 əsas üç ailənin bütün 30 sətri artıq ayrıca authoritative
+// last_shelter_troop_107x_reference kataloqunda source-verified-dir. Aşağıdakı
+// cədvəllər legacy oxunaqlılıq/compatibility üçündür; final UNITS projection
+// həmin authoritative kataloqla overlay olunur ki iki mənbə arasında drift
+// gameplay-a keçməsin.
 const WARRIOR_COSTS = [
   { food: 61 },
   { food: 100 },
@@ -231,11 +236,13 @@ function buildClassUnits(classDef, names, statsRows, costRows) {
   });
 }
 
-const UNITS = Object.freeze([
-  ...buildClassUnits(CLASS_DEFINITIONS.warrior, WARRIOR_NAMES, WARRIOR_STATS, WARRIOR_COSTS),
-  ...buildClassUnits(CLASS_DEFINITIONS.shooter, SHOOTER_NAMES, SHOOTER_STATS, SHOOTER_COSTS),
-  ...buildClassUnits(CLASS_DEFINITIONS.vehicle, VEHICLE_NAMES, VEHICLE_STATS, VEHICLE_COSTS)
-]);
+const UNITS = Object.freeze(
+  applyVerified107xBatch([
+    ...buildClassUnits(CLASS_DEFINITIONS.warrior, WARRIOR_NAMES, WARRIOR_STATS, WARRIOR_COSTS),
+    ...buildClassUnits(CLASS_DEFINITIONS.shooter, SHOOTER_NAMES, SHOOTER_STATS, SHOOTER_COSTS),
+    ...buildClassUnits(CLASS_DEFINITIONS.vehicle, VEHICLE_NAMES, VEHICLE_STATS, VEHICLE_COSTS)
+  ])
+);
 
 const BY_ID = new Map(UNITS.map(x => [x.unitId, x]));
 
