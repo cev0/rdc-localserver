@@ -1,5 +1,9 @@
 "use strict";
 
+const {
+  repayRuntimeDefaultHazirla
+} = require("./last_shelter_repay_reference");
+
 /*
  * Verified Last Shelter v1.250.102 auxiliary fresh-account runtime fields.
  *
@@ -177,7 +181,9 @@ function lastShelterAuxiliaryRuntimeDefaultHazirla() {
     cargo:{
       rewardInfo:LAST_SHELTER_CARGO_REFERENCE.rewardInfo,
       rewardTime:0
-    }
+    },
+    repayinfo:
+      repayRuntimeDefaultHazirla()
   };
 }
 
@@ -224,6 +230,13 @@ function lastShelterAuxiliaryRuntimeTeminEt(state) {
       rewardInfo:LAST_SHELTER_CARGO_REFERENCE.rewardInfo,
       rewardTime:0
     };
+  }
+  if (!runtime.repayinfo || typeof runtime.repayinfo !== "object") {
+    runtime.repayinfo =
+      repayRuntimeDefaultHazirla();
+  }
+  if (!Array.isArray(runtime.repayinfo.claimedPoints)) {
+    runtime.repayinfo.claimedPoints = [];
   }
 
   return runtime;
