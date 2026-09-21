@@ -144,7 +144,8 @@ const {
 
 const {
   verifiedLastShelterBuildingLevelDataAl,
-  verifiedLastShelterBuildingMaxLevelAl
+  verifiedLastShelterBuildingMaxLevelAl,
+  verifiedLastShelterBuildingLevelStatusAl
 } = require("./last_shelter_building_runtime_overlay");
 
 // ============================================================
@@ -3290,6 +3291,35 @@ function getLevelData(buildingId, targetLevel) {
         cloneCostArray(
           verifiedLastShelterLevel.cost
         )
+    };
+  }
+
+  const verifiedCoverage =
+    verifiedLastShelterBuildingLevelStatusAl(
+      id,
+      level
+    );
+
+  if (
+    verifiedCoverage.mapped &&
+    verifiedCoverage.withinDeclaredMax &&
+    !verifiedCoverage.verified
+  ) {
+    return {
+      source:
+        "last_shelter_verified_level_gap",
+      unavailable:true,
+      buildingId:id,
+      buildingTypeId:
+        verifiedCoverage.buildingTypeId,
+      targetLevel:level,
+      maxLevelFromXml:
+        verifiedCoverage.maxLevel,
+      buildTimeSeconds:0,
+      productionPerTick:0,
+      storageCapacityBonus:0,
+      specialEffectValue:0,
+      cost:[]
     };
   }
 
@@ -7802,6 +7832,13 @@ function createUpgradeJob(state, building) {
 
   const targetLevel = currentLevel + 1;
   const levelData = getLevelData(building.buildingId, targetLevel);
+
+  if (
+    !levelData ||
+    levelData.unavailable === true
+  ) {
+    return null;
+  }
 
   const durationMs = getAdjustedBuildDurationMs(
     state,
