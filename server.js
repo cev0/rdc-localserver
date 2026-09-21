@@ -3568,6 +3568,10 @@ const {
 const {
   lastShelterEconomyEventReadCommandleriniQeydEt
 } = require("./runtime_last_shelter_economy_event_read_commands");
+
+const {
+  lastShelterScienceReadCommandleriniQeydEt
+} = require("./runtime_last_shelter_science_read_commands");
 const {
   lastShelterEconomyReferenceCommandleriniQeydEt
 } = require("./runtime_last_shelter_economy_reference_commands");
@@ -8685,6 +8689,13 @@ lastShelterWorldCupCommandleriniQeydEt(
 );
 
 lastShelterEconomyEventReadCommandleriniQeydEt(
+  runtimeCommandRouter,
+  {
+    getOrCreatePlayerState
+  }
+);
+
+lastShelterScienceReadCommandleriniQeydEt(
   runtimeCommandRouter,
   {
     getOrCreatePlayerState
