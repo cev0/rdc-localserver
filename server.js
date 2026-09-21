@@ -68,6 +68,11 @@ const {
   lastShelterWorldRuntimeTeminEt
 } = require("./last_shelter_world_battlefield_reference");
 
+const {
+  lastShelterAllianceRuntimeDefaultHazirla,
+  lastShelterAllianceRuntimeTeminEt
+} = require("./last_shelter_alliance_runtime_contract");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -5631,6 +5636,9 @@ function makeDefaultState(playerId) {
     lastShelterWorldRuntime:
       lastShelterWorldRuntimeDefaultHazirla(),
 
+    lastShelterAllianceRuntime:
+      lastShelterAllianceRuntimeDefaultHazirla(),
+
     resources:
       lastShelterServerBaslangicResurslariniAl(),
 
@@ -5768,6 +5776,9 @@ function getOrCreatePlayerState(playerId) {
   }
 
   lastShelterWorldRuntimeTeminEt(
+    state
+  );
+  lastShelterAllianceRuntimeTeminEt(
     state
   );
 
