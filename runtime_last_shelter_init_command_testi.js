@@ -125,6 +125,67 @@ assert.strictEqual(payload.showScienceArray.length,52);
 assert.strictEqual(payload.store.length,401);
 assert.strictEqual(payload.missileList.length,6);
 
+const malformedEnvelopeState={
+  ...state,
+  lastShelterFreshInitEnvelopeRuntime:{
+    identification:null,
+    vip:{level:"3"},
+    debuffObj:{debuffList:null},
+    armyFormationMaxCount:"2",
+    vipstoreLevel:"2",
+    kingdomContribution:"15",
+    buildRapidType:99
+  }
+};
+
+const normalizedPayload=
+  lastShelterInitPayloadHazirla(
+    malformedEnvelopeState,
+    "27817000002"
+  );
+
+assert.deepStrictEqual(
+  normalizedPayload.identification,
+  {authenticate:false,isCN:false,isArab:false}
+);
+assert.deepStrictEqual(
+  normalizedPayload.vip,
+  {
+    vipEndTime:0,
+    score:0,
+    level:3,
+    nextDayScore:20,
+    loginDays:1
+  }
+);
+assert.deepStrictEqual(
+  normalizedPayload.debuffObj,
+  {debuffList:[]}
+);
+assert.strictEqual(
+  normalizedPayload.armyFormationMaxCount,
+  2
+);
+assert.strictEqual(
+  normalizedPayload.vipstoreLevel,
+  2
+);
+assert.strictEqual(
+  normalizedPayload.kingdomContribution,
+  15
+);
+assert.strictEqual(
+  normalizedPayload.buildRapidType,
+  ""
+);
+assert.strictEqual(
+  malformedEnvelopeState
+    .lastShelterFreshInitEnvelopeRuntime
+    .identification,
+  null,
+  "Init projection persisted envelope state-i read zamanı mutasiya etməməlidir."
+);
+
 const router=new FakeRouter();
 lastShelterInitCommandiniQeydEt(
   router,
