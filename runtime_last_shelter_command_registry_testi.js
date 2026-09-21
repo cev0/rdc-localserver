@@ -43,7 +43,7 @@ const expected=[
   "activity.list","activity.get","shop.list","shop.get","repay.info",
   "alliance.group_purchase.info","alliance.group_purchase.offer","vipstore.panel",
   "engagement.info","building.reference.list","building.reference.get",
-  "queue.list","science.catalog","science.topology.list","science.topology",
+  "queue.list","science.catalog","science.topology.list","science.topology","science.state",
   "science.prerequisite","science.plan","troop.catalog","troop.get",
   "troop.transfer.level6","troop.transfer.type","troop.transfer.point","last_shelter.init"
 ];
