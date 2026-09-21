@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("assert");
+const { troop107xAl } = require("./last_shelter_troop_107x_reference");
 const {
   UNITS,
   BUILDING_LEVEL_BY_TIER,
@@ -53,6 +54,20 @@ function bina(buildingId, level) {
       assert.ok(unit.stats.marchSpeed > 0);
       assert.ok(unit.stats.loadCapacity > 0);
       assert.ok(unit.costPerUnit.length > 0);
+      assert.strictEqual(unit.lastShelterVerified, true);
+
+      const source = troop107xAl(unit.lastShelterArmyId);
+      assert.ok(source, `verified source row missing for ${unit.lastShelterArmyId}`);
+      assert.strictEqual(unit.baseTrainingSeconds, source.time);
+      assert.strictEqual(unit.stats.attack, source.attack);
+      assert.strictEqual(unit.stats.attackSpeed, source.attack);
+      assert.strictEqual(unit.stats.defense, source.defen);
+      assert.strictEqual(unit.stats.hp, source.health);
+      assert.strictEqual(unit.stats.battlePower, source.power);
+      assert.strictEqual(unit.stats.marchSpeed, source.speed);
+      assert.strictEqual(unit.stats.range, source.range);
+      assert.strictEqual(unit.stats.loadCapacity, source.load);
+      assert.strictEqual(unit.stats.consumption.amount, source.upkeep);
     }
   }
 
