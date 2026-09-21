@@ -104,7 +104,7 @@ assert.strictEqual(
   verifiedLastShelterBuildingMaxLevelAl(
     "hq"
   ),
-  5
+  25
 );
 assert.strictEqual(
   verifiedLastShelterBuildingLevelDataAl(
@@ -128,5 +128,5 @@ assert.strictEqual(
 );
 
 console.log(
-  "PASS: verified Last Shelter building.xml overlay exposes only source-backed RDC building levels."
+  "PASS: verified Last Shelter building.xml overlay preserves source-backed levels and XML max-level authority."
 );
