@@ -129,6 +129,16 @@ const {
 } = require("./last_shelter_tutorial_reference");
 
 const {
+  repayRuntimeDefaultHazirla,
+  lastShelterRepayRuntimeTeminEt
+} = require("./last_shelter_repay_reference");
+
+const {
+  lastShelterVipStoreStateHazirla,
+  lastShelterVipStoreStateTeminEt
+} = require("./last_shelter_vip_store_runtime");
+
+const {
   verifiedLastShelterBuildingLevelDataAl,
   verifiedLastShelterBuildingMaxLevelAl
 } = require("./last_shelter_building_runtime_overlay");
@@ -3551,6 +3561,9 @@ const {
   lastShelterWorldCupCommandleriniQeydEt
 } = require("./runtime_last_shelter_worldcup_commands");
 const {
+  lastShelterEconomyReferenceCommandleriniQeydEt
+} = require("./runtime_last_shelter_economy_reference_commands");
+const {
   requestIdAl,
   correlatedSendYarat
 } = require("./runtime_protocol_envelope");
@@ -5495,6 +5508,11 @@ bazaMelumatlariniYenile(state);
   ensureTechnologyObject(state);
   refreshTechnologyStats(state);
 
+  // Last Shelter economy runtimelarini kohne state snapshot-lari ucun de
+  // eyni muqavileye normallasdir.
+  lastShelterRepayRuntimeTeminEt(state);
+  lastShelterVipStoreStateTeminEt(state);
+
   // State client-e cixmazdan evvel resurs istehsalini cari vaxta qeder
   // bir defe hesabla. Her 5 saniye butun player-leri scan etmeye ehtiyac yoxdur.
   processProductionForState(state, nowMs());
@@ -5782,6 +5800,12 @@ function makeDefaultState(playerId) {
 
     lastShelterTutorialRuntime:
       tutorialRuntimeDefaultHazirla(),
+
+    lastShelterRepay:
+      repayRuntimeDefaultHazirla(),
+
+    lastShelterVipStore:
+      lastShelterVipStoreStateHazirla(),
 
     resources:
       lastShelterServerBaslangicResurslariniAl(),
@@ -8618,6 +8642,13 @@ lastShelterTutorialCommandiniQeydEt(
 
 lastShelterWorldCupCommandleriniQeydEt(
   runtimeCommandRouter
+);
+
+lastShelterEconomyReferenceCommandleriniQeydEt(
+  runtimeCommandRouter,
+  {
+    getOrCreatePlayerState
+  }
 );
 
 
