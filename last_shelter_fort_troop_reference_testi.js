@@ -4,7 +4,10 @@ const assert = require("assert");
 const {
   LAST_SHELTER_FORT_TROOPS,
   fortTroopAl,
-  fortTroopRuntimeProjectionAl
+  fortTroopRuntimeProjectionAl,
+  fortRuntimeDefaultHazirla,
+  fortRuntimeTeminEt,
+  fortInitProjectionHazirla
 } = require("./last_shelter_fort_troop_reference");
 
 assert.strictEqual(LAST_SHELTER_FORT_TROOPS.length, 20);
@@ -73,4 +76,27 @@ copy.food = 999999;
 assert.strictEqual(fortTroopAl("107913").food, 295);
 assert.strictEqual(fortTroopAl("107999"), null);
 
-console.log("PASS: verified Last Shelter fort troop rows are preserved.");
+const starterFortRuntime = fortRuntimeDefaultHazirla();
+assert.strictEqual(starterFortRuntime.owned["107900"], 1);
+for (const id of ids.filter(x => x !== "107900")) {
+  assert.strictEqual(starterFortRuntime.owned[id], 0, id);
+}
+
+const fortState = {};
+const ensuredFortRuntime = fortRuntimeTeminEt(fortState);
+assert.strictEqual(ensuredFortRuntime.owned["107900"], 1);
+ensuredFortRuntime.owned["107913"] = 4;
+
+const fortInit = fortInitProjectionHazirla(fortState);
+assert.strictEqual(fortInit.length, 20);
+assert.strictEqual(fortInit.find(x => x.id === "107900").free, 1);
+assert.strictEqual(fortInit.find(x => x.id === "107913").free, 4);
+assert.strictEqual(
+  Object.prototype.hasOwnProperty.call(
+    LAST_SHELTER_FORT_TROOPS.find(x => x.id === "107913"),
+    "free"
+  ),
+  false
+);
+
+console.log("PASS: verified Last Shelter fort troop rows and mutable fresh-account ownership are preserved.");
