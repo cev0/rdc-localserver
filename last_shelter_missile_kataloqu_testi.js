@@ -3,7 +3,7 @@
 const assert = require("assert");
 const { MISSILE, missileAl, missileIds } = require("./last_shelter_missile_kataloqu");
 
-assert.deepStrictEqual(missileIds(), ["53301", "53302", "53303", "53304", "53305", "53306"]);
+assert.deepStrictEqual(missileIds(), ["53301", "53302", "53303", "53304", "53305", "53306", "53307", "53308"]);
 assert.strictEqual(missileAl(53301).wood, 200000);
 assert.strictEqual(missileAl(53301).iron, 20000);
 assert.strictEqual(missileAl(53301).status, 500901);
@@ -14,6 +14,12 @@ assert.strictEqual(missileAl(53304).missile_effect, 53501);
 assert.strictEqual(missileAl(53305).atk_value, 10);
 assert.strictEqual(missileAl(53306).speed, 4.5);
 assert.strictEqual(missileAl(53306).missile_effect, 53502);
+assert.strictEqual(missileAl(53307).missile_effect, 53503);
+assert.strictEqual(missileAl(53307).time, 144000);
+assert.strictEqual(missileAl(53307).status, 500905);
+assert.strictEqual(missileAl(53308).unlock_level, 8);
+assert.strictEqual(missileAl(53308).item_need, "200047;200");
+assert.strictEqual(missileAl(53308).atk_value, 1);
 assert.strictEqual(missileAl(99999), null);
 
 for (const id of missileIds()) {
