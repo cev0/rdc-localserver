@@ -103,6 +103,11 @@ const {
   lastShelterSevenDaysRuntimeTeminEt
 } = require("./last_shelter_seven_days_reference");
 
+const {
+  lastShelterStarterAccountRuntimeDefaultHazirla,
+  lastShelterStarterAccountRuntimeTeminEt
+} = require("./last_shelter_starter_account_reference");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -5697,6 +5702,9 @@ function makeDefaultState(playerId) {
         nowMs()
       ),
 
+    lastShelterStarterAccountRuntime:
+      lastShelterStarterAccountRuntimeDefaultHazirla(),
+
     resources:
       lastShelterServerBaslangicResurslariniAl(),
 
@@ -5857,6 +5865,9 @@ function getOrCreatePlayerState(playerId) {
   lastShelterSevenDaysRuntimeTeminEt(
     state,
     nowMs()
+  );
+  lastShelterStarterAccountRuntimeTeminEt(
+    state
   );
 
   ensureMapState(state);
