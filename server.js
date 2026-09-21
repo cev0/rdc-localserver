@@ -63,6 +63,11 @@ const {
   troopTransferRuntimeDefaultHazirla
 } = require("./last_shelter_troop_transfer_reference");
 
+const {
+  lastShelterWorldRuntimeDefaultHazirla,
+  lastShelterWorldRuntimeTeminEt
+} = require("./last_shelter_world_battlefield_reference");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -5623,6 +5628,9 @@ function makeDefaultState(playerId) {
     troopTransferRuntime:
       troopTransferRuntimeDefaultHazirla(),
 
+    lastShelterWorldRuntime:
+      lastShelterWorldRuntimeDefaultHazirla(),
+
     resources:
       lastShelterServerBaslangicResurslariniAl(),
 
@@ -5758,6 +5766,10 @@ function getOrCreatePlayerState(playerId) {
     state.troopTransferRuntime =
       troopTransferRuntimeDefaultHazirla();
   }
+
+  lastShelterWorldRuntimeTeminEt(
+    state
+  );
 
   ensureMapState(state);
   ensurePlayerWorldPlacement(state, playerId);
