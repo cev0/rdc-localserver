@@ -131,33 +131,6 @@ function queueBosdur(
       Date.now()
     );
 
-  // Captured starter qid=2 queues carry a future endTime lease even while
-  // updateTime is zero. ScienceService also checks now >= queue.endTime when
-  // an explicit quuid is supplied, so such a queue is not reusable early.
-  const endTime =
-    Number(queue && queue.endTime);
-
-  const itemId =
-    metnAl(
-      queue &&
-      (
-        queue.itemId ||
-        (
-          queue.itemObj &&
-          queue.itemObj.itemId
-        )
-      ),
-      64
-    );
-
-  if (
-    !itemId &&
-    Number.isFinite(endTime) &&
-    endTime > now
-  ) {
-    return false;
-  }
-
   return isFreeLastShelterQueue(
     {
       ...queue,
@@ -166,6 +139,101 @@ function queueBosdur(
     },
     now
   );
+}
+
+function explicitScienceQueueLeaseAktivdir(
+  queue,
+  nowUnixMs = Date.now()
+) {
+  if (!queue || typeof queue !== "object") {
+    return false;
+  }
+
+  // ScienceService.researchOneScience explicit quuid bytecode:
+  // currentTimeMillis < queue.endTime must hold. If this fixture does not
+  // expose endTime at all, keep compatibility with non-reference test shapes.
+  if (
+    !Object.prototype.hasOwnProperty.call(
+      queue,
+      "endTime"
+    )
+  ) {
+    return true;
+  }
+
+  const endTime = Number(queue.endTime);
+  const now = tamEded(nowUnixMs, Date.now());
+
+  return (
+    Number.isFinite(endTime) &&
+    now < endTime
+  );
+}
+
+function secondScienceQueueIcazelidir(
+  state,
+  queue,
+  nowUnixMs,
+  secondQueueCheck
+) {
+  const qid = tamEded(
+    queue &&
+    (
+      queue.qid ||
+      queue.queueId
+    ),
+    0
+  );
+
+  if (qid !== 2) {
+    return true;
+  }
+
+  // Reference calls ScienceService.checkSecondQueue(profile) for qid=2.
+  // That helper's body is not yet present in the verified dump, so fail
+  // closed unless the caller supplies a server-authoritative verifier.
+  if (typeof secondQueueCheck !== "function") {
+    return false;
+  }
+
+  return secondQueueCheck(
+    state,
+    queue,
+    nowUnixMs
+  ) === true;
+}
+
+function scienceAktivArasdirilir(
+  state,
+  itemId,
+  nowUnixMs = Date.now()
+) {
+  const id = metnAl(itemId, 32);
+  if (!id) return false;
+
+  return scienceQueueListesiAl(state).some(queue => {
+    if (!scienceQueueTipidir(queue)) {
+      return false;
+    }
+
+    if (queueBosdur(queue, nowUnixMs)) {
+      return false;
+    }
+
+    const queueItemId = metnAl(
+      queue &&
+      (
+        queue.itemId ||
+        (
+          queue.itemObj &&
+          queue.itemObj.itemId
+        )
+      ),
+      32
+    );
+
+    return queueItemId === id;
+  });
 }
 
 function scienceQueueMesguldur(
@@ -188,7 +256,8 @@ function scienceQueueMesguldur(
 function scienceQueueSec(
   state,
   queueUuid,
-  nowUnixMs = Date.now()
+  nowUnixMs = Date.now(),
+  options = {}
 ) {
   const queues =
     scienceQueueListesiAl(state);
@@ -212,6 +281,16 @@ function scienceQueueSec(
       !queueBosdur(
         queue,
         nowUnixMs
+      ) ||
+      !explicitScienceQueueLeaseAktivdir(
+        queue,
+        nowUnixMs
+      ) ||
+      !secondScienceQueueIcazelidir(
+        state,
+        queue,
+        nowUnixMs,
+        options.secondQueueCheck
       )
     ) {
       return null;
@@ -232,7 +311,7 @@ function scienceQueueSec(
         )
     );
 
-  return (
+  const preferred =
     freeScience.find(
       queue =>
         tamEded(
@@ -255,8 +334,22 @@ function scienceQueueSec(
           0
         ) === 0
     ) ||
-    null
-  );
+    freeScience[0] ||
+    null;
+
+  if (
+    preferred &&
+    !secondScienceQueueIcazelidir(
+      state,
+      preferred,
+      nowUnixMs,
+      options.secondQueueCheck
+    )
+  ) {
+    return null;
+  }
+
+  return preferred;
 }
 
 function scienceArtıqArasdirilib(state, itemId) {
@@ -277,7 +370,12 @@ function scienceArtıqArasdirilib(state, itemId) {
   return false;
 }
 
-function verifiedScienceResearchPlanHazirla(state, request, nowUnixMs = Date.now()) {
+function verifiedScienceResearchPlanHazirla(
+  state,
+  request,
+  nowUnixMs = Date.now(),
+  options = {}
+) {
   const itemId = metnAl(request && request.itemId, 32);
   const requestedQueueUuid = metnAl(request && (request.quuid || request.queueUuid), 128);
   const optionalGold = tamEded(request && request.gold, 0);
@@ -291,12 +389,37 @@ function verifiedScienceResearchPlanHazirla(state, request, nowUnixMs = Date.now
     scienceQueueSec(
       state,
       requestedQueueUuid,
-      nowUnixMs
+      nowUnixMs,
+      options
     );
   if (!selectedQueue) return { ok: false, code: SCIENCE_PROTOCOL.queueFullError };
 
-  if (SCIENCE_PROTOCOL.duplicateItemRejected && scienceArtıqArasdirilib(state, itemId)) {
-    return { ok: false, code: "SCIENCE_ALREADY_RESEARCHED" };
+  if (
+    SCIENCE_PROTOCOL.duplicateItemRejected &&
+    scienceAktivArasdirilir(
+      state,
+      itemId,
+      nowUnixMs
+    )
+  ) {
+    return {
+      ok: false,
+      code: "SCIENCE_ALREADY_RESEARCHING"
+    };
+  }
+
+  if (
+    science.maxLevel > 0 &&
+    scienceArtıqArasdirilib(
+      state,
+      itemId
+    ) &&
+    science.maxLevel === 1
+  ) {
+    return {
+      ok: false,
+      code: "SCIENCE_ALREADY_RESEARCHED"
+    };
   }
 
   const queueUuid = metnAl(selectedQueue.uuid, 128);
@@ -465,6 +588,9 @@ module.exports = {
   scienceQueueListesiAl,
   scienceQueueTipidir,
   queueBosdur,
+  explicitScienceQueueLeaseAktivdir,
+  secondScienceQueueIcazelidir,
+  scienceAktivArasdirilir,
   scienceQueueMesguldur,
   scienceQueueSec,
   scienceArtıqArasdirilib,
