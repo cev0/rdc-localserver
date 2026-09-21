@@ -29,10 +29,10 @@ assert.deepStrictEqual(
 );
 
 assert.deepStrictEqual(
-  scienceConditionTokeniniAc("997520"),
+  scienceConditionTokeniniAc("971320"),
   {
-    token: "997520",
-    itemId: "997500",
+    token: "971320",
+    itemId: "971300",
     requiredLevel: 20
   }
 );
@@ -154,7 +154,7 @@ const advanced =
   sciencePrerequisiteStatusuAl(
     {
       science: {
-        "997500": 20
+        "997500": 5
       }
     },
     "997600"
@@ -186,8 +186,9 @@ assert.strictEqual(
   integrity.scienceConditionCount,
   548
 );
-assert.ok(
-  integrity.buildingConditionCount > 250
+assert.strictEqual(
+  integrity.buildingConditionCount,
+  292
 );
 assert.deepStrictEqual(
   integrity.malformedScience,
