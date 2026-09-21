@@ -57,6 +57,10 @@ const {
   missileInitProjectionHazirla
 } = require("./last_shelter_missile_runtime");
 
+const {
+  showScienceArrayProjectionHazirla
+} = require("./last_shelter_science_visibility_reference");
+
 const LONG_MAX_STRING = "9223372036854775807";
 
 function clone(value) {
@@ -682,6 +686,8 @@ function lastShelterVerifiedInitProjectionHazirla(
       storeProjectionHazirla(),
     missileList:
       missileInitProjectionHazirla(state),
+    showScienceArray:
+      showScienceArrayProjectionHazirla(),
     activity:
       activityReferenceProjectionHazirla(),
     firstPayReward:
