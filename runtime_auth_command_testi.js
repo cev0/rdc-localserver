@@ -87,6 +87,17 @@ const {
           serverTimeUnixMs:
             state.serverTimeUnixMs
         }),
+      makeLastShelterInitPayload:
+        (state, playerId) => ({
+          user: {
+            uid: playerId
+          },
+          serverTimeUnixMs:
+            state.serverTimeUnixMs,
+          activity: [
+            { id: "57002" }
+          ]
+        }),
       sendStateLocalMapToPlayer:
         (_ws, playerId) => {
           mapCalls.push(
@@ -165,7 +176,7 @@ const {
 
   assert.strictEqual(
     sent.length,
-    2
+    3
   );
 
   assert.deepStrictEqual(
@@ -190,6 +201,33 @@ const {
       playerId: "player-123",
       serverTimeUnixMs: 123
     }
+  );
+
+  assert.strictEqual(
+    sent[2].type,
+    "last_shelter.init"
+  );
+  assert.strictEqual(
+    sent[2].playerId,
+    "player-123"
+  );
+  assert.deepStrictEqual(
+    sent[2].payload,
+    {
+      user: {
+        uid: "player-123"
+      },
+      serverTimeUnixMs: 123,
+      activity: [
+        { id: "57002" }
+      ]
+    }
+  );
+  assert.deepStrictEqual(
+    JSON.parse(
+      sent[2].payloadJson
+    ),
+    sent[2].payload
   );
 
   console.log(
