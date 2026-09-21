@@ -51,15 +51,44 @@ assert.deepStrictEqual(
 );
 
 const runtimeState={
-  lastShelterRepay:{
-    payPoint:"2000.9",
-    claimedPoints:[2000,"400",400,-1,"bad"]
+  lastShelterAuxiliaryRuntime:{
+    repayinfo:{
+      payPoint:"2000.9",
+      claimedPoints:[2000,"400",400,-1,"bad"]
+    }
   }
 };
 assert.deepStrictEqual(
   lastShelterRepayRuntimeTeminEt(runtimeState),
   {payPoint:2000,claimedPoints:[400,2000]}
 );
+assert.strictEqual(
+  runtimeState.lastShelterAuxiliaryRuntime.repayinfo.payPoint,
+  2000
+);
+
+const legacyState={
+  lastShelterRepay:{
+    payPoint:400,
+    claimedPoints:[400]
+  }
+};
+assert.deepStrictEqual(
+  lastShelterRepayRuntimeTeminEt(legacyState),
+  {payPoint:400,claimedPoints:[400]}
+);
+assert.strictEqual(
+  Object.prototype.hasOwnProperty.call(
+    legacyState,
+    "lastShelterRepay"
+  ),
+  false
+);
+assert.deepStrictEqual(
+  legacyState.lastShelterAuxiliaryRuntime.repayinfo,
+  {payPoint:400,claimedPoints:[400]}
+);
+
 const emptyState={};
 assert.deepStrictEqual(
   lastShelterRepayRuntimeTeminEt(emptyState),
