@@ -20,6 +20,7 @@ function authCommandiniQeydEt(
     updateServerTime,
     schedulePlayerDeadline,
     makeClientState,
+    makeLastShelterInitPayload,
     sendStateLocalMapToPlayer,
     sendWorldMapToPlayer
   } = deps || {};
@@ -123,6 +124,30 @@ function authCommandiniQeydEt(
             makeClientState(state)
           )
       });
+
+      if (
+        typeof makeLastShelterInitPayload ===
+        "function"
+      ) {
+        const initPayload =
+          makeLastShelterInitPayload(
+            state,
+            playerId
+          );
+
+        send(ws, {
+          type: "last_shelter.init",
+          playerId,
+          serverTimeUnixMs:
+            nowMs(),
+          payload:
+            initPayload,
+          payloadJson:
+            JSON.stringify(
+              initPayload
+            )
+        });
+      }
 
       await sendStateLocalMapToPlayer(
         ws,
