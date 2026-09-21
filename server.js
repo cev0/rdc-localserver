@@ -129,7 +129,6 @@ const {
 } = require("./last_shelter_tutorial_reference");
 
 const {
-  repayRuntimeDefaultHazirla,
   lastShelterRepayRuntimeTeminEt
 } = require("./last_shelter_repay_reference");
 
@@ -5801,9 +5800,6 @@ function makeDefaultState(playerId) {
     lastShelterTutorialRuntime:
       tutorialRuntimeDefaultHazirla(),
 
-    lastShelterRepay:
-      repayRuntimeDefaultHazirla(),
-
     lastShelterVipStore:
       lastShelterVipStoreStateHazirla(),
 
@@ -5965,6 +5961,12 @@ function getOrCreatePlayerState(playerId) {
     state
   );
   lastShelterAuxiliaryRuntimeTeminEt(
+    state
+  );
+  lastShelterRepayRuntimeTeminEt(
+    state
+  );
+  lastShelterVipStoreStateTeminEt(
     state
   );
   lastShelterSevenDaysRuntimeTeminEt(
