@@ -138,6 +138,11 @@ const {
 } = require("./last_shelter_vip_store_runtime");
 
 const {
+  freshInitEnvelopeRuntimeDefaultHazirla,
+  freshInitEnvelopeRuntimeTeminEt
+} = require("./last_shelter_fresh_init_envelope_reference");
+
+const {
   verifiedLastShelterBuildingLevelDataAl,
   verifiedLastShelterBuildingMaxLevelAl
 } = require("./last_shelter_building_runtime_overlay");
@@ -3566,6 +3571,9 @@ const {
   lastShelterQueueScienceCommandleriniQeydEt
 } = require("./runtime_last_shelter_queue_science_commands");
 const {
+  lastShelterInitCommandiniQeydEt
+} = require("./runtime_last_shelter_init_command");
+const {
   requestIdAl,
   correlatedSendYarat
 } = require("./runtime_protocol_envelope");
@@ -5806,6 +5814,9 @@ function makeDefaultState(playerId) {
     lastShelterVipStore:
       lastShelterVipStoreStateHazirla(),
 
+    lastShelterFreshInitEnvelopeRuntime:
+      freshInitEnvelopeRuntimeDefaultHazirla(),
+
     resources:
       lastShelterServerBaslangicResurslariniAl(),
 
@@ -5972,6 +5983,19 @@ function getOrCreatePlayerState(playerId) {
   lastShelterVipStoreStateTeminEt(
     state
   );
+
+  if (
+    !state.lastShelterFreshInitEnvelopeRuntime ||
+    typeof state.lastShelterFreshInitEnvelopeRuntime !== "object" ||
+    Array.isArray(state.lastShelterFreshInitEnvelopeRuntime)
+  ) {
+    state.lastShelterFreshInitEnvelopeRuntime =
+      freshInitEnvelopeRuntimeDefaultHazirla();
+  }
+  freshInitEnvelopeRuntimeTeminEt(
+    state.lastShelterFreshInitEnvelopeRuntime
+  );
+
   lastShelterSevenDaysRuntimeTeminEt(
     state,
     nowMs()
@@ -8660,6 +8684,20 @@ lastShelterQueueScienceCommandleriniQeydEt(
   runtimeCommandRouter,
   {
     getOrCreatePlayerState
+  }
+);
+
+lastShelterInitCommandiniQeydEt(
+  runtimeCommandRouter,
+  {
+    getOrCreatePlayerState,
+    ensureFreshPlayerState:
+      playerId =>
+        runtimeStateSync
+          .ensureFresh(
+            playerId
+          ),
+    updateServerTime
   }
 );
 
