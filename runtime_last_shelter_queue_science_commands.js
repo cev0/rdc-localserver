@@ -11,6 +11,12 @@ const {
   verifiedScienceResearchPlanHazirla
 } = require("./last_shelter_science_runtime_adapteri");
 const {
+  scienceTopologyMelumatiniAl
+} = require("./last_shelter_science_full_topology");
+const {
+  sciencePrerequisiteStatusuAl
+} = require("./last_shelter_science_prerequisite_runtime");
+const {
   getLastShelterQueueState,
   shouldAutoReleaseLastShelterQueue,
   isFreeLastShelterQueue
@@ -216,6 +222,73 @@ function lastShelterQueueScienceCommandleriniQeydEt(
   );
 
   router.register(
+    "science.topology",
+    async ({ws,msg,send,nowMs}) => {
+      const authCheck =
+        authYoxla(ws,msg,send);
+      if (!authCheck) return;
+
+      const topology =
+        scienceTopologyMelumatiniAl(
+          msg && msg.itemId
+        );
+
+      if (!topology) {
+        send(ws,{
+          type:"error",
+          code:"SCIENCE_TOPOLOGY_UNVERIFIED",
+          message:"Science topology not verified"
+        });
+        return;
+      }
+
+      send(ws,{
+        type:"science.topology",
+        playerId:
+          authCheck.playerId,
+        serverTimeUnixMs:
+          serverVaxtiAl(nowMs),
+        topology
+      });
+    },
+    {
+      authRequired:true,
+      mutation:false
+    }
+  );
+
+  router.register(
+    "science.prerequisite",
+    async ({ws,msg,send,nowMs}) => {
+      const authCheck =
+        authYoxla(ws,msg,send);
+      if (!authCheck) return;
+
+      const state =
+        getOrCreatePlayerState(
+          authCheck.playerId
+        );
+
+      send(ws,{
+        type:"science.prerequisite",
+        playerId:
+          authCheck.playerId,
+        serverTimeUnixMs:
+          serverVaxtiAl(nowMs),
+        status:
+          sciencePrerequisiteStatusuAl(
+            state,
+            msg && msg.itemId
+          )
+      });
+    },
+    {
+      authRequired:true,
+      mutation:false
+    }
+  );
+
+  router.register(
     "science.plan",
     async ({ws,msg,send,nowMs}) => {
       const authCheck =
@@ -228,6 +301,25 @@ function lastShelterQueueScienceCommandleriniQeydEt(
         getOrCreatePlayerState(
           authCheck.playerId
         );
+
+      const prerequisite =
+        sciencePrerequisiteStatusuAl(
+          state,
+          msg && msg.itemId
+        );
+
+      if (!prerequisite.ok) {
+        send(ws,{
+          type:"error",
+          code:
+            prerequisite.code ||
+            "SCIENCE_CONDITION_NOT_MET",
+          message:
+            "Science prerequisite failed",
+          prerequisite
+        });
+        return;
+      }
 
       const plan =
         verifiedScienceResearchPlanHazirla(
@@ -264,6 +356,7 @@ function lastShelterQueueScienceCommandleriniQeydEt(
         playerId:
           authCheck.playerId,
         serverTimeUnixMs:now,
+        prerequisite,
         plan
       });
     },
