@@ -4,6 +4,12 @@ const {
   SCIENCE_PROTOCOL,
   scienceMelumatiniAl
 } = require("./last_shelter_science_kataloqu");
+const {
+  getLastShelterQueueTypeByCode
+} = require("./last_shelter_queue_kataloqu");
+const {
+  isFreeLastShelterQueue
+} = require("./last_shelter_queue_runtime");
 
 function metnAl(value, max = 128) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -14,35 +20,243 @@ function tamEded(value, fallback = 0) {
   return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : fallback;
 }
 
+function scienceQueueListesiAl(state) {
+  if (Array.isArray(state && state.queues)) {
+    return state.queues;
+  }
+
+  const starterRuntime =
+    state &&
+    state.lastShelterStarterAccountRuntime;
+
+  if (
+    starterRuntime &&
+    Array.isArray(starterRuntime.queues)
+  ) {
+    return starterRuntime.queues;
+  }
+
+  return [];
+}
+
+function queueTypeCodeAl(queue) {
+  if (!queue || typeof queue !== "object") {
+    return null;
+  }
+
+  for (const value of [
+    queue.typeCode,
+    queue.type,
+    queue.queueType
+  ]) {
+    const numeric = Number(value);
+    if (Number.isInteger(numeric)) {
+      return numeric;
+    }
+  }
+
+  return null;
+}
+
 function scienceQueueTipidir(queue) {
-  return metnAl(queue && (queue.type || queue.queueType), 32).toUpperCase() === SCIENCE_PROTOCOL.queueType;
+  const typeName = metnAl(
+    queue &&
+    (
+      queue.typeName ||
+      queue.queueTypeName ||
+      queue.type ||
+      queue.queueType
+    ),
+    32
+  ).toUpperCase();
+
+  if (typeName === SCIENCE_PROTOCOL.queueType) {
+    return true;
+  }
+
+  const type =
+    getLastShelterQueueTypeByCode(
+      queueTypeCodeAl(queue)
+    );
+
+  return !!(
+    type &&
+    type.name === SCIENCE_PROTOCOL.queueType
+  );
 }
 
-function queueBosdur(queue) {
-  const status = metnAl(queue && queue.status, 32).toLowerCase();
-  return !status || status === "free" || status === "completed" || status === "done" || status === "cancelled";
+function exactLastShelterQueueSeklidir(queue) {
+  if (!queue || typeof queue !== "object") {
+    return false;
+  }
+
+  return (
+    queueTypeCodeAl(queue) !== null ||
+    Object.prototype.hasOwnProperty.call(
+      queue,
+      "updateTime"
+    ) ||
+    Object.prototype.hasOwnProperty.call(
+      queue,
+      "endTime"
+    )
+  );
 }
 
-function scienceQueueMesguldur(state) {
-  const queues = Array.isArray(state && state.queues) ? state.queues : [];
-  return queues.some(queue => scienceQueueTipidir(queue) && !queueBosdur(queue));
+function queueBosdur(
+  queue,
+  nowUnixMs = Date.now()
+) {
+  const status = metnAl(
+    queue && queue.status,
+    32
+  ).toLowerCase();
+
+  if (status) {
+    return (
+      status === "free" ||
+      status === "completed" ||
+      status === "done" ||
+      status === "cancelled"
+    );
+  }
+
+  if (!exactLastShelterQueueSeklidir(queue)) {
+    return true;
+  }
+
+  const now =
+    tamEded(
+      nowUnixMs,
+      Date.now()
+    );
+
+  // Captured starter qid=2 queues carry a future endTime lease even while
+  // updateTime is zero. ScienceService also checks now >= queue.endTime when
+  // an explicit quuid is supplied, so such a queue is not reusable early.
+  const endTime =
+    Number(queue && queue.endTime);
+
+  const itemId =
+    metnAl(
+      queue &&
+      (
+        queue.itemId ||
+        (
+          queue.itemObj &&
+          queue.itemObj.itemId
+        )
+      ),
+      64
+    );
+
+  if (
+    !itemId &&
+    Number.isFinite(endTime) &&
+    endTime > now
+  ) {
+    return false;
+  }
+
+  return isFreeLastShelterQueue(
+    {
+      ...queue,
+      typeName:
+        SCIENCE_PROTOCOL.queueType
+    },
+    now
+  );
 }
 
-function scienceQueueSec(state, queueUuid) {
-  const queues = Array.isArray(state && state.queues) ? state.queues : [];
-  const uuid = metnAl(queueUuid, 128);
+function scienceQueueMesguldur(
+  state,
+  nowUnixMs = Date.now()
+) {
+  const queues =
+    scienceQueueListesiAl(state);
+
+  return queues.some(
+    queue =>
+      scienceQueueTipidir(queue) &&
+      !queueBosdur(
+        queue,
+        nowUnixMs
+      )
+  );
+}
+
+function scienceQueueSec(
+  state,
+  queueUuid,
+  nowUnixMs = Date.now()
+) {
+  const queues =
+    scienceQueueListesiAl(state);
+
+  const uuid =
+    metnAl(queueUuid, 128);
 
   if (uuid) {
-    const queue = queues.find(item => metnAl(item && item.uuid, 128) === uuid);
-    if (!queue || !scienceQueueTipidir(queue) || !queueBosdur(queue)) return null;
+    const queue =
+      queues.find(
+        item =>
+          metnAl(
+            item && item.uuid,
+            128
+          ) === uuid
+      );
+
+    if (
+      !queue ||
+      !scienceQueueTipidir(queue) ||
+      !queueBosdur(
+        queue,
+        nowUnixMs
+      )
+    ) {
+      return null;
+    }
+
     return queue;
   }
 
   // ScienceService.researchOneScience blank quuid -> getFreeQueue(... SCIENCE, 1).
   // Prefer the verified primary queue (qid=1); if qid is absent, preserve list order.
-  const freeScience = queues.filter(queue => scienceQueueTipidir(queue) && queueBosdur(queue));
-  return freeScience.find(queue => tamEded(queue && (queue.qid || queue.queueId), 0) === 1) ||
-    freeScience.find(queue => tamEded(queue && (queue.qid || queue.queueId), 0) === 0) || null;
+  const freeScience =
+    queues.filter(
+      queue =>
+        scienceQueueTipidir(queue) &&
+        queueBosdur(
+          queue,
+          nowUnixMs
+        )
+    );
+
+  return (
+    freeScience.find(
+      queue =>
+        tamEded(
+          queue &&
+          (
+            queue.qid ||
+            queue.queueId
+          ),
+          0
+        ) === 1
+    ) ||
+    freeScience.find(
+      queue =>
+        tamEded(
+          queue &&
+          (
+            queue.qid ||
+            queue.queueId
+          ),
+          0
+        ) === 0
+    ) ||
+    null
+  );
 }
 
 function scienceArtıqArasdirilib(state, itemId) {
@@ -73,7 +287,12 @@ function verifiedScienceResearchPlanHazirla(state, request, nowUnixMs = Date.now
   const science = scienceMelumatiniAl(itemId);
   if (!science) return { ok: false, code: "SCIENCE_ITEM_UNVERIFIED" };
 
-  const selectedQueue = scienceQueueSec(state, requestedQueueUuid);
+  const selectedQueue =
+    scienceQueueSec(
+      state,
+      requestedQueueUuid,
+      nowUnixMs
+    );
   if (!selectedQueue) return { ok: false, code: SCIENCE_PROTOCOL.queueFullError };
 
   if (SCIENCE_PROTOCOL.duplicateItemRejected && scienceArtıqArasdirilib(state, itemId)) {
@@ -124,11 +343,39 @@ function verifiedScienceResearchPlaniniStateEt(state, plan) {
     return { ok: false, code: "SCIENCE_ALREADY_RESEARCHED" };
   }
 
-  if (!Array.isArray(state.queues)) state.queues = [];
-  const queueUuid = metnAl(plan.queue && plan.queue.uuid, 128);
-  const queue = state.queues.find(item => metnAl(item && item.uuid, 128) === queueUuid);
-  if (!queue || !scienceQueueTipidir(queue) || !queueBosdur(queue)) {
-    return { ok: false, code: SCIENCE_PROTOCOL.queueFullError };
+  const queues =
+    scienceQueueListesiAl(state);
+
+  const queueUuid =
+    metnAl(
+      plan.queue &&
+      plan.queue.uuid,
+      128
+    );
+
+  const queue =
+    queues.find(
+      item =>
+        metnAl(
+          item && item.uuid,
+          128
+        ) === queueUuid
+    );
+
+  if (
+    !queue ||
+    !scienceQueueTipidir(queue) ||
+    !queueBosdur(
+      queue,
+      plan.queue &&
+      plan.queue.startUnixMs
+    )
+  ) {
+    return {
+      ok: false,
+      code:
+        SCIENCE_PROTOCOL.queueFullError
+    };
   }
 
   const itemId = metnAl(plan.itemId, 32);
@@ -138,24 +385,68 @@ function verifiedScienceResearchPlaniniStateEt(state, plan) {
     return { ok: false, code: "SCIENCE_PLAN_INVALID" };
   }
 
-  queue.type = SCIENCE_PROTOCOL.queueType;
+  const numericQueueShape =
+    exactLastShelterQueueSeklidir(
+      queue
+    );
+
+  if (numericQueueShape) {
+    // Queue.occupy(itemId, finishTime) reference projection:
+    // startTime=current time, updateTime=finish, totalTime=duration.
+    queue.type = 6;
+    queue.typeCode = 6;
+    queue.typeName =
+      SCIENCE_PROTOCOL.queueType;
+    queue.itemObj = {
+      ...(
+        queue.itemObj &&
+        typeof queue.itemObj === "object"
+          ? queue.itemObj
+          : {}
+      ),
+      itemId
+    };
+    queue.startTime = startUnixMs;
+    queue.updateTime = finishUnixMs;
+    queue.totalTime =
+      Math.max(
+        0,
+        finishUnixMs - startUnixMs
+      );
+  }
+  else {
+    queue.type =
+      SCIENCE_PROTOCOL.queueType;
+  }
+
   queue.status = "running";
   queue.itemId = itemId;
   queue.startUnixMs = startUnixMs;
   queue.finishUnixMs = finishUnixMs;
-  queue.source = "last_shelter_v1.250.102_verified";
+  queue.source =
+    "last_shelter_v1.250.102_verified";
   return { ok: true, queue: { ...queue } };
 }
 
 function verifiedScienceResearchYekunlasdir(state, nowUnixMs = Date.now()) {
-  if (!state || typeof state !== "object" || !Array.isArray(state.queues)) return [];
-  const now = tamEded(nowUnixMs, Date.now());
+  if (!state || typeof state !== "object") return [];
+
+  const queues =
+    scienceQueueListesiAl(state);
+
+  if (!Array.isArray(queues)) return [];
+
+  const now =
+    tamEded(
+      nowUnixMs,
+      Date.now()
+    );
   if (!state.science || typeof state.science !== "object" || Array.isArray(state.science)) {
     state.science = {};
   }
 
   const completed = [];
-  for (const queue of state.queues) {
+  for (const queue of queues) {
     if (!queue || !scienceQueueTipidir(queue)) continue;
     if (metnAl(queue.status, 32).toLowerCase() !== "running") continue;
     const itemId = metnAl(queue.itemId, 32);
@@ -171,6 +462,9 @@ function verifiedScienceResearchYekunlasdir(state, nowUnixMs = Date.now()) {
 }
 
 module.exports = {
+  scienceQueueListesiAl,
+  scienceQueueTipidir,
+  queueBosdur,
   scienceQueueMesguldur,
   scienceQueueSec,
   scienceArtıqArasdirilib,
