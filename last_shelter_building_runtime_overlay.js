@@ -115,20 +115,26 @@ function verifiedLastShelterBuildingMaxLevelAl(
     return 0;
   }
 
-  const levels =
-    Object.keys(
+  const declaredMaxLevels =
+    Object.values(
       RAW_MAIN_BUILDING_LEVELS
     )
-      .map(Number)
-      .filter(
-        level =>
-          Number.isInteger(level) &&
-          level >= 1 &&
-          mainBuildingLeveliniAl(level)
-      );
+      .map(
+        row =>
+          Math.max(
+            0,
+            Math.trunc(
+              Number(
+                row &&
+                row.maxLevelFromXml
+              ) || 0
+            )
+          )
+      )
+      .filter(level => level > 0);
 
-  return levels.length > 0
-    ? Math.max(...levels)
+  return declaredMaxLevels.length > 0
+    ? Math.max(...declaredMaxLevels)
     : 0;
 }
 
