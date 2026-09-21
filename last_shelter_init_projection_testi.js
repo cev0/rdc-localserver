@@ -242,6 +242,28 @@ assert.strictEqual(
 assert.strictEqual(payload.currentCapacity,0);
 assert.strictEqual(payload.maxCapacity,0);
 assert.strictEqual(payload.city_def_val,0);
+assert.strictEqual(payload.killWorldBossNumber,0);
+assert.strictEqual(payload.killActivityBossNumber,0);
+assert.deepStrictEqual(payload.heroprison,[]);
+assert.deepStrictEqual(payload.chatShield,[]);
+assert.strictEqual(payload.hasPassword,false);
+assert.strictEqual(payload.isOpenedKingdomAct,false);
+assert.deepStrictEqual(payload.kingdomSeasonObj,{riseInfo:[]});
+assert.strictEqual(payload.city_def_recover_record,0);
+assert.strictEqual(payload.mail_translation,false);
+assert.strictEqual(payload.activationStoptime,0);
+assert.deepStrictEqual(payload.exchange_gift,[]);
+assert.strictEqual(payload.resourcePoints.length,13);
+assert.deepStrictEqual(
+  payload.resourcePoints.map(x => [x.showId,x.x,x.y,x.rtType]),
+  [
+    [20001401,18,23,0],[20001401,45,32,0],[20001401,27,34,0],
+    [20001421,39,38,2],[20001421,45,45,2],
+    [20001411,26,18,1],[20001411,34,26,1],
+    [20001431,44,21,3],[20001431,38,32,3],[20001431,19,44,3],
+    [20001441,38,18,11],[20001441,32,37,11],[20001441,28,45,11]
+  ]
+);
 assert.deepStrictEqual(payload.army_formation,[]);
 assert.deepStrictEqual(payload.hospital,[]);
 assert.deepStrictEqual(payload.defenseInfo,[]);
@@ -287,6 +309,17 @@ assert.strictEqual(
   serialized.includes("1789659010649"),
   false,
   "Captured cargo epoch leaked into generated init payload."
+);
+
+assert.strictEqual(
+  serialized.includes("db_utc_timestamp"),
+  false,
+  "Reference environment timezone offset must not be hardcoded into init projection."
+);
+assert.strictEqual(
+  serialized.includes("baseBuildingLevel"),
+  false,
+  "Ambiguous captured baseBuildingLevel must not be promoted without a verified semantic contract."
 );
 
 payload.building[0].power = 999999;
