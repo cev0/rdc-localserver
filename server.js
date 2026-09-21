@@ -3548,6 +3548,9 @@ const {
   lastShelterTutorialCommandiniQeydEt
 } = require("./runtime_last_shelter_tutorial_command");
 const {
+  lastShelterWorldCupCommandleriniQeydEt
+} = require("./runtime_last_shelter_worldcup_commands");
+const {
   requestIdAl,
   correlatedSendYarat
 } = require("./runtime_protocol_envelope");
@@ -8611,6 +8614,10 @@ lastShelterTutorialCommandiniQeydEt(
   {
     getOrCreatePlayerState
   }
+);
+
+lastShelterWorldCupCommandleriniQeydEt(
+  runtimeCommandRouter
 );
 
 
