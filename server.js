@@ -3571,6 +3571,7 @@ const {
   lastShelterQueueScienceCommandleriniQeydEt
 } = require("./runtime_last_shelter_queue_science_commands");
 const {
+  lastShelterInitPayloadHazirla,
   lastShelterInitCommandiniQeydEt
 } = require("./runtime_last_shelter_init_command");
 const {
@@ -8540,6 +8541,12 @@ authCommandiniQeydEt(
     updateServerTime,
     schedulePlayerDeadline,
     makeClientState,
+    makeLastShelterInitPayload:
+      (state, playerId) =>
+        lastShelterInitPayloadHazirla(
+          state,
+          playerId
+        ),
     sendStateLocalMapToPlayer,
     sendWorldMapToPlayer
   }
