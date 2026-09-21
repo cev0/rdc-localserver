@@ -7,7 +7,7 @@ const {
 } = require("./last_shelter_item_tuning_kataloqu");
 
 assert.strictEqual(Object.isFrozen(ITEM_TUNING), true);
-assert.strictEqual(Object.keys(ITEM_TUNING).length, 25);
+assert.strictEqual(Object.keys(ITEM_TUNING).length, 30);
 
 assert.deepStrictEqual(itemTuningAl("cd_time"), {
   k1: 300, k2: 900, k3: 3600, k4: 10800, k5: 28800,
@@ -82,6 +82,26 @@ assert.deepStrictEqual(itemTuningAl("iron_material_together"), {
   k7:"232562|410100", k8:"232563|410100", k9:"232564|410100",
   k10:"232565|410100", k11:"232565|410100", k12:"232565|410100",
   k100:"0|0", speed:"0|30"
+});
+assert.deepStrictEqual(itemTuningAl("mithril_material_together"), {
+  k1:"232566|410100", k2:"232567|410100", k3:"232568|410100",
+  k4:"232569|410100", k5:"232570|410100", k6:"232571|410100",
+  k7:"232572|410100", k8:"232573|410100", k9:"232574|410100",
+  k10:"232575|410100", k11:"232575|410100", k12:"232575|410100",
+  k100:"0|0", speed:"0|30"
+});
+assert.deepStrictEqual(itemTuningAl("goldmine_gift_together"), {
+  k1:"0|0", k2:"0|0", k3:"0|0", k4:"0|0", k5:"0|0",
+  k6:"0|0", k7:"0|0", k8:"0|0", k9:"0|0", k10:"0|0",
+  k11:"0|0", k100:"0|0", speed:"0|0"
+});
+assert.deepStrictEqual(itemTuningAl("state_war_time"), {
+  k1:16,k2:100,k3:30,k4:50
+});
+assert.deepStrictEqual(itemTuningAl("desert_zombiesiege_rewardtimes"), {k1:5});
+assert.deepStrictEqual(itemTuningAl("desert_goldmine_speed"), {
+  k1:0.0001,k2:0.0002,k3:0.0003,k4:0.0004,k5:0.0005,
+  k6:0.0006,k7:0.0007,k8:0.0008,k9:0.0009,k10:0.001
 });
 assert.strictEqual(itemTuningAl("unknown"), null);
 
