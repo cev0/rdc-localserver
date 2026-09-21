@@ -172,6 +172,34 @@ assert.deepStrictEqual(
   }
 );
 
+assert.strictEqual(payload.missileList.length,6);
+assert.deepStrictEqual(
+  payload.missileList.map(x => x.missileId),
+  ["53301","53302","53303","53304","53305","53306"]
+);
+assert.deepStrictEqual(
+  payload.missileList.find(x => x.missileId === "53301"),
+  {
+    unlockFlag:0,
+    missileId:"53301",
+    unlock:true,
+    plugin:"",
+    money:1000000,
+    electricity:2500000,
+    food:1000000,
+    time:3600,
+    item_need:"212007;800",
+    totalNum:0,
+    unReceive:0,
+    lastLaunchTime:0
+  }
+);
+assert.strictEqual(
+  payload.missileList.find(x => x.missileId === "53305").launch_cd,
+  14400
+);
+assert.strictEqual(payload.missileList.some(x => x.missileId === "53307"),false);
+
 assert.strictEqual(payload.task.length,205);
 assert.strictEqual(
   payload.task.filter(x => x.type1 === 49).length,
