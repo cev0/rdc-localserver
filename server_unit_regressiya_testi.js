@@ -62,6 +62,7 @@ const UNIT_TESTLERI = [
   "last_shelter_science_full_topology_testi.js",
   "last_shelter_science_prerequisite_runtime_testi.js",
   "last_shelter_science_tree_reference_testi.js",
+  "last_shelter_starter_city_reference_testi.js",
   "last_shelter_troop_transfer_reference_testi.js",
   "last_shelter_world_battlefield_reference_testi.js",
   "missiya_mukafat_pg_mutasiya_testi.js",
