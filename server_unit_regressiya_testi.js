@@ -73,6 +73,7 @@ const UNIT_TESTLERI = [
   "last_shelter_repay_reference_testi.js",
   "last_shelter_resurs_kataloqu_testi.js",
   "last_shelter_resource_runtime_testi.js",
+  "runtime_last_shelter_resource_command_testi.js",
   "last_shelter_science_kataloqu_testi.js",
   "last_shelter_science_full_topology_testi.js",
   "last_shelter_science_prerequisite_runtime_testi.js",
