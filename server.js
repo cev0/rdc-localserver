@@ -51,7 +51,8 @@ const {
 
 const {
   lastShelterResourceRuntimeDefaultHazirla,
-  lastShelterResourceRuntimeTeminEt
+  lastShelterResourceRuntimeTeminEt,
+  lastShelterResourcePayloadHazirla
 } = require("./last_shelter_resource_runtime");
 
 const {
@@ -8583,6 +8584,12 @@ authCommandiniQeydEt(
     updateServerTime,
     schedulePlayerDeadline,
     makeClientState,
+    makeLastShelterResourcePayload:
+      (state, atTimeMs) =>
+        lastShelterResourcePayloadHazirla(
+          state,
+          atTimeMs
+        ),
     makeLastShelterInitPayload:
       (state, playerId) =>
         lastShelterInitPayloadHazirla(
