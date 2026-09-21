@@ -281,8 +281,72 @@ function fortTroopRuntimeProjectionAl(id) {
   };
 }
 
+
+function fortRuntimeDefaultHazirla() {
+  const owned = {};
+  for (const row of LAST_SHELTER_FORT_TROOPS) {
+    owned[String(row.id)] =
+      String(row.id) === "107900"
+        ? 1
+        : 0;
+  }
+  return { owned };
+}
+
+function fortRuntimeTeminEt(state) {
+  if (!state || typeof state !== "object") return null;
+
+  if (
+    !state.lastShelterFortRuntime ||
+    typeof state.lastShelterFortRuntime !== "object" ||
+    Array.isArray(state.lastShelterFortRuntime)
+  ) {
+    state.lastShelterFortRuntime =
+      fortRuntimeDefaultHazirla();
+  }
+
+  const runtime = state.lastShelterFortRuntime;
+  if (
+    !runtime.owned ||
+    typeof runtime.owned !== "object" ||
+    Array.isArray(runtime.owned)
+  ) {
+    runtime.owned = fortRuntimeDefaultHazirla().owned;
+  }
+
+  for (const row of LAST_SHELTER_FORT_TROOPS) {
+    const id = String(row.id);
+    const n = Number(runtime.owned[id]);
+    runtime.owned[id] =
+      Number.isFinite(n)
+        ? Math.max(0, Math.trunc(n))
+        : 0;
+  }
+
+  return runtime;
+}
+
+function fortInitProjectionHazirla(state) {
+  const runtime = fortRuntimeTeminEt(state);
+  if (!runtime) return [];
+
+  return LAST_SHELTER_FORT_TROOPS.map(row => ({
+    ...row,
+    free:
+      Math.max(
+        0,
+        Math.trunc(
+          Number(runtime.owned[String(row.id)]) || 0
+        )
+      )
+  }));
+}
+
 module.exports = {
   LAST_SHELTER_FORT_TROOPS,
   fortTroopAl,
-  fortTroopRuntimeProjectionAl
+  fortTroopRuntimeProjectionAl,
+  fortRuntimeDefaultHazirla,
+  fortRuntimeTeminEt,
+  fortInitProjectionHazirla
 };
