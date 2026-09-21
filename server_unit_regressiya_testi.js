@@ -60,6 +60,7 @@ const UNIT_TESTLERI = [
   "last_shelter_item_buy_contract_testi.js",
   "runtime_last_shelter_item_commands_testi.js",
   "last_shelter_item_runtime_testi.js",
+  "last_shelter_missile_runtime_testi.js",
   "last_shelter_gold_wallet_testi.js",
   "last_shelter_goods_structure_reference_testi.js",
   "last_shelter_init_projection_testi.js",
