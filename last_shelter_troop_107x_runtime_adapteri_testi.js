@@ -10,7 +10,7 @@ const {
 } = require("./last_shelter_troop_107x_runtime_adapteri");
 
 const ids = verified107xIds();
-assert.deepStrictEqual(ids, ["107000", "107001", "107002", "107003", "107004", "107005", "107006", "107007"]);
+assert.deepStrictEqual(ids, ["107000", "107001", "107002", "107003", "107004", "107005", "107006", "107007", "107019", "107119", "107219"]);
 
 for (const id of ids) {
   const source = TROOP_107X[id];
@@ -23,6 +23,7 @@ for (const id of ids) {
   assert.strictEqual(projection.stats.hp, source.health);
   assert.strictEqual(projection.stats.battlePower, source.power);
   assert.strictEqual(projection.stats.marchSpeed, source.speed);
+  assert.strictEqual(projection.stats.range, source.range);
   assert.strictEqual(projection.stats.loadCapacity, source.load);
   assert.strictEqual(projection.stats.upkeep, source.upkeep);
   assert.strictEqual(projection.stats.healResource, source.heal_res);
@@ -55,8 +56,16 @@ assert.strictEqual(overlaid.stats.consumption.amount, TROOP_107X["107007"].upkee
 assert.deepStrictEqual(Object.fromEntries(overlaid.costPerUnit.map(x => [x.type, x.amount])), { food: 203, wood: 108, stone: 4, iron: 25 });
 assert.strictEqual(overlaid.lastShelterVerified, true);
 
-const unknown = { unitId: "x", lastShelterArmyId: "107999", stats: { attackSpeed: 1 } };
-assert.strictEqual(applyVerified107xToRdcUnit(unknown), unknown, "unknown reference ids must not receive guessed values");
+const advanced = applyVerified107xToRdcUnit({ unitId: "advanced_ranged", lastShelterArmyId: "107219", stats: {} });
+assert.strictEqual(advanced.baseTrainingSeconds, 173);
+assert.strictEqual(advanced.stats.attack, 72);
+assert.strictEqual(advanced.stats.defense, 42);
+assert.strictEqual(advanced.stats.hp, 16);
+assert.strictEqual(advanced.stats.range, 50);
+assert.deepStrictEqual(Object.fromEntries(advanced.costPerUnit.map(x => [x.type, x.amount])), { food: 155, stone: 19, iron: 75 });
+
+const unknown = { unitId: "x", lastShelterArmyId: "107319", stats: { attackSpeed: 1 } };
+assert.strictEqual(applyVerified107xToRdcUnit(unknown), unknown, "snapshot-varying/unverified rows must not receive guessed values");
 assert.deepStrictEqual(applyVerified107xBatch([unknown]), [unknown]);
 assert.deepStrictEqual(applyVerified107xBatch(null), []);
 
