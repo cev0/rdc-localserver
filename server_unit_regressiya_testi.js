@@ -94,6 +94,7 @@ const UNIT_TESTLERI = [
   "runtime_last_shelter_worldcup_commands_testi.js",
   "runtime_last_shelter_economy_reference_commands_testi.js",
   "runtime_last_shelter_queue_science_commands_testi.js",
+  "runtime_last_shelter_troop_reference_commands_testi.js",
   "runtime_last_shelter_init_command_testi.js",
   "missiya_mukafat_pg_mutasiya_testi.js",
   "missiya_snapshot_authority_testi.js",
