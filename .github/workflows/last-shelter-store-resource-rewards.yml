@@ -6,11 +6,15 @@ on:
     paths:
       - 'last_shelter_store_resource_rewards.js'
       - 'last_shelter_store_resource_rewards_testi.js'
+      - 'last_shelter_init_projection.js'
+      - 'last_shelter_init_projection_testi.js'
       - '.github/workflows/last-shelter-store-resource-rewards.yml'
   pull_request:
     paths:
       - 'last_shelter_store_resource_rewards.js'
       - 'last_shelter_store_resource_rewards_testi.js'
+      - 'last_shelter_init_projection.js'
+      - 'last_shelter_init_projection_testi.js'
       - '.github/workflows/last-shelter-store-resource-rewards.yml'
 
 jobs:
@@ -22,3 +26,4 @@ jobs:
         with:
           node-version: '20'
       - run: node last_shelter_store_resource_rewards_testi.js
+      - run: node last_shelter_init_projection_testi.js
