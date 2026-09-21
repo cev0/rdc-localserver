@@ -1,7 +1,7 @@
 "use strict";
 
 const assert = require("assert");
-const { TROOP_107X, troop107xAl } = require("./last_shelter_troop_107x_reference");
+const { TROOP_107X, LAST_SHELTER_SPECIAL_ARMS_CONFIG, troop107xAl, specialArmConfigAl } = require("./last_shelter_troop_107x_reference");
 
 assert.deepStrictEqual(Object.keys(TROOP_107X), ["107000","107001","107002","107003","107004","107005","107006","107007","107019","107119","107219"]);
 
@@ -28,6 +28,14 @@ for (const [id, values] of Object.entries(expected)) {
   assert.strictEqual(row.march, 0);
   assert.strictEqual(row.move, 10);
 }
+
+assert.strictEqual(LAST_SHELTER_SPECIAL_ARMS_CONFIG.k1, "200000");
+assert.strictEqual(LAST_SHELTER_SPECIAL_ARMS_CONFIG.k2, "107019,781000|107219,782400|107119,783800|107319,785200");
+assert.deepStrictEqual(specialArmConfigAl("107019"), { troopId: "107019", configId: "781000" });
+assert.deepStrictEqual(specialArmConfigAl("107219"), { troopId: "107219", configId: "782400" });
+assert.deepStrictEqual(specialArmConfigAl("107119"), { troopId: "107119", configId: "783800" });
+assert.deepStrictEqual(specialArmConfigAl("107319"), { troopId: "107319", configId: "785200" });
+assert.strictEqual(specialArmConfigAl("107999"), null);
 
 // 107319 has stable-looking combat fields but snapshot-varying speed; keep it out
 // until the reference static/effect split is proven rather than guessing a base.
