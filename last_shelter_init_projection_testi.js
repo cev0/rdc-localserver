@@ -110,6 +110,16 @@ assert.strictEqual(payload.user.gold,40);
 assert.strictEqual(payload.user.gold1,40);
 assert.strictEqual(payload.user.paidGold,0);
 
+assert.strictEqual(payload.activity.length,12);
+assert.deepStrictEqual(
+  payload.activity.map(x => x.id),
+  [
+    "57002","57032","57041","57061",
+    "57059","57063","57067","57087",
+    "57089","57121","57127","57149"
+  ]
+);
+
 assert.strictEqual(payload.building.length,2);
 assert.strictEqual(payload.buildListConfig.length,10);
 assert.strictEqual(payload.items.length,2);
