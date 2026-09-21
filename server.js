@@ -128,6 +128,11 @@ const {
   tutorialRuntimeTeminEt
 } = require("./last_shelter_tutorial_reference");
 
+const {
+  verifiedLastShelterBuildingLevelDataAl,
+  verifiedLastShelterBuildingMaxLevelAl
+} = require("./last_shelter_building_runtime_overlay");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -3258,6 +3263,22 @@ function getLevelData(buildingId, targetLevel) {
   const id = normalizeBuildingId(buildingId);
   const level = Math.max(1, Number(targetLevel) || 1);
 
+  const verifiedLastShelterLevel =
+    verifiedLastShelterBuildingLevelDataAl(
+      id,
+      level
+    );
+
+  if (verifiedLastShelterLevel) {
+    return {
+      ...verifiedLastShelterLevel,
+      cost:
+        cloneCostArray(
+          verifiedLastShelterLevel.cost
+        )
+    };
+  }
+
   const cfg = EXTERNAL_BUILDING_LEVEL_CONFIG[id] || BUILDING_LEVEL_CONFIG[id];
   if (cfg && Array.isArray(cfg.levels) && cfg.levels.length > 0) {
     const index = level - 1;
@@ -3320,6 +3341,19 @@ return {
 
 function getMaxLevelForBuilding(buildingId) {
   const id = normalizeBuildingId(buildingId);
+
+  const verifiedLastShelterMaxLevel =
+    verifiedLastShelterBuildingMaxLevelAl(
+      id
+    );
+
+  if (
+    verifiedLastShelterMaxLevel >
+    0
+  ) {
+    return verifiedLastShelterMaxLevel;
+  }
+
   const meta = getDefinitionMeta(id);
 
   if (meta && Number.isFinite(meta.maxLevel)) {
