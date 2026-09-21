@@ -26,6 +26,36 @@ const {
   assert.strictEqual(legacyQosunIdSiniCanonicalEt("saxta_unit"), "");
 })();
 
+(function allPrimary107xIdsBattleCanonical() {
+  for (const prefix of ["1070","1071","1072"]) {
+    for (let index = 0; index < 10; index++) {
+      const rawId = prefix + String(index).padStart(2, "0");
+      const expectedClass =
+        prefix === "1070"
+          ? "warrior"
+          : prefix === "1071"
+            ? "vehicle"
+            : "shooter";
+      const expectedCanonical =
+        expectedClass + "_t" + (index + 1);
+
+      assert.strictEqual(
+        legacyQosunIdSiniCanonicalEt(rawId),
+        expectedCanonical,
+        rawId
+      );
+
+      const row = qosunDoyusMelumatiniAl(rawId);
+      assert.ok(row, rawId);
+      assert.strictEqual(row.lastShelterArmyId, rawId);
+      assert.ok(row.attackSpeed > 0, rawId);
+      assert.ok(row.defense > 0, rawId);
+      assert.ok(row.hp > 0, rawId);
+      assert.ok(row.battlePower > 0, rawId);
+    }
+  }
+})();
+
 (function birVahidGucTesti() {
   assert.strictEqual(birQosununGucunuAl("warrior_t1"), 1);
   assert.strictEqual(birQosununGucunuAl("warrior_t7"), 4.9);
