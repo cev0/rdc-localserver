@@ -1,0 +1,26 @@
+name: Last Shelter Building Runtime Observed
+
+on:
+  push:
+    branches: [server-v2-scalable]
+    paths:
+      - 'last_shelter_building_runtime_observed_reference.js'
+      - 'last_shelter_building_runtime_observed_reference_testi.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-building-runtime-observed.yml'
+  pull_request:
+    paths:
+      - 'last_shelter_building_runtime_observed_reference.js'
+      - 'last_shelter_building_runtime_observed_reference_testi.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-building-runtime-observed.yml'
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node last_shelter_building_runtime_observed_reference_testi.js
