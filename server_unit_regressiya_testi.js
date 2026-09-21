@@ -66,6 +66,7 @@ const UNIT_TESTLERI = [
   "last_shelter_fort_troop_reference_testi.js",
   "last_shelter_troop_1073x_reference_testi.js",
   "last_shelter_queue_kataloqu_testi.js",
+  "last_shelter_repay_reference_testi.js",
   "last_shelter_resurs_kataloqu_testi.js",
   "last_shelter_resource_runtime_testi.js",
   "last_shelter_science_kataloqu_testi.js",
