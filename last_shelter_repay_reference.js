@@ -206,16 +206,36 @@ function lastShelterRepayRuntimeTeminEt(state) {
   }
 
   if (
-    !state.lastShelterRepay ||
-    typeof state.lastShelterRepay !== "object" ||
-    Array.isArray(state.lastShelterRepay)
+    !state.lastShelterAuxiliaryRuntime ||
+    typeof state.lastShelterAuxiliaryRuntime !== "object" ||
+    Array.isArray(state.lastShelterAuxiliaryRuntime)
   ) {
-    state.lastShelterRepay =
-      repayRuntimeDefaultHazirla();
+    state.lastShelterAuxiliaryRuntime = {};
+  }
+
+  const auxiliary =
+    state.lastShelterAuxiliaryRuntime;
+
+  if (
+    !auxiliary.repayinfo ||
+    typeof auxiliary.repayinfo !== "object" ||
+    Array.isArray(auxiliary.repayinfo)
+  ) {
+    const legacy =
+      state.lastShelterRepay &&
+      typeof state.lastShelterRepay === "object" &&
+      !Array.isArray(state.lastShelterRepay)
+        ? state.lastShelterRepay
+        : null;
+
+    auxiliary.repayinfo =
+      legacy
+        ? { ...legacy }
+        : repayRuntimeDefaultHazirla();
   }
 
   const runtime =
-    state.lastShelterRepay;
+    auxiliary.repayinfo;
 
   runtime.payPoint =
     Math.max(
@@ -235,6 +255,15 @@ function lastShelterRepayRuntimeTeminEt(state) {
           )
         ).sort((a,b)=>a-b)
       : [];
+
+  if (
+    Object.prototype.hasOwnProperty.call(
+      state,
+      "lastShelterRepay"
+    )
+  ) {
+    delete state.lastShelterRepay;
+  }
 
   return runtime;
 }
