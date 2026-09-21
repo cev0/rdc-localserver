@@ -83,6 +83,11 @@ const {
   lastShelterEngagementRuntimeTeminEt
 } = require("./last_shelter_engagement_reward_reference");
 
+const {
+  truckRuntimeDefaultHazirla,
+  lastShelterTruckRuntimeTeminEt
+} = require("./last_shelter_truck_convoy_reference");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -5658,6 +5663,11 @@ function makeDefaultState(playerId) {
     lastShelterEngagementRuntime:
       lastShelterEngagementRuntimeDefaultHazirla(),
 
+    lastShelterTruckRuntime:
+      truckRuntimeDefaultHazirla(
+        ""
+      ),
+
     resources:
       lastShelterServerBaslangicResurslariniAl(),
 
@@ -5804,6 +5814,9 @@ function getOrCreatePlayerState(playerId) {
     state
   );
   lastShelterEngagementRuntimeTeminEt(
+    state
+  );
+  lastShelterTruckRuntimeTeminEt(
     state
   );
 
