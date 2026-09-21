@@ -10,6 +10,8 @@ on:
       - 'last_shelter_queue_kataloqu.js'
       - 'last_shelter_science_kataloqu.js'
       - 'last_shelter_science_runtime_adapteri.js'
+      - 'last_shelter_science_full_topology.js'
+      - 'last_shelter_science_prerequisite_runtime.js'
       - 'server.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-queue-science-runtime.yml'
@@ -21,6 +23,8 @@ on:
       - 'last_shelter_queue_kataloqu.js'
       - 'last_shelter_science_kataloqu.js'
       - 'last_shelter_science_runtime_adapteri.js'
+      - 'last_shelter_science_full_topology.js'
+      - 'last_shelter_science_prerequisite_runtime.js'
       - 'server.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-queue-science-runtime.yml'
@@ -36,4 +40,6 @@ jobs:
       - run: node last_shelter_queue_runtime_testi.js
       - run: node last_shelter_science_kataloqu_testi.js
       - run: node last_shelter_science_runtime_adapteri_testi.js
+      - run: node last_shelter_science_full_topology_testi.js
+      - run: node last_shelter_science_prerequisite_runtime_testi.js
       - run: node runtime_last_shelter_queue_science_commands_testi.js
