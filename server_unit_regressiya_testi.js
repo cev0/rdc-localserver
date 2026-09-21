@@ -146,6 +146,17 @@ const UNIT_TESTLERI = [
   "xerite_resurs_toplama_pg_mutasiya_testi.js",
   "xestexana_inkisaf_override_testi.js",
   "xestexana_pg_mutasiya_testi.js"
+  "last_shelter_fresh_init_envelope_reference_testi.js",
+  "last_shelter_item_tuning_kataloqu_testi.js",
+  "last_shelter_missile_kataloqu_testi.js",
+  "last_shelter_queue_runtime_testi.js",
+  "last_shelter_science_cost_contract_testi.js",
+  "last_shelter_science_runtime_adapteri_testi.js",
+  "last_shelter_store_resource_rewards_testi.js",
+  "last_shelter_troop_107x_reference_testi.js",
+  "last_shelter_troop_107x_runtime_adapteri_testi.js",
+  "last_shelter_vip_store_economy_testi.js",
+
 ];
 
 // Bu testlər real PostgreSQL, SMTP və ya işləyən WebSocket server tələb edir.
