@@ -7,7 +7,7 @@ const {
 } = require("./last_shelter_item_tuning_kataloqu");
 
 assert.strictEqual(Object.isFrozen(ITEM_TUNING), true);
-assert.strictEqual(Object.keys(ITEM_TUNING).length, 10);
+assert.strictEqual(Object.keys(ITEM_TUNING).length, 21);
 
 assert.deepStrictEqual(itemTuningAl("cd_time"), {
   k1: 300, k2: 900, k3: 3600, k4: 10800, k5: 28800,
@@ -39,6 +39,25 @@ assert.deepStrictEqual(itemTuningAl("trade_stay_time"), {
 });
 assert.deepStrictEqual(itemTuningAl("speedup_mode"), {
   k1: 75, k2: 20, k3: 3, k4: 25, k5: 1800, k6: 0.05
+});
+assert.deepStrictEqual(itemTuningAl("timed_event"), {
+  k1: 0.01, k2: 0.1, k3: 0.05, k4: 0.18, k5: 1
+});
+assert.deepStrictEqual(itemTuningAl("scoutmark_time"), { k1: 10 });
+assert.deepStrictEqual(itemTuningAl("enforce_guide_training_time"), { k1: 2 });
+assert.deepStrictEqual(itemTuningAl("four_kind_speedup_switch"), {
+  k1: "0|", k2: "1|", k3: "2|", k4: "3|1-10000"
+});
+assert.deepStrictEqual(itemTuningAl("truck_stay_time"), { k1: 15 });
+assert.deepStrictEqual(itemTuningAl("recourse_refresh_time"), { k1: 600 });
+assert.deepStrictEqual(itemTuningAl("global_timer"), { k1: 20 });
+assert.deepStrictEqual(itemTuningAl("wonder_acceleration"), { k1: 999 });
+assert.deepStrictEqual(itemTuningAl("killerevent_starttime"), { k1: 2 });
+assert.deepStrictEqual(itemTuningAl("monster_life_time"), {
+  k1: 7200, k2: 21300
+});
+assert.deepStrictEqual(itemTuningAl("preliminaries_time"), {
+  k1: 259200, k2: 3600
 });
 assert.strictEqual(itemTuningAl("unknown"), null);
 
