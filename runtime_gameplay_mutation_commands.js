@@ -378,6 +378,19 @@ function gameplayMutationCommandleriniQeydEt(
           targetLevel
         );
 
+      if (
+        !levelData ||
+        levelData.unavailable === true
+      ) {
+        errorGonder(
+          send,
+          ws,
+          "Verified Last Shelter building level data is incomplete for this target level",
+          "BUILDING_LEVEL_REFERENCE_INCOMPLETE"
+        );
+        return;
+      }
+
       const check =
         hasEnoughResources(
           state,
@@ -730,6 +743,19 @@ function gameplayMutationCommandleriniQeydEt(
           building.buildingId,
           targetLevel
         );
+
+      if (
+        !levelData ||
+        levelData.unavailable === true
+      ) {
+        errorGonder(
+          send,
+          ws,
+          "Verified Last Shelter building level data is incomplete for this target level",
+          "BUILDING_LEVEL_REFERENCE_INCOMPLETE"
+        );
+        return;
+      }
 
       const check =
         hasEnoughResources(
