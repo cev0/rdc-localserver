@@ -6,12 +6,24 @@ on:
     paths:
       - 'last_shelter_building_runtime_observed_reference.js'
       - 'last_shelter_building_runtime_observed_reference_testi.js'
+      - 'last_shelter_building_runtime_overlay.js'
+      - 'last_shelter_building_runtime_overlay_testi.js'
+      - 'last_shelter_building_kataloqu.js'
+      - 'runtime_gameplay_mutation_commands.js'
+      - 'runtime_gameplay_mutation_commands_testi.js'
+      - 'server.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-building-runtime-observed.yml'
   pull_request:
     paths:
       - 'last_shelter_building_runtime_observed_reference.js'
       - 'last_shelter_building_runtime_observed_reference_testi.js'
+      - 'last_shelter_building_runtime_overlay.js'
+      - 'last_shelter_building_runtime_overlay_testi.js'
+      - 'last_shelter_building_kataloqu.js'
+      - 'runtime_gameplay_mutation_commands.js'
+      - 'runtime_gameplay_mutation_commands_testi.js'
+      - 'server.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-building-runtime-observed.yml'
 
@@ -24,3 +36,5 @@ jobs:
         with:
           node-version: '20'
       - run: node last_shelter_building_runtime_observed_reference_testi.js
+      - run: node last_shelter_building_runtime_overlay_testi.js
+      - run: node runtime_gameplay_mutation_commands_testi.js
