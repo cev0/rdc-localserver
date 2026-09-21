@@ -87,6 +87,12 @@ const {
           serverTimeUnixMs:
             state.serverTimeUnixMs
         }),
+      makeLastShelterResourcePayload:
+        (_state, atTimeMs) => ({
+          food: 1000,
+          db_timezone_offset:
+            Math.trunc(atTimeMs / 1000)
+        }),
       makeLastShelterInitPayload:
         (state, playerId) => ({
           user: {
@@ -176,7 +182,7 @@ const {
 
   assert.strictEqual(
     sent.length,
-    3
+    4
   );
 
   assert.deepStrictEqual(
@@ -205,7 +211,7 @@ const {
 
   assert.strictEqual(
     sent[2].type,
-    "last_shelter.init"
+    "SynUserResource"
   );
   assert.strictEqual(
     sent[2].playerId,
@@ -213,6 +219,28 @@ const {
   );
   assert.deepStrictEqual(
     sent[2].payload,
+    {
+      food: 1000,
+      db_timezone_offset: 0
+    }
+  );
+  assert.deepStrictEqual(
+    JSON.parse(
+      sent[2].payloadJson
+    ),
+    sent[2].payload
+  );
+
+  assert.strictEqual(
+    sent[3].type,
+    "last_shelter.init"
+  );
+  assert.strictEqual(
+    sent[3].playerId,
+    "player-123"
+  );
+  assert.deepStrictEqual(
+    sent[3].payload,
     {
       user: {
         uid: "player-123"
@@ -225,9 +253,9 @@ const {
   );
   assert.deepStrictEqual(
     JSON.parse(
-      sent[2].payloadJson
+      sent[3].payloadJson
     ),
-    sent[2].payload
+    sent[3].payload
   );
 
   console.log(
