@@ -7,7 +7,8 @@ const {
   lastShelterVerifiedInitProjectionHazirla
 } = require("./last_shelter_init_projection");
 const {
-  freshInitEnvelopeRuntimeDefaultHazirla
+  freshInitEnvelopeRuntimeDefaultHazirla,
+  freshInitEnvelopeRuntimeTeminEt
 } = require("./last_shelter_fresh_init_envelope_reference");
 
 function clone(value) {
@@ -29,6 +30,10 @@ function lastShelterInitPayloadHazirla(
           state.lastShelterFreshInitEnvelopeRuntime
         )
       : freshInitEnvelopeRuntimeDefaultHazirla();
+
+  freshInitEnvelopeRuntimeTeminEt(
+    envelope
+  );
 
   const projection =
     lastShelterVerifiedInitProjectionHazirla(
