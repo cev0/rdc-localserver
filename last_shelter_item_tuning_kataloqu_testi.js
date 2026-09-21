@@ -7,7 +7,7 @@ const {
 } = require("./last_shelter_item_tuning_kataloqu");
 
 assert.strictEqual(Object.isFrozen(ITEM_TUNING), true);
-assert.strictEqual(Object.keys(ITEM_TUNING).length, 21);
+assert.strictEqual(Object.keys(ITEM_TUNING).length, 25);
 
 assert.deepStrictEqual(itemTuningAl("cd_time"), {
   k1: 300, k2: 900, k3: 3600, k4: 10800, k5: 28800,
@@ -58,6 +58,30 @@ assert.deepStrictEqual(itemTuningAl("monster_life_time"), {
 });
 assert.deepStrictEqual(itemTuningAl("preliminaries_time"), {
   k1: 259200, k2: 3600
+});
+assert.deepStrictEqual(itemTuningAl("red_packet_time"), {
+  k1: 12, k2: 4
+});
+assert.deepStrictEqual(itemTuningAl("wood_material_together"), {
+  k1:"232536|410100", k2:"232537|410100", k3:"232538|410100",
+  k4:"232539|410100", k5:"232540|410100", k6:"232541|410100",
+  k7:"232542|410100", k8:"232543|410100", k9:"232544|410100",
+  k10:"232545|410100", k11:"232545|410100", k12:"232545|410100",
+  k100:"0|0", speed:"0|30"
+});
+assert.deepStrictEqual(itemTuningAl("food_material_together"), {
+  k1:"232546|410100", k2:"232547|410100", k3:"232548|410100",
+  k4:"232549|410100", k5:"232550|410100", k6:"232551|410100",
+  k7:"232552|410100", k8:"232553|410100", k9:"232554|410100",
+  k10:"232555|410100", k11:"232555|410100", k12:"232555|410100",
+  k100:"0|0", speed:"0|30"
+});
+assert.deepStrictEqual(itemTuningAl("iron_material_together"), {
+  k1:"232556|410100", k2:"232557|410100", k3:"232558|410100",
+  k4:"232559|410100", k5:"232560|410100", k6:"232561|410100",
+  k7:"232562|410100", k8:"232563|410100", k9:"232564|410100",
+  k10:"232565|410100", k11:"232565|410100", k12:"232565|410100",
+  k100:"0|0", speed:"0|30"
 });
 assert.strictEqual(itemTuningAl("unknown"), null);
 
