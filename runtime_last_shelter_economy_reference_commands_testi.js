@@ -165,6 +165,11 @@ class FakeRouter {
     sent[0].panel.vipstore.goods[0].buyAmount,
     4
   );
+  assert.strictEqual(
+    sent[0].panel.vipstore.refreshTime,
+    0,
+    "Client refreshTime server-authoritative VIP reset vaxtını diktə etməməlidir."
+  );
 
   sent.length=0;
   await router.routes.get("shop.get").handler({
