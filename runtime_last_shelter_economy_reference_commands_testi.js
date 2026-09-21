@@ -1,0 +1,185 @@
+"use strict";
+
+const assert=require("assert");
+const {
+  repaySnapshotHazirla,
+  allianceGroupPurchaseSnapshotHazirla,
+  vipStoreSnapshotHazirla,
+  lastShelterEconomyReferenceCommandleriniQeydEt
+}=require("./runtime_last_shelter_economy_reference_commands");
+
+class FakeRouter {
+  constructor(){this.routes=new Map();}
+  register(type,handler,options){
+    this.routes.set(
+      String(type).toLowerCase(),
+      {handler,options}
+    );
+    return this;
+  }
+}
+
+(async()=>{
+  const state={
+    lastShelterRepay:{
+      payPoint:2000,
+      claimedPoints:[400]
+    },
+    lastShelterAllianceRuntime:{
+      groupPurchaseActivity:{
+        activityId:"57032",
+        progress:2
+      },
+      groupPurchaseRecords:[
+        {id:"r1"}
+      ]
+    },
+    lastShelterVipStore:{
+      currentExp:5,
+      level:2,
+      activepoint:7,
+      gambleCount:1,
+      initExp:3,
+      purchaseCounts:{
+        "1000":4
+      }
+    }
+  };
+
+  assert.deepStrictEqual(
+    repaySnapshotHazirla(state)
+      .eligibleRewards
+      .map(x=>x.point),
+    [400,2000]
+  );
+
+  assert.strictEqual(
+    allianceGroupPurchaseSnapshotHazirla(state)
+      .runtime.progress,
+    2
+  );
+
+  assert.strictEqual(
+    vipStoreSnapshotHazirla(
+      state,
+      1789704000
+    ).vipstore.goods[0].buyAmount,
+    4
+  );
+
+  const router=new FakeRouter();
+  lastShelterEconomyReferenceCommandleriniQeydEt(
+    router,
+    {
+      getOrCreatePlayerState:
+        ()=>state
+    }
+  );
+
+  const routeNames=[
+    "activity.list",
+    "activity.get",
+    "shop.list",
+    "shop.get",
+    "repay.info",
+    "alliance.group_purchase.info",
+    "alliance.group_purchase.offer",
+    "vipstore.panel"
+  ];
+
+  assert.deepStrictEqual(
+    Array.from(router.routes.keys()),
+    routeNames
+  );
+
+  for(const name of routeNames){
+    assert.deepStrictEqual(
+      router.routes.get(name).options,
+      {
+        authRequired:true,
+        mutation:false
+      }
+    );
+  }
+
+  const ws={_authedPlayerId:"p1"};
+  const sent=[];
+  const send=(socket,payload)=>sent.push(payload);
+
+  await router.routes.get("activity.get").handler({
+    ws,
+    msg:{playerId:"p1",id:"57041"},
+    send,
+    nowMs:()=>101
+  });
+  assert.strictEqual(sent[0].row.id,"57041");
+
+  sent.length=0;
+  await router.routes.get("shop.get").handler({
+    ws,
+    msg:{playerId:"p1",id:"200000001"},
+    send,
+    nowMs:()=>102
+  });
+  assert.strictEqual(sent[0].itemTupleRaw.length,8);
+
+  sent.length=0;
+  await router.routes.get("repay.info").handler({
+    ws,
+    msg:{playerId:"p1"},
+    send,
+    nowMs:()=>103
+  });
+  assert.strictEqual(sent[0].repay.payPoint,2000);
+  assert.deepStrictEqual(
+    sent[0].repay.claimedPoints,
+    [400]
+  );
+
+  sent.length=0;
+  await router.routes.get("alliance.group_purchase.offer").handler({
+    ws,
+    msg:{playerId:"p1",goodsId:"207058"},
+    send,
+    nowMs:()=>104
+  });
+  assert.strictEqual(sent[0].offer.key,"k6");
+
+  sent.length=0;
+  await router.routes.get("vipstore.panel").handler({
+    ws,
+    msg:{
+      playerId:"p1",
+      refreshTime:1789704000
+    },
+    send,
+    nowMs:()=>105
+  });
+  assert.strictEqual(
+    sent[0].panel.vipstore.level,
+    2
+  );
+  assert.strictEqual(
+    sent[0].panel.vipstore.goods[0].buyAmount,
+    4
+  );
+
+  sent.length=0;
+  await router.routes.get("shop.get").handler({
+    ws,
+    msg:{playerId:"wrong",id:"200000001"},
+    send,
+    nowMs:()=>106
+  });
+  assert.strictEqual(
+    sent[0].code,
+    "PLAYER_ID_MISMATCH"
+  );
+
+  console.log(
+    "PASS: Last Shelter activity/shop/repay/alliance-group-purchase/VIP-store reference is exposed through authenticated runtime commands."
+  );
+})().catch(error=>{
+  console.error(error);
+  process.exitCode=1;
+});
