@@ -73,6 +73,7 @@ const UNIT_TESTLERI = [
   "last_shelter_starter_account_reference_testi.js",
   "last_shelter_task_reference_testi.js",
   "last_shelter_troop_transfer_reference_testi.js",
+  "last_shelter_troop_transfer_progression_reference_testi.js",
   "last_shelter_truck_convoy_reference_testi.js",
   "last_shelter_world_battlefield_reference_testi.js",
   "missiya_mukafat_pg_mutasiya_testi.js",
