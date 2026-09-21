@@ -165,7 +165,8 @@ function lastShelterEconomyReferenceCommandleriniQeydEt(
   }
 
   const {
-    getOrCreatePlayerState
+    getOrCreatePlayerState,
+    getVipStoreRefreshTime
   } = deps || {};
 
   if (
@@ -408,15 +409,26 @@ function lastShelterEconomyReferenceCommandleriniQeydEt(
           authCheck.playerId
         );
 
+      const now =
+        serverVaxtiAl(nowMs);
+
+      const refreshRaw =
+        typeof getVipStoreRefreshTime === "function"
+          ? getVipStoreRefreshTime(
+              state,
+              authCheck.playerId,
+              now
+            )
+          : 0;
+
       const refreshTime =
-        msg &&
         Number.isFinite(
-          Number(msg.refreshTime)
+          Number(refreshRaw)
         )
           ? Math.max(
               0,
               Math.trunc(
-                Number(msg.refreshTime)
+                Number(refreshRaw)
               )
             )
           : 0;
@@ -426,7 +438,7 @@ function lastShelterEconomyReferenceCommandleriniQeydEt(
         playerId:
           authCheck.playerId,
         serverTimeUnixMs:
-          serverVaxtiAl(nowMs),
+          now,
         panel:
           vipStoreSnapshotHazirla(
             state,
