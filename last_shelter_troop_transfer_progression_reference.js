@@ -156,10 +156,76 @@ function level6RawSkillleriTopla(type) {
   return result;
 }
 
+
+function level6RuntimeTreeProjectionHazirla(runtimeTree) {
+  if (
+    !runtimeTree ||
+    typeof runtimeTree !== "object" ||
+    Array.isArray(runtimeTree)
+  ) {
+    return null;
+  }
+
+  const result = clone(runtimeTree);
+  const type = String(
+    result.type == null ? "" : result.type
+  ).trim();
+
+  if (
+    Number(result.level) !==
+      LAST_SHELTER_TROOP_TRANSFER_LEVEL6.level ||
+    !LAST_SHELTER_TROOP_TRANSFER_LEVEL6.trees[type]
+  ) {
+    return result;
+  }
+
+  result.total =
+    LAST_SHELTER_TROOP_TRANSFER_LEVEL6.total;
+  result.power =
+    LAST_SHELTER_TROOP_TRANSFER_LEVEL6.power;
+  result.singleCostAmount =
+    LAST_SHELTER_TROOP_TRANSFER_LEVEL6.singleCostAmount;
+
+  if (Array.isArray(result.details)) {
+    result.details = result.details.map(detail => {
+      const verified =
+        detail &&
+        LAST_SHELTER_TROOP_TRANSFER_LEVEL6
+          .trees[type][String(detail.id)];
+
+      if (!verified) {
+        return clone(detail);
+      }
+
+      return {
+        ...clone(detail),
+        level: verified.level,
+        pointType: verified.pointType,
+        skills: clone(verified.skills),
+        effects: clone(verified.effects)
+      };
+    });
+  }
+
+  return result;
+}
+
+function runtimeTreesProjectionHazirla(runtimeTrees) {
+  if (!Array.isArray(runtimeTrees)) {
+    return [];
+  }
+
+  return runtimeTrees
+    .map(level6RuntimeTreeProjectionHazirla)
+    .filter(Boolean);
+}
+
 module.exports = {
   LAST_SHELTER_TROOP_TRANSFER_LEVEL6,
   level6PointAl,
   level6AktivPointleriAl,
   level6RawEffectleriTopla,
-  level6RawSkillleriTopla
+  level6RawSkillleriTopla,
+  level6RuntimeTreeProjectionHazirla,
+  runtimeTreesProjectionHazirla
 };
