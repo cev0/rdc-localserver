@@ -4,11 +4,12 @@ const { TROOP_107X, troop107xAl } = require("./last_shelter_troop_107x_reference
 
 /*
  * Runtime bridge from verified Last Shelter init.army rows into the RDC troop
- * shape.  This intentionally covers only 107000..107007: unlock/building rules
- * remain outside this adapter until their reference handlers/config are verified.
+ * shape. It projects only rows admitted to the verified reference catalog;
+ * unlock/building rules remain outside this adapter until their source
+ * handlers/config are verified.
  *
  * Important: Last Shelter's payload field is `attack`; legacy RDC calls the
- * corresponding stat `attackSpeed`.  Keep both names in the projection so new
+ * corresponding stat `attackSpeed`. Keep both names in the projection so new
  * server-authoritative battle code can consume the reference semantic without
  * silently changing the existing Unity contract.
  */
