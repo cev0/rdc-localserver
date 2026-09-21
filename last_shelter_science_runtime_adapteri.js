@@ -551,6 +551,56 @@ function verifiedScienceResearchPlaniniStateEt(state, plan) {
   return { ok: true, queue: { ...queue } };
 }
 
+function verifiedScienceResearchDeadlineAtMs(state) {
+  const queues =
+    scienceQueueListesiAl(state);
+
+  let next =
+    Number.POSITIVE_INFINITY;
+
+  for (const queue of queues) {
+    if (!queue || !scienceQueueTipidir(queue)) {
+      continue;
+    }
+
+    if (
+      metnAl(
+        queue.status,
+        32
+      ).toLowerCase() !==
+      "running"
+    ) {
+      continue;
+    }
+
+    const rawFinish =
+      Object.prototype.hasOwnProperty.call(
+        queue,
+        "finishUnixMs"
+      )
+        ? queue.finishUnixMs
+        : queue.updateTime;
+
+    const finishUnixMs =
+      tamEded(
+        rawFinish,
+        0
+      );
+
+    if (finishUnixMs > 0) {
+      next =
+        Math.min(
+          next,
+          finishUnixMs
+        );
+    }
+  }
+
+  return Number.isFinite(next)
+    ? next
+    : null;
+}
+
 function verifiedScienceResearchYekunlasdir(state, nowUnixMs = Date.now()) {
   if (!state || typeof state !== "object") return [];
 
@@ -596,5 +646,6 @@ module.exports = {
   scienceArtıqArasdirilib,
   verifiedScienceResearchPlanHazirla,
   verifiedScienceResearchPlaniniStateEt,
+  verifiedScienceResearchDeadlineAtMs,
   verifiedScienceResearchYekunlasdir
 };
