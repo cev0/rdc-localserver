@@ -6,6 +6,8 @@ on:
     paths:
       - 'runtime_last_shelter_init_command.js'
       - 'runtime_last_shelter_init_command_testi.js'
+      - 'runtime_auth_command.js'
+      - 'runtime_auth_command_testi.js'
       - 'last_shelter_init_projection.js'
       - 'last_shelter_fresh_init_envelope_reference.js'
       - 'last_shelter_auxiliary_runtime_reference.js'
@@ -16,6 +18,8 @@ on:
     paths:
       - 'runtime_last_shelter_init_command.js'
       - 'runtime_last_shelter_init_command_testi.js'
+      - 'runtime_auth_command.js'
+      - 'runtime_auth_command_testi.js'
       - 'last_shelter_init_projection.js'
       - 'last_shelter_fresh_init_envelope_reference.js'
       - 'last_shelter_auxiliary_runtime_reference.js'
@@ -34,3 +38,4 @@ jobs:
       - run: node last_shelter_fresh_init_envelope_reference_testi.js
       - run: node last_shelter_init_projection_testi.js
       - run: node runtime_last_shelter_init_command_testi.js
+      - run: node runtime_auth_command_testi.js
