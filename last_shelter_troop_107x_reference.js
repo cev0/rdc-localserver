@@ -25,9 +25,26 @@ const TROOP_107X = Object.freeze({
   "107219": Object.freeze({ upkeep: 1.6666666269302368, heal_res: 100, wood: 0, range: 50, speed: 8, stone: 19, defen: 42, health: 16, iron: 75, march: 0, time: 173, level: 0, food: 155, heal_time: 25, power: 9, load: 12, attack: 72, move: 10 })
 });
 
+const LAST_SHELTER_SPECIAL_ARMS_CONFIG = Object.freeze({
+  k1: "200000",
+  k2: "107019,781000|107219,782400|107119,783800|107319,785200",
+  mappings: Object.freeze([
+    Object.freeze({ troopId: "107019", configId: "781000" }),
+    Object.freeze({ troopId: "107219", configId: "782400" }),
+    Object.freeze({ troopId: "107119", configId: "783800" }),
+    Object.freeze({ troopId: "107319", configId: "785200" })
+  ])
+});
+
+function specialArmConfigAl(troopId) {
+  const id = String(troopId == null ? "" : troopId).trim();
+  const found = LAST_SHELTER_SPECIAL_ARMS_CONFIG.mappings.find(x => x.troopId === id);
+  return found ? { ...found } : null;
+}
+
 function troop107xAl(id) {
   const key = String(id == null ? "" : id).trim();
   return TROOP_107X[key] || null;
 }
 
-module.exports = { TROOP_107X, troop107xAl };
+module.exports = { TROOP_107X, LAST_SHELTER_SPECIAL_ARMS_CONFIG, troop107xAl, specialArmConfigAl };
