@@ -3607,6 +3607,9 @@ const {
   lastShelterQueueScienceCommandleriniQeydEt
 } = require("./runtime_last_shelter_queue_science_commands");
 const {
+  lastShelterTroopReferenceCommandleriniQeydEt
+} = require("./runtime_last_shelter_troop_reference_commands");
+const {
   lastShelterInitPayloadHazirla,
   lastShelterInitCommandiniQeydEt
 } = require("./runtime_last_shelter_init_command");
@@ -8748,6 +8751,10 @@ lastShelterQueueScienceCommandleriniQeydEt(
   {
     getOrCreatePlayerState
   }
+);
+
+lastShelterTroopReferenceCommandleriniQeydEt(
+  runtimeCommandRouter
 );
 
 lastShelterInitCommandiniQeydEt(
