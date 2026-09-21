@@ -7,6 +7,7 @@ const {lastShelterWorldCupCommandleriniQeydEt}=require("./runtime_last_shelter_w
 const {lastShelterResourceCommandiniQeydEt}=require("./runtime_last_shelter_resource_command");
 const {lastShelterEconomyReferenceCommandleriniQeydEt}=require("./runtime_last_shelter_economy_reference_commands");
 const {lastShelterEngagementCommandleriniQeydEt}=require("./runtime_last_shelter_engagement_commands");
+const {lastShelterMissionCommandleriniQeydEt}=require("./runtime_last_shelter_mission_commands");
 const {lastShelterBuildingReferenceCommandleriniQeydEt}=require("./runtime_last_shelter_building_reference_commands");
 const {lastShelterQueueScienceCommandleriniQeydEt}=require("./runtime_last_shelter_queue_science_commands");
 const {lastShelterTroopReferenceCommandleriniQeydEt}=require("./runtime_last_shelter_troop_reference_commands");
@@ -33,6 +34,7 @@ lastShelterWorldCupCommandleriniQeydEt(router);
 lastShelterResourceCommandiniQeydEt(router,{getOrCreatePlayerState});
 lastShelterEconomyReferenceCommandleriniQeydEt(router,{getOrCreatePlayerState});
 lastShelterEngagementCommandleriniQeydEt(router,{getOrCreatePlayerState});
+lastShelterMissionCommandleriniQeydEt(router,{getOrCreatePlayerState});
 lastShelterBuildingReferenceCommandleriniQeydEt(router);
 lastShelterQueueScienceCommandleriniQeydEt(router,{getOrCreatePlayerState});
 lastShelterTroopReferenceCommandleriniQeydEt(router);
@@ -42,7 +44,7 @@ const expected=[
   "item.buy","settutorial","worldcup.list","worldcup.get","synuserresource",
   "activity.list","activity.get","shop.list","shop.get","repay.info",
   "alliance.group_purchase.info","alliance.group_purchase.offer","vipstore.panel",
-  "engagement.info","building.reference.list","building.reference.get",
+  "engagement.info","mission.info","building.reference.list","building.reference.get",
   "queue.list","science.catalog","science.topology.list","science.topology","science.state",
   "science.prerequisite","science.plan","troop.catalog","troop.get",
   "troop.transfer.level6","troop.transfer.type","troop.transfer.point","last_shelter.init"
