@@ -88,6 +88,11 @@ const {
   lastShelterTruckRuntimeTeminEt
 } = require("./last_shelter_truck_convoy_reference");
 
+const {
+  lastShelterMissionRuntimeDefaultHazirla,
+  lastShelterMissionRuntimeTeminEt
+} = require("./last_shelter_task_reference");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -5668,6 +5673,12 @@ function makeDefaultState(playerId) {
         ""
       ),
 
+    // Verified 205-row Last Shelter task/chapter state. Kept alongside the
+    // legacy RDC M001..M020 mission flow until reward/progress semantics for
+    // every raw task type are recovered.
+    lastShelterMissionRuntime:
+      lastShelterMissionRuntimeDefaultHazirla(),
+
     resources:
       lastShelterServerBaslangicResurslariniAl(),
 
@@ -5817,6 +5828,9 @@ function getOrCreatePlayerState(playerId) {
     state
   );
   lastShelterTruckRuntimeTeminEt(
+    state
+  );
+  lastShelterMissionRuntimeTeminEt(
     state
   );
 
