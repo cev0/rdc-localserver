@@ -60,7 +60,7 @@ const expected=[
   "settutorial",
   "worldcup.list",
   "worldcup.get",
-  "resource.get",
+  "synuserresource",
   "activity.list",
   "activity.get",
   "shop.list",
