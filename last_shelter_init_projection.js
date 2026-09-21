@@ -61,6 +61,10 @@ const {
   showScienceArrayProjectionHazirla
 } = require("./last_shelter_science_visibility_reference");
 
+const {
+  runtimeTreesProjectionHazirla
+} = require("./last_shelter_troop_transfer_progression_reference");
+
 const LONG_MAX_STRING = "9223372036854775807";
 
 function clone(value) {
@@ -670,12 +674,10 @@ function lastShelterVerifiedInitProjectionHazirla(
         ? clone(hero.generals)
         : [],
     troopTranList:
-      Array.isArray(
+      runtimeTreesProjectionHazirla(
         state &&
         state.troopTransferRuntime
-      )
-        ? clone(state.troopTransferRuntime)
-        : [],
+      ),
     fort:
       fortInitProjectionHazirla(state),
     truckInfo:
