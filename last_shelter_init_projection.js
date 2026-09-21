@@ -451,6 +451,38 @@ function auxiliaryProjectionHazirla(state) {
       : {};
 
   return {
+    killWorldBossNumber:
+      nonNegativeInt(runtime.killWorldBossNumber,0),
+    heroprison:
+      Array.isArray(runtime.heroprison)
+        ? clone(runtime.heroprison)
+        : [],
+    chatShield:
+      Array.isArray(runtime.chatShield)
+        ? clone(runtime.chatShield)
+        : [],
+    hasPassword:
+      runtime.hasPassword === true,
+    isOpenedKingdomAct:
+      runtime.isOpenedKingdomAct === true,
+    kingdomSeasonObj:
+      clone(runtime.kingdomSeasonObj || {riseInfo:[]}),
+    city_def_recover_record:
+      nonNegativeInt(runtime.cityDefRecoverRecord,0),
+    mail_translation:
+      runtime.mailTranslation === true,
+    killActivityBossNumber:
+      nonNegativeInt(runtime.killActivityBossNumber,0),
+    activationStoptime:
+      nonNegativeInt(runtime.activationStoptime,0),
+    exchange_gift:
+      Array.isArray(runtime.exchangeGift)
+        ? clone(runtime.exchangeGift)
+        : [],
+    resourcePoints:
+      Array.isArray(runtime.resourcePoints)
+        ? clone(runtime.resourcePoints)
+        : [],
     currentCapacity:
       nonNegativeInt(runtime.currentCapacity, 0),
     maxCapacity:
