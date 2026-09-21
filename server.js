@@ -123,6 +123,11 @@ const {
   lastShelterMissileRuntimeTeminEt
 } = require("./last_shelter_missile_runtime");
 
+const {
+  tutorialRuntimeDefaultHazirla,
+  tutorialRuntimeTeminEt
+} = require("./last_shelter_tutorial_reference");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -3504,6 +3509,10 @@ const {
 const {
   lastShelterItemCommandleriniQeydEt
 } = require("./runtime_last_shelter_item_commands");
+
+const {
+  lastShelterTutorialCommandiniQeydEt
+} = require("./runtime_last_shelter_tutorial_command");
 const {
   requestIdAl,
   correlatedSendYarat
@@ -5734,6 +5743,9 @@ function makeDefaultState(playerId) {
     lastShelterMissileRuntime:
       lastShelterMissileRuntimeDefaultHazirla(),
 
+    lastShelterTutorialRuntime:
+      tutorialRuntimeDefaultHazirla(),
+
     resources:
       lastShelterServerBaslangicResurslariniAl(),
 
@@ -5905,6 +5917,9 @@ function getOrCreatePlayerState(playerId) {
     state
   );
   lastShelterMissileRuntimeTeminEt(
+    state
+  );
+  tutorialRuntimeTeminEt(
     state
   );
 
@@ -8551,6 +8566,13 @@ accountCommandleriniQeydEt(
 );
 
 lastShelterItemCommandleriniQeydEt(
+  runtimeCommandRouter,
+  {
+    getOrCreatePlayerState
+  }
+);
+
+lastShelterTutorialCommandiniQeydEt(
   runtimeCommandRouter,
   {
     getOrCreatePlayerState
