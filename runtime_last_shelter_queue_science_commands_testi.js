@@ -88,6 +88,8 @@ class FakeRouter {
     [
       "queue.list",
       "science.catalog",
+      "science.topology",
+      "science.prerequisite",
       "science.plan"
     ]
   );
@@ -106,6 +108,44 @@ class FakeRouter {
   const sent=[];
   const send=(socket,payload)=>sent.push(payload);
 
+  await router.routes.get("science.topology").handler({
+    ws,
+    msg:{
+      playerId:"p1",
+      itemId:"901000"
+    },
+    send,
+    nowMs:()=>1000
+  });
+  assert.strictEqual(
+    sent[0].type,
+    "science.topology"
+  );
+  assert.strictEqual(
+    sent[0].topology.itemId,
+    "901000"
+  );
+
+  sent.length=0;
+  await router.routes.get("science.prerequisite").handler({
+    ws,
+    msg:{
+      playerId:"p1",
+      itemId:"901000"
+    },
+    send,
+    nowMs:()=>1000
+  });
+  assert.strictEqual(
+    sent[0].type,
+    "science.prerequisite"
+  );
+  assert.strictEqual(
+    sent[0].status.ok,
+    true
+  );
+
+  sent.length=0;
   await router.routes.get("science.plan").handler({
     ws,
     msg:{
@@ -133,6 +173,10 @@ class FakeRouter {
     sent[0].plan.queue.finishUnixMs,
     91000
   );
+  assert.strictEqual(
+    sent[0].prerequisite.ok,
+    true
+  );
 
   sent.length=0;
   await router.routes.get("science.plan").handler({
@@ -146,7 +190,7 @@ class FakeRouter {
   });
   assert.strictEqual(
     sent[0].code,
-    "SCIENCE_ITEM_UNVERIFIED"
+    "SCIENCE_TOPOLOGY_UNVERIFIED"
   );
 
   console.log(
