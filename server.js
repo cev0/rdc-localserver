@@ -49,6 +49,11 @@ const {
   lastShelterServerBaslangicResurslariniAl
 } = require("./last_shelter_baslangic_resurslari");
 
+const {
+  lastShelterResourceRuntimeDefaultHazirla,
+  lastShelterResourceRuntimeTeminEt
+} = require("./last_shelter_resource_runtime");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -5589,6 +5594,14 @@ function makeDefaultState(playerId) {
       lastSettledAtMs: nowMs()
     },
 
+    // Last Shelter client resource envelope metadata. regTime is persisted;
+    // population/cap fields are updated by verified population rules as those
+    // rules are migrated. They are not inferred from RDC placeholders.
+    lastShelterResourceRuntime:
+      lastShelterResourceRuntimeDefaultHazirla(
+        nowMs()
+      ),
+
     resources:
       lastShelterServerBaslangicResurslariniAl(),
 
@@ -5712,6 +5725,10 @@ function getOrCreatePlayerState(playerId) {
   // Köhnə oyunçu state-lərini yeni profil/status strukturları ilə tamamlayır.
   oyuncuProfiliniTeminEt(state);
   oyuncuStatusunuTeminEt(state);
+  lastShelterResourceRuntimeTeminEt(
+    state,
+    nowMs()
+  );
   ensureMapState(state);
   ensurePlayerWorldPlacement(state, playerId);
   refreshRoadAccessForBuildings(state);
