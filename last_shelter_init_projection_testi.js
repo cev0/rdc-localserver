@@ -226,6 +226,11 @@ assert.strictEqual(payload.lottery.diamond,200);
 assert.strictEqual(payload.lottery.updatetime,0);
 assert.strictEqual(payload.cargo.rewardTime,0);
 assert.strictEqual(payload.cargo.rewardInfo,"goods,210120,1");
+assert.strictEqual(payload.repayinfo.payPoint,0);
+assert.strictEqual(payload.repayinfo.startTime,1479916800000);
+assert.strictEqual(payload.repayinfo.endTime,1480435200000);
+assert.strictEqual(payload.repayinfo.payRewards.length,6);
+assert.deepStrictEqual(payload.repayinfo.payRewards.map(x=>x.point),[400,2000,30000,120000,450000,1200000]);
 assert.deepStrictEqual(payload.alliance,{});
 
 const serialized = JSON.stringify(payload);
