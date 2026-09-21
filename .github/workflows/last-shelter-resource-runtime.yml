@@ -6,6 +6,10 @@ on:
     paths:
       - 'last_shelter_resource_runtime.js'
       - 'last_shelter_resource_runtime_testi.js'
+      - 'runtime_last_shelter_resource_command.js'
+      - 'runtime_last_shelter_resource_command_testi.js'
+      - 'runtime_auth_command.js'
+      - 'runtime_auth_command_testi.js'
       - 'server.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-resource-runtime.yml'
@@ -13,6 +17,10 @@ on:
     paths:
       - 'last_shelter_resource_runtime.js'
       - 'last_shelter_resource_runtime_testi.js'
+      - 'runtime_last_shelter_resource_command.js'
+      - 'runtime_last_shelter_resource_command_testi.js'
+      - 'runtime_auth_command.js'
+      - 'runtime_auth_command_testi.js'
       - 'server.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-resource-runtime.yml'
@@ -26,3 +34,5 @@ jobs:
         with:
           node-version: '20'
       - run: node last_shelter_resource_runtime_testi.js
+      - run: node runtime_last_shelter_resource_command_testi.js
+      - run: node runtime_auth_command_testi.js
