@@ -138,9 +138,60 @@ function verifiedLastShelterBuildingMaxLevelAl(
     : 0;
 }
 
+function verifiedLastShelterBuildingLevelStatusAl(
+  buildingId,
+  targetLevel
+) {
+  const id = metnAl(buildingId);
+  const buildingTypeId =
+    rdcBuildingTypeIdAl(id);
+  const level =
+    Math.max(
+      1,
+      Math.trunc(
+        Number(targetLevel) || 1
+      )
+    );
+
+  if (!buildingTypeId) {
+    return {
+      mapped:false,
+      buildingId:id,
+      buildingTypeId:null,
+      targetLevel:level,
+      maxLevel:0,
+      verified:false,
+      withinDeclaredMax:false
+    };
+  }
+
+  const maxLevel =
+    verifiedLastShelterBuildingMaxLevelAl(
+      id
+    );
+  const verified =
+    verifiedLastShelterBuildingLevelDataAl(
+      id,
+      level
+    ) !== null;
+
+  return {
+    mapped:true,
+    buildingId:id,
+    buildingTypeId,
+    targetLevel:level,
+    maxLevel,
+    verified,
+    withinDeclaredMax:
+      maxLevel > 0 &&
+      level <= maxLevel
+  };
+}
+
 module.exports = {
   VERIFIED_RESOURCE_KEYS,
   verifiedCostArrayHazirla,
   verifiedLastShelterBuildingLevelDataAl,
-  verifiedLastShelterBuildingMaxLevelAl
+  verifiedLastShelterBuildingMaxLevelAl,
+  verifiedLastShelterBuildingLevelStatusAl
 };
