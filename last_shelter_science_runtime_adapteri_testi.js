@@ -2,6 +2,8 @@
 
 const assert = require("assert");
 const {
+  explicitScienceQueueLeaseAktivdir,
+  scienceAktivArasdirilir,
   scienceQueueMesguldur,
   scienceQueueSec,
   scienceArtıqArasdirilib,
@@ -23,7 +25,20 @@ const queueState = { queues: [
   { uuid: "build-1", qid: 1, type: "BUILDING", status: "free" }
 ] };
 assert.strictEqual(scienceQueueSec(queueState, "").uuid, "science-1");
-assert.strictEqual(scienceQueueSec(queueState, "science-2").uuid, "science-2");
+assert.strictEqual(
+  scienceQueueSec(queueState, "science-2"),
+  null,
+  "qid=2 must fail closed until checkSecondQueue semantics are supplied"
+);
+assert.strictEqual(
+  scienceQueueSec(
+    queueState,
+    "science-2",
+    1000,
+    { secondQueueCheck: () => true }
+  ).uuid,
+  "science-2"
+);
 assert.strictEqual(scienceQueueSec(queueState, "build-1"), null);
 assert.strictEqual(scienceQueueSec({ queues: [{ uuid: "science-1", qid: 1, type: "SCIENCE", status: "running" }] }, "science-1"), null);
 
@@ -43,6 +58,30 @@ assert.deepStrictEqual(
 assert.deepStrictEqual(
   verifiedScienceResearchPlanHazirla({ queues: [{ uuid: "q-1", qid: 1, type: "SCIENCE", status: "free" }], science: { "901000": 1 } }, { itemId: "901000", quuid: "q-1" }, 1000),
   { ok: false, code: "SCIENCE_ALREADY_RESEARCHED" }
+);
+
+const duplicateQueueState = {
+  queues: [
+    { uuid: "science-free", qid: 1, type: "SCIENCE", status: "free" },
+    { uuid: "science-running", qid: 2, type: "SCIENCE", status: "running", itemId: "901000" }
+  ],
+  science: {}
+};
+assert.strictEqual(
+  scienceAktivArasdirilir(
+    duplicateQueueState,
+    "901000",
+    1000
+  ),
+  true
+);
+assert.deepStrictEqual(
+  verifiedScienceResearchPlanHazirla(
+    duplicateQueueState,
+    { itemId: "901000", quuid: "science-free" },
+    1000
+  ),
+  { ok: false, code: "SCIENCE_ALREADY_RESEARCHING" }
 );
 
 // Exact init queue projection uses numeric type=6 and lives under
@@ -84,7 +123,22 @@ assert.strictEqual(
   "starter-science-1"
 );
 
-// ScienceService explicit quuid path requires now >= queue.endTime.
+// ScienceService explicit quuid bytecode requires currentTimeMillis < endTime.
+// qid=2 additionally passes through checkSecondQueue(profile).
+assert.strictEqual(
+  explicitScienceQueueLeaseAktivdir(
+    starterQueueState.lastShelterStarterAccountRuntime.queues[1],
+    1000
+  ),
+  true
+);
+assert.strictEqual(
+  explicitScienceQueueLeaseAktivdir(
+    starterQueueState.lastShelterStarterAccountRuntime.queues[1],
+    5000
+  ),
+  false
+);
 assert.strictEqual(
   scienceQueueSec(
     starterQueueState,
@@ -97,17 +151,26 @@ assert.strictEqual(
   scienceQueueSec(
     starterQueueState,
     "starter-science-2",
-    6000
+    1000,
+    { secondQueueCheck: () => true }
   ).uuid,
   "starter-science-2"
+);
+assert.strictEqual(
+  scienceQueueSec(
+    starterQueueState,
+    "starter-science-2",
+    6000,
+    { secondQueueCheck: () => true }
+  ),
+  null
 );
 
 const starterPlan =
   verifiedScienceResearchPlanHazirla(
     starterQueueState,
     {
-      itemId: "901000",
-      quuid: "starter-science-1"
+      itemId: "901000"
     },
     1000
   );
