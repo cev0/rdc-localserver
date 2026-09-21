@@ -33,431 +33,121 @@ function clone(value) {
 }
 
 function authYoxla(ws,msg,send) {
-  const authCheck =
-    playerIdUyugunluqYoxla(
-      msg,
-      ws
-    );
-
-  if (authCheck.ok) {
-    return authCheck;
-  }
-
+  const authCheck = playerIdUyugunluqYoxla(msg,ws);
+  if (authCheck.ok) return authCheck;
   send(ws,{
     type:"error",
-    code:
-      authCheck.message ===
-      "Player ID mismatch"
-        ? "PLAYER_ID_MISMATCH"
-        : "NOT_AUTHED",
+    code:authCheck.message === "Player ID mismatch" ? "PLAYER_ID_MISMATCH" : "NOT_AUTHED",
     message:authCheck.message
   });
-
   return null;
 }
 
 function serverVaxtiAl(nowMs) {
-  return typeof nowMs === "function"
-    ? nowMs()
-    : Date.now();
+  return typeof nowMs === "function" ? nowMs() : Date.now();
 }
 
 function repaySnapshotHazirla(state) {
-  const raw =
-    state &&
-    state.lastShelterAuxiliaryRuntime &&
-    state.lastShelterAuxiliaryRuntime.repayinfo &&
-    typeof state.lastShelterAuxiliaryRuntime.repayinfo === "object" &&
-    !Array.isArray(state.lastShelterAuxiliaryRuntime.repayinfo)
+  const raw = state && state.lastShelterAuxiliaryRuntime && state.lastShelterAuxiliaryRuntime.repayinfo &&
+    typeof state.lastShelterAuxiliaryRuntime.repayinfo === "object" && !Array.isArray(state.lastShelterAuxiliaryRuntime.repayinfo)
       ? state.lastShelterAuxiliaryRuntime.repayinfo
-      : (
-          state &&
-          state.lastShelterRepay &&
-          typeof state.lastShelterRepay === "object" &&
-          !Array.isArray(state.lastShelterRepay)
-            ? state.lastShelterRepay
-            : repayRuntimeDefaultHazirla()
-        );
+      : (state && state.lastShelterRepay && typeof state.lastShelterRepay === "object" && !Array.isArray(state.lastShelterRepay)
+          ? state.lastShelterRepay : repayRuntimeDefaultHazirla());
 
-  const payPoint =
-    Math.max(
-      0,
-      Math.trunc(
-        Number(raw.payPoint) || 0
-      )
-    );
-
-  const claimedPoints =
-    Array.isArray(raw.claimedPoints)
-      ? raw.claimedPoints
-          .map(value=>Math.trunc(Number(value)))
-          .filter(value=>Number.isFinite(value) && value >= 0)
-      : [];
+  const payPoint = Math.max(0,Math.trunc(Number(raw.payPoint) || 0));
+  const claimedPoints = Array.isArray(raw.claimedPoints)
+    ? Array.from(new Set(raw.claimedPoints.map(value=>Math.trunc(Number(value)))
+        .filter(value=>Number.isFinite(value) && value >= 0))).sort((a,b)=>a-b)
+    : [];
+  const eligibleRewards = repayEligibleRewardsAl(payPoint);
+  const claimed = new Set(claimedPoints);
 
   return {
     payPoint,
     claimedPoints,
-    eligibleRewards:
-      repayEligibleRewardsAl(payPoint),
-    reference:
-      clone(
-        LAST_SHELTER_REPAY_REFERENCE
-      )
+    eligibleRewards,
+    claimableRewards:eligibleRewards.filter(row=>!claimed.has(row.point)),
+    reference:clone(LAST_SHELTER_REPAY_REFERENCE)
   };
 }
 
 function allianceGroupPurchaseSnapshotHazirla(state) {
-  const alliance =
-    state &&
-    state.lastShelterAllianceRuntime &&
-    typeof state.lastShelterAllianceRuntime === "object"
-      ? state.lastShelterAllianceRuntime
-      : {};
-
+  const alliance = state && state.lastShelterAllianceRuntime && typeof state.lastShelterAllianceRuntime === "object"
+    ? state.lastShelterAllianceRuntime : {};
   return {
-    reference:
-      clone(
-        LAST_SHELTER_ALLIANCE_GROUP_PURCHASE
-      ),
-    runtime:
-      clone(
-        alliance.groupPurchaseActivity || null
-      ),
-    records:
-      clone(
-        Array.isArray(
-          alliance.groupPurchaseRecords
-        )
-          ? alliance.groupPurchaseRecords
-          : []
-      )
+    reference:clone(LAST_SHELTER_ALLIANCE_GROUP_PURCHASE),
+    runtime:clone(alliance.groupPurchaseActivity || null),
+    records:clone(Array.isArray(alliance.groupPurchaseRecords) ? alliance.groupPurchaseRecords : [])
   };
 }
 
-function vipStoreSnapshotHazirla(
-  state,
-  refreshTime
-) {
+function vipStoreSnapshotHazirla(state,refreshTime) {
   const isolated = {
-    lastShelterVipStore:
-      state &&
-      state.lastShelterVipStore &&
-      typeof state.lastShelterVipStore === "object" &&
+    lastShelterVipStore:state && state.lastShelterVipStore && typeof state.lastShelterVipStore === "object" &&
       !Array.isArray(state.lastShelterVipStore)
-        ? clone(state.lastShelterVipStore)
-        : lastShelterVipStoreStateHazirla()
+        ? clone(state.lastShelterVipStore) : lastShelterVipStoreStateHazirla()
   };
-
-  return vipStorePanelInfoHazirla(
-    isolated,
-    refreshTime
-  );
+  return vipStorePanelInfoHazirla(isolated,refreshTime);
 }
 
-function lastShelterEconomyReferenceCommandleriniQeydEt(
-  router,
-  deps
-) {
-  if (!router) {
-    throw new Error(
-      "Command router yoxdur."
-    );
-  }
+function lastShelterEconomyReferenceCommandleriniQeydEt(router,deps) {
+  if (!router) throw new Error("Command router yoxdur.");
+  const {getOrCreatePlayerState,getVipStoreRefreshTime} = deps || {};
+  if (typeof getOrCreatePlayerState !== "function") throw new Error("getOrCreatePlayerState yoxdur.");
 
-  const {
-    getOrCreatePlayerState,
-    getVipStoreRefreshTime
-  } = deps || {};
+  router.register("activity.list",async ({ws,msg,send,nowMs})=>{
+    const authCheck=authYoxla(ws,msg,send); if(!authCheck)return;
+    send(ws,{type:"activity.list",playerId:authCheck.playerId,serverTimeUnixMs:serverVaxtiAl(nowMs),rows:activityReferenceProjectionHazirla()});
+  },{authRequired:true,mutation:false});
 
-  if (
-    typeof getOrCreatePlayerState !==
-    "function"
-  ) {
-    throw new Error(
-      "getOrCreatePlayerState yoxdur."
-    );
-  }
+  router.register("activity.get",async ({ws,msg,send,nowMs})=>{
+    const authCheck=authYoxla(ws,msg,send); if(!authCheck)return;
+    const row=activityReferenceAl(msg&&msg.id);
+    if(!row){send(ws,{type:"error",code:"ACTIVITY_NOT_FOUND",message:"Activity not found"});return;}
+    send(ws,{type:"activity.get",playerId:authCheck.playerId,serverTimeUnixMs:serverVaxtiAl(nowMs),row});
+  },{authRequired:true,mutation:false});
 
-  router.register(
-    "activity.list",
-    async ({ws,msg,send,nowMs}) => {
-      const authCheck =
-        authYoxla(ws,msg,send);
-      if (!authCheck) return;
+  router.register("shop.list",async ({ws,msg,send,nowMs})=>{
+    const authCheck=authYoxla(ws,msg,send); if(!authCheck)return;
+    send(ws,{type:"shop.list",playerId:authCheck.playerId,serverTimeUnixMs:serverVaxtiAl(nowMs),rows:shopRowIdsAl().map(id=>shopRowAl(id))});
+  },{authRequired:true,mutation:false});
 
-      send(ws,{
-        type:"activity.list",
-        playerId:
-          authCheck.playerId,
-        serverTimeUnixMs:
-          serverVaxtiAl(nowMs),
-        rows:
-          activityReferenceProjectionHazirla()
-      });
-    },
-    {
-      authRequired:true,
-      mutation:false
-    }
-  );
+  router.register("shop.get",async ({ws,msg,send,nowMs})=>{
+    const authCheck=authYoxla(ws,msg,send); if(!authCheck)return;
+    const row=shopRowAl(msg&&msg.id);
+    if(!row){send(ws,{type:"error",code:"SHOP_ROW_NOT_FOUND",message:"Shop row not found"});return;}
+    send(ws,{type:"shop.get",playerId:authCheck.playerId,serverTimeUnixMs:serverVaxtiAl(nowMs),row,itemTupleRaw:itemTupleRawlariniAl(row)});
+  },{authRequired:true,mutation:false});
 
-  router.register(
-    "activity.get",
-    async ({ws,msg,send,nowMs}) => {
-      const authCheck =
-        authYoxla(ws,msg,send);
-      if (!authCheck) return;
+  router.register("repay.info",async ({ws,msg,send,nowMs})=>{
+    const authCheck=authYoxla(ws,msg,send); if(!authCheck)return;
+    const state=getOrCreatePlayerState(authCheck.playerId);
+    send(ws,{type:"repay.info",playerId:authCheck.playerId,serverTimeUnixMs:serverVaxtiAl(nowMs),repay:repaySnapshotHazirla(state)});
+  },{authRequired:true,mutation:false});
 
-      const row =
-        activityReferenceAl(
-          msg && msg.id
-        );
+  router.register("alliance.group_purchase.info",async ({ws,msg,send,nowMs})=>{
+    const authCheck=authYoxla(ws,msg,send); if(!authCheck)return;
+    const state=getOrCreatePlayerState(authCheck.playerId);
+    send(ws,{type:"alliance.group_purchase.info",playerId:authCheck.playerId,serverTimeUnixMs:serverVaxtiAl(nowMs),groupPurchase:allianceGroupPurchaseSnapshotHazirla(state)});
+  },{authRequired:true,mutation:false});
 
-      if (!row) {
-        send(ws,{
-          type:"error",
-          code:"ACTIVITY_NOT_FOUND",
-          message:"Activity not found"
-        });
-        return;
-      }
+  router.register("alliance.group_purchase.offer",async ({ws,msg,send,nowMs})=>{
+    const authCheck=authYoxla(ws,msg,send); if(!authCheck)return;
+    const offer=allianceGroupPurchaseOfferAl(msg&&msg.goodsId);
+    if(!offer){send(ws,{type:"error",code:"ALLIANCE_GROUP_PURCHASE_OFFER_NOT_FOUND",message:"Alliance group purchase offer not found"});return;}
+    send(ws,{type:"alliance.group_purchase.offer",playerId:authCheck.playerId,serverTimeUnixMs:serverVaxtiAl(nowMs),offer});
+  },{authRequired:true,mutation:false});
 
-      send(ws,{
-        type:"activity.get",
-        playerId:
-          authCheck.playerId,
-        serverTimeUnixMs:
-          serverVaxtiAl(nowMs),
-        row
-      });
-    },
-    {
-      authRequired:true,
-      mutation:false
-    }
-  );
-
-  router.register(
-    "shop.list",
-    async ({ws,msg,send,nowMs}) => {
-      const authCheck =
-        authYoxla(ws,msg,send);
-      if (!authCheck) return;
-
-      const rows =
-        shopRowIdsAl()
-          .map(id=>shopRowAl(id));
-
-      send(ws,{
-        type:"shop.list",
-        playerId:
-          authCheck.playerId,
-        serverTimeUnixMs:
-          serverVaxtiAl(nowMs),
-        rows
-      });
-    },
-    {
-      authRequired:true,
-      mutation:false
-    }
-  );
-
-  router.register(
-    "shop.get",
-    async ({ws,msg,send,nowMs}) => {
-      const authCheck =
-        authYoxla(ws,msg,send);
-      if (!authCheck) return;
-
-      const row =
-        shopRowAl(
-          msg && msg.id
-        );
-
-      if (!row) {
-        send(ws,{
-          type:"error",
-          code:"SHOP_ROW_NOT_FOUND",
-          message:"Shop row not found"
-        });
-        return;
-      }
-
-      send(ws,{
-        type:"shop.get",
-        playerId:
-          authCheck.playerId,
-        serverTimeUnixMs:
-          serverVaxtiAl(nowMs),
-        row,
-        itemTupleRaw:
-          itemTupleRawlariniAl(row)
-      });
-    },
-    {
-      authRequired:true,
-      mutation:false
-    }
-  );
-
-  router.register(
-    "repay.info",
-    async ({ws,msg,send,nowMs}) => {
-      const authCheck =
-        authYoxla(ws,msg,send);
-      if (!authCheck) return;
-
-      const state =
-        getOrCreatePlayerState(
-          authCheck.playerId
-        );
-
-      send(ws,{
-        type:"repay.info",
-        playerId:
-          authCheck.playerId,
-        serverTimeUnixMs:
-          serverVaxtiAl(nowMs),
-        repay:
-          repaySnapshotHazirla(
-            state
-          )
-      });
-    },
-    {
-      authRequired:true,
-      mutation:false
-    }
-  );
-
-  router.register(
-    "alliance.group_purchase.info",
-    async ({ws,msg,send,nowMs}) => {
-      const authCheck =
-        authYoxla(ws,msg,send);
-      if (!authCheck) return;
-
-      const state =
-        getOrCreatePlayerState(
-          authCheck.playerId
-        );
-
-      send(ws,{
-        type:"alliance.group_purchase.info",
-        playerId:
-          authCheck.playerId,
-        serverTimeUnixMs:
-          serverVaxtiAl(nowMs),
-        groupPurchase:
-          allianceGroupPurchaseSnapshotHazirla(
-            state
-          )
-      });
-    },
-    {
-      authRequired:true,
-      mutation:false
-    }
-  );
-
-  router.register(
-    "alliance.group_purchase.offer",
-    async ({ws,msg,send,nowMs}) => {
-      const authCheck =
-        authYoxla(ws,msg,send);
-      if (!authCheck) return;
-
-      const offer =
-        allianceGroupPurchaseOfferAl(
-          msg && msg.goodsId
-        );
-
-      if (!offer) {
-        send(ws,{
-          type:"error",
-          code:"ALLIANCE_GROUP_PURCHASE_OFFER_NOT_FOUND",
-          message:"Alliance group purchase offer not found"
-        });
-        return;
-      }
-
-      send(ws,{
-        type:"alliance.group_purchase.offer",
-        playerId:
-          authCheck.playerId,
-        serverTimeUnixMs:
-          serverVaxtiAl(nowMs),
-        offer
-      });
-    },
-    {
-      authRequired:true,
-      mutation:false
-    }
-  );
-
-  router.register(
-    "vipstore.panel",
-    async ({ws,msg,send,nowMs}) => {
-      const authCheck =
-        authYoxla(ws,msg,send);
-      if (!authCheck) return;
-
-      const state =
-        getOrCreatePlayerState(
-          authCheck.playerId
-        );
-
-      const now =
-        serverVaxtiAl(nowMs);
-
-      const refreshRaw =
-        typeof getVipStoreRefreshTime === "function"
-          ? getVipStoreRefreshTime(
-              state,
-              authCheck.playerId,
-              now
-            )
-          : 0;
-
-      const refreshTime =
-        Number.isFinite(
-          Number(refreshRaw)
-        )
-          ? Math.max(
-              0,
-              Math.trunc(
-                Number(refreshRaw)
-              )
-            )
-          : 0;
-
-      send(ws,{
-        type:"vipstore.panel",
-        playerId:
-          authCheck.playerId,
-        serverTimeUnixMs:
-          now,
-        panel:
-          vipStoreSnapshotHazirla(
-            state,
-            refreshTime
-          )
-      });
-    },
-    {
-      authRequired:true,
-      mutation:false
-    }
-  );
+  router.register("vipstore.panel",async ({ws,msg,send,nowMs})=>{
+    const authCheck=authYoxla(ws,msg,send); if(!authCheck)return;
+    const state=getOrCreatePlayerState(authCheck.playerId);
+    const now=serverVaxtiAl(nowMs);
+    const refreshRaw=typeof getVipStoreRefreshTime === "function" ? getVipStoreRefreshTime(state,authCheck.playerId,now) : 0;
+    const refreshTime=Number.isFinite(Number(refreshRaw)) ? Math.max(0,Math.trunc(Number(refreshRaw))) : 0;
+    send(ws,{type:"vipstore.panel",playerId:authCheck.playerId,serverTimeUnixMs:now,panel:vipStoreSnapshotHazirla(state,refreshTime)});
+  },{authRequired:true,mutation:false});
 
   return router;
 }
 
-module.exports = {
-  repaySnapshotHazirla,
-  allianceGroupPurchaseSnapshotHazirla,
-  vipStoreSnapshotHazirla,
-  lastShelterEconomyReferenceCommandleriniQeydEt
-};
+module.exports={repaySnapshotHazirla,allianceGroupPurchaseSnapshotHazirla,vipStoreSnapshotHazirla,lastShelterEconomyReferenceCommandleriniQeydEt};
