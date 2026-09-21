@@ -1,5 +1,9 @@
 "use strict";
 
+const {
+  allianceGroupPurchaseRuntimeDefaultHazirla
+} = require("./last_shelter_alliance_group_purchase_reference");
+
 /*
  * Verified Last Shelter alliance runtime contract.
  *
@@ -208,7 +212,9 @@ function lastShelterAllianceRuntimeDefaultHazirla() {
   return {
     allianceId: "",
     alliance: {},
-    groupPurchaseRecords: []
+    groupPurchaseRecords: [],
+    groupPurchaseActivity:
+      allianceGroupPurchaseRuntimeDefaultHazirla()
   };
 }
 
@@ -239,6 +245,15 @@ function lastShelterAllianceRuntimeTeminEt(state) {
 
   if (!Array.isArray(runtime.groupPurchaseRecords)) {
     runtime.groupPurchaseRecords = [];
+  }
+
+  if (
+    !runtime.groupPurchaseActivity ||
+    typeof runtime.groupPurchaseActivity !== "object" ||
+    Array.isArray(runtime.groupPurchaseActivity)
+  ) {
+    runtime.groupPurchaseActivity =
+      allianceGroupPurchaseRuntimeDefaultHazirla();
   }
 
   return runtime;
