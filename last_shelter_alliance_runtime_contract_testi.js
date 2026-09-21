@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("assert");
+const { ittifaqKimliyiniAl } = require("./ittifaq_kimliyi_sistemi");
 const {
   LAST_SHELTER_ALLIANCE_INIT_FIELDS,
   LAST_SHELTER_ALLIANCE_CONFIG,
@@ -139,4 +140,16 @@ assert.deepStrictEqual(
   }
 );
 
-console.log("PASS: Last Shelter alliance runtime/schema and group-purchase persistence contracts are preserved.");
+const identity = ittifaqKimliyiniAl({
+  lastShelterAllianceRuntime: {
+    allianceId: "Alliance-ABC",
+    alliance: {},
+    groupPurchaseRecords: []
+  },
+  allianceId: "legacy-other"
+});
+assert.strictEqual(identity.ittifaqId, "alliance-abc");
+assert.strictEqual(identity.sabitdir, true);
+assert.strictEqual(identity.menbe, "stable_id");
+
+console.log("PASS: Last Shelter alliance runtime/schema, identity bridge, and group-purchase persistence contracts are preserved.");
