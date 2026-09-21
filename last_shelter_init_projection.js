@@ -53,6 +53,10 @@ const {
   getVerifiedStoreRewardIds
 } = require("./last_shelter_store_resource_rewards");
 
+const {
+  missileInitProjectionHazirla
+} = require("./last_shelter_missile_runtime");
+
 const LONG_MAX_STRING = "9223372036854775807";
 
 function clone(value) {
@@ -676,6 +680,8 @@ function lastShelterVerifiedInitProjectionHazirla(
       worldProjectionHazirla(state),
     store:
       storeProjectionHazirla(),
+    missileList:
+      missileInitProjectionHazirla(state),
     activity:
       activityReferenceProjectionHazirla(),
     firstPayReward:
