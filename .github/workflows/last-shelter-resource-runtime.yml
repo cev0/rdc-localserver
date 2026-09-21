@@ -1,0 +1,28 @@
+name: Last Shelter Resource Runtime
+
+on:
+  push:
+    branches: [server-v2-scalable]
+    paths:
+      - 'last_shelter_resource_runtime.js'
+      - 'last_shelter_resource_runtime_testi.js'
+      - 'server.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-resource-runtime.yml'
+  pull_request:
+    paths:
+      - 'last_shelter_resource_runtime.js'
+      - 'last_shelter_resource_runtime_testi.js'
+      - 'server.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-resource-runtime.yml'
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node last_shelter_resource_runtime_testi.js
