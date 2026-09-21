@@ -45,6 +45,148 @@ assert.deepStrictEqual(
   { ok: false, code: "SCIENCE_ALREADY_RESEARCHED" }
 );
 
+// Exact init queue projection uses numeric type=6 and lives under
+// lastShelterStarterAccountRuntime. The primary qid=1 queue is immediately free.
+const starterQueueState = {
+  lastShelterStarterAccountRuntime: {
+    queues: [
+      {
+        itemObj: {},
+        startTime: 0,
+        updateTime: 0,
+        endTime: 0,
+        type: 6,
+        uuid: "starter-science-1",
+        qid: 1,
+        isHelped: 0
+      },
+      {
+        itemObj: {},
+        startTime: 0,
+        updateTime: 0,
+        endTime: 5000,
+        type: 6,
+        uuid: "starter-science-2",
+        qid: 2,
+        isHelped: 0
+      }
+    ]
+  },
+  science: {}
+};
+
+assert.strictEqual(
+  scienceQueueSec(
+    starterQueueState,
+    "",
+    1000
+  ).uuid,
+  "starter-science-1"
+);
+
+// ScienceService explicit quuid path requires now >= queue.endTime.
+assert.strictEqual(
+  scienceQueueSec(
+    starterQueueState,
+    "starter-science-2",
+    1000
+  ),
+  null
+);
+assert.strictEqual(
+  scienceQueueSec(
+    starterQueueState,
+    "starter-science-2",
+    6000
+  ).uuid,
+  "starter-science-2"
+);
+
+const starterPlan =
+  verifiedScienceResearchPlanHazirla(
+    starterQueueState,
+    {
+      itemId: "901000",
+      quuid: "starter-science-1"
+    },
+    1000
+  );
+
+assert.strictEqual(
+  starterPlan.ok,
+  true
+);
+
+const starterApplied =
+  verifiedScienceResearchPlaniniStateEt(
+    starterQueueState,
+    starterPlan
+  );
+
+assert.strictEqual(
+  starterApplied.ok,
+  true
+);
+
+const occupiedStarterQueue =
+  starterQueueState
+    .lastShelterStarterAccountRuntime
+    .queues[0];
+
+assert.strictEqual(
+  occupiedStarterQueue.type,
+  6
+);
+assert.strictEqual(
+  occupiedStarterQueue.typeCode,
+  6
+);
+assert.strictEqual(
+  occupiedStarterQueue.typeName,
+  "SCIENCE"
+);
+assert.deepStrictEqual(
+  occupiedStarterQueue.itemObj,
+  { itemId: "901000" }
+);
+assert.strictEqual(
+  occupiedStarterQueue.startTime,
+  1000
+);
+assert.strictEqual(
+  occupiedStarterQueue.updateTime,
+  91000
+);
+assert.strictEqual(
+  occupiedStarterQueue.totalTime,
+  90000
+);
+assert.strictEqual(
+  scienceQueueMesguldur(
+    starterQueueState,
+    1000
+  ),
+  true
+);
+assert.deepStrictEqual(
+  verifiedScienceResearchYekunlasdir(
+    starterQueueState,
+    90999
+  ),
+  []
+);
+assert.strictEqual(
+  verifiedScienceResearchYekunlasdir(
+    starterQueueState,
+    91000
+  ).length,
+  1
+);
+assert.strictEqual(
+  starterQueueState.science["901000"],
+  1
+);
+
 const VERIFIED_NODES = [
   { itemId: "901000", seconds: 90, para1: "801", quality: 1 },
   { itemId: "901100", seconds: 90, para1: "802", quality: 1 },
