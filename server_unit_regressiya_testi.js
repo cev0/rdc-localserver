@@ -132,6 +132,7 @@ const UNIT_TESTLERI = [
   "resurs_hesabati_mutasiya_regressiya_testi.js",
   "resurs_stone_schema_testi.js",
   "runtime_deadline_authoritative_testi.js",
+  "runtime_auth_command_testi.js",
   "resurs_inkisaf_korpu_testi.js",
   "resurs_inkisaf_runtime_inteqrasiya_testi.js",
   "server_client_state_qosun_compat_testi.js",
