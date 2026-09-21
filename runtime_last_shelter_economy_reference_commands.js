@@ -65,11 +65,19 @@ function serverVaxtiAl(nowMs) {
 function repaySnapshotHazirla(state) {
   const raw =
     state &&
-    state.lastShelterRepay &&
-    typeof state.lastShelterRepay === "object" &&
-    !Array.isArray(state.lastShelterRepay)
-      ? state.lastShelterRepay
-      : repayRuntimeDefaultHazirla();
+    state.lastShelterAuxiliaryRuntime &&
+    state.lastShelterAuxiliaryRuntime.repayinfo &&
+    typeof state.lastShelterAuxiliaryRuntime.repayinfo === "object" &&
+    !Array.isArray(state.lastShelterAuxiliaryRuntime.repayinfo)
+      ? state.lastShelterAuxiliaryRuntime.repayinfo
+      : (
+          state &&
+          state.lastShelterRepay &&
+          typeof state.lastShelterRepay === "object" &&
+          !Array.isArray(state.lastShelterRepay)
+            ? state.lastShelterRepay
+            : repayRuntimeDefaultHazirla()
+        );
 
   const payPoint =
     Math.max(
