@@ -13,6 +13,10 @@ const {
 } = require("./last_shelter_starter_account_reference");
 
 const {
+  goldInitProjectionHazirla
+} = require("./last_shelter_gold_wallet");
+
+const {
   LAST_SHELTER_FIRST_PAY_REWARD,
   LAST_SHELTER_ONLINE_DURATION,
   LAST_SHELTER_HELICOPTER
@@ -546,7 +550,19 @@ function lastShelterVerifiedInitProjectionHazirla(
   const auxiliary =
     auxiliaryProjectionHazirla(state);
 
+  const walletUser =
+    goldInitProjectionHazirla(state) ||
+    {
+      gold:0,
+      gold1:0,
+      paidGold:0
+    };
+
   return {
+    user: {
+      uid,
+      ...walletUser
+    },
     building:
       Array.isArray(city.buildings)
         ? clone(city.buildings)
