@@ -3563,6 +3563,9 @@ const {
   lastShelterEconomyReferenceCommandleriniQeydEt
 } = require("./runtime_last_shelter_economy_reference_commands");
 const {
+  lastShelterQueueScienceCommandleriniQeydEt
+} = require("./runtime_last_shelter_queue_science_commands");
+const {
   requestIdAl,
   correlatedSendYarat
 } = require("./runtime_protocol_envelope");
@@ -8647,6 +8650,13 @@ lastShelterWorldCupCommandleriniQeydEt(
 );
 
 lastShelterEconomyReferenceCommandleriniQeydEt(
+  runtimeCommandRouter,
+  {
+    getOrCreatePlayerState
+  }
+);
+
+lastShelterQueueScienceCommandleriniQeydEt(
   runtimeCommandRouter,
   {
     getOrCreatePlayerState
