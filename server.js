@@ -54,6 +54,15 @@ const {
   lastShelterResourceRuntimeTeminEt
 } = require("./last_shelter_resource_runtime");
 
+const {
+  starterGeneralHazirla,
+  lastShelterHeroRuntimeTeminEt
+} = require("./last_shelter_hero_reference");
+
+const {
+  troopTransferRuntimeDefaultHazirla
+} = require("./last_shelter_troop_transfer_reference");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -5602,6 +5611,18 @@ function makeDefaultState(playerId) {
         nowMs()
       ),
 
+    // Verified Last Shelter hero/general state is kept separate from the
+    // legacy RDC hero model until all recruit/skill handlers are migrated.
+    lastShelterHeroRuntime: {
+      generals: [
+        starterGeneralHazirla()
+      ]
+    },
+
+    // Verified four-tree troop transfer progression from the reference init.
+    troopTransferRuntime:
+      troopTransferRuntimeDefaultHazirla(),
+
     resources:
       lastShelterServerBaslangicResurslariniAl(),
 
@@ -5729,6 +5750,15 @@ function getOrCreatePlayerState(playerId) {
     state,
     nowMs()
   );
+  lastShelterHeroRuntimeTeminEt(
+    state
+  );
+
+  if (!Array.isArray(state.troopTransferRuntime)) {
+    state.troopTransferRuntime =
+      troopTransferRuntimeDefaultHazirla();
+  }
+
   ensureMapState(state);
   ensurePlayerWorldPlacement(state, playerId);
   refreshRoadAccessForBuildings(state);
