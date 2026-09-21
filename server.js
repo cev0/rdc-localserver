@@ -118,6 +118,11 @@ const {
   fortRuntimeTeminEt
 } = require("./last_shelter_fort_troop_reference");
 
+const {
+  lastShelterMissileRuntimeDefaultHazirla,
+  lastShelterMissileRuntimeTeminEt
+} = require("./last_shelter_missile_runtime");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -5726,6 +5731,9 @@ function makeDefaultState(playerId) {
     lastShelterFortRuntime:
       fortRuntimeDefaultHazirla(),
 
+    lastShelterMissileRuntime:
+      lastShelterMissileRuntimeDefaultHazirla(),
+
     resources:
       lastShelterServerBaslangicResurslariniAl(),
 
@@ -5894,6 +5902,9 @@ function getOrCreatePlayerState(playerId) {
     state
   );
   fortRuntimeTeminEt(
+    state
+  );
+  lastShelterMissileRuntimeTeminEt(
     state
   );
 
