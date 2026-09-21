@@ -1,0 +1,36 @@
+name: Last Shelter Science Runtime Reads
+
+on:
+  push:
+    branches: [server-v2-scalable]
+    paths:
+      - 'runtime_last_shelter_science_read_commands.js'
+      - 'runtime_last_shelter_science_read_commands_testi.js'
+      - 'last_shelter_science_kataloqu.js'
+      - 'last_shelter_science_full_topology.js'
+      - 'last_shelter_science_prerequisite_runtime.js'
+      - 'last_shelter_science_runtime_adapteri.js'
+      - 'server.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-science-runtime-reads.yml'
+  pull_request:
+    paths:
+      - 'runtime_last_shelter_science_read_commands.js'
+      - 'runtime_last_shelter_science_read_commands_testi.js'
+      - 'last_shelter_science_kataloqu.js'
+      - 'last_shelter_science_full_topology.js'
+      - 'last_shelter_science_prerequisite_runtime.js'
+      - 'last_shelter_science_runtime_adapteri.js'
+      - 'server.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-science-runtime-reads.yml'
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node runtime_last_shelter_science_read_commands_testi.js
