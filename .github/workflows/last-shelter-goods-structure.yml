@@ -1,0 +1,29 @@
+name: Last Shelter Goods Structure
+
+on:
+  push:
+    branches: [server-v2-scalable]
+    paths:
+      - 'last_shelter_goods_structure_reference.js'
+      - 'last_shelter_goods_structure_reference_testi.js'
+      - 'last_shelter_item_runtime.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-goods-structure.yml'
+  pull_request:
+    paths:
+      - 'last_shelter_goods_structure_reference.js'
+      - 'last_shelter_goods_structure_reference_testi.js'
+      - 'last_shelter_item_runtime.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-goods-structure.yml'
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node last_shelter_goods_structure_reference_testi.js
+      - run: node last_shelter_item_runtime_testi.js
