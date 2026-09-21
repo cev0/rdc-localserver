@@ -84,6 +84,11 @@ const {
 } = require("./last_shelter_engagement_reward_reference");
 
 const {
+  lastShelterGoldWalletDefaultHazirla,
+  lastShelterGoldWalletTeminEt
+} = require("./last_shelter_gold_wallet");
+
+const {
   truckRuntimeDefaultHazirla,
   lastShelterTruckRuntimeTeminEt
 } = require("./last_shelter_truck_convoy_reference");
@@ -3492,6 +3497,9 @@ const {
   accountCommandleriniQeydEt
 } = require("./runtime_account_commands");
 const {
+  lastShelterItemCommandleriniQeydEt
+} = require("./runtime_last_shelter_item_commands");
+const {
   requestIdAl,
   correlatedSendYarat
 } = require("./runtime_protocol_envelope");
@@ -5688,6 +5696,11 @@ function makeDefaultState(playerId) {
     lastShelterEngagementRuntime:
       lastShelterEngagementRuntimeDefaultHazirla(),
 
+    // Last Shelter UserProfile keeps free and paid gold as separate balances.
+    // item.buy consumes free gold first, then paid gold.
+    lastShelterGoldWallet:
+      lastShelterGoldWalletDefaultHazirla(),
+
     lastShelterTruckRuntime:
       truckRuntimeDefaultHazirla(
         ""
@@ -5859,6 +5872,9 @@ function getOrCreatePlayerState(playerId) {
     state
   );
   lastShelterEngagementRuntimeTeminEt(
+    state
+  );
+  lastShelterGoldWalletTeminEt(
     state
   );
   lastShelterTruckRuntimeTeminEt(
@@ -8520,6 +8536,13 @@ accountCommandleriniQeydEt(
     oyuncuProfiliniTeminEt,
     updateServerTime,
     pushStateToPlayerConnections
+  }
+);
+
+lastShelterItemCommandleriniQeydEt(
+  runtimeCommandRouter,
+  {
+    getOrCreatePlayerState
   }
 );
 
