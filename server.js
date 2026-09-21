@@ -56,6 +56,11 @@ const {
 } = require("./last_shelter_resource_runtime");
 
 const {
+  verifiedScienceResearchDeadlineAtMs,
+  verifiedScienceResearchYekunlasdir
+} = require("./last_shelter_science_runtime_adapteri");
+
+const {
   starterGeneralHazirla,
   lastShelterHeroRuntimeTeminEt
 } = require("./last_shelter_hero_reference");
@@ -7983,6 +7988,29 @@ function nextPlayerDeadlineAtMs(state) {
     next = Math.min(next, researchEndsAt);
   }
 
+  const lastShelterScienceEndsAt =
+    verifiedScienceResearchDeadlineAtMs(
+      state
+    );
+
+  if (
+    Number.isFinite(
+      Number(
+        lastShelterScienceEndsAt
+      )
+    ) &&
+    Number(
+      lastShelterScienceEndsAt
+    ) > 0
+  ) {
+    next = Math.min(
+      next,
+      Number(
+        lastShelterScienceEndsAt
+      )
+    );
+  }
+
   const jobs =
     state.builders &&
     Array.isArray(state.builders.jobs)
@@ -8169,6 +8197,12 @@ function settlePlayerTimeline(
         nextDueAt
       );
 
+    const completedLastShelterScience =
+      verifiedScienceResearchYekunlasdir(
+        state,
+        nextDueAt
+      );
+
     const builderChanged =
       completeFinishedJobsForState(
         state,
@@ -8184,6 +8218,7 @@ function settlePlayerTimeline(
 
     const eventChanged =
       !!completedResearch ||
+      completedLastShelterScience.length > 0 ||
       builderChanged ||
       trainingChanged;
 
