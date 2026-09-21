@@ -21,9 +21,11 @@ class FakeRouter {
 
 (async()=>{
   const state={
-    lastShelterRepay:{
-      payPoint:2000,
-      claimedPoints:[400]
+    lastShelterAuxiliaryRuntime:{
+      repayinfo:{
+        payPoint:2000,
+        claimedPoints:[400]
+      }
     },
     lastShelterAllianceRuntime:{
       groupPurchaseActivity:{
