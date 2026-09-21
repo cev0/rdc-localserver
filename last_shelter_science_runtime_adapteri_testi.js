@@ -9,6 +9,7 @@ const {
   scienceArtıqArasdirilib,
   verifiedScienceResearchPlanHazirla,
   verifiedScienceResearchPlaniniStateEt,
+  verifiedScienceResearchDeadlineAtMs,
   verifiedScienceResearchYekunlasdir
 } = require("./last_shelter_science_runtime_adapteri");
 
@@ -231,6 +232,12 @@ assert.strictEqual(
   ),
   true
 );
+assert.strictEqual(
+  verifiedScienceResearchDeadlineAtMs(
+    starterQueueState
+  ),
+  91000
+);
 assert.deepStrictEqual(
   verifiedScienceResearchYekunlasdir(
     starterQueueState,
@@ -248,6 +255,45 @@ assert.strictEqual(
 assert.strictEqual(
   starterQueueState.science["901000"],
   1
+);
+assert.strictEqual(
+  verifiedScienceResearchDeadlineAtMs(
+    starterQueueState
+  ),
+  null
+);
+
+const multiDeadlineState = {
+  queues: [
+    {
+      uuid: "science-late",
+      qid: 1,
+      type: "SCIENCE",
+      status: "running",
+      finishUnixMs: 9000
+    },
+    {
+      uuid: "science-early",
+      qid: 2,
+      type: "SCIENCE",
+      status: "running",
+      updateTime: 7000
+    },
+    {
+      uuid: "science-free",
+      qid: 1,
+      type: "SCIENCE",
+      status: "free",
+      finishUnixMs: 1000
+    }
+  ]
+};
+
+assert.strictEqual(
+  verifiedScienceResearchDeadlineAtMs(
+    multiDeadlineState
+  ),
+  7000
 );
 
 const VERIFIED_NODES = [
