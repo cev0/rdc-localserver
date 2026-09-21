@@ -156,7 +156,7 @@ assert.strictEqual(
 
 assert.strictEqual(
   Object.keys(SHOP_ROWS).length,
-  2
+  8
 );
 assert.strictEqual(
   shopRowAl("200000001").condition,
