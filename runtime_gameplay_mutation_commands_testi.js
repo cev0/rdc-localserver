@@ -402,8 +402,8 @@ const {
 
   assert.strictEqual(
     lockCalls.length,
-    3,
-    "Training request PostgreSQL-authoritative executor-dan keçməlidir."
+    4,
+    "Training ve verified-gap upgrade request-ləri PostgreSQL-authoritative executor-dan keçməlidir."
   );
 
   const legacyServerCode =
