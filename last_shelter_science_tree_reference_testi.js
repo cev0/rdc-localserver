@@ -11,8 +11,8 @@ const {
 
 assert.strictEqual(
   scienceTreeIdleriniAl().length,
-  58,
-  "GetScienceInfo bulk topology batch must preserve all 58 verified nodes."
+  441,
+  "GetScienceInfo topology must preserve all 441 verified nodes."
 );
 
 assert.strictEqual(
@@ -107,6 +107,18 @@ assert.strictEqual(
   goodsNeedParseEt(""),
   null
 );
+const fullTail = scienceTreeMelumatiniAl("1202100");
+assert.ok(fullTail);
+assert.strictEqual(fullTail.maxLevel, 20);
+assert.deepStrictEqual(
+  fullTail.scienceConditions,
+  ["1201905", "1202005"]
+);
+assert.deepStrictEqual(
+  fullTail.goodsNeed,
+  { itemId: "210163", amount: 40 }
+);
+
 assert.strictEqual(
   scienceTreeMelumatiniAl("999999999"),
   null
