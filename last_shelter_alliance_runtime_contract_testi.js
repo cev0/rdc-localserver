@@ -122,7 +122,15 @@ assert.deepStrictEqual(
   {
     allianceId:"",
     alliance:{},
-    groupPurchaseRecords:[]
+    groupPurchaseRecords:[],
+    groupPurchaseActivity:{
+      activityId:"57032",
+      progress:0,
+      selectedOptionalRewardIndex:0,
+      lotteryNum:0,
+      awardIndex:0,
+      sendFlag:0
+    }
   }
 );
 state.lastShelterAllianceRuntime.allianceId = "abc";
