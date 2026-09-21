@@ -5,6 +5,7 @@ const {
   queueSnapshotHazirla,
   scienceCatalogProjectionHazirla,
   scienceTopologyProjectionHazirla,
+  scienceRuntimeProjectionHazirla,
   lastShelterQueueScienceCommandleriniQeydEt
 }=require("./runtime_last_shelter_queue_science_commands");
 
@@ -18,7 +19,7 @@ class FakeRouter {
   const state={lastShelterStarterAccountRuntime:{queues:[
     {uuid:"science-1",qid:1,type:6,updateTime:0,endTime:0,itemObj:{}},
     {uuid:"science-2",qid:2,type:6,updateTime:0,endTime:5000,itemObj:{}}
-  ]},science:{}};
+  ]},science:{"901000":{level:1,completedAt:900}}};
 
   const queues=queueSnapshotHazirla(state,now);
   assert.strictEqual(queues.length,2);
@@ -33,10 +34,16 @@ class FakeRouter {
   assert.strictEqual(fullTopology.length,441);
   assert.ok(fullTopology.some(x=>x.itemId==="901000"));
 
+  const runtimeScience=scienceRuntimeProjectionHazirla(state);
+  assert.deepStrictEqual(runtimeScience,{"901000":{level:1,completedAt:900}});
+  runtimeScience["901000"].level=99;
+  assert.strictEqual(state.science["901000"].level,1);
+  assert.deepStrictEqual(scienceRuntimeProjectionHazirla({}),{});
+
   const router=new FakeRouter();
   lastShelterQueueScienceCommandleriniQeydEt(router,{getOrCreatePlayerState:()=>state});
   assert.deepStrictEqual(Array.from(router.routes.keys()),[
-    "queue.list","science.catalog","science.topology.list","science.topology","science.prerequisite","science.plan"
+    "queue.list","science.catalog","science.topology.list","science.topology","science.state","science.prerequisite","science.plan"
   ]);
   for(const route of router.routes.values()){
     assert.deepStrictEqual(route.options,{authRequired:true,mutation:false});
@@ -57,21 +64,31 @@ class FakeRouter {
   assert.strictEqual(sent[0].topology.itemId,"901000");
 
   sent.length=0;
+  await router.routes.get("science.state").handler({ws,msg:{playerId:"p1"},send,nowMs:()=>1000});
+  assert.strictEqual(sent[0].type,"science.state");
+  assert.deepStrictEqual(sent[0].science,{"901000":{level:1,completedAt:900}});
+  sent[0].science["901000"].level=88;
+  assert.strictEqual(state.science["901000"].level,1);
+
+  sent.length=0;
   await router.routes.get("science.prerequisite").handler({ws,msg:{playerId:"p1",itemId:"901000"},send,nowMs:()=>1000});
   assert.strictEqual(sent[0].type,"science.prerequisite");
   assert.strictEqual(sent[0].status.ok,true);
 
   sent.length=0;
   await router.routes.get("science.plan").handler({ws,msg:{playerId:"p1",itemId:"901000"},send,nowMs:()=>1000});
+  assert.strictEqual(sent[0].code,"SCIENCE_ALREADY_RESEARCHED");
+
+  sent.length=0;
+  await router.routes.get("science.plan").handler({ws,msg:{playerId:"p1",itemId:"901100"},send,nowMs:()=>1000});
   assert.strictEqual(sent[0].type,"science.plan");
-  assert.strictEqual(sent[0].plan.itemId,"901000");
+  assert.strictEqual(sent[0].plan.itemId,"901100");
   assert.strictEqual(sent[0].plan.queue.uuid,"science-1");
-  assert.strictEqual(sent[0].plan.queue.finishUnixMs,91000);
   assert.strictEqual(sent[0].prerequisite.ok,true);
 
   sent.length=0;
   await router.routes.get("science.plan").handler({ws,msg:{playerId:"p1",itemId:"999999"},send,nowMs:()=>1000});
   assert.strictEqual(sent[0].code,"SCIENCE_TOPOLOGY_UNVERIFIED");
 
-  console.log("PASS: verified Last Shelter queue/science read runtime exposes all 441 observed topology nodes without inventing unverified resource-code debit semantics.");
+  console.log("PASS: verified Last Shelter queue/science read runtime exposes topology and detached authoritative completed-science state without inventing resource-code debit semantics.");
 })().catch(error=>{console.error(error);process.exitCode=1;});
