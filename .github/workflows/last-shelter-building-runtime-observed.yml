@@ -9,6 +9,9 @@ on:
       - 'last_shelter_building_runtime_overlay.js'
       - 'last_shelter_building_runtime_overlay_testi.js'
       - 'last_shelter_building_kataloqu.js'
+      - 'runtime_last_shelter_building_reference_commands.js'
+      - 'runtime_last_shelter_building_reference_commands_testi.js'
+      - 'runtime_last_shelter_command_registry_testi.js'
       - 'runtime_gameplay_mutation_commands.js'
       - 'runtime_gameplay_mutation_commands_testi.js'
       - 'server.js'
@@ -21,6 +24,9 @@ on:
       - 'last_shelter_building_runtime_overlay.js'
       - 'last_shelter_building_runtime_overlay_testi.js'
       - 'last_shelter_building_kataloqu.js'
+      - 'runtime_last_shelter_building_reference_commands.js'
+      - 'runtime_last_shelter_building_reference_commands_testi.js'
+      - 'runtime_last_shelter_command_registry_testi.js'
       - 'runtime_gameplay_mutation_commands.js'
       - 'runtime_gameplay_mutation_commands_testi.js'
       - 'server.js'
@@ -37,4 +43,6 @@ jobs:
           node-version: '20'
       - run: node last_shelter_building_runtime_observed_reference_testi.js
       - run: node last_shelter_building_runtime_overlay_testi.js
+      - run: node runtime_last_shelter_building_reference_commands_testi.js
+      - run: node runtime_last_shelter_command_registry_testi.js
       - run: node runtime_gameplay_mutation_commands_testi.js
