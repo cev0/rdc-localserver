@@ -200,6 +200,20 @@ assert.strictEqual(
 );
 assert.strictEqual(payload.missileList.some(x => x.missileId === "53307"),false);
 
+assert.strictEqual(payload.showScienceArray.length,52);
+assert.strictEqual(
+  payload.showScienceArray.find(x => x.id === "249912").lock,
+  "1;16|735201||735601"
+);
+assert.deepStrictEqual(
+  payload.showScienceArray.filter(x => x.isShow === 1).map(x => x.id),
+  ["20004000","20004001","20004012"]
+);
+assert.strictEqual(
+  payload.showScienceArray.find(x => x.id === "20004040").version,
+  "1.250.088"
+);
+
 assert.strictEqual(payload.task.length,205);
 assert.strictEqual(
   payload.task.filter(x => x.type1 === 49).length,
