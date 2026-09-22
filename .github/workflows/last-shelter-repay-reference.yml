@@ -2,7 +2,7 @@ name: Last Shelter Repay Reference
 
 on:
   push:
-    branches: [server-v2-scalable]
+    branches: [main]
     paths:
       - 'last_shelter_repay_reference.js'
       - 'last_shelter_repay_reference_testi.js'
