@@ -21,6 +21,8 @@ const {
   battlefieldQadagalariniAl,
   lastShelterWorldRuntimeTeminEt
 }=require("./last_shelter_world_battlefield_reference");
+const {activityReferenceProjectionHazirla,activityReferenceAl}=require("./last_shelter_activity_reference");
+const {lastShelterMissileRuntimeTeminEt}=require("./last_shelter_missile_runtime");
 
 function clone(v){return v==null?v:JSON.parse(JSON.stringify(v));}
 function auth(ws,msg,send){
@@ -35,6 +37,23 @@ function lastShelterAuxiliaryCommandleriniQeydEt(router,deps){
   if(!router)throw new Error("Command router yoxdur.");
   const {getOrCreatePlayerState}=deps||{};
   if(typeof getOrCreatePlayerState!=="function")throw new Error("getOrCreatePlayerState yoxdur.");
+
+  router.register("activity.reference.list",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return;
+    send(ws,{type:"activity.reference.list",playerId:a.playerId,serverTimeUnixMs:now(nowMs),activities:activityReferenceProjectionHazirla()});
+  },{authRequired:true,mutation:false});
+
+  router.register("activity.reference.get",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return;
+    const id=msg&&msg.id!=null?String(msg.id).trim():""; const activity=activityReferenceAl(id);
+    if(!activity){send(ws,{type:"error",code:"ACTIVITY_NOT_FOUND",message:"Last Shelter activity tapilmadi.",id});return;}
+    send(ws,{type:"activity.reference.get",playerId:a.playerId,serverTimeUnixMs:now(nowMs),activity});
+  },{authRequired:true,mutation:false});
+
+  router.register("missile.info",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const state=getOrCreatePlayerState(a.playerId);
+    send(ws,{type:"missile.info",playerId:a.playerId,serverTimeUnixMs:now(nowMs),missiles:clone(lastShelterMissileRuntimeTeminEt(state).missiles)});
+  },{authRequired:true,mutation:false});
 
   router.register("seven_days.info",async({ws,msg,send,nowMs})=>{
     const a=auth(ws,msg,send); if(!a)return;
