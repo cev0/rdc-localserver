@@ -97,6 +97,37 @@ const BUILDING_MAX_LEVEL_BY_TYPE = Object.freeze(
   )
 );
 
+const BUILDING_DECLARED_MAX_LEVEL_BY_TYPE = Object.freeze(
+  Object.values(RAW_BUILDING_ROWS).reduce(
+    (index, raw) => {
+      const typeId =
+        String(
+          Number(raw.id) -
+          Number(raw.level)
+        );
+      const declaredMax =
+        Math.max(
+          0,
+          Math.trunc(
+            Number(raw.max_level) || 0
+          )
+        );
+
+      if (declaredMax > 0) {
+        index[typeId] =
+          Math.max(
+            Number(index[typeId]) || 0,
+            declaredMax
+          );
+      }
+
+      return index;
+    },
+    Object.create(null)
+  )
+);
+
+
 function buildingXmlRowAl(xmlId) {
   const raw = RAW_BUILDING_ROWS[String(xmlId)];
   return raw ? { ...raw } : null;
@@ -161,6 +192,26 @@ function buildingMaxLeveliniAl(buildingTypeId) {
   );
 }
 
+function buildingDeclaredMaxLeveliniAl(buildingTypeId) {
+  const type =
+    metnAl(
+      buildingTypeId,
+      32
+    );
+
+  if (!/^\d+$/.test(type)) {
+    return 0;
+  }
+
+  return (
+    Number(
+      BUILDING_DECLARED_MAX_LEVEL_BY_TYPE[
+        String(Number(type))
+      ]
+    ) || 0
+  );
+}
+
 function mainBuildingLeveliniAl(level) {
   const lvl =
     tamEded(level);
@@ -212,5 +263,6 @@ module.exports = {
   mainBuildingLeveliniAl,
   buildingLeveliniAl,
   buildingMaxLeveliniAl,
+  buildingDeclaredMaxLeveliniAl,
   rdcBuildingTypeIdAl
 };
