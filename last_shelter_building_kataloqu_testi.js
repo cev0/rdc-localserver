@@ -15,6 +15,11 @@ const {
   rdcBuildingTypeIdAl
 } = require("./last_shelter_building_kataloqu");
 
+const {
+  RDC_BUILDING_TYPE_IDS,
+  sourceBuildingType
+} = require("./last_shelter_building_state");
+
 assert.strictEqual(
   rdcBuildingTypeIdAl("hq"),
   "400000"
@@ -25,6 +30,43 @@ assert.strictEqual(
     RDC_TO_LAST_SHELTER_BUILDING_TYPE
   ),
   true
+);
+
+assert.strictEqual(
+  RDC_BUILDING_TYPE_IDS,
+  RDC_TO_LAST_SHELTER_BUILDING_TYPE,
+  "Building state bridge must reuse the verified mapping object."
+);
+
+for (const unverifiedId of [
+  "house",
+  "bank",
+  "embassy",
+  "road"
+]) {
+  assert.strictEqual(
+    sourceBuildingType({
+      buildingId: unverifiedId
+    }),
+    null,
+    `Unverified semantic mapping must stay disabled: ${unverifiedId}`
+  );
+}
+
+assert.strictEqual(
+  sourceBuildingType({
+    buildingId: "institute"
+  }),
+  "403000"
+);
+
+assert.strictEqual(
+  sourceBuildingType({
+    buildingTypeId: "433000",
+    buildingId: "house"
+  }),
+  "433000",
+  "Explicit Last Shelter numeric building types remain authoritative."
 );
 
 assert.strictEqual(
