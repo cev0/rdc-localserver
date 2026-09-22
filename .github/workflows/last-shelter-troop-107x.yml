@@ -16,5 +16,3 @@ jobs:
           node-version: '20'
       - name: Verify recovered Last Shelter 107x troop contract
         run: node last_shelter_troop_107x_reference_testi.js
-      - name: Probe raw arms source fields
-        run: node last_shelter_arms_source_probe.js
