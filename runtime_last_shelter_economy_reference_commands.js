@@ -15,7 +15,7 @@ const {
 const {
   LAST_SHELTER_REPAY_REFERENCE,
   repayEligibleRewardsAl,
-  repayRuntimeDefaultHazirla
+  lastShelterRepayRuntimeTeminEt
 } = require("./last_shelter_repay_reference");
 const {
   LAST_SHELTER_ALLIANCE_GROUP_PURCHASE,
@@ -48,26 +48,52 @@ function serverVaxtiAl(nowMs) {
 }
 
 function repaySnapshotHazirla(state) {
-  const raw = state && state.lastShelterAuxiliaryRuntime && state.lastShelterAuxiliaryRuntime.repayinfo &&
-    typeof state.lastShelterAuxiliaryRuntime.repayinfo === "object" && !Array.isArray(state.lastShelterAuxiliaryRuntime.repayinfo)
-      ? state.lastShelterAuxiliaryRuntime.repayinfo
-      : (state && state.lastShelterRepay && typeof state.lastShelterRepay === "object" && !Array.isArray(state.lastShelterRepay)
-          ? state.lastShelterRepay : repayRuntimeDefaultHazirla());
+  const raw =
+    lastShelterRepayRuntimeTeminEt(
+      state
+    ) || {
+      payPoint: 0,
+      claimedPoints: []
+    };
 
-  const payPoint = Math.max(0,Math.trunc(Number(raw.payPoint) || 0));
-  const claimedPoints = Array.isArray(raw.claimedPoints)
-    ? Array.from(new Set(raw.claimedPoints.map(value=>Math.trunc(Number(value)))
-        .filter(value=>Number.isFinite(value) && value >= 0))).sort((a,b)=>a-b)
-    : [];
-  const eligibleRewards = repayEligibleRewardsAl(payPoint);
-  const claimed = new Set(claimedPoints);
+  const payPoint =
+    Math.max(
+      0,
+      Math.trunc(
+        Number(raw.payPoint) || 0
+      )
+    );
+
+  const claimedPoints =
+    Array.isArray(raw.claimedPoints)
+      ? [...raw.claimedPoints]
+      : [];
+
+  const eligibleRewards =
+    repayEligibleRewardsAl(
+      payPoint
+    );
+
+  const claimed =
+    new Set(
+      claimedPoints
+    );
 
   return {
     payPoint,
     claimedPoints,
     eligibleRewards,
-    claimableRewards:eligibleRewards.filter(row=>!claimed.has(row.point)),
-    reference:clone(LAST_SHELTER_REPAY_REFERENCE)
+    claimableRewards:
+      eligibleRewards.filter(
+        row =>
+          !claimed.has(
+            row.point
+          )
+      ),
+    reference:
+      clone(
+        LAST_SHELTER_REPAY_REFERENCE
+      )
   };
 }
 
