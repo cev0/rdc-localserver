@@ -62,7 +62,8 @@ const {
 
 const {
   starterGeneralHazirla,
-  lastShelterHeroRuntimeTeminEt
+  lastShelterHeroRuntimeTeminEt,
+  lastShelterHeroBasePoweriniHesabla
 } = require("./last_shelter_hero_reference");
 
 const {
@@ -773,12 +774,16 @@ function qosunGucunuHesabla(state) {
 
 // ============================================================
 // QƏHRƏMAN GÜCÜ
-// Hələlik 0.
-// Hero sistemi server state-ə tam qoşulanda genişləndirəcəyik.
+// ------------------------------------------------------------
+// Yalnız Last Shelter template-də source-verified `power` dəyəri olan
+// numeric general-lar hesablanır. Legacy RDC hero kataloqu burada istifadə
+// olunmur və level/skill üçün əlavə güc təxmin edilmir.
 // ============================================================
 
 function qehremanGucunuHesabla(state) {
-  return 0;
+  return lastShelterHeroBasePoweriniHesabla(
+    state
+  );
 }
 
 
