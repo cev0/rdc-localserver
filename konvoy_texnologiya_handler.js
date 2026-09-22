@@ -13,13 +13,14 @@ const {
 } = require("./server_sorqu_idempotentliyi");
 const {
   oyunStateIniBerpaEt,
-  oyunStateIniYaddaSaxla,
   oyuncuStateBerpaOlunub
 } = require("./oyun_state_daimilik_korpu");
+const {
+  oyuncuStateMutasiyasiniPostgresIleIcraEt
+} = require("./oyun_state_mutasiya_postgres");
 
 const BALANSLAR = Object.values(KONVOY_TEXNOLOGIYA_BALANSI);
 const BALANS_XERITESI = new Map(BALANSLAR.map(x => [x.techId, x]));
-const oyuncuKilidleri = new Map();
 
 function metnAl(deyer, maksimum = 128) {
   return typeof deyer === "string"
@@ -29,27 +30,6 @@ function metnAl(deyer, maksimum = 128) {
 
 function kopyala(v) {
   return v == null ? null : JSON.parse(JSON.stringify(v));
-}
-
-async function oyuncuKilidiIleIcraEt(playerId, emeliyyat) {
-  const evvelki = oyuncuKilidleri.get(playerId) || Promise.resolve();
-  let kilidiAc;
-  const cari = new Promise(resolve => {
-    kilidiAc = resolve;
-  });
-
-  oyuncuKilidleri.set(playerId, cari);
-  await evvelki;
-
-  try {
-    return await emeliyyat();
-  }
-  finally {
-    kilidiAc();
-    if (oyuncuKilidleri.get(playerId) === cari) {
-      oyuncuKilidleri.delete(playerId);
-    }
-  }
 }
 
 function binaLeveliniAl(state, buildingId, yolTelebi = false) {
@@ -187,6 +167,157 @@ function researchBaslat(state, balans, nowMs) {
   };
 }
 
+function konvoyTexnologiyaStartMutasiyasiniTetbiqEt(
+  state,
+  rawTechId,
+  rawRequestId,
+  nowMs = Date.now()
+) {
+  const techId =
+    metnAl(
+      rawTechId,
+      128
+    );
+
+  const requestId =
+    requestIdAl(
+      rawRequestId
+    );
+
+  const balans =
+    BALANS_XERITESI.get(
+      techId
+    );
+
+  if (!balans) {
+    return {
+      success: false,
+      deyisdi: false,
+      idempotentReplay: false,
+      techId,
+      requestId,
+      message:
+        "Konvoy texnologiyası tapılmadı.",
+      info: null
+    };
+  }
+
+  const requestPayload = {
+    techId
+  };
+
+  const tekrar =
+    tekrarNeticesiniTap(
+      state,
+      "konvoy_texnologiya_arasdirma_baslat",
+      requestId,
+      requestPayload
+    );
+
+  if (tekrar.conflict) {
+    return {
+      success: false,
+      deyisdi: false,
+      idempotentReplay: false,
+      techId,
+      requestId,
+      message:
+        tekrar.message ||
+        "requestId ziddiyyəti yarandı.",
+      info: null
+    };
+  }
+
+  if (tekrar.replay) {
+    const replay =
+      tekrar.result &&
+      typeof tekrar.result ===
+        "object"
+        ? tekrar.result
+        : {};
+
+    return {
+      success: true,
+      deyisdi: false,
+      idempotentReplay: true,
+      techId,
+      requestId,
+      research:
+        kopyala(
+          replay.research ||
+          null
+        ),
+      developmentModifier:
+        kopyala(
+          replay.developmentModifier ||
+          null
+        ),
+      info:
+        kopyala(
+          replay.info ||
+          null
+        )
+    };
+  }
+
+  const netice =
+    researchBaslat(
+      state,
+      balans,
+      nowMs
+    );
+
+  if (!netice.ok) {
+    return {
+      success: false,
+      deyisdi: false,
+      idempotentReplay: false,
+      techId,
+      requestId,
+      message:
+        netice.message,
+      info:
+        kopyala(
+          netice.info ||
+          null
+        )
+    };
+  }
+
+  const cavab = {
+    research:
+      kopyala(
+        netice.research
+      ),
+    developmentModifier:
+      kopyala(
+        netice.developmentModifier
+      ),
+    info:
+      kopyala(
+        netice.info
+      )
+  };
+
+  ugurluNeticeniQeydEt(
+    state,
+    "konvoy_texnologiya_arasdirma_baslat",
+    requestId,
+    requestPayload,
+    cavab,
+    nowMs
+  );
+
+  return {
+    success: true,
+    deyisdi: true,
+    idempotentReplay: false,
+    techId,
+    requestId,
+    ...cavab
+  };
+}
+
 function ugursuzStartCavabi(kontekst, playerId, techId, requestId, message, info = null) {
   kontekst.send(kontekst.ws, {
     type: "technology_research_result",
@@ -240,108 +371,79 @@ async function konvoyTexnologiyaMesajiniEmalEt(kontekst) {
       return true;
     }
 
-    await oyuncuKilidiIleIcraEt(playerId, async () => {
-      const kilidliState = kontekst.getOrCreatePlayerState(playerId);
-      const balans = BALANS_XERITESI.get(techId);
-      const requestId = requestIdAl(kontekst.msg && kontekst.msg.requestId);
-      const requestPayload = { techId };
+    const canliState =
+      typeof kontekst.ensureFreshPlayerState === "function"
+        ? await kontekst.ensureFreshPlayerState(playerId)
+        : state;
 
-      const tekrar = tekrarNeticesiniTap(
-        kilidliState,
-        "konvoy_texnologiya_arasdirma_baslat",
-        requestId,
-        requestPayload
+    const requestId =
+      requestIdAl(
+        kontekst.msg &&
+        kontekst.msg.requestId
       );
 
-      if (tekrar.conflict) {
-        ugursuzStartCavabi(
-          kontekst,
-          playerId,
-          techId,
-          requestId,
-          tekrar.message || "requestId ziddiyyəti yarandı."
-        );
-        return;
-      }
+    const nowMs =
+      kontekst.nowMs();
 
-      if (tekrar.replay) {
-        const replay = tekrar.result && typeof tekrar.result === "object"
-          ? tekrar.result
-          : {};
-        kontekst.send(kontekst.ws, {
-          type: "technology_research_started",
-          success: true,
-          playerId,
-          techId,
-          requestId,
-          idempotentReplay: true,
-          research: replay.research || null,
-          info: replay.info || null,
-          payloadJson: JSON.stringify(replay.research || null),
-          serverTimeUnixMs: kontekst.nowMs()
-        });
-        return;
-      }
-
-      const evvelki = kopyala({
-        resources: kilidliState.resources || {},
-        technology: kilidliState.technology || {},
-        serverSorquIdempotentliyi: kilidliState.serverSorquIdempotentliyi || null
-      });
-
-      const nowMs = kontekst.nowMs();
-      const netice = researchBaslat(kilidliState, balans, nowMs);
-
-      if (!netice.ok) {
-        ugursuzStartCavabi(
-          kontekst,
-          playerId,
-          techId,
-          requestId,
-          netice.message,
-          netice.info
-        );
-        return;
-      }
-
-      const cavab = {
-        research: kopyala(netice.research),
-        developmentModifier: kopyala(netice.developmentModifier),
-        info: kopyala(netice.info)
-      };
-
-      ugurluNeticeniQeydEt(
-        kilidliState,
-        "konvoy_texnologiya_arasdirma_baslat",
-        requestId,
-        requestPayload,
-        cavab,
-        nowMs
+    const mutasiyaNeticesi =
+      await oyuncuStateMutasiyasiniPostgresIleIcraEt(
+        playerId,
+        canliState,
+        async kilidliState =>
+          konvoyTexnologiyaStartMutasiyasiniTetbiqEt(
+            kilidliState,
+            techId,
+            requestId,
+            nowMs
+          )
       );
 
-      try {
-        await oyunStateIniYaddaSaxla(playerId, kilidliState);
-      }
-      catch (xeta) {
-        kilidliState.resources = evvelki.resources;
-        kilidliState.technology = evvelki.technology;
-        kilidliState.serverSorquIdempotentliyi = evvelki.serverSorquIdempotentliyi;
-        throw xeta;
-      }
-
-      kontekst.send(kontekst.ws, {
-        type: "technology_research_started",
-        success: true,
+    if (
+      !mutasiyaNeticesi ||
+      mutasiyaNeticesi.success !== true
+    ) {
+      ugursuzStartCavabi(
+        kontekst,
         playerId,
         techId,
         requestId,
-        idempotentReplay: false,
-        research: cavab.research,
-        developmentModifier: cavab.developmentModifier,
-        info: cavab.info,
-        payloadJson: JSON.stringify(cavab.research),
-        serverTimeUnixMs: kontekst.nowMs()
-      });
+        mutasiyaNeticesi &&
+        mutasiyaNeticesi.message
+          ? mutasiyaNeticesi.message
+          : "Konvoy texnologiyası araşdırması başlatılmadı.",
+        mutasiyaNeticesi &&
+        mutasiyaNeticesi.info
+          ? mutasiyaNeticesi.info
+          : null
+      );
+
+      return true;
+    }
+
+    kontekst.send(kontekst.ws, {
+      type: "technology_research_started",
+      success: true,
+      playerId,
+      techId,
+      requestId,
+      idempotentReplay:
+        mutasiyaNeticesi.idempotentReplay === true,
+      research:
+        mutasiyaNeticesi.research ||
+        null,
+      developmentModifier:
+        mutasiyaNeticesi.developmentModifier ||
+        null,
+      info:
+        mutasiyaNeticesi.info ||
+        null,
+      payloadJson:
+        JSON.stringify(
+          mutasiyaNeticesi.research ||
+          null
+        ),
+      serverTimeUnixMs:
+        kontekst.nowMs()
     });
   }
   catch (xeta) {
@@ -363,5 +465,6 @@ async function konvoyTexnologiyaMesajiniEmalEt(kontekst) {
 
 module.exports = {
   researchBaslat,
+  konvoyTexnologiyaStartMutasiyasiniTetbiqEt,
   konvoyTexnologiyaMesajiniEmalEt
 };

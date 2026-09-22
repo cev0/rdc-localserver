@@ -4,6 +4,7 @@
   "description": "",
   "main": "server_missiya_genisletme.js",
   "dependencies": {
+    "@redis/client": "^6.2.1",
     "accepts": "^2.0.0",
     "body-parser": "^2.2.2",
     "bytes": "^3.1.2",
@@ -122,7 +123,8 @@
     "server:google-account-contract-test": "node hesab_provayder_cavab_uygunlugu_testi.js",
     "server:unity-contract-test": "node server_unity_mesaj_muqavilesi_testi.js",
     "dusmen:movqe-pg-test": "node dusmen_movqeyi_pg_mutasiya_testi.js",
-    "xerite:worldv2-test": "node dovlet_xerite_worldv2_butun_testler.js"
+    "xerite:worldv2-test": "node dovlet_xerite_worldv2_butun_testler.js",
+    "runtime:registry-test": "node --check server.js && node runtime_deploy_import_order_testi.js && node runtime_registry_testi.js && node runtime_redis_testi.js && node runtime_deploy_config_testi.js && node runtime_deadline_scheduler_testi.js && node runtime_deadline_authoritative_testi.js && node pvp_zeroing_recall_deadline_testi.js && node runtime_production_clock_testi.js && node runtime_protocol_envelope_testi.js && node runtime_request_idempotency_testi.js && node runtime_pg_authoritative_mutation_testi.js && node oyun_state_daimilik_korpu_testi.js && node world_state_assignment_postgres_testi.js && node runtime_state_sync_testi.js && node runtime_world_map_sync_testi.js && node runtime_no_global_player_scan_testi.js && node dovlet_xerite_layer_dynamic_testi.js && node konvoy_emeliyyat_pg_mutasiya_testi.js && node konvoy_public_projection_retry_testi.js && node runtime_legacy_base_teleport_testi.js && node runtime_ws_guard_testi.js && node runtime_command_router_testi.js && node runtime_auth_command_testi.js && node runtime_gameplay_mutation_commands_testi.js && node last_shelter_science_kataloqu_testi.js && node last_shelter_building_kataloqu_testi.js && node runtime_build_commands_testi.js && node runtime_map_mutation_commands_testi.js && node runtime_account_commands_testi.js && node server_oyuncu_mutasiya_kilidi_testi.js && node world_state_center_postgres_testi.js && node world_state_mutasiya_postgres_testi.js"
   },
   "repository": {
     "type": "git",

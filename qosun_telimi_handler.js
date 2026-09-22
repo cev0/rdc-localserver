@@ -14,6 +14,13 @@ const {
 const {
   oyuncuStateMutasiyasiniPostgresIleIcraEt
 } = require("./oyun_state_mutasiya_postgres");
+const {
+  requestIdAl
+} = require("./runtime_protocol_envelope");
+const {
+  requestYoxla,
+  requestNeticesiniQeydEt
+} = require("./runtime_request_idempotency");
 
 const MESAJLAR = new Set([
   "troop_catalog_request",
@@ -194,15 +201,86 @@ async function qosunTelimiMesajiniEmalEt(kontekst) {
         ? "preview"
         : "train";
 
+    const requestId =
+      emeliyyat === "train"
+        ? requestIdAl(
+            kontekst.msg
+          )
+        : "";
+
     const netice = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
       playerId,
       canliState,
-      async kilidliState => qosunTelimiMutasiyasiniTetbiqEt(
-        kilidliState,
-        kontekst.msg,
-        now,
-        emeliyyat
-      )
+      async kilidliState => {
+        if (
+          emeliyyat === "train" &&
+          requestId
+        ) {
+          const check =
+            requestYoxla(
+              kilidliState,
+              type,
+              requestId,
+              kontekst.msg,
+              now
+            );
+
+          if (check.conflict) {
+            return {
+              success: false,
+              deyisdi: false,
+              reason:
+                "idempotency_conflict",
+              message:
+                check.message ||
+                "Eyni requestId fərqli payload ilə istifadə edilə bilməz."
+            };
+          }
+
+          if (check.replay) {
+            return {
+              ...(
+                check.result &&
+                typeof check.result ===
+                  "object"
+                  ? check.result
+                  : {}
+              ),
+              deyisdi: false,
+              idempotentReplay: true
+            };
+          }
+        }
+
+        const mutationResult =
+          qosunTelimiMutasiyasiniTetbiqEt(
+            kilidliState,
+            kontekst.msg,
+            now,
+            emeliyyat
+          );
+
+        if (
+          emeliyyat === "train" &&
+          requestId &&
+          mutationResult &&
+          mutationResult.success === true
+        ) {
+          requestNeticesiniQeydEt(
+            kilidliState,
+            type,
+            requestId,
+            kontekst.msg,
+            {
+              result:
+                mutationResult
+            },
+            now
+          );
+        }
+
+        return mutationResult;
+      }
     );
 
     if (type === "troop_training_status_request") {

@@ -19,8 +19,12 @@ function hovuzHazirla(log) {
 (async () => {
   const log = [];
   let yazilan = null;
+  const sharedSyncCalls = [];
   const snapshot = {
     playerId: "defender",
+    worldPlacement: {
+      stateId: 7
+    },
     pvpCity: { convoyRecallPending: true },
     konvoyEmeliyyatlari: { activeByConvoy: { konvoy_1: { status: "marching" } }, history: [] }
   };
@@ -36,16 +40,54 @@ function hovuzHazirla(log) {
         state.konvoyEmeliyyatlari.activeByConvoy = {};
         return { success: true, recalledCount: 1 };
       },
+      sharedSyncFn:
+        async (
+          _client,
+          stateId,
+          playerId,
+          active,
+          nowMs
+        ) => {
+          sharedSyncCalls.push({
+            stateId,
+            playerId,
+            active:
+              JSON.parse(
+                JSON.stringify(active)
+              ),
+            nowMs
+          });
+
+          return {
+            success: true,
+            deyisdi: true,
+            count: 0
+          };
+        },
       snapshotYaz: async (_client, _pid, state) => { yazilan = JSON.parse(JSON.stringify(state)); }
     }
   );
 
   assert.strictEqual(ok.success, true);
   assert.strictEqual(ok.recalledCount, 1);
+  assert.strictEqual(ok.stateId, 7);
   assert.strictEqual(yazilan.pvpCity.convoyRecallPending, false);
   assert.strictEqual(yazilan.pvpCity.lastConvoyRecallAtMs, 123456);
   assert.ok(log.includes("COMMIT"));
   assert.ok(log.includes("LOCK"));
+
+  assert.deepStrictEqual(
+    sharedSyncCalls,
+    [
+      {
+        stateId: 7,
+        playerId: "defender",
+        active: {},
+        nowMs: 123456
+      }
+    ],
+    "Zeroing recall player snapshot və shared convoy projection-u eyni PostgreSQL transaction-da saxlamalıdır."
+  );
 
   const alreadyLog = [];
   const already = await pvpZeroingKonvoyRecalliniPostCommitIcraEt(
@@ -56,6 +98,12 @@ function hovuzHazirla(log) {
       lockFn: async () => {},
       snapshotAl: async () => ({ playerId: "defender", pvpCity: { convoyRecallPending: false } }),
       recallFn: async () => { throw new Error("çağırılmamalıdır"); },
+      sharedSyncFn:
+        async () => {
+          throw new Error(
+            "sync çağırılmamalıdır"
+          );
+        },
       snapshotYaz: async () => { throw new Error("yazılmamalıdır"); }
     }
   );
@@ -73,6 +121,12 @@ function hovuzHazirla(log) {
         lockFn: async () => {},
         snapshotAl: async () => ({ playerId: "defender", pvpCity: { convoyRecallPending: true } }),
         recallFn: async () => { throw new Error("runtime sync fail"); },
+        sharedSyncFn:
+          async () => {
+            throw new Error(
+              "shared sync çağırılmamalıdır"
+            );
+          },
         snapshotYaz: async () => { failWrite = true; }
       }
     );

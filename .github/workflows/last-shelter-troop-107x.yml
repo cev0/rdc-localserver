@@ -1,0 +1,18 @@
+name: Last Shelter Troop 107x Reference
+
+on:
+  push:
+    branches: [server-v2-scalable]
+  pull_request:
+    branches: [main]
+
+jobs:
+  troop-107x-reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify recovered Last Shelter 107x troop contract
+        run: node last_shelter_troop_107x_reference_testi.js

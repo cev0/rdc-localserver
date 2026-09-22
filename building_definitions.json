@@ -10283,7 +10283,7 @@
             "providesStorage": false,
             "storageResource": "food",
             "specialEffectType": "none",
-            "maxLevel": 25,
+            "maxLevel": 5,
             "requiredMainBuildingLevel": 1,
             "requiredDepotLevel": 0,
             "requiredBuildingId": "",
@@ -10297,598 +10297,127 @@
             "levels": [
                 {
                     "level": 1,
-                    "buildTimeSeconds": 60.0,
+                    "buildTimeSeconds": 12,
                     "productionPerTick": 0,
                     "storageCapacityBonus": 0,
                     "specialEffectValue": 0,
                     "cost": [
                         {
-                            "type": "wood",
+                            "type": "iron",
                             "amount": 190
                         },
                         {
-                            "type": "money",
-                            "amount": 156
+                            "type": "food",
+                            "amount": 50
                         },
                         {
-                            "type": "iron",
-                            "amount": 108
+                            "type": "money",
+                            "amount": 210
                         }
                     ]
                 },
                 {
                     "level": 2,
-                    "buildTimeSeconds": 90.0,
+                    "buildTimeSeconds": 50,
                     "productionPerTick": 0,
                     "storageCapacityBonus": 0,
                     "specialEffectValue": 0,
                     "cost": [
                         {
                             "type": "wood",
-                            "amount": 230
-                        },
-                        {
-                            "type": "money",
-                            "amount": 192
+                            "amount": 200
                         },
                         {
                             "type": "iron",
-                            "amount": 136
+                            "amount": 290
+                        },
+                        {
+                            "type": "food",
+                            "amount": 100
+                        },
+                        {
+                            "type": "money",
+                            "amount": 320
                         }
                     ]
                 },
                 {
                     "level": 3,
-                    "buildTimeSeconds": 130.0,
+                    "buildTimeSeconds": 120,
                     "productionPerTick": 0,
                     "storageCapacityBonus": 0,
                     "specialEffectValue": 0,
                     "cost": [
                         {
                             "type": "wood",
-                            "amount": 270
+                            "amount": 800
                         },
                         {
                             "type": "iron",
-                            "amount": 228
+                            "amount": 860
                         },
                         {
                             "type": "money",
-                            "amount": 164
+                            "amount": 710
                         }
                     ]
                 },
                 {
                     "level": 4,
-                    "buildTimeSeconds": 180.0,
+                    "buildTimeSeconds": 710,
                     "productionPerTick": 0,
                     "storageCapacityBonus": 0,
                     "specialEffectValue": 0,
                     "cost": [
                         {
                             "type": "wood",
-                            "amount": 310
+                            "amount": 1000
+                        },
+                        {
+                            "type": "stone",
+                            "amount": 500
                         },
                         {
                             "type": "iron",
-                            "amount": 192
+                            "amount": 1500
+                        },
+                        {
+                            "type": "food",
+                            "amount": 960
                         },
                         {
                             "type": "money",
-                            "amount": 264
+                            "amount": 1100
                         }
                     ]
                 },
                 {
                     "level": 5,
-                    "buildTimeSeconds": 240.0,
+                    "buildTimeSeconds": 2110,
                     "productionPerTick": 0,
                     "storageCapacityBonus": 0,
                     "specialEffectValue": 0,
                     "cost": [
                         {
-                            "type": "wood",
-                            "amount": 350
-                        },
-                        {
-                            "type": "money",
-                            "amount": 300
+                            "type": "stone",
+                            "amount": 1300
                         },
                         {
                             "type": "iron",
-                            "amount": 220
-                        }
-                    ]
-                },
-                {
-                    "level": 6,
-                    "buildTimeSeconds": 310.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
+                            "amount": 3600
+                        },
                         {
-                            "type": "wood",
-                            "amount": 390
+                            "type": "food",
+                            "amount": 1800
                         },
                         {
                             "type": "money",
-                            "amount": 336
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 248
-                        }
-                    ]
-                },
-                {
-                    "level": 7,
-                    "buildTimeSeconds": 390.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 430
-                        },
-                        {
-                            "type": "money",
-                            "amount": 372
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 276
-                        }
-                    ]
-                },
-                {
-                    "level": 8,
-                    "buildTimeSeconds": 480.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 470
-                        },
-                        {
-                            "type": "money",
-                            "amount": 408
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 304
-                        }
-                    ]
-                },
-                {
-                    "level": 9,
-                    "buildTimeSeconds": 580.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 510
-                        },
-                        {
-                            "type": "money",
-                            "amount": 444
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 332
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 18
-                        }
-                    ]
-                },
-                {
-                    "level": 10,
-                    "buildTimeSeconds": 690.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 550
-                        },
-                        {
-                            "type": "money",
-                            "amount": 480
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 360
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 36
-                        }
-                    ]
-                },
-                {
-                    "level": 11,
-                    "buildTimeSeconds": 810.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 590
-                        },
-                        {
-                            "type": "money",
-                            "amount": 516
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 388
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 54
-                        }
-                    ]
-                },
-                {
-                    "level": 12,
-                    "buildTimeSeconds": 940.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 630
-                        },
-                        {
-                            "type": "money",
-                            "amount": 552
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 416
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 72
-                        }
-                    ]
-                },
-                {
-                    "level": 13,
-                    "buildTimeSeconds": 1080.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 670
-                        },
-                        {
-                            "type": "money",
-                            "amount": 588
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 444
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 90
-                        }
-                    ]
-                },
-                {
-                    "level": 14,
-                    "buildTimeSeconds": 1230.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 710
-                        },
-                        {
-                            "type": "money",
-                            "amount": 624
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 472
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 108
-                        }
-                    ]
-                },
-                {
-                    "level": 15,
-                    "buildTimeSeconds": 1390.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 750
-                        },
-                        {
-                            "type": "money",
-                            "amount": 660
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 500
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 126
-                        }
-                    ]
-                },
-                {
-                    "level": 16,
-                    "buildTimeSeconds": 1560.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 790
-                        },
-                        {
-                            "type": "money",
-                            "amount": 696
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 528
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 144
-                        }
-                    ]
-                },
-                {
-                    "level": 17,
-                    "buildTimeSeconds": 1740.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 830
-                        },
-                        {
-                            "type": "money",
-                            "amount": 732
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 556
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 162
-                        }
-                    ]
-                },
-                {
-                    "level": 18,
-                    "buildTimeSeconds": 1930.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 870
-                        },
-                        {
-                            "type": "money",
-                            "amount": 768
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 584
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 180
-                        }
-                    ]
-                },
-                {
-                    "level": 19,
-                    "buildTimeSeconds": 2130.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 910
-                        },
-                        {
-                            "type": "money",
-                            "amount": 804
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 612
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 198
-                        }
-                    ]
-                },
-                {
-                    "level": 20,
-                    "buildTimeSeconds": 2340.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 950
-                        },
-                        {
-                            "type": "money",
-                            "amount": 840
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 640
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 216
-                        }
-                    ]
-                },
-                {
-                    "level": 21,
-                    "buildTimeSeconds": 2560.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 990
-                        },
-                        {
-                            "type": "money",
-                            "amount": 876
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 668
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 234
-                        }
-                    ]
-                },
-                {
-                    "level": 22,
-                    "buildTimeSeconds": 2790.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 1030
-                        },
-                        {
-                            "type": "money",
-                            "amount": 912
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 696
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 252
-                        }
-                    ]
-                },
-                {
-                    "level": 23,
-                    "buildTimeSeconds": 3030.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 1070
-                        },
-                        {
-                            "type": "money",
-                            "amount": 948
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 724
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 270
-                        }
-                    ]
-                },
-                {
-                    "level": 24,
-                    "buildTimeSeconds": 3280.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 1110
-                        },
-                        {
-                            "type": "money",
-                            "amount": 984
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 752
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 288
-                        }
-                    ]
-                },
-                {
-                    "level": 25,
-                    "buildTimeSeconds": 3540.0,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 1150
-                        },
-                        {
-                            "type": "money",
-                            "amount": 1020
-                        },
-                        {
-                            "type": "iron",
-                            "amount": 780
-                        },
-                        {
-                            "type": "fuel",
-                            "amount": 306
+                            "amount": 3200
                         }
                     ]
                 }
-            ]
+            ],
+            "lastShelterMaxLevel": 25
         },
         {
             "id": "institute",

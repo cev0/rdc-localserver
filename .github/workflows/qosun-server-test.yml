@@ -44,8 +44,11 @@ on:
       - 'konvoy_emeliyyat_sistemi.js'
       - 'konvoy_emeliyyat_handler.js'
       - 'konvoy_emeliyyat_pg_mutasiya_testi.js'
+      - 'konvoy_recall_handler_override.js'
+      - 'konvoy_recall_handler_override_testi.js'
       - 'konvoy_texnologiya_handler.js'
       - 'konvoy_texnologiya_inkisaf_inteqrasiya_testi.js'
+      - 'konvoy_texnologiya_pg_mutasiya_testi.js'
       - 'texnologiya_inkisaf_korpu.js'
       - 'texnologiya_inkisaf_korpu_testi.js'
       - 'tikinti_inkisaf_korpu.js'
@@ -76,6 +79,7 @@ on:
       - 'pvp_doyus_raport_sistemi.js'
       - 'pvp_doyus_raport_sistemi_testi.js'
       - 'pvp_doyus_raport_settlement_korpu.js'
+      - 'pvp_doyus_raport_settlement_korpu_testi.js'
       - 'pvp_seher_davamliliq_sistemi.js'
       - 'pvp_seher_davamliliq_sistemi_testi.js'
       - 'pvp_zeroing_yerdeyisme_sistemi.js'
@@ -100,11 +104,18 @@ on:
       - 'pvp_baza_live_handler_testi.js'
       - 'pvp_baza_report_status_handler.js'
       - 'iki_oyuncu_state_mutasiya_postgres.js'
+      - 'world_state_mutasiya_postgres.js'
+      - 'world_state_transaction_lock.js'
+      - 'world_state_iki_oyuncu_mutasiya_postgres.js'
+      - 'world_state_iki_oyuncu_mutasiya_postgres_testi.js'
+      - 'runtime_state_sync.js'
+      - 'runtime_world_map_sync.js'
       - 'server_missiya_genisletme_v2.js'
       - 'missiya_handler.js'
       - 'missiya_postgres.js'
       - 'missiya_mukafat_tranzaksiya.js'
       - 'missiya_mukafat_pg_mutasiya_testi.js'
+      - 'missiya_snapshot_authority_testi.js'
       - 'oyun_state_mutasiya_postgres.js'
       - 'oyun_state_snapshot_postgres.js'
       - '.github/workflows/qosun-server-test.yml'
@@ -122,8 +133,12 @@ jobs:
           cache: npm
       - name: Paketleri qur
         run: npm ci
+      - name: Gameplay extension syntax
+        run: node --check server_missiya_genisletme_v2.js
       - name: Missiya mukafat PG mutasiya testleri
         run: node missiya_mukafat_pg_mutasiya_testi.js
+      - name: Missiya legacy snapshot authority testleri
+        run: node missiya_snapshot_authority_testi.js
       - name: Qosun kataloqu testleri
         run: node qosun_kataloqu_testi.js
       - name: Qosun telimi testleri
@@ -146,6 +161,8 @@ jobs:
         run: node konvoy_yola_hazirliq_sistemi_testi.js
       - name: Konvoy emeliyyat PG mutasiya testleri
         run: node konvoy_emeliyyat_pg_mutasiya_testi.js
+      - name: Konvoy fast recall cross-instance projection testi
+        run: node konvoy_recall_handler_override_testi.js
       - name: Qehreman EXP progression testleri
         run: node qehreman_exp_progression_testi.js
       - name: Qehreman skill progression testleri
@@ -158,6 +175,8 @@ jobs:
         run: node texnologiya_inkisaf_korpu_testi.js
       - name: Konvoy texnologiyasi Inkisaf inteqrasiya testleri
         run: node konvoy_texnologiya_inkisaf_inteqrasiya_testi.js
+      - name: Konvoy texnologiyasi PostgreSQL authoritative testleri
+        run: node konvoy_texnologiya_pg_mutasiya_testi.js
       - name: Tikinti Inkisaf korpusu testleri
         run: node tikinti_inkisaf_korpu_testi.js
       - name: Tikinti Inkisaf runtime inteqrasiya testleri
@@ -178,6 +197,10 @@ jobs:
         run: node pvp_doyus_resolver_testi.js
       - name: PvP atomic settlement testleri
         run: node pvp_doyus_settlement_sistemi_testi.js
+      - name: Shared-world iki-oyuncu State-first transaction testleri
+        run: node world_state_iki_oyuncu_mutasiya_postgres_testi.js
+      - name: PvP settlement relocation revalidation testleri
+        run: node pvp_doyus_raport_settlement_korpu_testi.js
       - name: PvP battle report testleri
         run: node pvp_doyus_raport_sistemi_testi.js
       - name: PvP seher davamliliq testleri

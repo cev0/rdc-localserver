@@ -1,8 +1,15 @@
 "use strict";
 
 const {
+  UNITS,
   qosunMelumatiniAl
 } = require("./qosun_kataloqu");
+
+const LAST_SHELTER_ID_TO_CANONICAL = new Map(
+  UNITS
+    .filter(unit => unit && unit.lastShelterArmyId)
+    .map(unit => [String(unit.lastShelterArmyId), unit.unitId])
+);
 
 function metnAl(deyer, maksimum = 128) {
   return typeof deyer === "string"
@@ -38,6 +45,15 @@ function legacyQosunIdSiniCanonicalEt(rawUnitId) {
     return id;
   }
 
+  // Last Shelter v1.250.102 authoritative army IDs:
+  // warrior=107000..107009, vehicle=107100..107109,
+  // shooter=107200..107209. Kataloq source mapping-i vahid
+  // authority-dir; battle qatında ayrıca tier cədvəli saxlanmır.
+  const lastShelterCanonical = LAST_SHELTER_ID_TO_CANONICAL.get(id);
+  if (lastShelterCanonical) {
+    return lastShelterCanonical;
+  }
+
   const match = id.match(/^(fighter|warrior|shooter|vehicle)_lv(\d+)$/);
   if (!match) return "";
 
@@ -59,6 +75,7 @@ function qosunDoyusMelumatiniAl(rawUnitId) {
 
   return {
     unitId: unit.unitId,
+    lastShelterArmyId: unit.lastShelterArmyId,
     classId: unit.classId,
     tier: unit.tier,
     displayNameAz: unit.displayNameAz,
@@ -121,6 +138,7 @@ function qosunDoyusStatlariniHesabla(snapshot) {
 
     const row = {
       unitId,
+      lastShelterArmyId: unit.lastShelterArmyId,
       classId: unit.classId,
       tier: unit.tier,
       displayNameAz: unit.displayNameAz,
@@ -177,6 +195,7 @@ function qosunGucunuHesabla(snapshot) {
 }
 
 module.exports = {
+  LAST_SHELTER_ID_TO_CANONICAL,
   legacyQosunIdSiniCanonicalEt,
   qosunDoyusMelumatiniAl,
   birQosununGucunuAl,

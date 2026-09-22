@@ -28,9 +28,9 @@ function stateHazirla(troops) {
   assert.deepStrictEqual(state.doyus.tutorial.troopSnapshot, { warrior_t2: 4 });
   assert.strictEqual(state.doyus.tutorial.combatStatSource, "qosun_kataloqu_v1");
   assert.strictEqual(state.doyus.tutorial.troopStats.totalBattlePower, 5.6);
-  assert.strictEqual(state.doyus.tutorial.troopStats.totalAttack, 52);
-  assert.strictEqual(state.doyus.tutorial.troopStats.totalDefense, 60);
-  assert.strictEqual(state.doyus.tutorial.troopStats.totalHp, 20);
+  assert.strictEqual(state.doyus.tutorial.troopStats.totalAttack, 32);
+  assert.strictEqual(state.doyus.tutorial.troopStats.totalDefense, 76);
+  assert.strictEqual(state.doyus.tutorial.troopStats.totalHp, 36);
 
   const result = tutorialDoyusunuNeticelendir(state, 6000);
   assert.strictEqual(result.success, true);

@@ -4,6 +4,7 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 const {
+  lazySettlementInvalidationGonder,
   konvoyEmeliyyatMutasiyasiniTetbiqEt
 } = require("./konvoy_emeliyyat_handler");
 
@@ -304,6 +305,91 @@ function fakeClientHazirla() {
   }
 
   {
+    const published = [];
+    const kontekst = {
+      runtimeBus: {
+        async publishToPlayer(playerId, payload) {
+          published.push({
+            playerId,
+            payload
+          });
+          return true;
+        }
+      }
+    };
+
+    assert.strictEqual(
+      await lazySettlementInvalidationGonder(
+        kontekst,
+        "convoy_operation_info_request",
+        "oyuncu_a",
+        {
+          success: true,
+          deyisdi: true
+        },
+        4321
+      ),
+      true
+    );
+
+    assert.strictEqual(
+      published.length,
+      1
+    );
+    assert.strictEqual(
+      published[0].playerId,
+      "oyuncu_a"
+    );
+    assert.strictEqual(
+      published[0].payload.type,
+      "__runtime_state_invalidate_v1"
+    );
+    assert.strictEqual(
+      published[0].payload.reason,
+      "convoy_operation_info_request"
+    );
+    assert.strictEqual(
+      published[0].payload.committedAtMs,
+      4321
+    );
+
+    assert.strictEqual(
+      await lazySettlementInvalidationGonder(
+        kontekst,
+        "convoy_operation_preview_request",
+        "oyuncu_a",
+        {
+          success: true,
+          deyisdi: false
+        },
+        4322
+      ),
+      false
+    );
+
+    assert.strictEqual(
+      await lazySettlementInvalidationGonder(
+        kontekst,
+        "convoy_operation_start_request",
+        "oyuncu_a",
+        {
+          success: true,
+          deyisdi: true
+        },
+        4323
+      ),
+      false,
+      "Start/recall outer mutation wrapper tərəfindən invalidasiya olunur; burada duplicate publish olmamalıdır."
+    );
+
+    assert.strictEqual(
+      published.length,
+      1,
+      "Yalnız read-path lazy settlement həqiqətən state dəyişəndə invalidasiya göndərilməlidir."
+    );
+  }
+
+  {
     const kod = fs.readFileSync(
       path.join(__dirname, "konvoy_emeliyyat_handler.js"),
       "utf8"
@@ -332,6 +418,32 @@ function fakeClientHazirla() {
     assert.ok(
       kod.includes("transaction && transaction.client"),
       "Shared runtime eyni player transaction client-i ilə işləməlidir."
+    );
+
+    assert.ok(
+      kod.includes("runtimeDynamicMapRefreshGonder"),
+      "Committed convoy/shared-runtime dəyişikliyi digər server instanslarına dynamic map refresh göndərməlidir."
+    );
+
+    assert.ok(
+      kod.includes("runtimeStateInvalidationGonder"),
+      "Lazy info/preview settlement player state-i dəyişəndə digər instanslardakı RAM cache invalidasiya edilməlidir."
+    );
+
+    const transactionIndex =
+      kod.indexOf(
+        "await oyuncuStateMutasiyasiniPostgresIleIcraEt"
+      );
+
+    const refreshIndex =
+      kod.indexOf(
+        "await runtimeDynamicMapRefreshGonder"
+      );
+
+    assert.ok(
+      transactionIndex >= 0 &&
+      refreshIndex > transactionIndex,
+      "Dynamic map refresh PostgreSQL mutation tamamlandıqdan sonra göndərilməlidir."
     );
   }
 

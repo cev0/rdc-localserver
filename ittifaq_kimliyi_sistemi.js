@@ -22,6 +22,7 @@ function ittifaqKimliyiniAl(state) {
   }
 
   const sabitId =
+    metnAl(state.lastShelterAllianceRuntime && state.lastShelterAllianceRuntime.allianceId, 128) ||
     metnAl(state.ittifaqId, 128) ||
     metnAl(state.allianceId, 128) ||
     metnAl(state.ittifaq && state.ittifaq.ittifaqId, 128) ||

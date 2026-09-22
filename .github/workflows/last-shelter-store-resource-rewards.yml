@@ -1,0 +1,29 @@
+name: Last Shelter Store Resource Rewards
+
+on:
+  push:
+    branches: [server-v2-scalable]
+    paths:
+      - 'last_shelter_store_resource_rewards.js'
+      - 'last_shelter_store_resource_rewards_testi.js'
+      - 'last_shelter_init_projection.js'
+      - 'last_shelter_init_projection_testi.js'
+      - '.github/workflows/last-shelter-store-resource-rewards.yml'
+  pull_request:
+    paths:
+      - 'last_shelter_store_resource_rewards.js'
+      - 'last_shelter_store_resource_rewards_testi.js'
+      - 'last_shelter_init_projection.js'
+      - 'last_shelter_init_projection_testi.js'
+      - '.github/workflows/last-shelter-store-resource-rewards.yml'
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node last_shelter_store_resource_rewards_testi.js
+      - run: node last_shelter_init_projection_testi.js

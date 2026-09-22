@@ -1,0 +1,25 @@
+name: Last Shelter Troop 107x Runtime
+
+on:
+  push:
+    branches: [server-v2-scalable]
+    paths:
+      - 'last_shelter_troop_107x_reference.js'
+      - 'last_shelter_troop_107x_runtime_adapteri.js'
+      - 'last_shelter_troop_107x_runtime_adapteri_testi.js'
+      - '.github/workflows/last-shelter-troop-107x-runtime.yml'
+  pull_request:
+    paths:
+      - 'last_shelter_troop_107x_reference.js'
+      - 'last_shelter_troop_107x_runtime_adapteri.js'
+      - 'last_shelter_troop_107x_runtime_adapteri_testi.js'
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node last_shelter_troop_107x_runtime_adapteri_testi.js

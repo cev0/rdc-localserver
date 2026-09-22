@@ -1,0 +1,32 @@
+name: Last Shelter VIP Store Economy
+
+on:
+  push:
+    branches: [server-v2-scalable]
+    paths:
+      - 'last_shelter_vip_store_reference.js'
+      - 'last_shelter_vip_store_runtime.js'
+      - 'last_shelter_goods_reference.js'
+      - 'last_shelter_shop_reference.js'
+      - 'last_shelter_vip_store_economy_testi.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-vip-store-economy.yml'
+  pull_request:
+    paths:
+      - 'last_shelter_vip_store_reference.js'
+      - 'last_shelter_vip_store_runtime.js'
+      - 'last_shelter_goods_reference.js'
+      - 'last_shelter_shop_reference.js'
+      - 'last_shelter_vip_store_economy_testi.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-vip-store-economy.yml'
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node last_shelter_vip_store_economy_testi.js

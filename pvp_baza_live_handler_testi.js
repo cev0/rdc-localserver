@@ -1,12 +1,15 @@
 "use strict";
 
 const assert = require("assert");
+const fs = require("fs");
 const {
   previewCavabiniAktivEt,
   pvpCanliQaydasiniHazirla,
   pvpGeriDonusuBaslat,
   pvpGeriDonusuYekunlasdir,
-  pvpStatusMelumatiniHazirla
+  pvpStatusMelumatiniHazirla,
+  pvpDynamicMapRefreshGonder,
+  pvpRemoteStateInvalidationlariniGonder
 } = require("./pvp_baza_live_handler");
 
 function operationHazirla(status = "camping_at_abandoned_target") {
@@ -38,6 +41,11 @@ function operationHazirla(status = "camping_at_abandoned_target") {
 function stateHazirla(operation = operationHazirla()) {
   return {
     playerId: "oyuncu_a",
+    worldPlacement: {
+      stateId: 7,
+      baseX: 10,
+      baseZ: 10
+    },
     army: { troops: {} },
     konvoylar: {
       items: [
@@ -58,7 +66,7 @@ function stateHazirla(operation = operationHazirla()) {
   };
 }
 
-(function testleriIcraEt() {
+(async function testleriIcraEt() {
   {
     const raw = {
       type: "pvp_base_attack_preview_result",
@@ -106,6 +114,7 @@ function stateHazirla(operation = operationHazirla()) {
     assert.strictEqual(rule.pvpEnabled, true);
     assert.strictEqual(rule.clientCannotSubmitBattleWinner, true);
     assert.strictEqual(rule.clientCannotSubmitCasualties, true);
+    assert.strictEqual(rule.stateFirstSharedWorldTransactionsEnabled, true);
   }
 
   {
@@ -174,5 +183,164 @@ function stateHazirla(operation = operationHazirla()) {
     assert.strictEqual(mismatch.blocker, "operation_mismatch");
   }
 
+  {
+    const broadcasts = [];
+
+    const sent =
+      await pvpDynamicMapRefreshGonder(
+        {
+          runtimeBus: {
+            async publishBroadcast(
+              scope,
+              targetId,
+              payload
+            ) {
+              broadcasts.push({
+                scope,
+                targetId,
+                payload
+              });
+
+              return true;
+            }
+          }
+        },
+        stateHazirla(),
+        "pvp_attack_status",
+        12340
+      );
+
+    assert.strictEqual(
+      sent,
+      true
+    );
+
+    assert.deepStrictEqual(
+      broadcasts.map(
+        item => ({
+          scope: item.scope,
+          targetId: item.targetId,
+          type:
+            item.payload.type,
+          reason:
+            item.payload.reason,
+          committedAtMs:
+            item.payload.committedAtMs
+        })
+      ),
+      [
+        {
+          scope: "world-state",
+          targetId: "7",
+          type:
+            "__runtime_state_dynamic_refresh_v1",
+          reason:
+            "pvp_attack_status",
+          committedAtMs:
+            12340
+        }
+      ]
+    );
+  }
+
+  {
+    const published = [];
+
+    const count =
+      await pvpRemoteStateInvalidationlariniGonder(
+        {
+          runtimeBus: {
+            async publishToPlayer(
+              playerId,
+              payload
+            ) {
+              published.push({
+                playerId,
+                payload
+              });
+
+              return true;
+            }
+          }
+        },
+        {
+          success: true,
+          deyisenPlayerIdleri: [
+            "oyuncu_a",
+            "oyuncu_b",
+            "oyuncu_b"
+          ]
+        },
+        "oyuncu_a",
+        12345
+      );
+
+    assert.strictEqual(
+      count,
+      1
+    );
+
+    assert.deepStrictEqual(
+      published.map(
+        x => x.playerId
+      ),
+      [
+        "oyuncu_b"
+      ]
+    );
+
+    assert.strictEqual(
+      published[0].payload.type,
+      "__runtime_state_invalidate_v1"
+    );
+
+    assert.strictEqual(
+      published[0].payload.reason,
+      "pvp_battle_settlement"
+    );
+
+    assert.strictEqual(
+      published[0].payload.committedAtMs,
+      12345
+    );
+  }
+
+  {
+    const kod =
+      fs.readFileSync(
+        require.resolve(
+          "./pvp_baza_live_handler"
+        ),
+        "utf8"
+      );
+
+    assert.ok(
+      kod.includes(
+        "oyuncuKonvoylariniSinxronEtClient"
+      ),
+      "PvP live handler shared convoy projection-u authoritative transaction client-i ilə sync etməlidir."
+    );
+
+    assert.ok(
+      kod.includes(
+        "runtimeDynamicMapRefreshGonder"
+      ),
+      "PvP shared runtime dəyişikliyi cross-instance dynamic map refresh göndərməlidir."
+    );
+
+    assert.ok(
+      kod.indexOf(
+        "pvpSharedKonvoylariTransactiondaSinxronEt"
+      ) <
+      kod.lastIndexOf(
+        "pvpDynamicMapRefreshGonder"
+      ),
+      "Shared projection commit-dən əvvəl transaction daxilində, Redis refresh isə commit-dən sonra işləməlidir."
+    );
+  }
+
   console.log("[PVP_BAZA_LIVE_HANDLER_TEST] OK");
-})();
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

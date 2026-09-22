@@ -158,42 +158,147 @@ async function statikLayeriGonder(kontekst, hazir) {
   });
 }
 
-async function dinamikLayeriGonder(kontekst, hazir) {
-  const { playerId, stateId } = hazir;
-  const nowMs = kontekst.nowMs();
+function dinamikLayerRuntimeMelumatiniHazirla(
+  runtime,
+  stateId,
+  playerId,
+  nowMs = Date.now()
+) {
+  const sid =
+    Math.max(
+      1,
+      tamEded(stateId) || 1
+    );
 
-  // Bu endpoint tez-tez poll oluna bilər. Normal read zamanı advisory/write
-  // lock alınmır; yalnız shared runtime-ın son PostgreSQL snapshot-u oxunur və
-  // cari koordinat/status server vaxtından lokal olaraq hesablanır.
-  const runtime = await runtimeOxu(stateId);
+  const pid =
+    metnAl(
+      playerId,
+      128
+    );
+
   const dinamikItems = [];
 
-  for (const raw of Object.values(runtime && runtime.items && typeof runtime.items === "object"
-    ? runtime.items
-    : {})) {
-    if (!raw || Math.max(1, tamEded(raw.stateId) || 1) !== stateId) continue;
+  for (
+    const raw of
+    Object.values(
+      runtime &&
+      runtime.items &&
+      typeof runtime.items === "object"
+        ? runtime.items
+        : {}
+    )
+  ) {
+    if (
+      !raw ||
+      Math.max(
+        1,
+        tamEded(raw.stateId) || 1
+      ) !== sid
+    ) {
+      continue;
+    }
 
-    const publicItem = publicVeziyyetiHesabla(raw, nowMs);
-    if (!publicItem || metnAl(publicItem.status, 64) === "idle") continue;
-    dinamikItems.push(publicItem);
+    const publicItem =
+      publicVeziyyetiHesabla(
+        raw,
+        nowMs
+      );
+
+    if (
+      !publicItem ||
+      metnAl(
+        publicItem.status,
+        64
+      ) === "idle"
+    ) {
+      continue;
+    }
+
+    dinamikItems.push(
+      publicItem
+    );
   }
 
-  const publicItems = publicKonvoylariHazirla(playerId, dinamikItems);
-  const camps = publicItems
-    .filter(item => metnAl(item && item.status, 64) === PVP_KAMP_STATUSU)
-    .map(item => campHazirla(item, stateId));
-  const convoys = publicItems.filter(
-    item => metnAl(item && item.status, 64) !== PVP_KAMP_STATUSU
-  );
+  const publicItems =
+    publicKonvoylariHazirla(
+      pid,
+      dinamikItems
+    );
 
-  const info = {
+  const camps =
+    publicItems
+      .filter(
+        item =>
+          metnAl(
+            item &&
+            item.status,
+            64
+          ) ===
+          PVP_KAMP_STATUSU
+      )
+      .map(
+        item =>
+          campHazirla(
+            item,
+            sid
+          )
+      );
+
+  const convoys =
+    publicItems.filter(
+      item =>
+        metnAl(
+          item &&
+          item.status,
+          64
+        ) !==
+        PVP_KAMP_STATUSU
+    );
+
+  return {
     version: 2,
     layer: "dynamic",
-    stateId,
+    stateId: sid,
     readOnlyRuntime: true,
     convoys,
     camps
   };
+}
+
+async function dinamikLayerMelumatiniHazirla(
+  stateId,
+  playerId,
+  nowMs = Date.now()
+) {
+  const sid =
+    Math.max(
+      1,
+      tamEded(stateId) || 1
+    );
+
+  // Push və poll eyni committed PostgreSQL runtime snapshot-undan istifadə edir.
+  const runtime =
+    await runtimeOxu(
+      sid
+    );
+
+  return dinamikLayerRuntimeMelumatiniHazirla(
+    runtime,
+    sid,
+    playerId,
+    nowMs
+  );
+}
+
+async function dinamikLayeriGonder(kontekst, hazir) {
+  const { playerId, stateId } = hazir;
+
+  const info =
+    await dinamikLayerMelumatiniHazirla(
+      stateId,
+      playerId,
+      kontekst.nowMs()
+    );
 
   gonder(kontekst, "state_map_dynamic_result", {
     success: true,
@@ -202,7 +307,6 @@ async function dinamikLayeriGonder(kontekst, hazir) {
     payloadJson: JSON.stringify(info)
   });
 }
-
 async function dovletXeriteLayerMesajiniEmalEt(kontekst) {
   const type = metnAl(kontekst && kontekst.type, 128);
   if (!MESAJLAR.has(type)) return false;
@@ -239,5 +343,7 @@ async function dovletXeriteLayerMesajiniEmalEt(kontekst) {
 
 module.exports = {
   MESAJLAR,
+  dinamikLayerRuntimeMelumatiniHazirla,
+  dinamikLayerMelumatiniHazirla,
   dovletXeriteLayerMesajiniEmalEt
 };

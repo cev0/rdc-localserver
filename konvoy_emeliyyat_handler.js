@@ -28,12 +28,23 @@ const {
 const {
   oyuncuStateMutasiyasiniPostgresIleIcraEt
 } = require("./oyun_state_mutasiya_postgres");
+const {
+  runtimeDynamicMapRefreshGonder
+} = require("./runtime_world_map_sync");
+const {
+  runtimeStateInvalidationGonder
+} = require("./runtime_state_sync");
 
 const MESAJLAR = new Set([
   "convoy_operation_info_request",
   "convoy_operation_preview_request",
   "convoy_operation_start_request",
   "convoy_operation_recall_request"
+]);
+
+const LAZY_SETTLEMENT_MESAJLARI = new Set([
+  "convoy_operation_info_request",
+  "convoy_operation_preview_request"
 ]);
 
 const STATE_YEDEK_SAHELERI = Object.freeze([
@@ -102,6 +113,39 @@ function aktivEmeliyyatlariAl(state) {
   return active && typeof active === "object" && !Array.isArray(active)
     ? active
     : {};
+}
+
+async function lazySettlementInvalidationGonder(
+  kontekst,
+  type,
+  playerId,
+  netice,
+  committedAtMs = Date.now()
+) {
+  if (
+    !LAZY_SETTLEMENT_MESAJLARI.has(
+      metnAl(
+        type,
+        128
+      )
+    ) ||
+    !netice ||
+    netice.deyisdi !== true
+  ) {
+    return false;
+  }
+
+  return await runtimeStateInvalidationGonder(
+    kontekst &&
+      kontekst.runtimeBus,
+    playerId,
+    {
+      type:
+        type ||
+        "convoy_lazy_settlement",
+      committedAtMs
+    }
+  );
 }
 
 async function sharedKonvoylariTransactiondaSinxronEt(
@@ -675,6 +719,29 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
         }
       );
 
+      await lazySettlementInvalidationGonder(
+        kontekst,
+        type,
+        playerId,
+        netice,
+        kontekst.nowMs()
+      );
+
+      if (
+        netice &&
+        netice.deyisdi === true
+      ) {
+        await runtimeDynamicMapRefreshGonder(
+          kontekst.runtimeBus,
+          dovletIdAl(
+            canliState
+          ),
+          type ||
+            "convoy_runtime_changed",
+          kontekst.nowMs
+        );
+      }
+
       if (type === "convoy_operation_info_request") {
         const info = netice && netice.info
           ? netice.info
@@ -774,7 +841,9 @@ async function konvoyEmeliyyatMesajiniEmalEt(kontekst) {
 
 module.exports = {
   MESAJLAR,
+  LAZY_SETTLEMENT_MESAJLARI,
   STATE_YEDEK_SAHELERI,
+  lazySettlementInvalidationGonder,
   startPayloadiniAl,
   geriCagirPayloadiniAl,
   stateYedeyiniAl,

@@ -1,0 +1,25 @@
+name: Last Shelter Missile Reference
+
+on:
+  push:
+    branches: [server-v2-scalable]
+    paths:
+      - "last_shelter_missile_kataloqu.js"
+      - "last_shelter_missile_kataloqu_testi.js"
+      - ".github/workflows/last-shelter-missile-reference.yml"
+  pull_request:
+    paths:
+      - "last_shelter_missile_kataloqu.js"
+      - "last_shelter_missile_kataloqu_testi.js"
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node last_shelter_missile_kataloqu_testi.js
+      - run: node last_shelter_missile_runtime_testi.js
+      - run: node last_shelter_init_projection_testi.js

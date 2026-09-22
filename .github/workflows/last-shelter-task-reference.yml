@@ -1,0 +1,36 @@
+name: Last Shelter Task Reference
+
+on:
+  push:
+    branches: [server-v2-scalable]
+    paths:
+      - 'last_shelter_task_reference.js'
+      - 'last_shelter_task_reference_testi.js'
+      - 'runtime_last_shelter_mission_commands.js'
+      - 'runtime_last_shelter_mission_commands_testi.js'
+      - 'runtime_last_shelter_command_registry_testi.js'
+      - 'server.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-task-reference.yml'
+  pull_request:
+    paths:
+      - 'last_shelter_task_reference.js'
+      - 'last_shelter_task_reference_testi.js'
+      - 'runtime_last_shelter_mission_commands.js'
+      - 'runtime_last_shelter_mission_commands_testi.js'
+      - 'runtime_last_shelter_command_registry_testi.js'
+      - 'server.js'
+      - 'server_unit_regressiya_testi.js'
+      - '.github/workflows/last-shelter-task-reference.yml'
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node last_shelter_task_reference_testi.js
+      - run: node runtime_last_shelter_mission_commands_testi.js
+      - run: node runtime_last_shelter_command_registry_testi.js
