@@ -38,6 +38,15 @@ function heroSnapshotHazirla(state) {
   };
 }
 
+function generalSnapshotAl(state, uuid) {
+  const runtime = lastShelterHeroRuntimeTeminEt(state);
+  if (!runtime) return null;
+  const wanted = uuid == null ? "" : String(uuid).trim();
+  if (!wanted) return null;
+  const general = (runtime.generals || []).find(row => row && String(row.uuid) === wanted);
+  return general ? clone(general) : null;
+}
+
 function lastShelterHeroCommandleriniQeydEt(router, deps) {
   if (!router) throw new Error("Command router yoxdur.");
   const { getOrCreatePlayerState } = deps || {};
@@ -87,10 +96,40 @@ function lastShelterHeroCommandleriniQeydEt(router, deps) {
     { authRequired: true, mutation: false }
   );
 
+  // Persisted player-owned hero lookup. This deliberately exposes only observed
+  // runtime state; recruit/upgrade mutation semantics are not inferred here.
+  router.register(
+    "hero.general.get",
+    async ({ ws, msg, send, nowMs }) => {
+      const auth = authYoxla(ws, msg, send);
+      if (!auth) return;
+      const uuid = msg && msg.uuid != null ? String(msg.uuid).trim() : "";
+      const state = getOrCreatePlayerState(auth.playerId);
+      const general = generalSnapshotAl(state, uuid);
+      if (!general) {
+        send(ws, {
+          type: "error",
+          code: "HERO_GENERAL_NOT_FOUND",
+          message: "Last Shelter player hero tapilmadi.",
+          uuid
+        });
+        return;
+      }
+      send(ws, {
+        type: "hero.general.get",
+        playerId: auth.playerId,
+        serverTimeUnixMs: nowAl(nowMs),
+        general
+      });
+    },
+    { authRequired: true, mutation: false }
+  );
+
   return router;
 }
 
 module.exports = {
   heroSnapshotHazirla,
+  generalSnapshotAl,
   lastShelterHeroCommandleriniQeydEt
 };
