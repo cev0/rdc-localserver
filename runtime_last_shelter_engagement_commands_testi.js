@@ -34,12 +34,37 @@ class FakeRouter {
   lastShelterEngagementCommandleriniQeydEt(router,{
     getOrCreatePlayerState:()=>state
   });
+  assert.deepStrictEqual(router.routes.get("engagement.online_duration.get").options,{
+    authRequired:true,
+    mutation:false
+  });
   assert.deepStrictEqual(router.routes.get("engagement.info").options,{
     authRequired:true,
     mutation:false
   });
 
   const sent=[];
+  await router.routes.get("engagement.online_duration.get").handler({
+    ws:{_authedPlayerId:"p1"},
+    msg:{playerId:"p1",entryId:"1"},
+    send:(ws,payload)=>sent.push(payload),
+    nowMs:()=>776
+  });
+  assert.strictEqual(sent[0].type,"engagement.online_duration.get");
+  assert.strictEqual(sent[0].reward.entryId,"1");
+  assert.strictEqual(sent[0].reward.duration,4);
+  assert.strictEqual(sent[0].serverTimeUnixMs,776);
+
+  sent.length=0;
+  await router.routes.get("engagement.online_duration.get").handler({
+    ws:{_authedPlayerId:"p1"},
+    msg:{playerId:"p1",entryId:"missing"},
+    send:(ws,payload)=>sent.push(payload),
+    nowMs:()=>776
+  });
+  assert.strictEqual(sent[0].code,"ONLINE_DURATION_REWARD_NOT_FOUND");
+
+  sent.length=0;
   await router.routes.get("engagement.info").handler({
     ws:{_authedPlayerId:"p1"},
     msg:{playerId:"p1"},
