@@ -37,5 +37,8 @@ jobs:
       - name: Paketləri qur
         run: npm ci
 
+      - name: Last Shelter science hero skill source contract
+        run: node last_shelter_science_hero_skill_reference_testi.js
+
       - name: Xarici servis tələb etməyən bütün regression testləri
         run: npm test
