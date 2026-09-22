@@ -175,6 +175,32 @@ function stateHazirla() {
 
 (function tier9VerifiedRowTesti() {
   const state = stateHazirla();
+
+  const locked =
+    qosunTelimOnBaxisiniHazirla(
+      state,
+      "fighter_camp_1",
+      "107008",
+      1
+    );
+
+  assert.strictEqual(
+    locked.success,
+    false
+  );
+  assert.strictEqual(
+    locked.reason,
+    "research_required"
+  );
+  assert.strictEqual(
+    locked.requiredScienceId,
+    "973400"
+  );
+
+  state.science = {
+    "973400": 1
+  };
+
   const preview =
     qosunTelimOnBaxisiniHazirla(
       state,
@@ -185,12 +211,32 @@ function stateHazirla() {
 
   assert.strictEqual(
     preview.success,
-    true,
-    "Verified 107008 row unverified synthetic research gate ilə bloklanmamalıdır."
+    true
   );
   assert.strictEqual(
-    preview.unitId,
+    preview.unit.unitId,
     "warrior_t9"
+  );
+
+  const t10 =
+    qosunTelimOnBaxisiniHazirla(
+      state,
+      "fighter_camp_1",
+      "107009",
+      1
+    );
+
+  assert.strictEqual(
+    t10.success,
+    false
+  );
+  assert.strictEqual(
+    t10.reason,
+    "science_unlock_unmigrated"
+  );
+  assert.strictEqual(
+    t10.requiredScienceId,
+    "973700"
   );
 })();
 
