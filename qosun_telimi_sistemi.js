@@ -143,23 +143,25 @@ function trainingSpeedPctAl(state, unitId = "warrior_t1") {
   return hesab ? hesab.speedPct : 0;
 }
 
-function telimMuddetiniHesabla(state, unitIdOrCount, rawCount) {
-  // Köhnə unit tests və köhnə lokal çağırışlar üçün yalnız helper səviyyəsində
-  // 5 saniyəlik fallback saxlanılır. Real training start həmişə kataloqdan keçir.
-  if (rawCount === undefined && Number.isFinite(Number(unitIdOrCount))) {
-    const say = tamEded(unitIdOrCount);
-    if (say <= 0) return 0;
-    const raw = say * 5000;
-    const stats = state && state.technology && state.technology.stats;
-    const speedPct = Math.max(0, Number(stats && stats.trainingSpeedPct) || 0);
-    return speedPct > 0
-      ? Math.max(1000, Math.round(raw * (100 / (100 + speedPct))))
-      : raw;
-  }
+function telimMuddetiniHesabla(
+  state,
+  unitId,
+  rawCount
+) {
+  const id =
+    canonicalUnitIdAl(
+      unitId
+    );
+  const hesab =
+    kataloqTelimMuddetiniHesabla(
+      state,
+      id,
+      rawCount
+    );
 
-  const id = canonicalUnitIdAl(unitIdOrCount);
-  const hesab = kataloqTelimMuddetiniHesabla(state, id, rawCount);
-  return hesab ? hesab.finalDurationMs : 0;
+  return hesab
+    ? hesab.finalDurationMs
+    : 0;
 }
 
 function xercCatir(state, finalCost) {
