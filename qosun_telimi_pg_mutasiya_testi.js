@@ -37,13 +37,6 @@ function stateHazirla() {
       money: 0,
       chips: 0
     },
-    technology: {
-      levels: {},
-      stats: {
-        trainingSpeedPct: 25,
-        trainingCostReductionPct: 0
-      }
-    },
     buildings: [
       {
         instanceId: "fighter_camp_1",
@@ -76,14 +69,16 @@ function stateHazirla() {
 (function legacyAliasTesti() {
   assert.strictEqual(canonicalUnitIdAl("fighter_lv1"), "warrior_t1");
   assert.strictEqual(canonicalUnitIdAl("shooter_lv10"), "shooter_t10");
+  assert.strictEqual(canonicalUnitIdAl("107000"), "warrior_t1");
+  assert.strictEqual(canonicalUnitIdAl("107209"), "shooter_t10");
 })();
 
 (function muddetTesti() {
   const state = stateHazirla();
   assert.strictEqual(
     telimMuddetiniHesabla(state, "warrior_t1", 5),
-    80000,
-    "25% training speed bonus Last Shelter 20 saniyə/vahid base vaxtı 5 vahid üçün 80 saniyəyə endirməlidir."
+    100000,
+    "Source-verified 20 saniyə/vahid base vaxtı synthetic speed bonus olmadan saxlanmalıdır."
   );
 })();
 
@@ -101,7 +96,7 @@ function stateHazirla() {
     { type: "food", amount: 1000 }
   ]);
   assert.strictEqual(preview.timeInfo.baseDurationMs, 250000);
-  assert.strictEqual(preview.timeInfo.finalDurationMs, 200000);
+  assert.strictEqual(preview.timeInfo.finalDurationMs, 250000);
 })();
 
 (function startResursCixirVeYekunlasirTesti() {
@@ -118,21 +113,21 @@ function stateHazirla() {
 
   assert.strictEqual(start.success, true);
   assert.strictEqual(start.deyisdi, true);
-  assert.strictEqual(start.durationMs, 80000);
+  assert.strictEqual(start.durationMs, 100000);
   assert.strictEqual(start.queue.unitId, "warrior_t1");
   assert.strictEqual(start.queue.count, 5);
   assert.strictEqual(start.queue.startTimeMs, 1000);
-  assert.strictEqual(start.queue.finishTimeMs, 81000);
+  assert.strictEqual(start.queue.finishTimeMs, 101000);
   assert.deepStrictEqual(start.queue.paidCost, [
     { type: "food", amount: 305 }
   ]);
   assert.strictEqual(state.resources.food, evvelFood - 305);
 
-  const erkendir = qosunTelimleriniYekunlasdir(state, 80000);
+  const erkendir = qosunTelimleriniYekunlasdir(state, 100000);
   assert.strictEqual(erkendir.deyisdi, false);
   assert.strictEqual(state.army.troops.warrior_t1, 10);
 
-  const bitdi = qosunTelimleriniYekunlasdir(state, 81000);
+  const bitdi = qosunTelimleriniYekunlasdir(state, 101000);
   assert.strictEqual(bitdi.success, true);
   assert.strictEqual(bitdi.deyisdi, true);
   assert.strictEqual(bitdi.tamamlananlar.length, 1);
@@ -178,25 +173,25 @@ function stateHazirla() {
   assert.strictEqual(netice.reason, "wrong_training_building");
 })();
 
-(function tier9TexnologiyaKilidiTesti() {
+(function tier9VerifiedRowTesti() {
   const state = stateHazirla();
-  let preview = qosunTelimOnBaxisiniHazirla(
-    state,
-    "fighter_camp_1",
-    "warrior_t9",
-    1
-  );
-  assert.strictEqual(preview.success, false);
-  assert.strictEqual(preview.reason, "research_required");
+  const preview =
+    qosunTelimOnBaxisiniHazirla(
+      state,
+      "fighter_camp_1",
+      "107008",
+      1
+    );
 
-  state.technology.levels.unlock_warrior_t9 = 1;
-  preview = qosunTelimOnBaxisiniHazirla(
-    state,
-    "fighter_camp_1",
-    "warrior_t9",
-    1
+  assert.strictEqual(
+    preview.success,
+    true,
+    "Verified 107008 row unverified synthetic research gate ilə bloklanmamalıdır."
   );
-  assert.strictEqual(preview.success, true);
+  assert.strictEqual(
+    preview.unitId,
+    "warrior_t9"
+  );
 })();
 
 (function resursCatismirTesti() {
@@ -215,22 +210,34 @@ function stateHazirla() {
   assert.deepStrictEqual(state, evvel);
 })();
 
-(function xercEndirimiTesti() {
+(function syntheticXercEndirimiTetbiqOlunmurTesti() {
   const state = stateHazirla();
-  state.technology.stats.trainingSpeedPct = 0;
-  state.technology.stats.trainingCostReductionPct = 10;
 
-  const preview = qosunTelimOnBaxisiniHazirla(
-    state,
-    "fighter_camp_1",
-    "warrior_t2",
-    10
+  const preview =
+    qosunTelimOnBaxisiniHazirla(
+      state,
+      "fighter_camp_1",
+      "warrior_t2",
+      10
+    );
+
+  assert.strictEqual(
+    preview.success,
+    true
   );
-
-  assert.strictEqual(preview.success, true);
-  assert.deepStrictEqual(preview.costInfo.finalCost, [
-    { type: "food", amount: 900 }
-  ]);
+  assert.strictEqual(
+    preview.costInfo.reductionPct,
+    0
+  );
+  assert.deepStrictEqual(
+    preview.costInfo.finalCost,
+    [
+      {
+        type: "food",
+        amount: 1000
+      }
+    ]
+  );
 })();
 
 (function statusDueQueueYekunlasdirirTesti() {
