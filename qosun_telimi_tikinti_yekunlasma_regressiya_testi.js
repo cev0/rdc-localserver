@@ -20,14 +20,7 @@ function stateHazirla() {
       money: 0,
       chips: 0
     },
-    technology: {
-      levels: {},
-      stats: {
-        trainingSpeedPct: 0,
-        trainingCostReductionPct: 0
-      }
-    },
-    buildings: [
+  buildings: [
       {
         instanceId: "shooter_camp_due_1",
         buildingId: "shooter_camp",
