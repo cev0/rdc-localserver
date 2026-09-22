@@ -335,6 +335,52 @@ assert.ok(
   "Server state Last Shelter silver resursunu saxlamalıdır."
 );
 
+for (const functionName of [
+  "getProductionRule",
+  "getStorageRule",
+  "getSpecialEffectRule"
+]) {
+  const start =
+    serverSource.indexOf(
+      `function ${functionName}(`
+    );
+  const end =
+    serverSource.indexOf(
+      "\nfunction ",
+      start + 10
+    );
+  const source =
+    serverSource.slice(
+      start,
+      end
+    );
+
+  assert.ok(
+    start >= 0 &&
+    source.includes(
+      "if (verifiedCoverage.mapped)"
+    ),
+    `Verified building synthetic fallback guard missing: ${functionName}`
+  );
+
+  assert.ok(
+    source.indexOf(
+      "if (verifiedCoverage.mapped)"
+    ) <
+    source.indexOf(
+      "switch (id)"
+    ),
+    `Verified building guard must run before legacy switch: ${functionName}`
+  );
+
+  assert.ok(
+    source.includes(
+      "&& levelData"
+    ),
+    `Missing levelData null guard: ${functionName}`
+  );
+}
+
 const academy1=buildingLeveliniAl("403000",1);
 assert(academy1);
 assert.strictEqual(academy1.buildingTypeId,"403000");
