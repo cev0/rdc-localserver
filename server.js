@@ -146,6 +146,7 @@ const {
 
 const {
   verifiedLastShelterBuildingLevelDataAl,
+  verifiedLastShelterBuildingCurrentLevelDataAl,
   verifiedLastShelterBuildingMaxLevelAl,
   verifiedLastShelterBuildingLevelStatusAl
 } = require("./last_shelter_building_runtime_overlay");
@@ -894,76 +895,25 @@ function gucUcunBinaIdNormallasdir(buildingId) {
 // ============================================================
 
 function birBinaninGucunuHesabla(building) {
-  if (!building) {
+  if (!building || building.isCompleted !== true) {
     return 0;
   }
 
-  // Tikintisi tamamlanmamış bina güc vermir.
-  if (!building.isCompleted) {
-    return 0;
-  }
-
-  const binaId =
-    gucUcunBinaIdNormallasdir(
-      building.buildingId
+  const reference =
+    verifiedLastShelterBuildingCurrentLevelDataAl(
+      building.buildingId,
+      building.level
     );
 
-  if (!binaId) {
+  if (!reference) {
     return 0;
   }
 
-  // Yol güc vermir.
-  if (binaId === "road") {
-    return 0;
-  }
-
-  const level =
-    Math.max(
-      1,
-      Math.trunc(
-        Number(building.level) || 1
-      )
-    );
-
-  let levelBasiGuc = 100;
-
-  switch (binaId) {
-    case "hq":
-      levelBasiGuc = 500;
-      break;
-
-    case "command_center":
-      levelBasiGuc = 250;
-      break;
-
-    case "fighter_camp":
-      levelBasiGuc = 200;
-      break;
-
-    case "shooter_camp":
-      levelBasiGuc = 200;
-      break;
-
-    case "vehicle_factory":
-      levelBasiGuc = 300;
-      break;
-
-    case "bunker":
-      levelBasiGuc = 250;
-      break;
-
-    case "heroes_hall":
-      levelBasiGuc = 200;
-      break;
-
-    default:
-      levelBasiGuc = 100;
-      break;
-  }
-
-  return levelBasiGuc * level;
+  return Math.max(
+    0,
+    Number(reference.power) || 0
+  );
 }
-
 
 // ============================================================
 // OYUNÇUNUN BÜTÜN BİNA GÜCÜ
