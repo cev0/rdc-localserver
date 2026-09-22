@@ -25,8 +25,7 @@ const {activityReferenceProjectionHazirla,activityReferenceAl}=require("./last_s
 const {lastShelterMissileRuntimeTeminEt}=require("./last_shelter_missile_runtime");
 const {shopRowIdsAl,shopRowAl,itemTupleRawlariniAl}=require("./last_shelter_shop_reference");
 const {vipStorePanelInfoHazirla}=require("./last_shelter_vip_store_runtime");
-const {LAST_SHELTER_REPAY_REFERENCE,repayEligibleRewardsAl,lastShelterRepayRuntimeTeminEt}=require("./last_shelter_repay_reference");
-const {LAST_SHELTER_ALLIANCE_GROUP_PURCHASE,allianceGroupPurchaseOfferAl,allianceGroupPurchaseRuntimeDefaultHazirla}=require("./last_shelter_alliance_group_purchase_reference");
+const {allianceGroupPurchaseOfferAl}=require("./last_shelter_alliance_group_purchase_reference");
 const {LAST_SHELTER_FORT_TROOPS,fortTroopRuntimeProjectionAl,fortInitProjectionHazirla}=require("./last_shelter_fort_troop_reference");
 const {LAST_SHELTER_TROOP_TRANSFER_TREES,troopTransferTreeAl,troopTransferPointAl}=require("./last_shelter_troop_transfer_reference");
 const {goodsStructureIdsAl,goodsStructureAl,salesRawEntriesAl}=require("./last_shelter_goods_structure_reference");
@@ -117,12 +116,6 @@ function lastShelterAuxiliaryCommandleriniQeydEt(router,deps){
     send(ws,{type:"store.reward.catalog",playerId:a.playerId,serverTimeUnixMs:now(nowMs),count:ids.length,storeIds:ids});
   },{authRequired:true,mutation:false});
 
-  router.register("alliance.group_purchase.info",async({ws,msg,send,nowMs})=>{
-    const a=auth(ws,msg,send); if(!a)return; const state=getOrCreatePlayerState(a.playerId);
-    if(!state.lastShelterAllianceGroupPurchaseRuntime) state.lastShelterAllianceGroupPurchaseRuntime=allianceGroupPurchaseRuntimeDefaultHazirla();
-    send(ws,{type:"alliance.group_purchase.info",playerId:a.playerId,serverTimeUnixMs:now(nowMs),reference:clone(LAST_SHELTER_ALLIANCE_GROUP_PURCHASE),runtime:clone(state.lastShelterAllianceGroupPurchaseRuntime)});
-  },{authRequired:true,mutation:false});
-
   router.register("alliance.group_purchase.offer.get",async({ws,msg,send,nowMs})=>{
     const a=auth(ws,msg,send); if(!a)return; const goodsId=msg&&msg.goodsId!=null?String(msg.goodsId).trim():""; const offer=allianceGroupPurchaseOfferAl(goodsId);
     if(!offer){send(ws,{type:"error",code:"ALLIANCE_GROUP_PURCHASE_OFFER_NOT_FOUND",message:"Last Shelter alliance group purchase offer tapilmadi.",goodsId});return;}
@@ -160,12 +153,6 @@ function lastShelterAuxiliaryCommandleriniQeydEt(router,deps){
   router.register("vip_store.info",async({ws,msg,send,nowMs})=>{
     const a=auth(ws,msg,send); if(!a)return; const state=getOrCreatePlayerState(a.playerId);
     send(ws,{type:"vip_store.info",playerId:a.playerId,serverTimeUnixMs:now(nowMs),panel:clone(vipStorePanelInfoHazirla(state,msg&&msg.refreshTime))});
-  },{authRequired:true,mutation:false});
-
-  router.register("repay.info",async({ws,msg,send,nowMs})=>{
-    const a=auth(ws,msg,send); if(!a)return; const state=getOrCreatePlayerState(a.playerId); const runtime=lastShelterRepayRuntimeTeminEt(state);
-    const eligible=repayEligibleRewardsAl(runtime.payPoint); const claimed=new Set(runtime.claimedPoints);
-    send(ws,{type:"repay.info",playerId:a.playerId,serverTimeUnixMs:now(nowMs),observedWindow:clone(LAST_SHELTER_REPAY_REFERENCE.observedWindow),payPoint:runtime.payPoint,eligibleRewards:eligible,claimableRewards:eligible.filter(x=>!claimed.has(x.point)),claimedPoints:clone(runtime.claimedPoints)});
   },{authRequired:true,mutation:false});
 
   router.register("activity.reference.list",async({ws,msg,send,nowMs})=>{

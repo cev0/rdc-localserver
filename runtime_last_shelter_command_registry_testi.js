@@ -48,7 +48,7 @@ const expected=[
   "engagement.info","engagement.online_duration.get","engagement.helicopter.task.get","mission.info","building.reference.list","building.reference.get",
   "queue.list","science.catalog","science.topology.list","science.topology","science.state",
   "science.prerequisite","science.plan","troop.catalog","troop.get",
-  "troop.transfer.level6","troop.transfer.type","troop.transfer.point","hero.info","hero.get","hero.general.list","hero.general.get","alliance.group_purchase.info","alliance.group_purchase.offer.get","fort.troop.list","fort.troop.get","troop_transfer.reference.list","troop_transfer.reference.get","shop.reference.list","vip_store.info","repay.info","activity.reference.list","activity.reference.get","missile.info","seven_days.info","truck.info","world.info","battlefield.get","last_shelter.init"
+  "troop.transfer.level6","troop.transfer.type","troop.transfer.point","hero.info","hero.get","hero.general.list","hero.general.get","alliance.group_purchase.offer.get","fort.troop.list","fort.troop.get","troop_transfer.reference.list","troop_transfer.reference.get","shop.reference.list","vip_store.info","activity.reference.list","activity.reference.get","missile.info","seven_days.info","truck.info","world.info","battlefield.get","last_shelter.init"
 ];
 
 assert.deepStrictEqual([...router.routes.keys()].sort(),expected.sort());

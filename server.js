@@ -3609,6 +3609,15 @@ const {
   lastShelterEconomyReferenceCommandleriniQeydEt
 } = require("./runtime_last_shelter_economy_reference_commands");
 const {
+  lastShelterEngagementCommandleriniQeydEt
+} = require("./runtime_last_shelter_engagement_commands");
+const {
+  lastShelterMissionCommandleriniQeydEt
+} = require("./runtime_last_shelter_mission_commands");
+const {
+  lastShelterBuildingReferenceCommandleriniQeydEt
+} = require("./runtime_last_shelter_building_reference_commands");
+const {
   lastShelterQueueScienceCommandleriniQeydEt
 } = require("./runtime_last_shelter_queue_science_commands");
 const {
@@ -8781,6 +8790,24 @@ lastShelterEconomyReferenceCommandleriniQeydEt(
   }
 );
 
+lastShelterEngagementCommandleriniQeydEt(
+  runtimeCommandRouter,
+  {
+    getOrCreatePlayerState
+  }
+);
+
+lastShelterMissionCommandleriniQeydEt(
+  runtimeCommandRouter,
+  {
+    getOrCreatePlayerState
+  }
+);
+
+lastShelterBuildingReferenceCommandleriniQeydEt(
+  runtimeCommandRouter
+);
+
 lastShelterQueueScienceCommandleriniQeydEt(
   runtimeCommandRouter,
   {
@@ -9159,4 +9186,3 @@ process.once(
 );
 
 void runtimeServeriniBaslat();
-

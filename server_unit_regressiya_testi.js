@@ -7,6 +7,12 @@ const {
 } = require("child_process");
 
 const UNIT_TESTLERI = [
+  "runtime_last_shelter_auxiliary_reference_commands_testi.js",
+  "runtime_last_shelter_building_reference_commands_testi.js",
+  "runtime_last_shelter_engagement_commands_testi.js",
+  "runtime_last_shelter_hero_commands_testi.js",
+  "runtime_last_shelter_mission_commands_testi.js",
+  "runtime_last_shelter_production_wiring_testi.js",
   "baza_yerdeyisme_dovlet_kilidi_client_testi.js",
   "berpa_kodu_yaradilma_kilidi_testi.js",
   "cihaz_pin_challenge_atomiklik_testi.js",
