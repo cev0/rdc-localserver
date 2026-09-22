@@ -1,0 +1,68 @@
+"use strict";
+
+const {playerIdUyugunluqYoxla}=require("./runtime_core_read_commands");
+const {
+  SEVEN_DAYS_DURATION_MS,
+  LAST_SHELTER_SEVEN_DAYS_REWARD,
+  LAST_SHELTER_SEVEN_DAYS_TASK_INFO,
+  sevenDaysPageMapHazirla,
+  sevenDaysTopologyYoxla,
+  lastShelterSevenDaysRuntimeTeminEt
+}=require("./last_shelter_seven_days_reference");
+const {
+  LAST_SHELTER_STARTER_TRUCK,
+  lastShelterTruckRuntimeTeminEt,
+  initTruckProjectionHazirla
+}=require("./last_shelter_truck_convoy_reference");
+const {
+  LAST_SHELTER_WORLD_CONFIG,
+  LAST_SHELTER_BATTLEFIELD_MAPS,
+  battlefieldMapAl,
+  battlefieldQadagalariniAl,
+  lastShelterWorldRuntimeTeminEt
+}=require("./last_shelter_world_battlefield_reference");
+
+function clone(v){return v==null?v:JSON.parse(JSON.stringify(v));}
+function auth(ws,msg,send){
+  const r=playerIdUyugunluqYoxla(msg,ws);
+  if(r.ok)return r;
+  send(ws,{type:"error",code:r.message==="Player ID mismatch"?"PLAYER_ID_MISMATCH":"NOT_AUTHED",message:r.message});
+  return null;
+}
+function now(nowMs){return typeof nowMs==="function"?nowMs():Date.now();}
+
+function lastShelterAuxiliaryCommandleriniQeydEt(router,deps){
+  if(!router)throw new Error("Command router yoxdur.");
+  const {getOrCreatePlayerState}=deps||{};
+  if(typeof getOrCreatePlayerState!=="function")throw new Error("getOrCreatePlayerState yoxdur.");
+
+  router.register("seven_days.info",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return;
+    const state=getOrCreatePlayerState(a.playerId);
+    send(ws,{type:"seven_days.info",playerId:a.playerId,serverTimeUnixMs:now(nowMs),activity:clone(lastShelterSevenDaysRuntimeTeminEt(state,now(nowMs))),durationMs:SEVEN_DAYS_DURATION_MS,reward:clone(LAST_SHELTER_SEVEN_DAYS_REWARD),taskInfo:clone(LAST_SHELTER_SEVEN_DAYS_TASK_INFO),pages:sevenDaysPageMapHazirla(),topology:sevenDaysTopologyYoxla()});
+  },{authRequired:true,mutation:false});
+
+  router.register("truck.info",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return;
+    const state=getOrCreatePlayerState(a.playerId);
+    lastShelterTruckRuntimeTeminEt(state);
+    send(ws,{type:"truck.info",playerId:a.playerId,serverTimeUnixMs:now(nowMs),template:clone(LAST_SHELTER_STARTER_TRUCK),trucks:clone(initTruckProjectionHazirla(state))});
+  },{authRequired:true,mutation:false});
+
+  router.register("world.info",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return;
+    const state=getOrCreatePlayerState(a.playerId);
+    send(ws,{type:"world.info",playerId:a.playerId,serverTimeUnixMs:now(nowMs),config:clone(LAST_SHELTER_WORLD_CONFIG),battlefieldMaps:clone(LAST_SHELTER_BATTLEFIELD_MAPS),world:clone(lastShelterWorldRuntimeTeminEt(state))});
+  },{authRequired:true,mutation:false});
+
+  router.register("battlefield.get",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return;
+    const id=msg&&msg.id!=null?String(msg.id).trim():"";
+    const map=battlefieldMapAl(id);
+    if(!map){send(ws,{type:"error",code:"BATTLEFIELD_NOT_FOUND",message:"Last Shelter battlefield tapilmadi.",id});return;}
+    send(ws,{type:"battlefield.get",playerId:a.playerId,serverTimeUnixMs:now(nowMs),map,restrictions:battlefieldQadagalariniAl(id)});
+  },{authRequired:true,mutation:false});
+  return router;
+}
+
+module.exports={lastShelterAuxiliaryCommandleriniQeydEt};
