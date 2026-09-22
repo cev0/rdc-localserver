@@ -22,6 +22,24 @@ class FakeRouter {constructor(){this.routes=new Map();} register(type,handler,op
     "repay.info must normalize persisted Last Shelter repay runtime before projection."
   );
   assert.strictEqual(allianceGroupPurchaseSnapshotHazirla(state).runtime.progress,2);
+
+  const emptyAllianceState={};
+  const emptyAllianceSnapshot=
+    allianceGroupPurchaseSnapshotHazirla(
+      emptyAllianceState
+    );
+  assert.strictEqual(
+    emptyAllianceSnapshot.runtime.activityId,
+    "57032"
+  );
+  assert.deepStrictEqual(
+    emptyAllianceSnapshot.records,
+    []
+  );
+  assert.ok(
+    emptyAllianceState.lastShelterAllianceRuntime,
+    "Alliance projection must initialize the verified Last Shelter runtime contract."
+  );
   assert.strictEqual(vipStoreSnapshotHazirla(state,1789704000).vipstore.goods[0].buyAmount,4);
   assert.strictEqual(vipStoreSnapshotHazirla(state,1789704000).vipstore.refreshTime,1789704000);
   assert.strictEqual(state.lastShelterVipStore.refreshTime,undefined,"Projection provider must not mutate persisted VIP state.");
