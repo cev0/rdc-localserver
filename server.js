@@ -135,10 +135,6 @@ const {
 } = require("./last_shelter_tutorial_reference");
 
 const {
-  lastShelterRepayRuntimeTeminEt
-} = require("./last_shelter_repay_reference");
-
-const {
   lastShelterVipStoreStateHazirla,
   lastShelterVipStoreStateTeminEt
 } = require("./last_shelter_vip_store_runtime");
@@ -4513,10 +4509,9 @@ bazaMelumatlariniYenile(state);
   // Əhali və digər xüsusi bina bonuslarını yenidən hesabla.
   refreshSpecialStats(state);
 
-  // Texnologiya məlumatlarını yoxla və yenilə.
-  // Last Shelter economy runtimelarini kohne state snapshot-lari ucun de
-  // eyni muqavileye normallasdir.
-  lastShelterRepayRuntimeTeminEt(state);
+  // Last Shelter auxiliary/economy runtimelarini köhnə state snapshot-ları
+  // üçün də eyni müqaviləyə normallaşdır.
+  lastShelterAuxiliaryRuntimeTeminEt(state);
   lastShelterVipStoreStateTeminEt(state);
 
   // State client-e cixmazdan evvel resurs istehsalini cari vaxta qeder
@@ -4955,9 +4950,6 @@ function getOrCreatePlayerState(playerId) {
     state
   );
   lastShelterAuxiliaryRuntimeTeminEt(
-    state
-  );
-  lastShelterRepayRuntimeTeminEt(
     state
   );
   lastShelterVipStoreStateTeminEt(
