@@ -18,6 +18,13 @@ Kataloqların mövcudluğu bütün oyun mexanikalarının Node.js-ə köçürül
 adını saxlayır. Şərti qeydiyyatlar da daxildir. Bunlardan yalnız `item.buy`,
 `science.research`, `science.upgrade` hazırda eyni adla RDC-də qeydiyyatdadır.
 RDC-nin öz gameplay komandaları ayrıca mövcuddur; bu rəqəm onların yoxluğu demək deyil.
+
+Cari production registrar səthinin dəqiq coverage ölçüsünü almaq üçün
+`node scripts/audit_last_shelter_migration.js --summary` işlədilir. Audit native command
+adlarını production route-larla ayrıca müqayisə edir, mutation/read-only saylarını və
+reference/projection read səthini ayırır. Bu rəqəmlər parity sübutu deyil; qalan handler
+portlarını prioritetləşdirmək üçündür.
+
 Elm üçün qızılla çatışmayan resurs alma, birbaşa tamamlanma, EnergySkill həyat dövrü,
 qəhrəman/VIP/təchizat effektləri və hadisə mükafatlarının tam portu qalıb.
 
