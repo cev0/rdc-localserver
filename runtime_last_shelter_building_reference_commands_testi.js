@@ -25,7 +25,7 @@ class FakeRouter {
   const router=new FakeRouter();
   lastShelterBuildingReferenceCommandleriniQeydEt(router);
   assert.deepStrictEqual([...router.routes.keys()].sort(),[
-    "building.reference.get","building.reference.list"
+    "building.catalog.level","building.reference.get","building.reference.list"
   ]);
   for(const route of router.routes.values()){
     assert.deepStrictEqual(route.options,{authRequired:true,mutation:false});
@@ -43,6 +43,13 @@ class FakeRouter {
   assert.strictEqual(sent[0].type,"building.reference.list");
   assert.strictEqual(sent[0].total,21);
   assert.strictEqual(sent[0].serverTimeUnixMs,9001);
+
+  sent.length=0;
+  await router.routes.get("building.catalog.level").handler({...ctx,msg:{playerId:"p1",buildingTypeId:"403000",level:1}});
+  assert.strictEqual(sent[0].type,"building.catalog.level");
+  assert.strictEqual(sent[0].building.buildingTypeId,"403000");
+  assert.strictEqual(sent[0].building.level,1);
+  assert(sent[0].maxLevel>=1);
 
   sent.length=0;
   await router.routes.get("building.reference.get").handler({
