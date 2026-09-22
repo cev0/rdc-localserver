@@ -8,6 +8,7 @@ const {
   heroTemplateAl,
   heroTemplateIdsAl,
   heroTemplateProjectionHazirla,
+  lastShelterHeroBasePoweriniHesabla,
   starterGeneralHazirla,
   lastShelterHeroRuntimeTeminEt
 } = require("./last_shelter_hero_reference");
@@ -139,5 +140,24 @@ assert.strictEqual(same.generals.length, 1);
 assert.strictEqual(same.generals[0].uuid, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
 assert.strictEqual(heroTemplateAl("999999"), null);
+
+assert.strictEqual(
+  lastShelterHeroBasePoweriniHesabla({
+    lastShelterHeroRuntime: {
+      generals: [
+        { generalId: "240031" },
+        { generalId: "240049" },
+        { generalId: "240020" },
+        { generalId: "999999" }
+      ]
+    }
+  }),
+  5500
+);
+
+assert.strictEqual(
+  lastShelterHeroBasePoweriniHesabla({}),
+  0
+);
 
 console.log("PASS: verified Last Shelter hero templates, tuning flags, and starter-general runtime are preserved.");
