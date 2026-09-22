@@ -48,7 +48,30 @@ function stationBuildingTypeAl(row) {
   return /^\d+$/.test(token) ? token : "";
 }
 
+function skillIdAl(row) {
+  const id = String(row?.hero_skill ?? row?.id ?? "");
+  return /^\d+$/.test(id) ? id : "";
+}
+
+function skillLevelCostlariAl(row) {
+  const raw = String(row?.cost || "");
+  if (!raw) return [];
+  return raw.split("|").map((token, index) => {
+    const fields = token.split(";");
+    if (fields.length !== 2 || !fields.every(value => /^\d+$/.test(value))) {
+      throw new Error(`Invalid verified hero skill cost at level ${index + 1}`);
+    }
+    return {
+      level: index + 1,
+      itemId: fields[0],
+      amount: Number(fields[1])
+    };
+  });
+}
+
 module.exports = {
   LAST_SHELTER_SCIENCE_HERO_SKILLS,
-  stationBuildingTypeAl
+  stationBuildingTypeAl,
+  skillIdAl,
+  skillLevelCostlariAl
 };
