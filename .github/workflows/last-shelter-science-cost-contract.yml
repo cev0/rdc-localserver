@@ -2,7 +2,7 @@ name: Last Shelter Science Cost Contract
 
 on:
   push:
-    branches: [server-v2-scalable]
+    branches: [main]
     paths:
       - "last_shelter_science_cost_contract.js"
       - "last_shelter_science_cost_contract_testi.js"
