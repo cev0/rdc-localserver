@@ -37,6 +37,7 @@ const {LAST_SHELTER_STARTER_ITEM_TEMPLATES,LAST_SHELTER_STARTER_QUEUE_LAYOUT,las
 const {TROOP_107X,LAST_SHELTER_SPECIAL_ARMS_CONFIG,troop107xAl,specialArmConfigAl}=require("./last_shelter_troop_107x_reference");
 const {CURRENT_UNLOCK_NUM_RAW,NEXT_UNLOCK_NUM_RAW,LAST_SHELTER_STARTER_BUILDINGS,LAST_SHELTER_BUILD_LIST_CONFIG,unlockNumParseEt,lastShelterCityRuntimeTeminEt}=require("./last_shelter_starter_city_reference");
 const {TROOP_1073X_STABLE,troop1073xRuntimeProjectionAl,troop1073xObservedSpeedsAl}=require("./last_shelter_troop_1073x_reference");
+const {LAST_SHELTER_FRESH_INIT_ENVELOPE,freshInitEnvelopeRuntimeDefaultHazirla,freshInitEnvelopeRuntimeTeminEt}=require("./last_shelter_fresh_init_envelope_reference");
 
 function clone(v){return v==null?v:JSON.parse(JSON.stringify(v));}
 function auth(ws,msg,send){
@@ -51,6 +52,13 @@ function lastShelterAuxiliaryCommandleriniQeydEt(router,deps){
   if(!router)throw new Error("Command router yoxdur.");
   const {getOrCreatePlayerState}=deps||{};
   if(typeof getOrCreatePlayerState!=="function")throw new Error("getOrCreatePlayerState yoxdur.");
+
+  router.register("fresh_init.envelope.info",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const state=getOrCreatePlayerState(a.playerId);
+    if(!state.lastShelterFreshInitEnvelopeRuntime||typeof state.lastShelterFreshInitEnvelopeRuntime!=="object"||Array.isArray(state.lastShelterFreshInitEnvelopeRuntime)) state.lastShelterFreshInitEnvelopeRuntime=freshInitEnvelopeRuntimeDefaultHazirla();
+    freshInitEnvelopeRuntimeTeminEt(state.lastShelterFreshInitEnvelopeRuntime);
+    send(ws,{type:"fresh_init.envelope.info",playerId:a.playerId,serverTimeUnixMs:now(nowMs),reference:clone(LAST_SHELTER_FRESH_INIT_ENVELOPE),runtime:clone(state.lastShelterFreshInitEnvelopeRuntime)});
+  },{authRequired:true,mutation:false});
 
   router.register("starter_city.info",async({ws,msg,send,nowMs})=>{
     const a=auth(ws,msg,send); if(!a)return; const state=getOrCreatePlayerState(a.playerId); const city=lastShelterCityRuntimeTeminEt(state);
