@@ -2,7 +2,7 @@ name: Last Shelter Science Prerequisites
 
 on:
   push:
-    branches: [server-v2-scalable]
+    branches: [main]
     paths:
       - 'last_shelter_science_full_rows_*.js'
       - 'last_shelter_science_full_topology.js'
