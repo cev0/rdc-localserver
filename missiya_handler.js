@@ -19,8 +19,6 @@ const LEGACY_MISSIYA_MESAJLARI = new Set([
 ]);
 
 const STATE_DEYISEN_MESAJLAR = new Set([
-  "research_start",
-  "technology_research_start",
   "expand_area_request",
   "expand_base",
   "build_request",
