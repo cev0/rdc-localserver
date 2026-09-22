@@ -2,7 +2,7 @@ name: Last Shelter Economy Runtime
 
 on:
   push:
-    branches: [server-v2-scalable]
+    branches: [main]
     paths:
       - 'runtime_last_shelter_economy_reference_commands.js'
       - 'runtime_last_shelter_economy_reference_commands_testi.js'
