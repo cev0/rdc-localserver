@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("assert");
+const fs = require("fs");
 const { troop107xAl } = require("./last_shelter_troop_107x_reference");
 const {
   UNITS,
@@ -195,6 +196,35 @@ function bina(buildingId, level) {
   assert.strictEqual(duration.baseDurationMs, 2000000);
   assert.strictEqual(duration.finalDurationMs, 2000000);
   assert.strictEqual(duration.speedPct, 0);
+
+  const catalogSource =
+    fs.readFileSync(
+      require.resolve(
+        "./qosun_kataloqu.js"
+      ),
+      "utf8"
+    );
+
+  for (const forbidden of [
+    "BUILDING_LEVEL_BY_TIER",
+    "BASE_TRAINING_SECONDS_BY_TIER",
+    "WARRIOR_STATS",
+    "SHOOTER_STATS",
+    "VEHICLE_STATS",
+    "WARRIOR_COSTS",
+    "SHOOTER_COSTS",
+    "VEHICLE_COSTS",
+    "requiredResearchId",
+    "state.technology"
+  ]) {
+    assert.strictEqual(
+      catalogSource.includes(
+        forbidden
+      ),
+      false,
+      `Synthetic troop authority must stay removed: ${forbidden}`
+    );
+  }
 
   console.log("[QOSUN_KATALOQU_TESTI] OK");
 })();
