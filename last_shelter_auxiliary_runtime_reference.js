@@ -210,6 +210,8 @@ function lastShelterAuxiliaryRuntimeTeminEt(state) {
   }
 
   const runtime = state.lastShelterAuxiliaryRuntime;
+  const defaults =
+    lastShelterAuxiliaryRuntimeDefaultHazirla();
 
   freshInitAuxRuntimeTeminEt(
     runtime
@@ -217,7 +219,7 @@ function lastShelterAuxiliaryRuntimeTeminEt(state) {
 
   for (const key of ["armyFormation","hospital","defenseInfo","worldFortress","careerInfo"]) {
     if (!Array.isArray(runtime[key])) {
-      runtime[key] = clone(lastShelterAuxiliaryRuntimeDefaultHazirla()[key]);
+      runtime[key] = clone(defaults[key]);
     }
   }
 
