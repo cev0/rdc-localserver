@@ -110,6 +110,11 @@ const {
     refreshTechnologyStats() {},
     updateServerTime() {},
 
+    schedulePlayerDeadline:
+      (playerId) => {
+        deadlines.push(playerId);
+      },
+
     makeClientState:
       target => ({
         playerId: target.playerId
