@@ -3,7 +3,9 @@
 const assert = require("assert");
 const {
   LAST_SHELTER_SCIENCE_HERO_SKILLS,
-  stationBuildingTypeAl
+  stationBuildingTypeAl,
+  skillIdAl,
+  skillLevelCostlariAl
 } = require("./last_shelter_science_hero_skill_reference");
 
 const energy = LAST_SHELTER_SCIENCE_HERO_SKILLS.ENERGY_SKILL;
@@ -16,7 +18,11 @@ assert.strictEqual(energy.max_level, "10");
 assert.strictEqual(energy.para, "20;10");
 assert.strictEqual(energy.para_add, "5;5");
 assert.strictEqual(stationBuildingTypeAl(energy), "403000");
-assert.strictEqual(energy.cost.split("|").length, 9);
+assert.strictEqual(skillIdAl(energy), "50046");
+const energyCosts = skillLevelCostlariAl(energy);
+assert.strictEqual(energyCosts.length, 9);
+assert.deepStrictEqual(energyCosts[0], { level: 1, itemId: "210164", amount: 20 });
+assert.deepStrictEqual(energyCosts[8], { level: 9, itemId: "210164", amount: 400 });
 
 const second = LAST_SHELTER_SCIENCE_HERO_SKILLS.SECOND_RESEARCH_QUEUE;
 assert.strictEqual(second.id, "61012");
@@ -26,7 +32,10 @@ assert.strictEqual(second.para, "1");
 assert.strictEqual(second.effect, "232;5");
 assert.strictEqual(second.effect_add, "232;5");
 assert.strictEqual(stationBuildingTypeAl(second), "403000");
-assert.strictEqual(second.cost.split("|").length, 9);
+assert.strictEqual(skillIdAl(second), "61012");
+const secondCosts = skillLevelCostlariAl(second);
+assert.strictEqual(secondCosts.length, 9);
+assert.deepStrictEqual(secondCosts[6], { level: 7, itemId: "210164", amount: 200 });
 
 assert(Object.isFrozen(LAST_SHELTER_SCIENCE_HERO_SKILLS));
 assert(Object.isFrozen(energy));
