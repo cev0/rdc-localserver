@@ -26,6 +26,9 @@ const {lastShelterMissileRuntimeTeminEt}=require("./last_shelter_missile_runtime
 const {shopRowIdsAl,shopRowAl,itemTupleRawlariniAl}=require("./last_shelter_shop_reference");
 const {vipStorePanelInfoHazirla}=require("./last_shelter_vip_store_runtime");
 const {LAST_SHELTER_REPAY_REFERENCE,repayEligibleRewardsAl,lastShelterRepayRuntimeTeminEt}=require("./last_shelter_repay_reference");
+const {LAST_SHELTER_ALLIANCE_GROUP_PURCHASE,allianceGroupPurchaseOfferAl,allianceGroupPurchaseRuntimeDefaultHazirla}=require("./last_shelter_alliance_group_purchase_reference");
+const {LAST_SHELTER_FORT_TROOPS,fortTroopRuntimeProjectionAl,fortInitProjectionHazirla}=require("./last_shelter_fort_troop_reference");
+const {LAST_SHELTER_TROOP_TRANSFER_TREES,troopTransferTreeAl,troopTransferPointAl}=require("./last_shelter_troop_transfer_reference");
 
 function clone(v){return v==null?v:JSON.parse(JSON.stringify(v));}
 function auth(ws,msg,send){
@@ -40,6 +43,40 @@ function lastShelterAuxiliaryCommandleriniQeydEt(router,deps){
   if(!router)throw new Error("Command router yoxdur.");
   const {getOrCreatePlayerState}=deps||{};
   if(typeof getOrCreatePlayerState!=="function")throw new Error("getOrCreatePlayerState yoxdur.");
+
+  router.register("alliance.group_purchase.info",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const state=getOrCreatePlayerState(a.playerId);
+    if(!state.lastShelterAllianceGroupPurchaseRuntime) state.lastShelterAllianceGroupPurchaseRuntime=allianceGroupPurchaseRuntimeDefaultHazirla();
+    send(ws,{type:"alliance.group_purchase.info",playerId:a.playerId,serverTimeUnixMs:now(nowMs),reference:clone(LAST_SHELTER_ALLIANCE_GROUP_PURCHASE),runtime:clone(state.lastShelterAllianceGroupPurchaseRuntime)});
+  },{authRequired:true,mutation:false});
+
+  router.register("alliance.group_purchase.offer.get",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const goodsId=msg&&msg.goodsId!=null?String(msg.goodsId).trim():""; const offer=allianceGroupPurchaseOfferAl(goodsId);
+    if(!offer){send(ws,{type:"error",code:"ALLIANCE_GROUP_PURCHASE_OFFER_NOT_FOUND",message:"Last Shelter alliance group purchase offer tapilmadi.",goodsId});return;}
+    send(ws,{type:"alliance.group_purchase.offer.get",playerId:a.playerId,serverTimeUnixMs:now(nowMs),offer});
+  },{authRequired:true,mutation:false});
+
+  router.register("fort.troop.list",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const state=getOrCreatePlayerState(a.playerId);
+    send(ws,{type:"fort.troop.list",playerId:a.playerId,serverTimeUnixMs:now(nowMs),troops:clone(fortInitProjectionHazirla(state))});
+  },{authRequired:true,mutation:false});
+
+  router.register("fort.troop.get",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const troop=fortTroopRuntimeProjectionAl(msg&&msg.id);
+    if(!troop){send(ws,{type:"error",code:"FORT_TROOP_NOT_FOUND",message:"Last Shelter fort troop tapilmadi.",id:msg&&msg.id});return;}
+    send(ws,{type:"fort.troop.get",playerId:a.playerId,serverTimeUnixMs:now(nowMs),troop});
+  },{authRequired:true,mutation:false});
+
+  router.register("troop_transfer.reference.list",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; send(ws,{type:"troop_transfer.reference.list",playerId:a.playerId,serverTimeUnixMs:now(nowMs),trees:clone(LAST_SHELTER_TROOP_TRANSFER_TREES)});
+  },{authRequired:true,mutation:false});
+
+  router.register("troop_transfer.reference.get",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const tree=troopTransferTreeAl(msg&&msg.transferType);
+    if(!tree){send(ws,{type:"error",code:"TROOP_TRANSFER_TREE_NOT_FOUND",message:"Last Shelter troop transfer tree tapilmadi.",transferType:msg&&msg.transferType});return;}
+    const point=msg&&msg.pointType!=null?troopTransferPointAl(tree.type,msg.pointType):null;
+    send(ws,{type:"troop_transfer.reference.get",playerId:a.playerId,serverTimeUnixMs:now(nowMs),tree,point});
+  },{authRequired:true,mutation:false});
 
   router.register("shop.reference.list",async({ws,msg,send,nowMs})=>{
     const a=auth(ws,msg,send); if(!a)return;
