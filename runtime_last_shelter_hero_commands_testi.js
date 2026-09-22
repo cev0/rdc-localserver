@@ -4,6 +4,7 @@ const assert = require("assert");
 const { RuntimeCommandRouter } = require("./runtime_command_router");
 const {
   heroSnapshotHazirla,
+  generalSnapshotAl,
   lastShelterHeroCommandleriniQeydEt
 } = require("./runtime_last_shelter_hero_commands");
 
@@ -26,12 +27,20 @@ const {
   assert.strictEqual(second.generals[0].level, 1);
   assert.strictEqual(second.config.flags.newHeroSwitch, 1);
 
+  const starterUuid = second.generals[0].uuid;
+  const directGeneral = generalSnapshotAl(state, starterUuid);
+  assert.strictEqual(directGeneral.generalId, "240020");
+  directGeneral.level = 77;
+  assert.strictEqual(generalSnapshotAl(state, starterUuid).level, 1);
+  assert.strictEqual(generalSnapshotAl(state, "missing"), null);
+
   const router = new RuntimeCommandRouter();
   lastShelterHeroCommandleriniQeydEt(router, {
     getOrCreatePlayerState: () => state
   });
   assert(router.has("hero.info"));
   assert(router.has("hero.get"));
+  assert(router.has("hero.general.get"));
 
   const sent = [];
   const ws = { playerId: "p1", _authedPlayerId: "p1" };
@@ -75,6 +84,27 @@ const {
   assert.strictEqual(sent[3].type, "error");
   assert.strictEqual(sent[3].code, "HERO_NOT_FOUND");
   assert.strictEqual(sent[3].heroId, "999999");
+
+  await router.dispatch({
+    ws,
+    msg: { type: "hero.general.get", playerId: "p1", uuid: starterUuid },
+    send: (_ws, payload) => sent.push(payload),
+    nowMs: () => 123458
+  });
+  assert.strictEqual(sent[4].type, "hero.general.get");
+  assert.strictEqual(sent[4].general.generalId, "240020");
+  assert.strictEqual(sent[4].general.uuid, starterUuid);
+  assert.strictEqual(sent[4].serverTimeUnixMs, 123458);
+  sent[4].general.level = 88;
+  assert.strictEqual(generalSnapshotAl(state, starterUuid).level, 1);
+
+  await router.dispatch({
+    ws,
+    msg: { type: "hero.general.get", playerId: "p1", uuid: "missing" },
+    send: (_ws, payload) => sent.push(payload)
+  });
+  assert.strictEqual(sent[5].type, "error");
+  assert.strictEqual(sent[5].code, "HERO_GENERAL_NOT_FOUND");
 
   console.log("runtime_last_shelter_hero_commands_testi: OK");
 })().catch(err => {
