@@ -6,6 +6,8 @@ on:
       - "**/*.js"
       - "package.json"
       - "package-lock.json"
+      - "server_unity_message_contract.json"
+      - "building_definitions.json"
       - ".github/workflows/server-unit-regression.yml"
   push:
     branches:
@@ -14,6 +16,8 @@ on:
       - "**/*.js"
       - "package.json"
       - "package-lock.json"
+      - "server_unity_message_contract.json"
+      - "building_definitions.json"
       - ".github/workflows/server-unit-regression.yml"
 
 jobs:
