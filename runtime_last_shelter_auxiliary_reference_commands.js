@@ -35,6 +35,7 @@ const {LAST_SHELTER_RESOURCE_PAYLOAD_FIELDS,lastShelterResourcePayloadHazirla}=r
 const {ITEM_TUNING,itemTuningAl}=require("./last_shelter_item_tuning_kataloqu");
 const {LAST_SHELTER_STARTER_ITEM_TEMPLATES,LAST_SHELTER_STARTER_QUEUE_LAYOUT,lastShelterStarterAccountRuntimeTeminEt,starterQueueInitProjectionHazirla}=require("./last_shelter_starter_account_reference");
 const {TROOP_107X,LAST_SHELTER_SPECIAL_ARMS_CONFIG,troop107xAl,specialArmConfigAl}=require("./last_shelter_troop_107x_reference");
+const {CURRENT_UNLOCK_NUM_RAW,NEXT_UNLOCK_NUM_RAW,LAST_SHELTER_STARTER_BUILDINGS,LAST_SHELTER_BUILD_LIST_CONFIG,unlockNumParseEt,lastShelterCityRuntimeTeminEt}=require("./last_shelter_starter_city_reference");
 const {TROOP_1073X_STABLE,troop1073xRuntimeProjectionAl,troop1073xObservedSpeedsAl}=require("./last_shelter_troop_1073x_reference");
 
 function clone(v){return v==null?v:JSON.parse(JSON.stringify(v));}
@@ -50,6 +51,11 @@ function lastShelterAuxiliaryCommandleriniQeydEt(router,deps){
   if(!router)throw new Error("Command router yoxdur.");
   const {getOrCreatePlayerState}=deps||{};
   if(typeof getOrCreatePlayerState!=="function")throw new Error("getOrCreatePlayerState yoxdur.");
+
+  router.register("starter_city.info",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const state=getOrCreatePlayerState(a.playerId); const city=lastShelterCityRuntimeTeminEt(state);
+    send(ws,{type:"starter_city.info",playerId:a.playerId,serverTimeUnixMs:now(nowMs),buildings:clone(city.buildings),buildListConfig:clone(city.buildListConfig),reference:{starterBuildings:clone(LAST_SHELTER_STARTER_BUILDINGS),buildListConfig:clone(LAST_SHELTER_BUILD_LIST_CONFIG),unlock:{currentRaw:CURRENT_UNLOCK_NUM_RAW,nextRaw:NEXT_UNLOCK_NUM_RAW,current:unlockNumParseEt(CURRENT_UNLOCK_NUM_RAW),next:unlockNumParseEt(NEXT_UNLOCK_NUM_RAW)}}});
+  },{authRequired:true,mutation:false});
 
   router.register("troop.reference.list",async({ws,msg,send,nowMs})=>{
     const a=auth(ws,msg,send); if(!a)return; send(ws,{type:"troop.reference.list",playerId:a.playerId,serverTimeUnixMs:now(nowMs),troops107x:clone(TROOP_107X),troops1073x:clone(TROOP_1073X_STABLE),specialArms:clone(LAST_SHELTER_SPECIAL_ARMS_CONFIG)});
