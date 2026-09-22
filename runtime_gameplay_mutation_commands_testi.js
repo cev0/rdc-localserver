@@ -21,9 +21,6 @@ const {
 
   const state = {
     playerId: "p1",
-    technology: {
-      currentResearch: null
-    },
     buildings: [
       {
         instanceId: "institute-1",
@@ -107,7 +104,6 @@ const {
           .trim()
           .toLowerCase(),
 
-    refreshTechnologyStats() {},
     updateServerTime() {},
 
     schedulePlayerDeadline:
