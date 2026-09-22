@@ -97,7 +97,7 @@ assert.strictEqual(unknown.code,"INVALID_OPT");
 assert.strictEqual(
   JSON.stringify(state),
   before,
-  "Unverified original goods price must not mutate wallet/inventory."
+  "Absent source goods price must not mutate wallet/inventory."
 );
 
 // Paid gold is consumed only after free gold is exhausted.

@@ -9,7 +9,7 @@ const {
 } = require("./last_shelter_shop_reference");
 
 assert.deepStrictEqual(
-  shopRowIdsAl(),
+  shopRowIdsAl().slice(0,8),
   [
     "200000001","200000002","200000003","200000004",
     "200000005","200000006","200000007","200000008"
@@ -63,9 +63,11 @@ copy.name = "changed";
 assert.strictEqual(SHOP_ROWS["200000001"].name,"88000527");
 
 assert.strictEqual(shopRowAl("999"),null);
+assert.strictEqual(shopRowIdsAl().length,48);
+assert.ok(shopRowAl("200000061"));
 assert.deepStrictEqual(itemTupleRawlariniAl(null),[]);
 assert.strictEqual(Object.isFrozen(SHOP_ROWS),true);
 
 console.log(
-  "PASS: first eight verified Last Shelter shop.xml rows are preserved without inventing tuple semantics."
+  "PASS: all 48 source Last Shelter shop.xml rows are preserved without inventing tuple semantics."
 );

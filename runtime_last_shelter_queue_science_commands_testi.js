@@ -16,7 +16,7 @@ class FakeRouter {
 
 (async()=>{
   const now=1000;
-  const state={lastShelterStarterAccountRuntime:{queues:[
+  const state={buildings:[{buildingId:"institute",level:1,isCompleted:true}],lastShelterStarterAccountRuntime:{queues:[
     {uuid:"science-1",qid:1,type:6,updateTime:0,endTime:0,itemObj:{}},
     {uuid:"science-2",qid:2,type:6,updateTime:0,endTime:5000,itemObj:{}}
   ]},science:{"901000":{level:1,completedAt:900}}};
@@ -28,7 +28,8 @@ class FakeRouter {
   assert.strictEqual(queues[0].isFree,true);
 
   const catalog=scienceCatalogProjectionHazirla();
-  assert.deepStrictEqual(catalog.map(x=>x.itemId),["901000","901100","901200","901300"]);
+  assert.strictEqual(catalog.length,441);
+  assert(catalog.some(x=>x.itemId === "901300"));
 
   const fullTopology=scienceTopologyProjectionHazirla();
   assert.strictEqual(fullTopology.length,441);
@@ -43,10 +44,12 @@ class FakeRouter {
   const router=new FakeRouter();
   lastShelterQueueScienceCommandleriniQeydEt(router,{getOrCreatePlayerState:()=>state});
   assert.deepStrictEqual(Array.from(router.routes.keys()),[
-    "queue.list","science.catalog","science.topology.list","science.topology","science.state","science.prerequisite","science.plan"
+    "queue.list","science.catalog","science.topology.list","science.topology","science.state","science.prerequisite","science.plan","science.research","science.upgrade"
   ]);
-  for(const route of router.routes.values()){
-    assert.deepStrictEqual(route.options,{authRequired:true,mutation:false});
+  for(const [type,route] of router.routes){
+    assert.deepStrictEqual(route.options,type === "science.research" || type === "science.upgrade"
+      ? {authRequired:true,mutation:true,postgresAuthoritative:true}
+      : {authRequired:true,mutation:false});
   }
 
   const ws={_authedPlayerId:"p1"};
@@ -88,7 +91,7 @@ class FakeRouter {
 
   sent.length=0;
   await router.routes.get("science.plan").handler({ws,msg:{playerId:"p1",itemId:"999999"},send,nowMs:()=>1000});
-  assert.strictEqual(sent[0].code,"SCIENCE_TOPOLOGY_UNVERIFIED");
+  assert.strictEqual(sent[0].code,"SCIENCE_ITEM_UNVERIFIED");
 
-  console.log("PASS: verified Last Shelter queue/science read runtime exposes topology and detached authoritative completed-science state without inventing resource-code debit semantics.");
+  console.log("PASS: verified Last Shelter queue/science read runtime exposes topology and detached authoritative completed-science state with the complete source catalog and authoritative mutation routes.");
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -1,0 +1,205 @@
+"use strict";
+
+const { scienceLevelMelumatiniAl } = require("./last_shelter_science_kataloqu");
+const { scienceLevelAl } = require("./last_shelter_science_prerequisite_runtime");
+const { sourceBuildings, sourceBuildingType, sourceBuildingLevel } = require("./last_shelter_building_state");
+const { RESOURCE_STATE_KEYS } = require("./last_shelter_resource_types");
+const {
+  SCIENCE_EFFECT_IDS, verifiedScienceResourceCost, verifiedScienceGoodsCost, verifiedScienceTimeMs
+} = require("./last_shelter_science_cost_contract");
+const {
+  scienceQueueListesiAl, scienceQueueTipidir,
+  verifiedScienceResearchPlanHazirla, verifiedScienceResearchPlaniniStateEt,
+  verifiedScienceResearchYekunlasdir
+} = require("./last_shelter_science_runtime_adapteri");
+const { lastShelterResourcePayloadHazirla } = require("./last_shelter_resource_runtime");
+const { lastShelterGoldWalletTeminEt, totalGoldAl } = require("./last_shelter_gold_wallet");
+
+function clone(value) { return JSON.parse(JSON.stringify(value)); }
+function fail(code, details = {}) { return { ok: false, code, ...details }; }
+function skills(hero) { return Array.isArray(hero?.skills) ? hero.skills : []; }
+function newHeroes(state) { return state?.lastShelterHeroRuntime?.heroes || []; }
+
+function sourceSecondScienceQueueUnlocked(state) {
+  // UserBuildingManager.getHeroListByItemId parses building.heroId as a
+  // semicolon-separated list of numeric hero IDs. Templates/client flags do
+  // not prove that a hero is owned or stationed.
+  const stationed = new Set();
+  for (const building of sourceBuildings(state)) {
+    if (sourceBuildingType(building) !== "403000") continue;
+    for (const id of String(building.heroId || "").split(";")) if (/^\d+$/.test(id)) stationed.add(id);
+  }
+  return newHeroes(state).some(hero => stationed.has(String(hero.heroId ?? hero.id)) &&
+    skills(hero).some(skill => String(skill.skillId) === "61012"));
+}
+
+function sourceScienceEffects(state) {
+  const effects = {};
+  const runtime = state?.lastShelterScienceRuntime || {};
+  const rows = Array.isArray(state?.science) ? state.science.map(row => String(row.itemId ?? row.id)) : Object.keys(state?.science || {});
+  for (const itemId of new Set(rows)) {
+    const level = scienceLevelAl(state, itemId);
+    if (level <= 0) continue;
+    const row = scienceLevelMelumatiniAl(itemId, level)?.sourceAttributes;
+    if (!row || (row.object && row.object !== "user")) continue;
+    if (row.onlyInActivity === "1" && runtime.activityScienceActive !== true) continue;
+    const cross = runtime.crossFightSrcServerId ?? -1;
+    if (row.onlyOutState === "1" && cross === -1) continue;
+    if (row.onlyInState === "1" && cross !== -1) continue;
+    for (const id of String(row.para1 || "").split("|")) {
+      if (!/^\d+$/.test(id)) continue; // army/trap/up are not additive effects.
+      effects[id] = Math.fround((effects[id] || 0) + Math.fround(Number(row.para2 || 0)));
+    }
+  }
+  // Reserved for server-side effect providers (VIP, heroes, equipment, events).
+  // Values are never copied from the research request. Science itself is
+  // recomputed above so a replay/reload cannot apply the same bonus twice.
+  for (const [name, id] of Object.entries(SCIENCE_EFFECT_IDS)) {
+    const extra = Number(runtime.externalEffects?.[name] ?? runtime.externalEffects?.[id] ?? 0);
+    if (!Number.isFinite(extra)) throw new Error(`Invalid persisted science effect: ${name}`);
+    effects[id] = Math.fround((effects[id] || 0) + Math.fround(extra));
+  }
+  return effects;
+}
+
+function sourceSciencePrerequisite(state, row) {
+  // COK2 function_on.xml enables new_science_switch2 for the target client
+  // version. A server-controlled override supports an older migrated profile.
+  const useNew = state?.lastShelterScienceRuntime?.useNewScienceCondition !== false;
+  const requirements = [], missingScience = [], missingBuilding = [];
+  for (const token of (useNew ? row.scienceConditionNew : row.scienceCondition).split(";").filter(Boolean)) {
+    if (!/^\d{3,}$/.test(token)) return fail("SCIENCE_CONDITION_INVALID");
+    const itemId = token.slice(0, -2) + "00", requiredLevel = Number(token.slice(-2));
+    const currentLevel = scienceLevelAl(state, itemId);
+    const entry = { itemId, requiredLevel, currentLevel };
+    requirements.push(entry);
+    if (currentLevel < requiredLevel) missingScience.push(entry);
+  }
+  for (const token of row.buildingCondition.split(";").filter(Boolean)) {
+    if (!/^\d+$/.test(token)) return fail("SCIENCE_CONDITION_INVALID");
+    const buildingTypeId = String(Math.floor(Number(token) / 1000) * 1000);
+    const requiredLevel = Number(token) % 100; // ScienceService.checkBuildingCondition
+    const currentLevel = sourceBuildingLevel(state, buildingTypeId);
+    if (currentLevel < requiredLevel) missingBuilding.push({ buildingTypeId, requiredLevel, currentLevel });
+  }
+  const code = missingScience.length ? "SCIENCE_CONDITION_NOT_MET" : missingBuilding.length ? "BUILDING_CONDITION_NOT_MET" : "OK";
+  return { ok: code === "OK", code, requirements, missingScience, missingBuilding };
+}
+
+function sourceScienceResearchPlan(state, request, nowUnixMs) {
+  if (!state || typeof state !== "object") return fail("STATE_MISSING");
+  if (!Number.isSafeInteger(nowUnixMs) || nowUnixMs < 0) return fail("INVALID_SERVER_TIME");
+  if (request?.gold != null && (!Number.isInteger(request.gold) || request.gold < 0 || request.gold > 2147483647)) {
+    return fail("INVALID_OPT");
+  }
+  const plan = verifiedScienceResearchPlanHazirla(state, request, nowUnixMs, {
+    secondQueueCheck: sourceSecondScienceQueueUnlocked
+  });
+  if (!plan.ok) return plan;
+  const row = scienceLevelMelumatiniAl(plan.itemId, plan.currentLevel);
+  const prerequisite = sourceSciencePrerequisite(state, row);
+  if (!prerequisite.ok) return { ...prerequisite, prerequisite };
+  // A native overdue item still owns its queue until authoritative completion.
+  if (scienceQueueListesiAl(state).some(queue => scienceQueueTipidir(queue) &&
+      queue.status !== "completed" && String(queue.itemObj?.itemId || queue.itemId || "") === plan.itemId)) {
+    return fail("SCIENCE_ALREADY_RESEARCHING");
+  }
+  const effects = sourceScienceEffects(state);
+  const runtime = state.lastShelterScienceRuntime || {};
+  // EnergySkill's active-state lifecycle is not ported yet. Fail before
+  // charging instead of silently ignoring a skill that discounts resources.
+  if (newHeroes(state).some(hero => skills(hero).some(skill =>
+      (skill.state === "READY" || Number(skill.state) === 2) && String(skill.skillId) === "50046"))) {
+    return fail("SCIENCE_ENERGY_SKILL_UNMIGRATED");
+  }
+  const resources = {};
+  for (const need of row.researchNeed) {
+    const key = RESOURCE_STATE_KEYS[need.typeCode];
+    if (!key) return fail("SCIENCE_RESOURCE_TYPE_UNMIGRATED");
+    const amount = verifiedScienceResourceCost(need.amount, need.typeCode, effects);
+    if (amount == null) return fail("SCIENCE_EFFECT_INVALID");
+    resources[key] = amount;
+  }
+  const goods = [];
+  for (const token of row.goodsNeedRaw.split("|").filter(Boolean)) {
+    const fields = token.split(";");
+    if (fields.length !== 2 || !fields.every(value => /^\d+$/.test(value))) return fail("SCIENCE_GOODS_INVALID");
+    goods.push({ itemId: fields[0], amount: verifiedScienceGoodsCost(Number(fields[1]), fields[0], effects) });
+  }
+  const academy = sourceBuildings(state).find(building => sourceBuildingType(building) === "403000");
+  const stationExtra = Number(runtime.stationEffects?.[academy?.uuid ?? academy?.instanceId]?.SCIENCE_RESEARCH ?? 0);
+  const durationMs = verifiedScienceTimeMs(row.researchTimeSeconds, row.effectType, effects,
+    academy ? Math.fround((effects[69] || 0) + Math.fround(stationExtra)) : 0);
+  if (durationMs == null || !Number.isSafeInteger(nowUnixMs + durationMs)) return fail("SCIENCE_EFFECT_INVALID");
+  return {
+    ...plan, prerequisite, costs: { resources, goods }, durationMs,
+    queue: { ...plan.queue, finishUnixMs: nowUnixMs + durationMs }
+  };
+}
+
+function sourceScienceResearch(state, request, nowUnixMs) {
+  const plan = sourceScienceResearchPlan(state, request, nowUnixMs);
+  if (!plan.ok) return plan;
+  const missingResources = [];
+  for (const [key, amount] of Object.entries(plan.costs.resources)) {
+    const balance = Number(state.resources?.[key] ?? 0);
+    if (!Number.isFinite(balance) || balance < amount) missingResources.push({ resource: key, required: amount });
+  }
+  if (missingResources.length) {
+    return fail(plan.optionalGold > 0 ? "SCIENCE_GOLD_TOPUP_UNMIGRATED" : "USERRESOURCE_IS_NOT_ENOUGH", { missingResources });
+  }
+  const inventory = state.lastShelterStarterAccountRuntime?.items || [];
+  const goodsCosts = new Map();
+  for (const cost of plan.costs.goods) goodsCosts.set(cost.itemId, (goodsCosts.get(cost.itemId) || 0) + cost.amount);
+  for (const [itemId, amount] of goodsCosts) {
+    const count = inventory.filter(item => String(item.itemId) === itemId)
+      .reduce((sum, item) => sum + Math.max(0, Math.trunc(Number(item.count) || 0)), 0);
+    if (count < amount) return fail("SILVER_MEDAL_NOT_ENOUGH", { itemId, required: amount });
+  }
+  const applied = verifiedScienceResearchPlaniniStateEt(state, plan);
+  if (!applied.ok) return applied;
+  if (!state.resources) state.resources = {};
+  for (const [key, amount] of Object.entries(plan.costs.resources)) {
+    if (amount > 0) state.resources[key] = Number(state.resources[key]) - amount;
+  }
+  for (const [itemId, amount] of goodsCosts) {
+    let remaining = amount;
+    for (const item of inventory) {
+      if (remaining === 0) break;
+      if (String(item.itemId) !== itemId) continue;
+      const take = Math.min(remaining, Math.max(0, Math.trunc(Number(item.count) || 0)));
+      item.count -= take;
+      remaining -= take;
+    }
+  }
+  const queue = scienceQueueListesiAl(state).find(row => row.uuid === plan.queue.uuid);
+  queue.scienceCost = clone(plan.costs);
+  return {
+    ok: true, itemId: plan.itemId, level: plan.currentLevel, targetLevel: plan.targetLevel,
+    resource: lastShelterResourcePayloadHazirla(state, nowUnixMs), queue: clone(queue),
+    gold: totalGoldAl(lastShelterGoldWalletTeminEt(state)), costs: clone(plan.costs)
+  };
+}
+
+function sourceScienceUpgrade(state, request, nowUnixMs) {
+  const itemId = String(request?.itemId || "");
+  const quuid = String(request?.quuid || request?.queueUuid || "");
+  const queue = scienceQueueListesiAl(state).find(row => row.uuid === quuid && scienceQueueTipidir(row));
+  if (!queue || String(queue.itemId || queue.itemObj?.itemId || "") !== itemId) return fail("INVALID_OPT");
+  if (queue.status === "completed" && queue.lastScienceCompletion?.itemId === itemId) {
+    return { ok: true, itemId, level: scienceLevelAl(state, itemId), cd: 0, queue: clone(queue) };
+  }
+  if (queue.status !== "running") return fail("INVALID_OPT");
+  const finish = Number(queue.finishUnixMs ?? queue.updateTime);
+  if (!Number.isFinite(finish) || nowUnixMs < finish - 1000) return fail("SCIENCE_CD_NOT_REACHED");
+  // The original explicit upgrade permits a 1-second clock margin. Scheduled
+  // completion uses the exact deadline, and cannot be advanced by the client.
+  verifiedScienceResearchYekunlasdir(state, nowUnixMs, { queueUuid: quuid, earlyWindowMs: 1000 });
+  if (queue.status !== "completed") return fail("SCIENCE_PLAN_STALE");
+  return { ok: true, itemId, level: scienceLevelAl(state, itemId), cd: 0, queue: clone(queue) };
+}
+
+module.exports = {
+  sourceSecondScienceQueueUnlocked, sourceScienceEffects, sourceSciencePrerequisite,
+  sourceScienceResearchPlan, sourceScienceResearch, sourceScienceUpgrade
+};

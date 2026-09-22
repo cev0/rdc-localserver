@@ -2,7 +2,8 @@
 
 const {
   SCIENCE_PROTOCOL,
-  scienceMelumatiniAl
+  scienceMelumatiniAl,
+  scienceLevelMelumatiniAl
 } = require("./last_shelter_science_kataloqu");
 const {
   getLastShelterQueueTypeByCode
@@ -10,6 +11,8 @@ const {
 const {
   isFreeLastShelterQueue
 } = require("./last_shelter_queue_runtime");
+
+const { scienceLevelAl } = require("./last_shelter_science_prerequisite_runtime");
 
 function metnAl(value, max = 128) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -189,9 +192,8 @@ function secondScienceQueueIcazelidir(
     return true;
   }
 
-  // Reference calls ScienceService.checkSecondQueue(profile) for qid=2.
-  // That helper's body is not yet present in the verified dump, so fail
-  // closed unless the caller supplies a server-authoritative verifier.
+  // Reference checkSecondQueue requires academy stationing and skill 61012.
+  // The production science command supplies the authoritative verifier.
   if (typeof secondQueueCheck !== "function") {
     return false;
   }
@@ -299,8 +301,8 @@ function scienceQueueSec(
     return queue;
   }
 
-  // ScienceService.researchOneScience blank quuid -> getFreeQueue(... SCIENCE, 1).
-  // Prefer the verified primary queue (qid=1); if qid is absent, preserve list order.
+  // QueueManager.getFreeQueue(SCIENCE, 1) uses 1 as a lease margin in ms,
+  // not a qid selector: remove expired leases, then sort by qid.
   const freeScience =
     queues.filter(
       queue =>
@@ -308,34 +310,13 @@ function scienceQueueSec(
         queueBosdur(
           queue,
           nowUnixMs
-        )
+        ) &&
+        explicitScienceQueueLeaseAktivdir(queue, nowUnixMs)
+    ).sort((a, b) =>
+      tamEded(a.qid ?? a.queueId, 0) - tamEded(b.qid ?? b.queueId, 0)
     );
 
-  const preferred =
-    freeScience.find(
-      queue =>
-        tamEded(
-          queue &&
-          (
-            queue.qid ||
-            queue.queueId
-          ),
-          0
-        ) === 1
-    ) ||
-    freeScience.find(
-      queue =>
-        tamEded(
-          queue &&
-          (
-            queue.qid ||
-            queue.queueId
-          ),
-          0
-        ) === 0
-    ) ||
-    freeScience[0] ||
-    null;
+  const preferred = freeScience[0] || null;
 
   if (
     preferred &&
@@ -382,8 +363,14 @@ function verifiedScienceResearchPlanHazirla(
 
   if (!itemId) return { ok: false, code: "SCIENCE_ITEM_ID_REQUIRED" };
 
-  const science = scienceMelumatiniAl(itemId);
-  if (!science) return { ok: false, code: "SCIENCE_ITEM_UNVERIFIED" };
+  const root = scienceMelumatiniAl(itemId);
+  if (!root || root.scienceLevel !== 0) return { ok: false, code: "SCIENCE_ITEM_UNVERIFIED" };
+  const currentLevel = scienceLevelAl(state, itemId);
+  const science = scienceLevelMelumatiniAl(itemId, currentLevel);
+  const next = scienceLevelMelumatiniAl(itemId, currentLevel + 1);
+  if (!science || !next || science.researchTimeSeconds == null) {
+    return { ok: false, code: "SCIENCE_ALREADY_RESEARCHED" };
+  }
 
   const selectedQueue =
     scienceQueueSec(
@@ -432,6 +419,9 @@ function verifiedScienceResearchPlanHazirla(
     ok: true,
     protocol: SCIENCE_PROTOCOL.researchRequest,
     itemId,
+    currentLevel,
+    targetLevel: currentLevel + 1,
+    xmlId: science.itemId,
     queue: {
       uuid: queueUuid,
       qid: tamEded(selectedQueue.qid || selectedQueue.queueId, 0),
@@ -451,9 +441,8 @@ function verifiedScienceResearchPlanHazirla(
 }
 
 /*
- * These lifecycle helpers deliberately do not debit research resources. The
- * numeric science.xml resource type mapping is not verified yet. Callers must
- * authorize/debit the plan's researchNeed before applying it.
+ * Lifecycle helpers do not debit resources. The science mutation service
+ * validates prerequisites, computes costs and debits atomically with this plan.
  */
 function verifiedScienceResearchPlaniniStateEt(state, plan) {
   if (!state || typeof state !== "object" || !plan || plan.ok !== true) {
@@ -462,8 +451,12 @@ function verifiedScienceResearchPlaniniStateEt(state, plan) {
   if (!scienceMelumatiniAl(plan.itemId)) {
     return { ok: false, code: "SCIENCE_ITEM_UNVERIFIED" };
   }
-  if (scienceArtıqArasdirilib(state, plan.itemId)) {
-    return { ok: false, code: "SCIENCE_ALREADY_RESEARCHED" };
+  const currentLevel = scienceLevelAl(state, plan.itemId);
+  const targetLevel = plan.targetLevel ?? 1;
+  if (currentLevel >= targetLevel) return { ok: false, code: "SCIENCE_ALREADY_RESEARCHED" };
+  if (currentLevel !== (plan.currentLevel ?? 0) || targetLevel !== currentLevel + 1 ||
+      !scienceLevelMelumatiniAl(plan.itemId, targetLevel)) {
+    return { ok: false, code: "SCIENCE_PLAN_STALE" };
   }
 
   const queues =
@@ -544,6 +537,8 @@ function verifiedScienceResearchPlaniniStateEt(state, plan) {
 
   queue.status = "running";
   queue.itemId = itemId;
+  queue.scienceStartLevel = currentLevel;
+  queue.scienceTargetLevel = targetLevel;
   queue.startUnixMs = startUnixMs;
   queue.finishUnixMs = finishUnixMs;
   queue.source =
@@ -601,7 +596,7 @@ function verifiedScienceResearchDeadlineAtMs(state) {
     : null;
 }
 
-function verifiedScienceResearchYekunlasdir(state, nowUnixMs = Date.now()) {
+function verifiedScienceResearchYekunlasdir(state, nowUnixMs = Date.now(), options = {}) {
   if (!state || typeof state !== "object") return [];
 
   const queues =
@@ -614,22 +609,41 @@ function verifiedScienceResearchYekunlasdir(state, nowUnixMs = Date.now()) {
       nowUnixMs,
       Date.now()
     );
-  if (!state.science || typeof state.science !== "object" || Array.isArray(state.science)) {
-    state.science = {};
-  }
-
   const completed = [];
   for (const queue of queues) {
     if (!queue || !scienceQueueTipidir(queue)) continue;
+    if (options.queueUuid && queue.uuid !== options.queueUuid) continue;
     if (metnAl(queue.status, 32).toLowerCase() !== "running") continue;
-    const itemId = metnAl(queue.itemId, 32);
-    if (!scienceMelumatiniAl(itemId)) continue;
-    if (tamEded(queue.finishUnixMs) > now) continue;
-
+    const itemId = metnAl(queue.itemId || queue.itemObj?.itemId, 32);
+    const targetLevel = queue.scienceTargetLevel ?? 1;
+    if (!scienceLevelMelumatiniAl(itemId, targetLevel)) continue;
+    const finish = Number(queue.finishUnixMs ?? queue.updateTime);
+    if (!Number.isFinite(finish) || finish < 0 || finish > now + (options.earlyWindowMs || 0)) continue;
+    const current = scienceLevelAl(state, itemId);
+    // A persisted completion must never downgrade a later imported level.
+    if (current < targetLevel && current !== (queue.scienceStartLevel ?? 0)) continue;
+    if (!state.science || typeof state.science !== "object") state.science = {};
+    if (current < targetLevel) {
+      if (Array.isArray(state.science)) {
+        const entry = state.science.find(row => String(row?.itemId ?? row?.id) === itemId);
+        if (entry) {
+          entry.level = targetLevel;
+          if (Object.hasOwn(entry, "scienceLevel")) entry.scienceLevel = targetLevel;
+        } else state.science.push({ itemId, level: targetLevel });
+      } else if (state.science[itemId] && typeof state.science[itemId] === "object") {
+        state.science[itemId].level = targetLevel;
+        if (Object.hasOwn(state.science[itemId], "scienceLevel")) state.science[itemId].scienceLevel = targetLevel;
+      } else state.science[itemId] = targetLevel;
+    }
+    // Settling a stale queue also changes persisted state. Report that settlement
+    // so the deadline scheduler commits it, without lowering an imported level.
+    completed.push({ itemId, queueUuid: metnAl(queue.uuid, 128), level: Math.max(current, targetLevel), completedUnixMs: now });
     queue.status = "completed";
     queue.completedUnixMs = now;
-    state.science[itemId] = 1;
-    completed.push({ itemId, queueUuid: metnAl(queue.uuid, 128), level: 1, completedUnixMs: now });
+    queue.lastScienceCompletion = { itemId, level: targetLevel, completedUnixMs: now };
+    // Keep the RDC completion history while releasing the native queue item.
+    // Native duplicate detection considers even overdue queues with an itemId.
+    if (queue.itemObj) queue.itemObj = {};
   }
   return completed;
 }

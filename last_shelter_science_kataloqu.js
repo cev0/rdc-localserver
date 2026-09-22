@@ -3,10 +3,8 @@
 /*
  * Last Shelter Survival v1.250.102 science.xml reference catalog.
  *
- * Bu modul yalnız reference fayldan tam təsdiqlənmiş science node-larını
- * saxlayır. research_need daxilindəki numeric resource type-lar qəsdən
- * adlandırılmır; original server mapping-i ayrıca təsdiqlənənə qədər raw
- * kod + amount semantikası qorunur.
+ * Full source XML level catalog. Raw numeric resource codes remain available;
+ * their verified Java enum mapping lives in last_shelter_resource_types.js.
  */
 
 function metnAl(value, max = 128) {
@@ -73,67 +71,31 @@ const SCIENCE_PROTOCOL = Object.freeze({
   ])
 });
 
-const RAW_SCIENCE = Object.freeze({
-  "901000": Object.freeze({
-    itemId: "901000",
-    quality: 1,
-    scienceLevel: 0,
-    maxLevel: 1,
-    buildingCondition: "403001",
-    researchNeedRaw:
-      "0;0|1;0|2;0|3;0|14;1000",
-    researchTimeSeconds: 90,
-    para1: "801",
-    para2: "0",
-    power: 0,
-    effectType: 1
-  }),
-
-  "901100": Object.freeze({
-    itemId: "901100",
-    quality: 1,
-    scienceLevel: 0,
-    maxLevel: 1,
-    buildingCondition: "403001",
-    researchNeedRaw:
-      "0;0|1;0|2;0|3;0|14;1000",
-    researchTimeSeconds: 90,
-    para1: "802",
-    para2: "0",
-    power: 0,
-    effectType: 1
-  }),
-
-  "901200": Object.freeze({
-    itemId: "901200",
-    quality: 2,
-    scienceLevel: 0,
-    maxLevel: 1,
-    buildingCondition: "403001",
-    researchNeedRaw:
-      "0;0|1;0|2;0|3;0|14;1000",
-    researchTimeSeconds: 180,
-    para1: "803",
-    para2: "0",
-    power: 0,
-    effectType: 1
-  }),
-
-  "901300": Object.freeze({
-    itemId: "901300",
-    quality: 2,
-    scienceLevel: 0,
-    maxLevel: 1,
-    buildingCondition: "403001",
-    researchNeedRaw:
-      "0;0|1;0|2;0|3;0|14;1000",
-    researchTimeSeconds: 180,
-    para1: "804",
-    para2: "0",
-    power: 0,
-    effectType: 1
-  })
-});
+// All 4,596 level rows come from the checksummed XML snapshot. Runtime node
+// IDs remain the 441 level-zero roots; terminal rows have no research timer.
+const { sourceCatalog } = require("./last_shelter_source_catalog");
+const RAW_SCIENCE = Object.freeze(Object.fromEntries(
+  sourceCatalog.rows("science").map(row => [row.id, Object.freeze({
+    itemId: row.id,
+    rootItemId: String(Number(row.id) - Number(row.science_lv)),
+    quality: Number(row.quality),
+    scienceLevel: Number(row.science_lv),
+    maxLevel: Number(row.max_lv),
+    buildingCondition: row.building_condition || "",
+    scienceCondition: row.science_condition || "",
+    scienceConditionNew: row.science_condition_new || "",
+    scienceTypeCondition: row.science_type_condition || "",
+    goodsNeedRaw: row.goods_need || "",
+    researchNeedRaw: row.research_need || "0",
+    researchTimeSeconds: row.time_research == null ? null : Number(row.time_research),
+    para1: row.para1 || "",
+    para2: row.para2 || "0",
+    power: Number(row.power || 0),
+    effectType: Number(row.effect_type || 0),
+    sourceAttributes: Object.freeze({ ...row })
+  })])
+));
+sourceCatalog.release("science");
 
 function scienceMelumatiniAl(itemId) {
   const id = metnAl(itemId, 32);
@@ -155,9 +117,13 @@ function scienceMelumatiniAl(itemId) {
 }
 
 function scienceIdleriAl() {
-  return Object.keys(
-    RAW_SCIENCE
-  );
+  return Object.keys(RAW_SCIENCE).filter(id => RAW_SCIENCE[id].scienceLevel === 0);
+}
+
+function scienceLevelMelumatiniAl(rootItemId, level) {
+  const root = RAW_SCIENCE[metnAl(rootItemId, 32)];
+  if (!root || root.scienceLevel !== 0 || !Number.isInteger(level) || level < 0 || level > root.maxLevel) return null;
+  return scienceMelumatiniAl(String(Number(rootItemId) + level));
 }
 
 module.exports = {
@@ -165,5 +131,6 @@ module.exports = {
   RAW_SCIENCE,
   researchNeedParseEt,
   scienceMelumatiniAl,
-  scienceIdleriAl
+  scienceIdleriAl,
+  scienceLevelMelumatiniAl
 };

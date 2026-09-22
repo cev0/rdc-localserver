@@ -71,7 +71,7 @@ const end = serverSource.indexOf("// HTTP SERVER", start);
 assert(start >= 0 && end > start, "Production registration block must exist");
 vm.runInNewContext(serverSource.slice(start, end), context);
 for (const type of ["mission.info", "engagement.info", "building.reference.list",
-  "repay.info", "alliance.group_purchase.info", "last_shelter.init"]) {
+  "repay.info", "alliance.group_purchase.info", "last_shelter.init", "science.research", "science.upgrade"]) {
   assert(runtimeCommandRouter.has(type), `Missing production route: ${type}`);
 }
 console.log(`PASS: actual production block registers ${runtimeCommandRouter.listRoutes().length} Last Shelter routes without collisions.`);

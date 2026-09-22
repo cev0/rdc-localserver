@@ -1,6 +1,7 @@
 "use strict";
 
 const crypto = require("crypto");
+const { sourceBuildingPrerequisites } = require("./last_shelter_building_state");
 const {
   playerIdUyugunluqYoxla
 } = require("./runtime_core_read_commands");
@@ -391,6 +392,12 @@ function gameplayMutationCommandleriniQeydEt(
         return;
       }
 
+      const prerequisite = sourceBuildingPrerequisites(state, levelData);
+      if (!prerequisite.ok) {
+        errorGonder(send, ws, "Required Last Shelter building level is missing", "BUILDING_CONDITION_NOT_MET");
+        return;
+      }
+
       const check =
         hasEnoughResources(
           state,
@@ -754,6 +761,12 @@ function gameplayMutationCommandleriniQeydEt(
           "Verified Last Shelter building level data is incomplete for this target level",
           "BUILDING_LEVEL_REFERENCE_INCOMPLETE"
         );
+        return;
+      }
+
+      const prerequisite = sourceBuildingPrerequisites(state, levelData);
+      if (!prerequisite.ok) {
+        errorGonder(send, ws, "Required Last Shelter building level is missing", "BUILDING_CONDITION_NOT_MET");
         return;
       }
 

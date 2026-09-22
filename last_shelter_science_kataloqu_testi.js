@@ -31,7 +31,9 @@ assert.strictEqual(SCIENCE_PROTOCOL.serverCalculatesResearchTime, true);
 assert.strictEqual(SCIENCE_PROTOCOL.queueIsOccupiedUntilServerFinishTime, true);
 assert.deepStrictEqual(SCIENCE_PROTOCOL.successResponseFields, ["resource", "queue", "gold"]);
 
-assert.deepStrictEqual(scienceIdleriAl(), ["901000", "901100", "901200", "901300"]);
+assert.strictEqual(scienceIdleriAl().length, 441);
+assert.strictEqual(Object.keys(RAW_SCIENCE).length, 4596);
+for (const id of ["901000", "901100", "901200", "901300"]) assert(scienceIdleriAl().includes(id));
 assert.strictEqual(Object.isFrozen(RAW_SCIENCE), true);
 
 const s901000 = scienceMelumatiniAl("901000");

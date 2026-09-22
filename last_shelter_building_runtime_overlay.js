@@ -62,10 +62,13 @@ function verifiedLastShelterBuildingLevelDataAl(
     return null;
   }
 
-  const row =
-    mainBuildingLeveliniAl(level);
+  // UserBuildingManager.upgradeBuilding obtains costs/time/conditions from
+  // getItemLevelId() (the CURRENT level), then verifies the next row exists.
+  // Creating level 1 similarly consumes the level-zero row.
+  const row = mainBuildingLeveliniAl(level - 1);
+  const targetRow = mainBuildingLeveliniAl(level);
 
-  if (!row) {
+  if (!row || !targetRow || level > row.maxLevelFromXml) {
     return null;
   }
 
@@ -75,6 +78,7 @@ function verifiedLastShelterBuildingLevelDataAl(
     buildingId: id,
     buildingTypeId,
     xmlId: row.xmlId,
+    targetXmlId: targetRow.xmlId,
     targetLevel: level,
     maxLevelFromXml:
       Math.max(

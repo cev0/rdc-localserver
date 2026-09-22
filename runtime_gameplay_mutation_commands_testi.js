@@ -406,6 +406,22 @@ const {
     "Training ve verified-gap upgrade request-ləri PostgreSQL-authoritative executor-dan keçməlidir."
   );
 
+  // Real source HQ level 1 -> 2 requires food distribution and housing.
+  levelDataOverride = require("./last_shelter_building_runtime_overlay").verifiedLastShelterBuildingLevelDataAl("hq", 2);
+  const hq = state.buildings.find(row => row.instanceId === "hq-1");
+  hq.level = 1;
+  sent.length = 0;
+  await router.dispatch({type:"upgrade_request",msg:{type:"upgrade_request",buildingInstanceId:"hq-1"},ws,send,nowMs:()=>500});
+  assert.strictEqual(sent[0].code,"BUILDING_CONDITION_NOT_MET");
+  assert.strictEqual(buildingSpendCalls,0);
+  assert.strictEqual(upgradeJobCalls,0);
+  state.buildings.push({buildingId:"ration_truck",level:1,isCompleted:true},{buildingId:"house",level:1,isCompleted:true});
+  sent.length = 0;
+  await router.dispatch({type:"upgrade_request",msg:{type:"upgrade_request",buildingInstanceId:"hq-1"},ws,send,nowMs:()=>501});
+  assert.strictEqual(sent[0].type,"upgrade_started");
+  assert.strictEqual(buildingSpendCalls,1);
+  assert.strictEqual(upgradeJobCalls,1);
+
   const legacyServerCode =
     fs.readFileSync(
       require.resolve("./server.js"),

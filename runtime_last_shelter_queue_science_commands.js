@@ -8,8 +8,8 @@ const {
   scienceMelumatiniAl
 } = require("./last_shelter_science_kataloqu");
 const {
-  verifiedScienceResearchPlanHazirla
-} = require("./last_shelter_science_runtime_adapteri");
+  sourceScienceResearchPlan, sourceScienceResearch, sourceScienceUpgrade
+} = require("./last_shelter_science_mutation");
 const {
   scienceTopologyMelumatiniAl,
   scienceTopologyIdleriniAl
@@ -106,9 +106,8 @@ function lastShelterQueueScienceCommandleriniQeydEt(router,deps) {
     send(ws,{type:"science.catalog",playerId:authCheck.playerId,serverTimeUnixMs:serverVaxtiAl(nowMs),science:scienceCatalogProjectionHazirla()});
   },{authRequired:true,mutation:false});
 
-  // Full 441-node topology observed from GetScienceInfo. This is intentionally
-  // separate from science.catalog: the latter contains only nodes whose
-  // original science.xml balance (cost/time) has been independently verified.
+  // Keep the observed topology snapshot distinct from the full source XML
+  // level catalog; a captured response may contain live modifiers.
   router.register("science.topology.list",async ({ws,msg,send,nowMs})=>{
     const authCheck=authYoxla(ws,msg,send); if(!authCheck) return;
     send(ws,{
@@ -151,22 +150,35 @@ function lastShelterQueueScienceCommandleriniQeydEt(router,deps) {
     const authCheck=authYoxla(ws,msg,send); if(!authCheck) return;
     const now=serverVaxtiAl(nowMs);
     const state=getOrCreatePlayerState(authCheck.playerId);
-    const prerequisite=sciencePrerequisiteStatusuAl(state,msg && msg.itemId);
-    if(!prerequisite.ok){
-      send(ws,{type:"error",code:prerequisite.code || "SCIENCE_CONDITION_NOT_MET",message:"Science prerequisite failed",prerequisite});
-      return;
-    }
-    const plan=verifiedScienceResearchPlanHazirla(state,{
+    const plan=sourceScienceResearchPlan(state,{
       itemId:msg && msg.itemId,
       quuid:msg && (msg.quuid || msg.queueUuid),
       gold:msg && msg.gold
     },now);
     if(!plan.ok){
-      send(ws,{type:"error",code:plan.code || "SCIENCE_PLAN_FAILED",message:"Science plan failed"});
+      send(ws,{type:"error",code:plan.code || "SCIENCE_PLAN_FAILED",message:"Science plan failed",prerequisite:plan.prerequisite});
       return;
     }
-    send(ws,{type:"science.plan",playerId:authCheck.playerId,serverTimeUnixMs:now,prerequisite,plan});
+    send(ws,{type:"science.plan",playerId:authCheck.playerId,serverTimeUnixMs:now,prerequisite:plan.prerequisite,plan});
   },{authRequired:true,mutation:false});
+
+  for (const [type, execute] of [["science.research", sourceScienceResearch], ["science.upgrade", sourceScienceUpgrade]]) {
+    router.register(type, async ({ws, msg, send, nowMs}) => {
+      const authCheck = authYoxla(ws, msg, send); if (!authCheck) return;
+      const now = serverVaxtiAl(nowMs);
+      const state = getOrCreatePlayerState(authCheck.playerId);
+      const result = execute(state, {
+        itemId: msg?.itemId, quuid: msg?.quuid || msg?.queueUuid, gold: msg?.gold
+      }, now);
+      if (!result.ok) {
+        send(ws, {type:"error", code:result.code || "INVALID_OPT", message:"Science operation failed",
+          prerequisite:result.prerequisite, missingResources:result.missingResources});
+        return;
+      }
+      const {ok, ...payload} = result;
+      send(ws, {type, playerId:authCheck.playerId, serverTimeUnixMs:now, ...payload});
+    }, {authRequired:true, mutation:true, postgresAuthoritative:true});
+  }
 
   return router;
 }

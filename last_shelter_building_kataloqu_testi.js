@@ -195,10 +195,9 @@ assert.deepStrictEqual(
   []
 );
 
-assert.strictEqual(
-  mainBuildingLeveliniAl(6),
-  null
-);
+assert.ok(mainBuildingLeveliniAl(6));
+assert.ok(mainBuildingLeveliniAl(25));
+assert.strictEqual(Object.keys(RAW_MAIN_BUILDING_LEVELS).length,31);
 
 
 const activeDefinitions =

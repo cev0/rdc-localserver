@@ -161,7 +161,7 @@ function lastShelterItemBuyIcraEt(
     );
 
   if (!plan.success) {
-    return plan;
+    return { ...plan, code: plan.errorCode || "INVALID_OPT" };
   }
 
   if (plan.appendRoute !== "item") {

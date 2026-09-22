@@ -1,11 +1,9 @@
 "use strict";
 
 /*
- * Verified Last Shelter v1.250.x building.xml reference rows.
- *
- * These values are kept as reference semantics first. They are not yet used as
- * the active RDC build/upgrade engine because the complete 400000 level chain
- * and all prerequisite type mappings have not been recovered.
+ * Full building.xml source rows, including HQ 0..30 (the declared base cap is 25).
+ * Runtime overlays must still enforce prerequisites and the source cost-level
+ * convention; source row availability alone does not prove gameplay parity.
  */
 
 const RDC_TO_LAST_SHELTER_BUILDING_TYPE =
@@ -64,155 +62,44 @@ function xercHazirla(row) {
   });
 }
 
-const RAW_MAIN_BUILDING_LEVELS =
-  Object.freeze({
-    0: Object.freeze({
-      xmlId: "400000",
-      buildingTypeId: "400000",
-      level: 0,
-      maxLevelFromXml: 25,
-      buildingConditionRaw: "",
-      wood: 0,
-      stone: 0,
-      iron: 130,
-      food: 30,
-      money: 0,
-      electricity: 0,
-      silver: 0,
-      putConsumeRaw: "15;140",
-      powerDissipation: 0,
-      buildTimeSeconds: 5,
-      exp: 0,
-      power: 0,
-      stationedSlots: 0,
-      num: 1,
-      tiles: 3,
-      unlockPopulationRaw: "1;0"
-    }),
+const { sourceCatalog } = require("./last_shelter_source_catalog");
+const RAW_BUILDING_ROWS = Object.freeze(Object.fromEntries(sourceCatalog.rows("building")
+  .map(row => [row.id, Object.freeze({ ...row })])));
+sourceCatalog.release("building");
 
-    1: Object.freeze({
-      xmlId: "400001",
-      buildingTypeId: "400000",
-      level: 1,
-      maxLevelFromXml: 25,
-      buildingConditionRaw:
-        "460000;1|433000;1",
-      wood: 0,
-      stone: 0,
-      iron: 190,
-      food: 50,
-      money: 210,
-      electricity: 0,
-      silver: 0,
-      putConsumeRaw: "0",
-      powerDissipation: 1,
-      buildTimeSeconds: 12,
-      destroyTimeSeconds: 3,
-      exp: 0,
-      power: 2323,
-      para1: "3000;11000",
-      para2: "1",
-      population: 0
-    }),
+function buildingXmlRowAl(xmlId) {
+  const raw = RAW_BUILDING_ROWS[String(xmlId)];
+  return raw ? { ...raw } : null;
+}
 
-    2: Object.freeze({
-      xmlId: "400002",
-      buildingTypeId: "400000",
-      level: 2,
-      maxLevelFromXml: 25,
-      buildingConditionRaw:
-        "460000;2|433000;2",
-      wood: 200,
-      stone: 0,
-      iron: 290,
-      food: 100,
-      money: 320,
-      electricity: 0,
-      silver: 0,
-      putConsumeRaw: "0",
-      powerDissipation: 10,
-      buildTimeSeconds: 50,
-      destroyTimeSeconds: 6,
-      exp: 0,
-      power: 2551,
-      para1: "5000;11000",
-      para2: "1",
-      population: 180
-    }),
+function buildingRowHazirla(row) {
+  const result = {
+    xmlId: row.id,
+    buildingTypeId: String(Number(row.id) - Number(row.level)),
+    level: Number(row.level),
+    maxLevelFromXml: Number(row.max_level || 0),
+    buildingConditionRaw: row.building || "",
+    ...xercHazirla(row),
+    putConsumeRaw: row.put_consume || "",
+    powerDissipation: Number(row.power_dissipation || 0),
+    buildTimeSeconds: row.time == null ? null : Number(row.time),
+    exp: Number(row.exp || 0),
+    power: Number(row.power || 0),
+    sourceAttributes: Object.freeze({ ...row })
+  };
+  for (const [xml, name] of [["destroy_time", "destroyTimeSeconds"], ["is_stationed", "stationedSlots"],
+    ["population", "population"], ["num", "num"], ["tiles", "tiles"]]) {
+    if (row[xml] != null) result[name] = Number(row[xml]);
+  }
+  for (const key of Object.keys(row).filter(key => /^para\d+$/.test(key))) result[key] = row[key];
+  if (row.unlock_population != null) result.unlockPopulationRaw = row.unlock_population;
+  return Object.freeze(result);
+}
 
-    3: Object.freeze({
-      xmlId: "400003",
-      buildingTypeId: "400000",
-      level: 3,
-      maxLevelFromXml: 25,
-      buildingConditionRaw:
-        "460000;3|433000;3",
-      wood: 800,
-      stone: 0,
-      iron: 860,
-      food: 0,
-      money: 710,
-      electricity: 0,
-      silver: 0,
-      putConsumeRaw: "0",
-      powerDissipation: 13,
-      buildTimeSeconds: 120,
-      destroyTimeSeconds: 25,
-      exp: 0,
-      power: 2771,
-      para1: "7100;11000",
-      para3: "404000;424000",
-      population: 295
-    }),
-
-    4: Object.freeze({
-      xmlId: "400004",
-      buildingTypeId: "400000",
-      level: 4,
-      maxLevelFromXml: 25,
-      buildingConditionRaw:
-        "460000;4|433000;4",
-      wood: 1000,
-      stone: 500,
-      iron: 1500,
-      food: 960,
-      money: 1100,
-      electricity: 0,
-      silver: 0,
-      putConsumeRaw: "0",
-      powerDissipation: 18,
-      buildTimeSeconds: 710,
-      destroyTimeSeconds: 60,
-      exp: 0,
-      power: 2985,
-      para1: "9300;11000",
-      para3: "425000;411000"
-    }),
-
-    5: Object.freeze({
-      xmlId: "400005",
-      buildingTypeId: "400000",
-      level: 5,
-      maxLevelFromXml: 25,
-      buildingConditionRaw:
-        "460000;5|434000;5|450000;1|433000;5",
-      wood: 0,
-      stone: 1300,
-      iron: 3600,
-      food: 1800,
-      money: 3200,
-      electricity: 0,
-      silver: 0,
-      putConsumeRaw: "0",
-      powerDissipation: 25,
-      buildTimeSeconds: 2110,
-      destroyTimeSeconds: 355,
-      exp: 0,
-      power: 3194,
-      para1: "10000;11000",
-      para3: "416000;426000"
-    })
-  });
+const RAW_MAIN_BUILDING_LEVELS = Object.freeze(Object.fromEntries(
+  Object.values(RAW_BUILDING_ROWS).filter(row => Number(row.id) - Number(row.level) === 400000)
+    .map(row => [row.level, buildingRowHazirla(row)])
+));
 
 function mainBuildingLeveliniAl(level) {
   const lvl =
@@ -258,6 +145,9 @@ function rdcBuildingTypeIdAl(
 module.exports = {
   RDC_TO_LAST_SHELTER_BUILDING_TYPE,
   RAW_MAIN_BUILDING_LEVELS,
+  RAW_BUILDING_ROWS,
+  buildingXmlRowAl,
+  buildingRowHazirla,
   sertleriParseEt,
   mainBuildingLeveliniAl,
   rdcBuildingTypeIdAl

@@ -132,7 +132,7 @@ assert.deepStrictEqual(
 
 assert.strictEqual(
   Object.keys(ORIGINAL_GOODS).length,
-  7
+  1066
 );
 assert.strictEqual(
   originalGoodAl("200001").price,
