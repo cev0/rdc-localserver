@@ -107,40 +107,8 @@ const {
           .trim()
           .toLowerCase(),
 
-    ensureTechnologyObject:
-      target => {
-        target.technology =
-          target.technology || {
-            currentResearch: null
-          };
-      },
-
-    startTechnologyResearch:
-      (target, techId) => {
-        const research = {
-          techId,
-          targetLevel: 2,
-          startedAtMs: 100,
-          durationMs: 5000,
-          endsAtMs: 5100
-        };
-
-        target.technology.currentResearch =
-          research;
-
-        return {
-          ok: true,
-          research
-        };
-      },
-
     refreshTechnologyStats() {},
     updateServerTime() {},
-
-    schedulePlayerDeadline:
-      (playerId) => {
-        deadlines.push(playerId);
-      },
 
     makeClientState:
       target => ({
@@ -223,28 +191,18 @@ const {
 
   assert.strictEqual(
     handled,
-    true
+    false,
+    "Legacy technology_research_start route must stay unregistered."
   );
 
   assert.deepStrictEqual(
     lockCalls,
-    ["p1"]
+    []
   );
 
   assert.deepStrictEqual(
-    deadlines,
-    [],
-    "PostgreSQL-authoritative route deadline-i handler daxilinde commit-den evvel schedule etmemelidir."
-  );
-
-  assert.strictEqual(
-    sent[0].type,
-    "technology_research_started"
-  );
-
-  assert.strictEqual(
-    sent[1].type,
-    "state"
+    sent,
+    []
   );
 
   sent.length = 0;
@@ -269,7 +227,7 @@ const {
 
   assert.strictEqual(
     lockCalls.length,
-    2,
+    1,
     "Mutation command mismatch olsa bele router mutex daxilinde emal olunur."
   );
 
@@ -402,7 +360,7 @@ const {
 
   assert.strictEqual(
     lockCalls.length,
-    4,
+    3,
     "Training ve verified-gap upgrade request-ləri PostgreSQL-authoritative executor-dan keçməlidir."
   );
 
