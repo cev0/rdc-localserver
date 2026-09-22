@@ -125,15 +125,6 @@ function bina(buildingId, level) {
   assert.strictEqual(
     qosunKilidiniYoxla(
       {},
-      bina("fighter_camp", 1),
-      "warrior_t10"
-    ).success,
-    true,
-    "Unverified tier->building-level thresholds must not block verified troop rows."
-  );
-  assert.strictEqual(
-    qosunKilidiniYoxla(
-      {},
       bina("shooter_camp", 1),
       "warrior_t1"
     ).success,
@@ -141,38 +132,112 @@ function bina(buildingId, level) {
     "Training-building class compatibility remains enforced."
   );
 
-  for (const [classId, buildingId] of [
-    ["warrior", "fighter_camp"],
-    ["shooter", "shooter_camp"],
-    ["vehicle", "vehicle_factory"]
-  ]) {
-    const t9 = `${classId}_t9`;
-    const t10 = `${classId}_t10`;
+  const unlockCases = [
+    {
+      classId: "warrior",
+      buildingId: "fighter_camp",
+      t9Science: "973400",
+      t10Science: "973700",
+      t9BuildingToken: "423025",
+      t10BuildingToken: "423030"
+    },
+    {
+      classId: "vehicle",
+      buildingId: "vehicle_factory",
+      t9Science: "971400",
+      t10Science: "971700",
+      t9BuildingToken: "424025",
+      t10BuildingToken: "424030"
+    },
+    {
+      classId: "shooter",
+      buildingId: "shooter_camp",
+      t9Science: "975400",
+      t10Science: "975700",
+      t9BuildingToken: "425025",
+      t10BuildingToken: "425030"
+    }
+  ];
+
+  for (const row of unlockCases) {
+    const t9 = `${row.classId}_t9`;
+    const t10 = `${row.classId}_t10`;
+    const t9Unit = qosunMelumatiniAl(t9);
+    const t10Unit = qosunMelumatiniAl(t10);
 
     assert.strictEqual(
-      Object.prototype.hasOwnProperty.call(
-        qosunMelumatiniAl(t9),
-        "requiredResearchId"
-      ),
+      t9Unit.sourceScienceUnlockId,
+      row.t9Science
+    );
+    assert.strictEqual(
+      t10Unit.sourceScienceUnlockId,
+      row.t10Science
+    );
+    assert.strictEqual(
+      t9Unit.sourceBuildingUnlock.token,
+      row.t9BuildingToken
+    );
+    assert.strictEqual(
+      t10Unit.sourceBuildingUnlock.token,
+      row.t10BuildingToken
+    );
+
+    const lockedT9 =
+      qosunKilidiniYoxla(
+        {},
+        bina(row.buildingId, 25),
+        t9
+      );
+    assert.strictEqual(
+      lockedT9.success,
       false
     );
     assert.strictEqual(
-      Object.prototype.hasOwnProperty.call(
-        qosunMelumatiniAl(t10),
-        "requiredResearchId"
-      ),
-      false
+      lockedT9.reason,
+      "research_required"
+    );
+    assert.strictEqual(
+      lockedT9.requiredScienceId,
+      row.t9Science
     );
 
+    const unlockedT9 =
+      qosunKilidiniYoxla(
+        {
+          science: {
+            [row.t9Science]: 1
+          }
+        },
+        bina(row.buildingId, 25),
+        t9
+      );
     assert.strictEqual(
-      qosunKilidiniYoxla({}, bina(buildingId, 25), t9).success,
+      unlockedT9.success,
       true,
-      "Unverified synthetic T9 research gate must not block a verified troop row."
+      "Verified T9 science unlock must open the troop."
+    );
+
+    const t10Status =
+      qosunKilidiniYoxla(
+        {
+          science: {
+            [row.t10Science]: 1
+          }
+        },
+        bina(row.buildingId, 30),
+        t10
+      );
+    assert.strictEqual(
+      t10Status.success,
+      false
     );
     assert.strictEqual(
-      qosunKilidiniYoxla({}, bina(buildingId, 25), t10).success,
-      true,
-      "Unverified synthetic T10 research gate must not block a verified troop row."
+      t10Status.reason,
+      "science_unlock_unmigrated"
+    );
+    assert.strictEqual(
+      t10Status.requiredScienceId,
+      row.t10Science
     );
   }
 
