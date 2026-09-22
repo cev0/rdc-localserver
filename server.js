@@ -207,51 +207,12 @@ function normalizeResourceKey(type) {
   return String(type || "").trim().toLowerCase();
 }
 
-function getBaseTechnologyStats() {
-  return {
-    productionPct: 0,
-    buildSpeedPct: 0,
-    trainingSpeedPct: 0
-  };
-}
-
-function ensureTechnologyObject(state) {
-  if (!state || typeof state !== "object") return;
-
-  if (!state.technology || typeof state.technology !== "object") {
-    state.technology = {
-      levels: {},
-      currentResearch: null,
-      stats: getBaseTechnologyStats()
-    };
-  }
-
-  if (!state.technology.levels || typeof state.technology.levels !== "object") {
-    state.technology.levels = {};
-  }
-
-  if (typeof state.technology.currentResearch !== "object" && state.technology.currentResearch !== null) {
-    state.technology.currentResearch = null;
-  }
-
-  if (!state.technology.stats || typeof state.technology.stats !== "object") {
-    state.technology.stats = getBaseTechnologyStats();
-  }
-
-  const baseStats = getBaseTechnologyStats();
-  for (const key of Object.keys(baseStats)) {
-    if (typeof state.technology.stats[key] !== "number") {
-      state.technology.stats[key] = baseStats[key];
-    }
-  }
-}
-
-function getAdjustedBuildDurationMs(state, baseBuildTimeSeconds) {
+// Legacy state.technology bootstrap removed; Last Shelter state.science is authoritative.\n\nfunction getAdjustedBuildDurationMs(state, baseBuildTimeSeconds) {
   ensureTechnologyObject(state);
   refreshTechnologyStats(state);
 
   const rawMs = Math.max(0, Math.round((Number(baseBuildTimeSeconds) || 0) * 1000));
-  const technologySpeedPct = Math.max(0, Number(state.technology?.stats?.buildSpeedPct) || 0);
+  const technologySpeedPct = 0;
 
   if (rawMs <= 0) return rawMs;
 
@@ -271,7 +232,7 @@ function getAdjustedTrainingDurationMs(state, rawDurationMs) {
   refreshTechnologyStats(state);
 
   const durationMs = Math.max(0, Math.round(Number(rawDurationMs) || 0));
-  const speedPct = Math.max(0, Number(state.technology?.stats?.trainingSpeedPct) || 0);
+  const speedPct = 0;
 
   if (durationMs <= 0 || speedPct <= 0) return durationMs;
 
