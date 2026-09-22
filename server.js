@@ -2365,7 +2365,8 @@ function getMaxLevelForBuilding(buildingId) {
     return cfg.levels.length;
   }
 
-  return 10;
+  // Unknown/unverified building types must not receive an invented level cap.
+  return 0;
 }
 
 function hasEnoughResources(state, costArray) {
