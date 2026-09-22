@@ -31,6 +31,7 @@ const {
     getOrCreatePlayerState: () => state
   });
   assert(router.has("hero.info"));
+  assert(router.has("hero.get"));
 
   const sent = [];
   const ws = { playerId: "p1", _authedPlayerId: "p1" };
@@ -45,6 +46,34 @@ const {
   assert.strictEqual(sent[0].playerId, "p1");
   assert.strictEqual(sent[0].serverTimeUnixMs, 123456);
   assert.strictEqual(sent[0].hero.templates.length, 21);
+
+  await router.dispatch({
+    ws,
+    msg: { type: "hero.get", playerId: "p1", heroId: "240041" },
+    send: (_ws, payload) => sent.push(payload),
+    nowMs: () => 123457
+  });
+  assert.strictEqual(sent[1].type, "hero.get");
+  assert.strictEqual(sent[1].hero.id, "240041");
+  assert.strictEqual(sent[1].hero.compose, "206011");
+  assert.strictEqual(sent[1].serverTimeUnixMs, 123457);
+
+  sent[1].hero.id = "tampered";
+  await router.dispatch({
+    ws,
+    msg: { type: "hero.get", playerId: "p1", heroId: "240041" },
+    send: (_ws, payload) => sent.push(payload)
+  });
+  assert.strictEqual(sent[2].hero.id, "240041");
+
+  await router.dispatch({
+    ws,
+    msg: { type: "hero.get", playerId: "p1", heroId: "999999" },
+    send: (_ws, payload) => sent.push(payload)
+  });
+  assert.strictEqual(sent[3].type, "error");
+  assert.strictEqual(sent[3].code, "HERO_NOT_FOUND");
+  assert.strictEqual(sent[3].heroId, "999999");
 
   console.log("runtime_last_shelter_hero_commands_testi: OK");
 })().catch(err => {
