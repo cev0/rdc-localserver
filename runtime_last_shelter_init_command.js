@@ -13,6 +13,9 @@ const {
 const {
   lastShelterHeroCommandleriniQeydEt
 } = require("./runtime_last_shelter_hero_commands");
+const {
+  lastShelterAuxiliaryCommandleriniQeydEt
+} = require("./runtime_last_shelter_auxiliary_reference_commands");
 
 function clone(value) {
   return value == null
@@ -86,6 +89,13 @@ function lastShelterInitCommandiniQeydEt(
   // Last Shelter bootstrap surface. Register it here so the production
   // server exposes hero.info whenever it installs last_shelter.init.
   lastShelterHeroCommandleriniQeydEt(
+    router,
+    {
+      getOrCreatePlayerState
+    }
+  );
+
+  lastShelterAuxiliaryCommandleriniQeydEt(
     router,
     {
       getOrCreatePlayerState
