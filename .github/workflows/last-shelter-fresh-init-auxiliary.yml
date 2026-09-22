@@ -2,7 +2,7 @@ name: Last Shelter Fresh Init Auxiliary
 
 on:
   push:
-    branches: [server-v2-scalable]
+    branches: [main]
     paths:
       - 'last_shelter_fresh_init_aux_reference.js'
       - 'last_shelter_fresh_init_aux_reference_testi.js'
