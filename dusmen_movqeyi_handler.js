@@ -6,18 +6,6 @@ const {
 } = require("./dusmen_movqeyi_sistemi");
 
 const {
-  missiyaniTap
-} = require("./missiya_kataloqu");
-
-const {
-  missiyaStatusunuAl
-} = require("./missiya_proqres");
-
-const {
-  missiyaServerHadisesiniQeydEt
-} = require("./missiya_hadise_korpu");
-
-const {
   oyunStateIniBerpaEt,
   oyuncuStateBerpaOlunub
 } = require("./oyun_state_daimilik_korpu");
@@ -57,34 +45,8 @@ function gonder(kontekst, type, melumat) {
   });
 }
 
-function dusmenMovqeyiHadisesiVar(state) {
-  const say =
-    state &&
-    state.missions &&
-    state.missions.eventCounters
-      ? Number(
-          state.missions.eventCounters
-            .dusmen_movqeyi_askarlandi
-        )
-      : 0;
-
-  return Number.isFinite(say) && say > 0;
-}
-
 function dusmenMovqeyiReadStateKopyasi(state) {
   return kopyala(state) || {};
-}
-
-function m016StatusunuAl(state) {
-  const m016 = missiyaniTap("M016");
-  if (!m016) return "kilidli";
-
-  // missiyaStatusunuAl() mission state normalizasiyası edə bilər.
-  // Status yoxlaması authoritative state-i dəyişməsin deyə clone istifadə olunur.
-  return missiyaStatusunuAl(
-    dusmenMovqeyiReadStateKopyasi(state),
-    m016
-  );
 }
 
 function dusmenMovqeyiYedeyiniAl(state) {
@@ -113,17 +75,6 @@ function dusmenMovqeyiMutasiyasiniTetbiqEt(
   state,
   nowMs = Date.now()
 ) {
-  const missionStatus = m016StatusunuAl(state);
-
-  if (missionStatus === "kilidli") {
-    return {
-      success: false,
-      deyisdi: false,
-      missionStatus,
-      message: "Düşmən mövqeyi missiyası hələ aktiv deyil."
-    };
-  }
-
   const yedek = dusmenMovqeyiYedeyiniAl(state);
   const evvelkiImza = dusmenMovqeyiImzasi(state);
   let netice;
@@ -139,7 +90,6 @@ function dusmenMovqeyiMutasiyasiniTetbiqEt(
     return {
       success: false,
       deyisdi: false,
-      missionStatus,
       message: "Düşmən mövqeyi nəticəsi hesablana bilmədi.",
       daxiliXeta: xeta && xeta.message ? xeta.message : String(xeta)
     };
@@ -150,7 +100,6 @@ function dusmenMovqeyiMutasiyasiniTetbiqEt(
     return {
       success: false,
       deyisdi: false,
-      missionStatus,
       netice: netice && typeof netice === "object" ? kopyala(netice) : null,
       message: netice && netice.message
         ? netice.message
@@ -161,9 +110,7 @@ function dusmenMovqeyiMutasiyasiniTetbiqEt(
   return {
     success: true,
     deyisdi: evvelkiImza !== dusmenMovqeyiImzasi(state),
-    missionStatus,
-    netice: kopyala(netice),
-    missionHadisesiLazimdir: !dusmenMovqeyiHadisesiVar(state)
+    netice: kopyala(netice)
   };
 }
 
@@ -203,13 +150,9 @@ async function dusmenMovqeyiMesajiniEmalEt(kontekst) {
       kontekst.getOrCreatePlayerState(playerId);
 
     if (type === "enemy_position_info_request") {
-      const missionStatus = m016StatusunuAl(state);
-
       gonder(kontekst, resultType, {
         success: true,
         playerId,
-        missionId: "M016",
-        missionStatus,
         info: dusmenMovqeyiMelumatiniHazirla(
           dusmenMovqeyiReadStateKopyasi(state)
         )
@@ -243,10 +186,6 @@ async function dusmenMovqeyiMesajiniEmalEt(kontekst) {
       gonder(kontekst, resultType, {
         success: false,
         playerId,
-        missionId: "M016",
-        missionStatus: mutasiyaNeticesi && mutasiyaNeticesi.missionStatus
-          ? mutasiyaNeticesi.missionStatus
-          : m016StatusunuAl(state),
         ...netice,
         message: mutasiyaNeticesi && mutasiyaNeticesi.message
           ? mutasiyaNeticesi.message
@@ -257,23 +196,9 @@ async function dusmenMovqeyiMesajiniEmalEt(kontekst) {
 
     const netice = mutasiyaNeticesi.netice || {};
 
-    if (
-      mutasiyaNeticesi.missionHadisesiLazimdir === true &&
-      !dusmenMovqeyiHadisesiVar(state)
-    ) {
-      await missiyaServerHadisesiniQeydEt(
-        playerId,
-        state,
-        "dusmen_movqeyi_askarlandi",
-        1
-      );
-    }
-
     gonder(kontekst, resultType, {
       success: true,
       playerId,
-      missionId: "M016",
-      missionStatus: mutasiyaNeticesi.missionStatus || m016StatusunuAl(state),
       ...netice
     });
   }
@@ -292,7 +217,6 @@ async function dusmenMovqeyiMesajiniEmalEt(kontekst) {
 
 module.exports = {
   DUSMEN_MOVQEYI_MESAJLARI,
-  m016StatusunuAl,
   dusmenMovqeyiMutasiyasiniTetbiqEt,
   dusmenMovqeyiMesajiniEmalEt
 };
