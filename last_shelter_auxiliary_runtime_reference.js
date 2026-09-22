@@ -1,7 +1,8 @@
 "use strict";
 
 const {
-  repayRuntimeDefaultHazirla
+  repayRuntimeDefaultHazirla,
+  lastShelterRepayRuntimeTeminEt
 } = require("./last_shelter_repay_reference");
 
 const {
@@ -244,13 +245,9 @@ function lastShelterAuxiliaryRuntimeTeminEt(state) {
       rewardTime:0
     };
   }
-  if (!runtime.repayinfo || typeof runtime.repayinfo !== "object") {
-    runtime.repayinfo =
-      repayRuntimeDefaultHazirla();
-  }
-  if (!Array.isArray(runtime.repayinfo.claimedPoints)) {
-    runtime.repayinfo.claimedPoints = [];
-  }
+  lastShelterRepayRuntimeTeminEt(
+    state
+  );
 
   return runtime;
 }
