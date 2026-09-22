@@ -23,6 +23,9 @@ const {
 }=require("./last_shelter_world_battlefield_reference");
 const {activityReferenceProjectionHazirla,activityReferenceAl}=require("./last_shelter_activity_reference");
 const {lastShelterMissileRuntimeTeminEt}=require("./last_shelter_missile_runtime");
+const {shopRowIdsAl,shopRowAl,itemTupleRawlariniAl}=require("./last_shelter_shop_reference");
+const {vipStorePanelInfoHazirla}=require("./last_shelter_vip_store_runtime");
+const {LAST_SHELTER_REPAY_REFERENCE,repayEligibleRewardsAl,lastShelterRepayRuntimeTeminEt}=require("./last_shelter_repay_reference");
 
 function clone(v){return v==null?v:JSON.parse(JSON.stringify(v));}
 function auth(ws,msg,send){
@@ -37,6 +40,23 @@ function lastShelterAuxiliaryCommandleriniQeydEt(router,deps){
   if(!router)throw new Error("Command router yoxdur.");
   const {getOrCreatePlayerState}=deps||{};
   if(typeof getOrCreatePlayerState!=="function")throw new Error("getOrCreatePlayerState yoxdur.");
+
+  router.register("shop.reference.list",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return;
+    const rows=shopRowIdsAl().map(id=>{const row=shopRowAl(id);return {...row,itemTuplesRaw:itemTupleRawlariniAl(row)};});
+    send(ws,{type:"shop.reference.list",playerId:a.playerId,serverTimeUnixMs:now(nowMs),shops:rows});
+  },{authRequired:true,mutation:false});
+
+  router.register("vip_store.info",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const state=getOrCreatePlayerState(a.playerId);
+    send(ws,{type:"vip_store.info",playerId:a.playerId,serverTimeUnixMs:now(nowMs),panel:clone(vipStorePanelInfoHazirla(state,msg&&msg.refreshTime))});
+  },{authRequired:true,mutation:false});
+
+  router.register("repay.info",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const state=getOrCreatePlayerState(a.playerId); const runtime=lastShelterRepayRuntimeTeminEt(state);
+    const eligible=repayEligibleRewardsAl(runtime.payPoint); const claimed=new Set(runtime.claimedPoints);
+    send(ws,{type:"repay.info",playerId:a.playerId,serverTimeUnixMs:now(nowMs),observedWindow:clone(LAST_SHELTER_REPAY_REFERENCE.observedWindow),payPoint:runtime.payPoint,eligibleRewards:eligible,claimableRewards:eligible.filter(x=>!claimed.has(x.point)),claimedPoints:clone(runtime.claimedPoints)});
+  },{authRequired:true,mutation:false});
 
   router.register("activity.reference.list",async({ws,msg,send,nowMs})=>{
     const a=auth(ws,msg,send); if(!a)return;
