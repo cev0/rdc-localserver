@@ -1,7 +1,7 @@
 "use strict";
 
 const {
-  RAW_MAIN_BUILDING_LEVELS,
+  RAW_BUILDING_ROWS,
   buildingLeveliniAl,
   buildingMaxLeveliniAl,
   rdcBuildingTypeIdAl
@@ -109,7 +109,7 @@ function verifiedLastShelterBuildingMaxLevelAl(
   const buildingTypeId = rdcBuildingTypeIdAl(id);
   if (!buildingTypeId) return 0;
   const catalogMax = buildingMaxLeveliniAl(buildingTypeId);
-  const rows = Object.values(require("./last_shelter_building_kataloqu").RAW_BUILDING_ROWS)
+  const rows = Object.values(RAW_BUILDING_ROWS)
     .filter(row => Number(row.id)-Number(row.level)===Number(buildingTypeId));
   const declared = rows.map(row=>Math.max(0,Math.trunc(Number(row.max_level)||0))).filter(Boolean);
   const declaredMax = declared.length ? Math.max(...declared) : catalogMax;
