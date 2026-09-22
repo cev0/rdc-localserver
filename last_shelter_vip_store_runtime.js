@@ -20,6 +20,7 @@ function lastShelterVipStoreStateHazirla() {
     activepoint: 0,
     gambleCount: 0,
     initExp: 0,
+    refreshTime: 0,
     purchaseCounts: {}
   };
 }
@@ -57,6 +58,8 @@ function lastShelterVipStoreStateTeminEt(state) {
     tamEded(store.gambleCount, 0);
   store.initExp =
     tamEded(store.initExp, 0);
+  store.refreshTime =
+    tamEded(store.refreshTime, 0);
 
   if (
     !store.purchaseCounts ||
@@ -101,8 +104,14 @@ function vipStorePanelInfoHazirla(
     return null;
   }
 
-  const refresh =
-    tamEded(refreshTime, 0);
+  // refreshTime is server-owned runtime state. A client-supplied timestamp
+  // must never become authoritative. A scheduler/importer may persist a
+  // verified value before this projection is built.
+  if (refreshTime != null && store.refreshTime === 0) {
+    // Backward-compatible argument is intentionally ignored unless callers
+    // have already persisted the value in state.
+  }
+  const refresh = store.refreshTime;
 
   return {
     vipstore: {
