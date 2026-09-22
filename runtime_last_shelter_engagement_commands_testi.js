@@ -3,6 +3,7 @@
 const assert=require("assert");
 const {
   engagementSnapshotHazirla,
+  helicopterTaskSnapshotAl,
   lastShelterEngagementCommandleriniQeydEt
 }=require("./runtime_last_shelter_engagement_commands");
 
@@ -30,9 +31,20 @@ class FakeRouter {
   assert.strictEqual(updated.onlineDurationRewards[0].duration,4);
   assert.strictEqual(updated.helicopter.tasks[0].runtime.finishTime,12345);
 
+  const task=helicopterTaskSnapshotAl(state,330017);
+  assert.strictEqual(task.id,330017);
+  assert.strictEqual(task.runtime.finishTime,12345);
+  task.runtime.finishTime=999;
+  assert.strictEqual(helicopterTaskSnapshotAl(state,330017).runtime.finishTime,12345);
+  assert.strictEqual(helicopterTaskSnapshotAl(state,999999),null);
+
   const router=new FakeRouter();
   lastShelterEngagementCommandleriniQeydEt(router,{
     getOrCreatePlayerState:()=>state
+  });
+  assert.deepStrictEqual(router.routes.get("engagement.helicopter.task.get").options,{
+    authRequired:true,
+    mutation:false
   });
   assert.deepStrictEqual(router.routes.get("engagement.online_duration.get").options,{
     authRequired:true,
@@ -44,6 +56,27 @@ class FakeRouter {
   });
 
   const sent=[];
+  await router.routes.get("engagement.helicopter.task.get").handler({
+    ws:{_authedPlayerId:"p1"},
+    msg:{playerId:"p1",id:330017},
+    send:(ws,payload)=>sent.push(payload),
+    nowMs:()=>775
+  });
+  assert.strictEqual(sent[0].type,"engagement.helicopter.task.get");
+  assert.strictEqual(sent[0].task.id,330017);
+  assert.strictEqual(sent[0].task.runtime.finishTime,12345);
+  assert.strictEqual(sent[0].serverTimeUnixMs,775);
+
+  sent.length=0;
+  await router.routes.get("engagement.helicopter.task.get").handler({
+    ws:{_authedPlayerId:"p1"},
+    msg:{playerId:"p1",id:999999},
+    send:(ws,payload)=>sent.push(payload),
+    nowMs:()=>775
+  });
+  assert.strictEqual(sent[0].code,"HELICOPTER_TASK_NOT_FOUND");
+
+  sent.length=0;
   await router.routes.get("engagement.online_duration.get").handler({
     ws:{_authedPlayerId:"p1"},
     msg:{playerId:"p1",entryId:"1"},
