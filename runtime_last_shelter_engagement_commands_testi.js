@@ -17,6 +17,11 @@ class FakeRouter {
 
 (async()=>{
   const state={};
+  state.lastShelterEngagementRuntime={
+    firstPayRewardClaimed:false,
+    onlineDuration:{rewards:[{entryId:"1",duration:-4,rewardState:"bad"},{entryId:"999",duration:9,rewardState:9}]},
+    helicopter:{record:{freeRefreshCount:-1,todayTaskCount:99,todayTaskCountLimit:10},refugees:[1,2,3,4,5,6],taskState:[{id:330017,state:-1,finishTime:-2},{id:999999,state:7,finishTime:7}]}
+  };
   const snapshot=engagementSnapshotHazirla(state);
   assert.strictEqual(snapshot.firstPayReward.length,4);
   assert.strictEqual(snapshot.onlineDurationRewards.length,6);
@@ -24,6 +29,12 @@ class FakeRouter {
   assert.strictEqual(snapshot.helicopter.tasks.length,5);
   assert.strictEqual(snapshot.helicopter.refugeeLimit,4);
   assert.strictEqual(snapshot.helicopter.record.todayTaskCountLimit,10);
+  assert.strictEqual(snapshot.onlineDurationRewards[0].duration,0);
+  assert.strictEqual(snapshot.onlineDurationRewards.length,6);
+  assert.strictEqual(snapshot.helicopter.refugees.length,4);
+  assert.strictEqual(snapshot.helicopter.record.todayTaskCount,10);
+  assert.strictEqual(snapshot.helicopter.tasks[0].runtime.state,0);
+  assert.strictEqual(snapshot.helicopter.tasks.length,5);
 
   state.lastShelterEngagementRuntime.onlineDuration.rewards[0].duration=4;
   state.lastShelterEngagementRuntime.helicopter.taskState[0].finishTime=12345;
