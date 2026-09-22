@@ -52,7 +52,6 @@
     "oyun_dili_deyis_request",
     "oyun_dili_getir_request",
     "player_name_change_request",
-    "research_start",
     "sexsi_mesaj_gonder_request",
     "sexsi_mesaj_oxundu_request",
     "sexsi_mesaj_tarixcesi_request",
