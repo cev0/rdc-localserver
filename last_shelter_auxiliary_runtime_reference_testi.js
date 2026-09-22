@@ -109,4 +109,30 @@ assert.strictEqual(second.repayinfo.payPoint,400);
 assert.strictEqual(second.killWorldBossNumber,2);
 assert.strictEqual(second.resourcePoints[0].x,19);
 
+const legacyRepayState={
+  lastShelterRepay:{
+    payPoint:"2000",
+    claimedPoints:["400",400,-1]
+  }
+};
+const normalizedLegacy=
+  lastShelterAuxiliaryRuntimeTeminEt(
+    legacyRepayState
+  );
+assert.strictEqual(
+  normalizedLegacy.repayinfo.payPoint,
+  2000
+);
+assert.deepStrictEqual(
+  normalizedLegacy.repayinfo.claimedPoints,
+  [400]
+);
+assert.strictEqual(
+  Object.prototype.hasOwnProperty.call(
+    legacyRepayState,
+    "lastShelterRepay"
+  ),
+  false
+);
+
 console.log("PASS: verified Last Shelter auxiliary fresh-account runtime references are preserved.");
