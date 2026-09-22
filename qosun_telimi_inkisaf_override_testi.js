@@ -32,7 +32,6 @@ const state = {
       hasRoadAccess: true
     }
   ],
-  technology: { levels: {}, stats: { trainingSpeedPct: 0 } },
   heroes: [],
   qehremanTapshiriqlari: { version: 2, technology: null, resources: [], development: [] }
 };
