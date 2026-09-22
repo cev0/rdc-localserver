@@ -28,11 +28,7 @@ function gameplayMutationCommandleriniQeydEt(
   const {
     getOrCreatePlayerState,
     normalizeBuildingId,
-    ensureTechnologyObject,
-    startTechnologyResearch,
-    refreshTechnologyStats,
     updateServerTime,
-    schedulePlayerDeadline,
     makeClientState,
     hasFreeBuilder,
     isGarageBuildingId,
@@ -49,11 +45,7 @@ function gameplayMutationCommandleriniQeydEt(
   const requiredFns = {
     getOrCreatePlayerState,
     normalizeBuildingId,
-    ensureTechnologyObject,
-    startTechnologyResearch,
-    refreshTechnologyStats,
     updateServerTime,
-    schedulePlayerDeadline,
     makeClientState,
     hasFreeBuilder,
     isGarageBuildingId,
@@ -74,129 +66,6 @@ function gameplayMutationCommandleriniQeydEt(
       );
     }
   }
-
-  router.register(
-    "research_start",
-    async ({ ws, msg, send, nowMs }) => {
-      const authCheck =
-        playerIdUyugunluqYoxla(msg, ws);
-
-      if (!authCheck.ok) {
-        errorGonder(
-          send,
-          ws,
-          authCheck.message,
-          authCheck.message === "Player ID mismatch"
-            ? "PLAYER_ID_MISMATCH"
-            : "NOT_AUTHED"
-        );
-        return;
-      }
-
-      const playerId = authCheck.playerId;
-      const buildingInstanceId =
-        typeof msg.buildingInstanceId === "string"
-          ? msg.buildingInstanceId.trim()
-          : "";
-      const techId =
-        typeof msg.techId === "string"
-          ? msg.techId.trim()
-          : "";
-
-      if (!buildingInstanceId) {
-        errorGonder(send, ws, "Missing buildingInstanceId");
-        return;
-      }
-
-      if (!techId) {
-        errorGonder(send, ws, "Missing techId");
-        return;
-      }
-
-      const state =
-        getOrCreatePlayerState(playerId);
-
-      ensureTechnologyObject(state);
-
-      const institute =
-        Array.isArray(state.buildings)
-          ? state.buildings.find(
-              b =>
-                b &&
-                b.instanceId === buildingInstanceId &&
-                normalizeBuildingId(b.buildingId) === "institute"
-            )
-          : null;
-
-      if (!institute) {
-        errorGonder(send, ws, "Institute building not found");
-        return;
-      }
-
-      if (!institute.isCompleted) {
-        errorGonder(send, ws, "Institute is not completed yet");
-        return;
-      }
-
-      if (institute.hasRoadAccess === false) {
-        errorGonder(send, ws, "Institute must be road connected");
-        return;
-      }
-
-      const started =
-        startTechnologyResearch(
-          state,
-          techId
-        );
-
-      if (!started || !started.ok) {
-        errorGonder(
-          send,
-          ws,
-          started && started.message
-            ? started.message
-            : "Research could not be started"
-        );
-        return;
-      }
-
-      refreshTechnologyStats(state);
-      updateServerTime(state);
-      send(ws, {
-        type: "research_started",
-        playerId,
-        serverTimeUnixMs: nowMs(),
-        payloadJson: JSON.stringify({
-          buildingInstanceId,
-          techId:
-            normalizeBuildingId(techId),
-          targetLevel:
-            started.research.targetLevel,
-          startedAtMs:
-            started.research.startedAtMs,
-          durationMs:
-            started.research.durationMs,
-          endsAtMs:
-            started.research.endsAtMs
-        })
-      });
-
-      send(ws, {
-        type: "state",
-        playerId,
-        serverTimeUnixMs: nowMs(),
-        payloadJson:
-          JSON.stringify(
-            makeClientState(state)
-          )
-      });
-    },
-    {
-      authRequired: true,
-      mutation: true,
-      postgresAuthoritative: true
-    }
-  );
 
   router.register(
     "start_construction_request",
