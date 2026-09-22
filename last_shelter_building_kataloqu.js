@@ -8,9 +8,10 @@
 
 const RDC_TO_LAST_SHELTER_BUILDING_TYPE =
   Object.freeze({
-    hq: "400000", institute: "403000", house: "433000", bank: "434000",
-    hospital: "411000", embassy: "402000", farm: "415000",
-    ration_truck: "460000", road: "436000", tower: "418000"
+    // Only mappings proven by existing server/reference integration belong here.
+    // Do not infer semantic names from XML ids: a wrong mapping would replace
+    // working legacy gameplay with unrelated Last Shelter balance.
+    hq: "400000"
   });
 
 function metnAl(value, max = 1024) {
