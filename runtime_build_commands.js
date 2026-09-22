@@ -151,11 +151,22 @@ function buildCommandleriniQeydEt(
         );
 
       const authoritativeLevel =
-        getLevelData(buildingId, 1);
+        normalizedBuildingId ===
+          "road_delete"
+          ? null
+          : getLevelData(
+              buildingId,
+              1
+            );
 
       if (
-        authoritativeLevel &&
-        authoritativeLevel.unavailable === true
+        normalizedBuildingId !==
+          "road_delete" &&
+        (
+          !authoritativeLevel ||
+          authoritativeLevel.unavailable ===
+            true
+        )
       ) {
         errorGonder(
           send,
@@ -318,10 +329,7 @@ function buildCommandleriniQeydEt(
         )
       ) {
         const levelData =
-          getLevelData(
-            buildingId,
-            1
-          );
+          authoritativeLevel;
 
         const check =
           hasEnoughResources(
