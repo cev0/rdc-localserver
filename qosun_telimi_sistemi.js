@@ -2,6 +2,7 @@
 
 const {
   qosunMelumatiniAl,
+  qosunMelumatiniArmyIdIleAl,
   binaSinifiniAl,
   qosunKilidiniYoxla,
   telimXerciniHesabla: kataloqTelimXerciniHesabla,
@@ -62,8 +63,30 @@ function kopyala(deyer) {
 }
 
 function canonicalUnitIdAl(unitId) {
-  const id = metnAl(unitId, 128);
-  return LEGACY_UNIT_ALIASES[id] || id;
+  const id =
+    metnAl(
+      unitId,
+      128
+    );
+
+  if (!id) {
+    return "";
+  }
+
+  if (LEGACY_UNIT_ALIASES[id]) {
+    return LEGACY_UNIT_ALIASES[id];
+  }
+
+  const numeric =
+    qosunMelumatiniArmyIdIleAl(
+      id
+    );
+
+  if (numeric) {
+    return numeric.unitId;
+  }
+
+  return id;
 }
 
 function telimBinasiIdUygundur(buildingId) {
