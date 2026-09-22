@@ -15,6 +15,9 @@ const {
   const sent = [];
   const mapCalls = [];
   const locks = [];
+  let levelDataResult = {
+    cost: []
+  };
 
   const state = {
     playerId: "p1",
@@ -125,9 +128,7 @@ const {
         () => false,
 
       getLevelData:
-        () => ({
-          cost: []
-        }),
+        () => levelDataResult,
 
       hasEnoughResources:
         () => ({
@@ -237,6 +238,61 @@ const {
       "local:p1",
       "world:p1"
     ]
+  );
+
+  sent.length = 0;
+  mapCalls.length = 0;
+  levelDataResult = null;
+
+  await router.dispatch({
+    type: "build_request",
+    msg: {
+      type: "build_request",
+      playerId: "p1",
+      buildingId:
+        "unknown_structure",
+      x: 8,
+      z: 8
+    },
+    ws,
+    send,
+    nowMs: () => 1100
+  });
+
+  assert.strictEqual(
+    sent[0].code,
+    "BUILDING_LEVEL_REFERENCE_INCOMPLETE"
+  );
+  assert.strictEqual(
+    state.buildings.length,
+    1,
+    "Level data olmayan bina state-ə yerləşdirilməməlidir."
+  );
+  assert.deepStrictEqual(
+    mapCalls,
+    []
+  );
+
+  sent.length = 0;
+
+  await router.dispatch({
+    type: "build_request",
+    msg: {
+      type: "build_request",
+      playerId: "p1",
+      buildingId: "road_delete",
+      x: 1,
+      z: 1
+    },
+    ws,
+    send,
+    nowMs: () => 1200
+  });
+
+  assert.strictEqual(
+    sent[0].type,
+    "road_deleted",
+    "road_delete level catalog tələb etməməlidir."
   );
 
   const serverCode =
