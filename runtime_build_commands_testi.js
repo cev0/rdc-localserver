@@ -267,7 +267,11 @@ const {
     "build_request outer legacy mutex set-de qalmamalidir."
   );
 
-  console.log(
+  const source=fs.readFileSync(require.resolve("./runtime_build_commands.js"),"utf8");
+assert(source.includes("BUILDING_LEVEL_REFERENCE_INCOMPLETE"));
+assert(source.includes("getLevelData(buildingId, 1)"));
+
+console.log(
     "PASS: build_request is routed, locked and removed from legacy switch."
   );
 })().catch((error) => {
