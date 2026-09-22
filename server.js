@@ -160,19 +160,16 @@ const {
   canonicalUnitIdAl
 } = require("./qosun_telimi_sistemi");
 
-// ============================================================
-// TEMP BUILDING LEVEL DATA
-// ------------------------------------------------------------
-// Bu rəqəmlər hələlik müvəqqətidir.
-// Məqsəd:
-// - level-based server arxitekturasını oturtmaq
-// - sonradan balansı rahat dəyişmək
-// ============================================================
+const {
+  stateUcunTikintiMuddetiniHesabla
+} = require("./tikinti_inkisaf_korpu");
 
-// Legacy hardcoded building balance removed: Last Shelter XML/external definitions are authoritative.
+const {
+  stateUcunBinaIstehsaliniHesabla
+} = require("./resurs_inkisaf_korpu");
 
-
-// Legacy synthetic technology balance definitions removed; Last Shelter science catalog is authoritative.
+// Verified Last Shelter building XML/external definitions are authoritative.
+// Synthetic technology balance has been removed; science runtime owns research state.
 
 function normalizeBuildingId(id) {
   return String(id || "").trim().toLowerCase();
@@ -190,7 +187,6 @@ function getAdjustedBuildDurationMs(state, baseBuildTimeSeconds) {
 
   if (rawMs <= 0) return rawMs;
 
-  const { stateUcunTikintiMuddetiniHesabla } = require("./tikinti_inkisaf_korpu");
   const netice = stateUcunTikintiMuddetiniHesabla(
     state,
     rawMs,
@@ -5263,10 +5259,6 @@ function processProductionForState(
       );
 
     const technologyProductionPct = 0;
-
-    const {
-      stateUcunBinaIstehsaliniHesabla
-    } = require("./resurs_inkisaf_korpu");
 
     const productionCalculation =
       stateUcunBinaIstehsaliniHesabla(
