@@ -6,6 +6,7 @@ const {
   LAST_SHELTER_ONLINE_DURATION,
   LAST_SHELTER_HELICOPTER,
   onlineDurationRewardAl,
+  onlineDurationRewardsSnapshotHazirla,
   helicopterTaskTemplateAl,
   lastShelterEngagementRuntimeDefaultHazirla,
   lastShelterEngagementRuntimeTeminEt
@@ -70,6 +71,10 @@ assert.strictEqual(runtime.helicopter.record.todayTaskCountLimit,10);
 assert.strictEqual(runtime.helicopter.taskState.length,5);
 
 const state = {};
+const projected = onlineDurationRewardsSnapshotHazirla(state);
+assert.strictEqual(projected.length,6);
+projected[0].duration=99;
+assert.strictEqual(onlineDurationRewardsSnapshotHazirla(state)[0].duration,0);
 const first = lastShelterEngagementRuntimeTeminEt(state);
 first.firstPayRewardClaimed = true;
 const second = lastShelterEngagementRuntimeTeminEt(state);
