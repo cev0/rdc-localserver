@@ -19,9 +19,11 @@ class FakeRouter {constructor(){this.routes=new Map();} register(type,handler,op
   assert.deepStrictEqual(state.lastShelterAuxiliaryRuntime.repayinfo.claimedPoints,[400,"400",-1,"bad"],"Read projection must not mutate persisted state.");
   assert.strictEqual(allianceGroupPurchaseSnapshotHazirla(state).runtime.progress,2);
   assert.strictEqual(vipStoreSnapshotHazirla(state,1789704000).vipstore.goods[0].buyAmount,4);
+  assert.strictEqual(vipStoreSnapshotHazirla(state,1789704000).vipstore.refreshTime,1789704000);
+  assert.strictEqual(state.lastShelterVipStore.refreshTime,undefined,"Projection provider must not mutate persisted VIP state.");
 
   const router=new FakeRouter();
-  lastShelterEconomyReferenceCommandleriniQeydEt(router,{getOrCreatePlayerState:()=>state});
+  lastShelterEconomyReferenceCommandleriniQeydEt(router,{getOrCreatePlayerState:()=>state,getVipStoreRefreshTime:()=>1789704000});
   const routeNames=["activity.list","activity.get","shop.list","shop.get","repay.info","alliance.group_purchase.info","alliance.group_purchase.offer","vipstore.panel"];
   assert.deepStrictEqual(Array.from(router.routes.keys()),routeNames);
   for(const name of routeNames) assert.deepStrictEqual(router.routes.get(name).options,{authRequired:true,mutation:false});
@@ -44,7 +46,7 @@ class FakeRouter {constructor(){this.routes=new Map();} register(type,handler,op
   await router.routes.get("vipstore.panel").handler({ws,msg:{playerId:"p1",refreshTime:1789704000},send,nowMs:()=>105});
   assert.strictEqual(sent[0].panel.vipstore.level,2);
   assert.strictEqual(sent[0].panel.vipstore.goods[0].buyAmount,4);
-  assert.strictEqual(sent[0].panel.vipstore.refreshTime,0,"Client refreshTime server-authoritative VIP reset vaxtını diktə etməməlidir.");
+  assert.strictEqual(sent[0].panel.vipstore.refreshTime,1789704000,"Server refresh provider authoritative olmalıdır.");
   sent.length=0;
   await router.routes.get("shop.get").handler({ws,msg:{playerId:"wrong",id:"200000001"},send,nowMs:()=>106});
   assert.strictEqual(sent[0].code,"PLAYER_ID_MISMATCH");
