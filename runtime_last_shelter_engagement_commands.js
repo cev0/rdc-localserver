@@ -68,6 +68,19 @@ function engagementSnapshotHazirla(state) {
   };
 }
 
+function helicopterTaskSnapshotAl(state,id) {
+  const runtime = lastShelterEngagementRuntimeTeminEt(state);
+  if (!runtime) return null;
+  const numericId = Number(id);
+  const template = LAST_SHELTER_HELICOPTER.taskTemplates.find(row => row.id === numericId);
+  if (!template) return null;
+  const runtimeRow = runtime.helicopter.taskState.find(row => row && Number(row.id) === numericId);
+  return {
+    ...clone(template),
+    runtime:clone(runtimeRow || {id:template.id,state:template.observedInitialState,finishTime:0})
+  };
+}
+
 function lastShelterEngagementCommandleriniQeydEt(router,deps) {
   if (!router) throw new Error("Command router yoxdur.");
   const {getOrCreatePlayerState} = deps || {};
@@ -94,6 +107,22 @@ function lastShelterEngagementCommandleriniQeydEt(router,deps) {
   );
 
   router.register(
+    "engagement.helicopter.task.get",
+    async ({ws,msg,send,nowMs}) => {
+      const auth = authYoxla(ws,msg,send);
+      if (!auth) return;
+      const state = getOrCreatePlayerState(auth.playerId);
+      const task = helicopterTaskSnapshotAl(state,msg && msg.id);
+      if (!task) {
+        send(ws,{type:"error",code:"HELICOPTER_TASK_NOT_FOUND",message:"Last Shelter helicopter task tapilmadi.",id:msg && msg.id});
+        return;
+      }
+      send(ws,{type:"engagement.helicopter.task.get",playerId:auth.playerId,serverTimeUnixMs:nowAl(nowMs),task});
+    },
+    {authRequired:true,mutation:false}
+  );
+
+  router.register(
     "engagement.info",
     async ({ws,msg,send,nowMs}) => {
       const auth = authYoxla(ws,msg,send);
@@ -114,5 +143,6 @@ function lastShelterEngagementCommandleriniQeydEt(router,deps) {
 
 module.exports = {
   engagementSnapshotHazirla,
+  helicopterTaskSnapshotAl,
   lastShelterEngagementCommandleriniQeydEt
 };
