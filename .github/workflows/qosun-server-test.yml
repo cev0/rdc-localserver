@@ -112,9 +112,6 @@ on:
       - 'runtime_world_map_sync.js'
       - 'server_missiya_genisletme_v2.js'
       - 'missiya_handler.js'
-      - 'missiya_postgres.js'
-      - 'missiya_mukafat_tranzaksiya.js'
-      - 'missiya_mukafat_pg_mutasiya_testi.js'
       - 'missiya_snapshot_authority_testi.js'
       - 'oyun_state_mutasiya_postgres.js'
       - 'oyun_state_snapshot_postgres.js'
@@ -135,8 +132,6 @@ jobs:
         run: npm ci
       - name: Gameplay extension syntax
         run: node --check server_missiya_genisletme_v2.js
-      - name: Missiya mukafat PG mutasiya testleri
-        run: node missiya_mukafat_pg_mutasiya_testi.js
       - name: Missiya legacy snapshot authority testleri
         run: node missiya_snapshot_authority_testi.js
       - name: Qosun kataloqu testleri

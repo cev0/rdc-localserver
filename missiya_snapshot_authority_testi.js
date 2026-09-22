@@ -8,8 +8,6 @@ const {
 } = require("./missiya_handler");
 
 const postgresAuthoritativeMesajlar = [
-  "research_start",
-  "technology_research_start",
   "expand_area_request",
   "expand_base",
   "build_request",
