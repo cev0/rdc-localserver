@@ -151,6 +151,14 @@ const {
   verifiedLastShelterBuildingLevelStatusAl
 } = require("./last_shelter_building_runtime_overlay");
 
+const {
+  qosunMelumatiniAl
+} = require("./qosun_kataloqu");
+
+const {
+  canonicalUnitIdAl
+} = require("./qosun_telimi_sistemi");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -638,29 +646,35 @@ function umumiZirehliMasinSayiniHesabla(state) {
     return 0;
   }
 
-  const troops =
-    state.army.troops;
-
   let umumiSay = 0;
 
-  for (let level = 1; level <= 10; level++) {
-    const unitId =
-      "vehicle_lv" + level;
+  for (
+    const [rawUnitId, rawCount] of
+    Object.entries(state.army.troops)
+  ) {
+    const unit =
+      qosunMelumatiniAl(
+        canonicalUnitIdAl(rawUnitId)
+      );
 
-    const say =
+    if (
+      !unit ||
+      unit.classId !== "vehicle"
+    ) {
+      continue;
+    }
+
+    umumiSay +=
       Math.max(
         0,
         Math.trunc(
-          Number(troops[unitId]) || 0
+          Number(rawCount) || 0
         )
       );
-
-    umumiSay += say;
   }
 
   return umumiSay;
 }
-
 
 // ============================================================
 // ÜMUMİ QOŞUN SAYI
@@ -677,42 +691,32 @@ function umumiQosunSayiniHesabla(state) {
     return 0;
   }
 
-  const troops =
-    state.army.troops;
-
   let umumiSay = 0;
 
   for (
-    const [unitId, rawCount]
-    of Object.entries(troops)
+    const [rawUnitId, rawCount] of
+    Object.entries(state.army.troops)
   ) {
-    const id =
-      String(unitId || "")
-        .trim()
-        .toLowerCase();
+    const unit =
+      qosunMelumatiniAl(
+        canonicalUnitIdAl(rawUnitId)
+      );
 
-    const uygunQosundur =
-      /^(fighter|shooter|vehicle)_lv([1-9]|10)$/
-        .test(id);
-
-    if (!uygunQosundur) {
+    if (!unit) {
       continue;
     }
 
-    const say =
+    umumiSay +=
       Math.max(
         0,
         Math.trunc(
           Number(rawCount) || 0
         )
       );
-
-    umumiSay += say;
   }
 
   return umumiSay;
 }
-
 
 // ============================================================
 // BAZA MƏLUMATLARINI YENİLƏ
@@ -946,57 +950,23 @@ function binaGucunuHesabla(state) {
 // ============================================================
 
 function birQosununGucunuAl(unitId) {
-  const id =
-    String(unitId || "")
-      .trim()
-      .toLowerCase();
-
-  const netice =
-    id.match(
-      /^(fighter|shooter|vehicle)_lv(\d+)$/
+  const unit =
+    qosunMelumatiniAl(
+      canonicalUnitIdAl(unitId)
     );
 
-  if (!netice) {
+  if (!unit) {
     return 0;
   }
 
-  const qosunNovu =
-    netice[1];
-
-  const level =
-    Math.max(
-      1,
-      Math.min(
-        10,
-        Math.trunc(
-          Number(netice[2]) || 1
-        )
-      )
-    );
-
-  let esasGuc = 0;
-
-  switch (qosunNovu) {
-    case "fighter":
-      esasGuc = 5;
-      break;
-
-    case "shooter":
-      esasGuc = 6;
-      break;
-
-    case "vehicle":
-      esasGuc = 20;
-      break;
-
-    default:
-      esasGuc = 0;
-      break;
-  }
-
-  return esasGuc * level;
+  return Math.max(
+    0,
+    Number(
+      unit.stats &&
+      unit.stats.battlePower
+    ) || 0
+  );
 }
-
 
 // ============================================================
 // OYUNÇUNUN BÜTÜN QOŞUN GÜCÜ
