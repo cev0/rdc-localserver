@@ -101,6 +101,26 @@ const RAW_MAIN_BUILDING_LEVELS = Object.freeze(Object.fromEntries(
     .map(row => [row.level, buildingRowHazirla(row)])
 ));
 
+function buildingLeveliniAl(buildingTypeId, level) {
+  const type = metnAl(buildingTypeId, 32);
+  const lvl = tamEded(level);
+  if (!/^\d+$/.test(type)) return null;
+  const raw = RAW_BUILDING_ROWS[String(Number(type) + lvl)];
+  if (!raw || Number(raw.level) !== lvl || Number(raw.id) - Number(raw.level) !== Number(type)) return null;
+  const row = buildingRowHazirla(raw);
+  return { ...row, cost:xercHazirla(raw), buildingConditions:sertleriParseEt(raw.building || "") };
+}
+
+function buildingMaxLeveliniAl(buildingTypeId) {
+  const type=metnAl(buildingTypeId,32);
+  if (!/^\d+$/.test(type)) return 0;
+  let max=0;
+  for (const raw of Object.values(RAW_BUILDING_ROWS)) {
+    if (Number(raw.id)-Number(raw.level)===Number(type)) max=Math.max(max,Number(raw.level)||0);
+  }
+  return max;
+}
+
 function mainBuildingLeveliniAl(level) {
   const lvl =
     tamEded(level);
@@ -150,5 +170,7 @@ module.exports = {
   buildingRowHazirla,
   sertleriParseEt,
   mainBuildingLeveliniAl,
+  buildingLeveliniAl,
+  buildingMaxLeveliniAl,
   rdcBuildingTypeIdAl
 };
