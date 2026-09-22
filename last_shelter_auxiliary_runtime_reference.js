@@ -200,6 +200,13 @@ function lastShelterAuxiliaryRuntimeDefaultHazirla() {
 function lastShelterAuxiliaryRuntimeTeminEt(state) {
   if (!state || typeof state !== "object") return null;
 
+  const legacyRepay =
+    state.lastShelterRepay &&
+    typeof state.lastShelterRepay === "object" &&
+    !Array.isArray(state.lastShelterRepay)
+      ? { ...state.lastShelterRepay }
+      : null;
+
   if (
     !state.lastShelterAuxiliaryRuntime ||
     typeof state.lastShelterAuxiliaryRuntime !== "object" ||
@@ -207,6 +214,11 @@ function lastShelterAuxiliaryRuntimeTeminEt(state) {
   ) {
     state.lastShelterAuxiliaryRuntime =
       lastShelterAuxiliaryRuntimeDefaultHazirla();
+
+    if (legacyRepay) {
+      state.lastShelterAuxiliaryRuntime.repayinfo =
+        legacyRepay;
+    }
   }
 
   const runtime = state.lastShelterAuxiliaryRuntime;
