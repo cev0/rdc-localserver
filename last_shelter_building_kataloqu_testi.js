@@ -9,6 +9,8 @@ const {
   RAW_MAIN_BUILDING_LEVELS,
   sertleriParseEt,
   mainBuildingLeveliniAl,
+  buildingLeveliniAl,
+  buildingMaxLeveliniAl,
   rdcBuildingTypeIdAl
 } = require("./last_shelter_building_kataloqu");
 
@@ -327,6 +329,14 @@ assert.ok(
   ),
   "Server state Last Shelter silver resursunu saxlamalıdır."
 );
+
+const academy1=buildingLeveliniAl("403000",1);
+assert(academy1);
+assert.strictEqual(academy1.buildingTypeId,"403000");
+assert.strictEqual(academy1.level,1);
+assert.strictEqual(buildingLeveliniAl("403000",999),null);
+assert(buildingMaxLeveliniAl("403000")>=1);
+assert.strictEqual(buildingMaxLeveliniAl("not-a-building"),0);
 
 console.log(
   "PASS: verified Last Shelter main-building 400000-400005 reference rows are preserved."
