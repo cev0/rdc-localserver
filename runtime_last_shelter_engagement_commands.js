@@ -7,6 +7,8 @@ const {
   LAST_SHELTER_FIRST_PAY_REWARD,
   LAST_SHELTER_ONLINE_DURATION,
   LAST_SHELTER_HELICOPTER,
+  onlineDurationRewardAl,
+  onlineDurationRewardsSnapshotHazirla,
   lastShelterEngagementRuntimeTeminEt
 } = require("./last_shelter_engagement_reward_reference");
 
@@ -35,11 +37,6 @@ function engagementSnapshotHazirla(state) {
   const runtime = lastShelterEngagementRuntimeTeminEt(state);
   if (!runtime) return null;
 
-  const onlineById = new Map(
-    runtime.onlineDuration.rewards
-      .filter(Boolean)
-      .map(row => [String(row.entryId),row])
-  );
   const helicopterById = new Map(
     runtime.helicopter.taskState
       .filter(Boolean)
@@ -50,18 +47,7 @@ function engagementSnapshotHazirla(state) {
     firstPayReward:clone(LAST_SHELTER_FIRST_PAY_REWARD),
     firstPayRewardClaimed:runtime.firstPayRewardClaimed === true,
     onlineDurationRecruitHero:LAST_SHELTER_ONLINE_DURATION.onlineDurationRecruitHero,
-    onlineDurationRewards:LAST_SHELTER_ONLINE_DURATION.rewards.map(template => {
-      const row = onlineById.get(template.entryId) || {};
-      return {
-        ...clone(template),
-        duration:Number.isFinite(Number(row.duration))
-          ? Math.max(0,Math.trunc(Number(row.duration)))
-          : template.duration,
-        rewardState:Number.isFinite(Number(row.rewardState))
-          ? Math.max(0,Math.trunc(Number(row.rewardState)))
-          : template.rewardState
-      };
-    }),
+    onlineDurationRewards:onlineDurationRewardsSnapshotHazirla(state),
     helicopter:{
       record:{
         ...clone(LAST_SHELTER_HELICOPTER.recordDefaults),
@@ -88,6 +74,24 @@ function lastShelterEngagementCommandleriniQeydEt(router,deps) {
   if (typeof getOrCreatePlayerState !== "function") {
     throw new Error("getOrCreatePlayerState yoxdur.");
   }
+
+  router.register(
+    "engagement.online_duration.get",
+    async ({ws,msg,send,nowMs}) => {
+      const auth = authYoxla(ws,msg,send);
+      if (!auth) return;
+      const entryId = msg && msg.entryId != null ? String(msg.entryId).trim() : "";
+      const template = onlineDurationRewardAl(entryId);
+      if (!template) {
+        send(ws,{type:"error",code:"ONLINE_DURATION_REWARD_NOT_FOUND",message:"Last Shelter online-duration reward tapilmadi.",entryId});
+        return;
+      }
+      const state = getOrCreatePlayerState(auth.playerId);
+      const reward = onlineDurationRewardsSnapshotHazirla(state).find(row => row.entryId === entryId) || template;
+      send(ws,{type:"engagement.online_duration.get",playerId:auth.playerId,serverTimeUnixMs:nowAl(nowMs),reward});
+    },
+    {authRequired:true,mutation:false}
+  );
 
   router.register(
     "engagement.info",
