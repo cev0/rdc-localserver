@@ -1,12 +1,13 @@
 "use strict";
 
-// Explicit bridge to the existing RDC building state. The Institute is RDC's
-// research building; the source BuildingType enum identifies ACADEMY as 403000.
-const RDC_BUILDING_TYPE_IDS = Object.freeze({
-  hq: "400000", institute: "403000", house: "433000", bank: "434000",
-  hospital: "411000", embassy: "402000", farm: "415000",
-  ration_truck: "460000", road: "436000", tower: "418000"
-});
+const {
+  RDC_TO_LAST_SHELTER_BUILDING_TYPE
+} = require("./last_shelter_building_kataloqu");
+
+// Keep one verified semantic bridge. Numeric Last Shelter rows remain accepted
+// directly; RDC names are translated only when their mapping is corroborated.
+const RDC_BUILDING_TYPE_IDS =
+  RDC_TO_LAST_SHELTER_BUILDING_TYPE;
 
 function sourceBuildingType(row) {
   const explicit = String(row?.buildingTypeId ?? row?.itemId ?? "");
