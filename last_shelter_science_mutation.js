@@ -43,15 +43,24 @@ function heroId(hero) {
   return String(hero?.heroId ?? hero?.generalId ?? hero?.itemId ?? hero?.id ?? "");
 }
 
-function sourceSecondScienceQueueUnlocked(state) {
+function academyStationedHeroIds(state) {
   // UserBuildingManager.getHeroListByItemId parses building.heroId as a
-  // semicolon-separated list of numeric hero IDs. Templates/client flags do
-  // not prove that a hero is owned or stationed.
+  // semicolon-separated list of numeric hero IDs. Both queue skill 61012 and
+  // active EnergySkill 50046 are academy-stationed source skills.
   const stationed = new Set();
   for (const building of sourceBuildings(state)) {
     if (sourceBuildingType(building) !== "403000") continue;
-    for (const id of String(building.heroId || "").split(";")) if (/^\d+$/.test(id)) stationed.add(id);
+    for (const id of String(building.heroId || "").split(";")) {
+      if (/^\d+$/.test(id)) stationed.add(id);
+    }
   }
+  return stationed;
+}
+
+function sourceSecondScienceQueueUnlocked(state) {
+  // Owning the skill is insufficient: the matching general must be stationed
+  // in source building 403000 (academy).
+  const stationed = academyStationedHeroIds(state);
   return newHeroes(state).some(hero => stationed.has(heroId(hero)) &&
     skills(hero).some(skill => String(skill.skillId ?? skill.id ?? skill.heroSkill ?? "") === "61012"));
 }
@@ -129,11 +138,14 @@ function sourceScienceResearchPlan(state, request, nowUnixMs) {
   }
   const effects = sourceScienceEffects(state);
   const runtime = state.lastShelterScienceRuntime || {};
-  // EnergySkill's active-state lifecycle is not ported yet. Fail before
-  // charging instead of silently ignoring a skill that discounts resources.
-  if (newHeroes(state).some(hero => skills(hero).some(skill =>
-      (skill.state === "READY" || Number(skill.state) === 2) &&
-      String(skill.skillId ?? skill.id ?? skill.heroSkill ?? "") === "50046"))) {
+  // new_hero_skills/50046 is an academy-stationed active skill. Its full
+  // lifecycle is not ported yet, so only a genuinely stationed active skill
+  // blocks research; an unstationed owned skill must not change science.
+  const academyStationed = academyStationedHeroIds(state);
+  if (newHeroes(state).some(hero => academyStationed.has(heroId(hero)) &&
+      skills(hero).some(skill =>
+        (skill.state === "READY" || Number(skill.state) === 2) &&
+        String(skill.skillId ?? skill.id ?? skill.heroSkill ?? "") === "50046"))) {
     return fail("SCIENCE_ENERGY_SKILL_UNMIGRATED");
   }
   const resources = {};
@@ -224,6 +236,6 @@ function sourceScienceUpgrade(state, request, nowUnixMs) {
 }
 
 module.exports = {
-  sourceSecondScienceQueueUnlocked, sourceScienceEffects, sourceSciencePrerequisite,
+  academyStationedHeroIds, sourceSecondScienceQueueUnlocked, sourceScienceEffects, sourceSciencePrerequisite,
   sourceScienceResearchPlan, sourceScienceResearch, sourceScienceUpgrade
 };
