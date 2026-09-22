@@ -1,9 +1,9 @@
 "use strict";
 
 const {
-  RAW_BUILDING_ROWS,
   buildingLeveliniAl,
   buildingMaxLeveliniAl,
+  buildingDeclaredMaxLeveliniAl,
   rdcBuildingTypeIdAl
 } = require("./last_shelter_building_kataloqu");
 
@@ -106,14 +106,27 @@ function verifiedLastShelterBuildingMaxLevelAl(
   buildingId
 ) {
   const id = metnAl(buildingId);
-  const buildingTypeId = rdcBuildingTypeIdAl(id);
-  if (!buildingTypeId) return 0;
-  const catalogMax = buildingMaxLeveliniAl(buildingTypeId);
-  const rows = Object.values(RAW_BUILDING_ROWS)
-    .filter(row => Number(row.id)-Number(row.level)===Number(buildingTypeId));
-  const declared = rows.map(row=>Math.max(0,Math.trunc(Number(row.max_level)||0))).filter(Boolean);
-  const declaredMax = declared.length ? Math.max(...declared) : catalogMax;
-  return Math.min(catalogMax, declaredMax || catalogMax);
+  const buildingTypeId =
+    rdcBuildingTypeIdAl(id);
+
+  if (!buildingTypeId) {
+    return 0;
+  }
+
+  const catalogMax =
+    buildingMaxLeveliniAl(
+      buildingTypeId
+    );
+
+  const declaredMax =
+    buildingDeclaredMaxLeveliniAl(
+      buildingTypeId
+    );
+
+  return Math.min(
+    catalogMax,
+    declaredMax || catalogMax
+  );
 }
 
 function verifiedLastShelterBuildingLevelStatusAl(
