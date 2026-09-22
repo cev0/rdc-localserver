@@ -6558,55 +6558,6 @@ function hasAdjacentConnectedRoad(state, buildingId, x, z) {
   return false;
 }
 
-function hasAdjacentRoadForMove(state, movingBuilding, newX, newZ) {
-  const rules = getBuildingRules(movingBuilding.buildingId);
-
-  if (!rules.requiresRoad) return true;
-  if (!state || !Array.isArray(state.buildings)) return false;
-
-  for (const other of state.buildings) {
-    if (!other) continue;
-    if (other.instanceId === movingBuilding.instanceId) continue;
-
-    const otherRules = getBuildingRules(other.buildingId);
-    if (!otherRules.isRoad) continue;
-
-    const roadX = other.x;
-    const roadZ = other.z;
-
-    const leftEdge = newX - 1;
-    const rightEdge = newX + rules.sizeX;
-    const bottomEdge = newZ - 1;
-    const topEdge = newZ + rules.sizeZ;
-
-    const touchesLeft =
-      roadX === leftEdge &&
-      roadZ >= newZ &&
-      roadZ < newZ + rules.sizeZ;
-
-    const touchesRight =
-      roadX === rightEdge &&
-      roadZ >= newZ &&
-      roadZ < newZ + rules.sizeZ;
-
-    const touchesBottom =
-      roadZ === bottomEdge &&
-      roadX >= newX &&
-      roadX < newX + rules.sizeX;
-
-    const touchesTop =
-      roadZ === topEdge &&
-      roadX >= newX &&
-      roadX < newX + rules.sizeX;
-
-    if (touchesLeft || touchesRight || touchesBottom || touchesTop) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
 function canMoveBuilding(state, movingBuilding, newX, newZ) {
   if (!state || !movingBuilding || !Array.isArray(state.buildings)) return false;
 
