@@ -91,8 +91,8 @@ function binaMuqavilesiniYoxla(kok) {
 
 assert.strictEqual(
   manifest.version,
-  3,
-  "Normal server/Unity protocol manifest versiyası gözlənilən 3 deyil."
+  4,
+  "Normal server/Unity protocol manifest versiyası gözlənilən 4 deyil."
 );
 assert.ok(Array.isArray(manifest.clientOutboundTypes));
 
@@ -148,13 +148,6 @@ saheleriYoxla(
   serverKoku,
   "hesab_elave_handler.js",
   ["account_info_result"].concat(manifest.criticalFields.accountInfo)
-);
-saheleriYoxla(
-  serverKoku,
-  "server_client_state_patch.js",
-  ["CLIENT_TECH_LEVEL_COMPAT"].concat(
-    manifest.criticalFields.technologyState.filter(x => x !== "technology")
-  )
 );
 saheleriYoxla(
   serverKoku,
