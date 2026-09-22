@@ -265,45 +265,42 @@ const activeList =
       []
     );
 
-const activeHq =
-  activeList.find(
-    item =>
-      String(
-        item &&
-        item.id ||
-        ""
-      ).toLowerCase() === "hq"
+const verifiedDefinitionIds = [
+  "hq",
+  "institute",
+  "hospital",
+  "farm",
+  "ration_truck",
+  "tower"
+];
+
+for (const id of verifiedDefinitionIds) {
+  const definition =
+    activeList.find(
+      item =>
+        String(
+          item &&
+          item.id ||
+          ""
+        ).toLowerCase() === id
+    );
+
+  assert.ok(
+    definition,
+    `Aktiv definition olmalıdır: ${id}`
   );
 
-assert.ok(
-  activeHq,
-  "Aktiv HQ definition olmalıdır."
-);
-assert.strictEqual(
-  activeHq.maxLevel,
-  5,
-  "Yalnız Last Shelter-dən təsdiqlənmiş 1-5 səviyyələr aktiv qalmalıdır."
-);
-assert.strictEqual(
-  activeHq.lastShelterMaxLevel,
-  25,
-  "Original Last Shelter HQ maksimumu 25 kimi saxlanmalıdır."
-);
-assert.strictEqual(
-  activeHq.levels.length,
-  5
-);
+  assert.strictEqual(
+    Object.prototype.hasOwnProperty.call(
+      definition,
+      "levels"
+    ),
+    false,
+    `Verified Last Shelter level balansı building_definitions.json-da təkrarlanmamalıdır: ${id}`
+  );
+}
 
-for (
-  let level = 1;
-  level <= 5;
-  level += 1
-) {
-  const active =
-    activeHq.levels[
-      level - 1
-    ];
-
+for (let level = 1; level <= 5; level += 1) {
   const reference =
     mainBuildingLeveliniAl(
       level
@@ -311,50 +308,14 @@ for (
 
   assert.ok(reference);
   assert.strictEqual(
-    active.level,
+    reference.level,
     level
   );
-  assert.strictEqual(
-    active.buildTimeSeconds,
-    reference.buildTimeSeconds
+  assert.ok(
+    Number.isFinite(
+      reference.buildTimeSeconds
+    )
   );
-
-  const activeCost =
-    Object.fromEntries(
-      (active.cost || [])
-        .map(
-          item => [
-            item.type,
-            Number(item.amount) || 0
-          ]
-        )
-    );
-
-  for (
-    const resource of [
-      "wood",
-      "stone",
-      "iron",
-      "food",
-      "money",
-      "electricity",
-      "silver"
-    ]
-  ) {
-    assert.strictEqual(
-      Number(
-        activeCost[
-          resource
-        ] || 0
-      ),
-      Number(
-        reference.cost[
-          resource
-        ] || 0
-      ),
-      `HQ level ${level} ${resource} xərci Last Shelter ilə eyni olmalıdır.`
-    );
-  }
 }
 
 const serverSource =
