@@ -44,7 +44,7 @@ assert.deepStrictEqual(
 
 const ensureBloku = blokAl(
   "function ensureResourcesObject",
-  "function normalizeMissionId"
+  "// ============================================================\n// OYUNCU PROFİLİ"
 );
 
 assert.ok(
