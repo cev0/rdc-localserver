@@ -33,7 +33,7 @@ const {
   assert(router.has("hero.info"));
 
   const sent = [];
-  const ws = { playerId: "p1" };
+  const ws = { playerId: "p1", _authedPlayerId: "p1" };
   await router.dispatch({
     ws,
     msg: { type: "hero.info", playerId: "p1" },
