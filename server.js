@@ -8311,11 +8311,7 @@ gameplayMutationCommandleriniQeydEt(
   {
     getOrCreatePlayerState,
     normalizeBuildingId,
-    ensureTechnologyObject,
-    startTechnologyResearch,
-    refreshTechnologyStats,
     updateServerTime,
-    schedulePlayerDeadline,
     makeClientState,
     hasFreeBuilder,
     isGarageBuildingId,
