@@ -311,7 +311,13 @@ function scienceQueueSec(
           queue,
           nowUnixMs
         ) &&
-        explicitScienceQueueLeaseAktivdir(queue, nowUnixMs)
+        (
+          // Queue.toSFSObject serializes a permanent Long.MAX_VALUE lease
+          // as endTime=0. RDC stores that projection for the primary queue.
+          // A secondary queue still needs a real, active lease and hero skill.
+          (tamEded(queue.qid ?? queue.queueId, 0) === 1 && Number(queue.endTime) === 0) ||
+          explicitScienceQueueLeaseAktivdir(queue, nowUnixMs)
+        )
     ).sort((a, b) =>
       tamEded(a.qid ?? a.queueId, 0) - tamEded(b.qid ?? b.queueId, 0)
     );
