@@ -112,10 +112,19 @@ const energyShape = fixture();
 energyShape.lastShelterHeroRuntime = {
   generals: [{ generalId: "88", skill: [{ id: "50046", state: 2 }] }]
 };
+assert(
+  sourceScienceResearch(energyShape, { itemId: "901000" }, 1000).ok,
+  "Unstationed EnergySkill must not affect science"
+);
+const stationedEnergy = fixture();
+stationedEnergy.lastShelterHeroRuntime = {
+  generals: [{ generalId: "88", skill: [{ id: "50046", state: 2 }] }]
+};
+stationedEnergy.buildings[0].heroId = "88";
 assert.strictEqual(
-  sourceScienceResearch(energyShape, { itemId: "901000" }, 1000).code,
+  sourceScienceResearch(stationedEnergy, { itemId: "901000" }, 1000).code,
   "SCIENCE_ENERGY_SKILL_UNMIGRATED",
-  "Active EnergySkill in persisted general runtime must not be silently ignored"
+  "Stationed active EnergySkill must not be silently ignored"
 );
 
 const modifiers = fixture();
