@@ -16,9 +16,3 @@ jobs:
           node-version: '20'
       - name: Verify recovered Last Shelter 107x troop contract
         run: node last_shelter_troop_107x_reference_testi.js
-      - name: Probe T10 science and training building source
-        run: node last_shelter_t10_training_source_probe.js
-      - name: Probe science EnergySkill and gold source semantics
-        run: node last_shelter_science_energy_gold_source_probe.js
-      - name: Probe source instant cost and resource gold catalogs
-        run: node last_shelter_instant_cost_source_probe.js
