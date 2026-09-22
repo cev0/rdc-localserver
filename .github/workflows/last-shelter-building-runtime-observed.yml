@@ -2,7 +2,7 @@ name: Last Shelter Building Runtime Observed
 
 on:
   push:
-    branches: [server-v2-scalable]
+    branches: [main]
     paths:
       - 'last_shelter_building_runtime_observed_reference.js'
       - 'last_shelter_building_runtime_observed_reference_testi.js'
