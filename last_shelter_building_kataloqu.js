@@ -15,7 +15,12 @@ const RDC_TO_LAST_SHELTER_BUILDING_TYPE =
     // These ids are independently corroborated by existing server integration
     // and stable Last Shelter runtime snapshots, not guessed from XML ordering.
     institute: "403000", hospital: "411000", farm: "415000",
-    ration_truck: "460000", tower: "418000"
+    ration_truck: "460000", tower: "418000",
+    // building.xml para1 troop families and arms.xml building tokens both
+    // independently identify these three training-building bridges.
+    fighter_camp: "423000",
+    vehicle_factory: "424000",
+    shooter_camp: "425000"
   });
 
 function metnAl(value, max = 1024) {
