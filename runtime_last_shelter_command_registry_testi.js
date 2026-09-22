@@ -44,7 +44,7 @@ lastShelterInitCommandiniQeydEt(router,{getOrCreatePlayerState,ensureFreshPlayer
 const expected=[
   "item.buy","settutorial","worldcup.list","worldcup.get","synuserresource",
   "activity.list","activity.get","shop.list","shop.get","repay.info",
-  "starter_city.info","troop.reference.list","troop.reference.get","resource.info","item.tuning.list","item.tuning.get","starter_account.info","goods.structure.list","goods.structure.get","store.reward.get","store.reward.catalog","alliance.group_purchase.info","alliance.group_purchase.offer","vipstore.panel",
+  "fresh_init.envelope.info","starter_city.info","troop.reference.list","troop.reference.get","resource.info","item.tuning.list","item.tuning.get","starter_account.info","goods.structure.list","goods.structure.get","store.reward.get","store.reward.catalog","alliance.group_purchase.info","alliance.group_purchase.offer","vipstore.panel",
   "engagement.info","engagement.online_duration.get","engagement.helicopter.task.get","mission.info","building.reference.list","building.reference.get",
   "queue.list","science.catalog","science.topology.list","science.topology","science.state",
   "science.prerequisite","science.plan","troop.catalog","troop.get",
