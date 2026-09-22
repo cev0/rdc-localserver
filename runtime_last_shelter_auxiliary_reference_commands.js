@@ -34,6 +34,8 @@ const {getVerifiedStoreReward,getVerifiedStoreRewardIds}=require("./last_shelter
 const {LAST_SHELTER_RESOURCE_PAYLOAD_FIELDS,lastShelterResourcePayloadHazirla}=require("./last_shelter_resource_runtime");
 const {ITEM_TUNING,itemTuningAl}=require("./last_shelter_item_tuning_kataloqu");
 const {LAST_SHELTER_STARTER_ITEM_TEMPLATES,LAST_SHELTER_STARTER_QUEUE_LAYOUT,lastShelterStarterAccountRuntimeTeminEt,starterQueueInitProjectionHazirla}=require("./last_shelter_starter_account_reference");
+const {TROOP_107X,LAST_SHELTER_SPECIAL_ARMS_CONFIG,troop107xAl,specialArmConfigAl}=require("./last_shelter_troop_107x_reference");
+const {TROOP_1073X_STABLE,troop1073xRuntimeProjectionAl,troop1073xObservedSpeedsAl}=require("./last_shelter_troop_1073x_reference");
 
 function clone(v){return v==null?v:JSON.parse(JSON.stringify(v));}
 function auth(ws,msg,send){
@@ -48,6 +50,16 @@ function lastShelterAuxiliaryCommandleriniQeydEt(router,deps){
   if(!router)throw new Error("Command router yoxdur.");
   const {getOrCreatePlayerState}=deps||{};
   if(typeof getOrCreatePlayerState!=="function")throw new Error("getOrCreatePlayerState yoxdur.");
+
+  router.register("troop.reference.list",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; send(ws,{type:"troop.reference.list",playerId:a.playerId,serverTimeUnixMs:now(nowMs),troops107x:clone(TROOP_107X),troops1073x:clone(TROOP_1073X_STABLE),specialArms:clone(LAST_SHELTER_SPECIAL_ARMS_CONFIG)});
+  },{authRequired:true,mutation:false});
+
+  router.register("troop.reference.get",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const id=msg&&msg.id!=null?String(msg.id).trim():""; const raw=troop107xAl(id); const fourth=troop1073xRuntimeProjectionAl(id);
+    if(!raw&&!fourth){send(ws,{type:"error",code:"TROOP_REFERENCE_NOT_FOUND",message:"Last Shelter troop reference tapilmadi.",id});return;}
+    send(ws,{type:"troop.reference.get",playerId:a.playerId,serverTimeUnixMs:now(nowMs),id,troop:clone(raw||fourth),specialArm:specialArmConfigAl(id),observedSpeeds:fourth?troop1073xObservedSpeedsAl(id):[]});
+  },{authRequired:true,mutation:false});
 
   router.register("resource.info",async({ws,msg,send,nowMs})=>{
     const a=auth(ws,msg,send); if(!a)return; const t=now(nowMs); const state=getOrCreatePlayerState(a.playerId);
