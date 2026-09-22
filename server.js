@@ -6695,51 +6695,6 @@ function placeBuildingWithoutStarting(state, buildingId, x, z) {
 // JOB CREATION / COMPLETION
 // ============================================================
 
-function createBuildJob(state, buildingId, x, z) {
-  const now = nowMs();
-  const levelData = getLevelData(buildingId, 1);
-  const durationMs = getAdjustedBuildDurationMs(
-    state,
-    Number(levelData.buildTimeSeconds) || 0
-  );
-
-  const instanceId = crypto.randomBytes(8).toString("hex");
-  const jobId = crypto.randomBytes(8).toString("hex");
-
-  const building = {
-    instanceId: instanceId,
-    buildingId: buildingId,
-    x: x,
-    z: z,
-    level: 1,
-    isCompleted: false,
-    buildFinishTimeMs: now + durationMs,
-    isFixed: false,
-    hasRoadAccess: true
-  };
-
-  const job = {
-    jobId: jobId,
-    kind: "build",
-    buildingInstanceId: instanceId,
-    buildingId: buildingId,
-    x: x,
-    z: z,
-    targetLevel: 1,
-    startedAtMs: now,
-    durationMs: durationMs,
-    endsAtMs: now + durationMs,
-    isCompleted: false,
-    builderSlotsRequired: getBuilderSlotsRequiredForBuilding(buildingId)
-  };
-
-  state.buildings.push(building);
-  state.builders.jobs.push(job);
-  updateServerTime(state);
-
-  return { building, job };
-}
-
 function createUpgradeJob(state, building) {
   const now = nowMs();
 
