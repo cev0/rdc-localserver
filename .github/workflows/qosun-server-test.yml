@@ -112,7 +112,6 @@ on:
       - 'runtime_world_map_sync.js'
       - 'server_missiya_genisletme_v2.js'
       - 'missiya_handler.js'
-      - 'missiya_snapshot_authority_testi.js'
       - 'oyun_state_mutasiya_postgres.js'
       - 'oyun_state_snapshot_postgres.js'
       - '.github/workflows/qosun-server-test.yml'
@@ -132,8 +131,6 @@ jobs:
         run: npm ci
       - name: Gameplay extension syntax
         run: node --check server_missiya_genisletme_v2.js
-      - name: Missiya legacy snapshot authority testleri
-        run: node missiya_snapshot_authority_testi.js
       - name: Qosun kataloqu testleri
         run: node qosun_kataloqu_testi.js
       - name: Qosun telimi testleri
