@@ -2,7 +2,8 @@
 
 const {
   RAW_MAIN_BUILDING_LEVELS,
-  mainBuildingLeveliniAl,
+  buildingLeveliniAl,
+  buildingMaxLeveliniAl,
   rdcBuildingTypeIdAl
 } = require("./last_shelter_building_kataloqu");
 
@@ -55,18 +56,11 @@ function verifiedLastShelterBuildingLevelDataAl(
       )
     );
 
-  // Hazırda raw building.xml-dən RDC-yə təsdiqlənmiş xəritə HQ/400000-dir.
-  // Yeni verified building type-lar kataloqa əlavə olunduqca bu overlay
-  // generik building_definitions.json dəyərlərindən avtomatik üstün olacaq.
-  if (buildingTypeId !== "400000") {
-    return null;
-  }
-
   // UserBuildingManager.upgradeBuilding obtains costs/time/conditions from
   // getItemLevelId() (the CURRENT level), then verifies the next row exists.
   // Creating level 1 similarly consumes the level-zero row.
-  const row = mainBuildingLeveliniAl(level - 1);
-  const targetRow = mainBuildingLeveliniAl(level);
+  const row = buildingLeveliniAl(buildingTypeId, level - 1);
+  const targetRow = buildingLeveliniAl(buildingTypeId, level);
 
   if (!row || !targetRow || level > row.maxLevelFromXml) {
     return null;
@@ -112,34 +106,14 @@ function verifiedLastShelterBuildingMaxLevelAl(
   buildingId
 ) {
   const id = metnAl(buildingId);
-  const buildingTypeId =
-    rdcBuildingTypeIdAl(id);
-
-  if (buildingTypeId !== "400000") {
-    return 0;
-  }
-
-  const declaredMaxLevels =
-    Object.values(
-      RAW_MAIN_BUILDING_LEVELS
-    )
-      .map(
-        row =>
-          Math.max(
-            0,
-            Math.trunc(
-              Number(
-                row &&
-                row.maxLevelFromXml
-              ) || 0
-            )
-          )
-      )
-      .filter(level => level > 0);
-
-  return declaredMaxLevels.length > 0
-    ? Math.max(...declaredMaxLevels)
-    : 0;
+  const buildingTypeId = rdcBuildingTypeIdAl(id);
+  if (!buildingTypeId) return 0;
+  const catalogMax = buildingMaxLeveliniAl(buildingTypeId);
+  const rows = Object.values(require("./last_shelter_building_kataloqu").RAW_BUILDING_ROWS)
+    .filter(row => Number(row.id)-Number(row.level)===Number(buildingTypeId));
+  const declared = rows.map(row=>Math.max(0,Math.trunc(Number(row.max_level)||0))).filter(Boolean);
+  const declaredMax = declared.length ? Math.max(...declared) : catalogMax;
+  return Math.min(catalogMax, declaredMax || catalogMax);
 }
 
 function verifiedLastShelterBuildingLevelStatusAl(
