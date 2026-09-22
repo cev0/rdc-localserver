@@ -10,6 +10,9 @@ const {
   freshInitEnvelopeRuntimeDefaultHazirla,
   freshInitEnvelopeRuntimeTeminEt
 } = require("./last_shelter_fresh_init_envelope_reference");
+const {
+  lastShelterHeroCommandleriniQeydEt
+} = require("./runtime_last_shelter_hero_commands");
 
 function clone(value) {
   return value == null
@@ -78,6 +81,16 @@ function lastShelterInitCommandiniQeydEt(
       "getOrCreatePlayerState yoxdur."
     );
   }
+
+  // Hero runtime read contract is part of the same authenticated
+  // Last Shelter bootstrap surface. Register it here so the production
+  // server exposes hero.info whenever it installs last_shelter.init.
+  lastShelterHeroCommandleriniQeydEt(
+    router,
+    {
+      getOrCreatePlayerState
+    }
+  );
 
   router.register(
     "last_shelter.init",
