@@ -28,6 +28,7 @@ const {vipStorePanelInfoHazirla}=require("./last_shelter_vip_store_runtime");
 const {allianceGroupPurchaseOfferAl}=require("./last_shelter_alliance_group_purchase_reference");
 const {LAST_SHELTER_FORT_TROOPS,fortTroopRuntimeProjectionAl,fortInitProjectionHazirla}=require("./last_shelter_fort_troop_reference");
 const {LAST_SHELTER_TROOP_TRANSFER_TREES,troopTransferTreeAl,troopTransferPointAl}=require("./last_shelter_troop_transfer_reference");
+const {runtimeTreesProjectionHazirla}=require("./last_shelter_troop_transfer_progression_reference");
 const {goodsStructureIdsAl,goodsStructureAl,salesRawEntriesAl}=require("./last_shelter_goods_structure_reference");
 const {getVerifiedStoreReward,getVerifiedStoreRewardIds}=require("./last_shelter_store_resource_rewards");
 const {LAST_SHELTER_RESOURCE_PAYLOAD_FIELDS,lastShelterResourcePayloadHazirla}=require("./last_shelter_resource_runtime");
@@ -131,6 +132,13 @@ function lastShelterAuxiliaryCommandleriniQeydEt(router,deps){
     const a=auth(ws,msg,send); if(!a)return; const troop=fortTroopRuntimeProjectionAl(msg&&msg.id);
     if(!troop){send(ws,{type:"error",code:"FORT_TROOP_NOT_FOUND",message:"Last Shelter fort troop tapilmadi.",id:msg&&msg.id});return;}
     send(ws,{type:"fort.troop.get",playerId:a.playerId,serverTimeUnixMs:now(nowMs),troop});
+  },{authRequired:true,mutation:false});
+
+  router.register("troop_transfer.state",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const state=getOrCreatePlayerState(a.playerId);
+    if(!Array.isArray(state.lastShelterTroopTransferRuntime)) state.lastShelterTroopTransferRuntime=clone(LAST_SHELTER_TROOP_TRANSFER_TREES);
+    const trees=runtimeTreesProjectionHazirla(state.lastShelterTroopTransferRuntime);
+    send(ws,{type:"troop_transfer.state",playerId:a.playerId,serverTimeUnixMs:now(nowMs),trees:clone(trees)});
   },{authRequired:true,mutation:false});
 
   router.register("troop_transfer.reference.list",async({ws,msg,send,nowMs})=>{
