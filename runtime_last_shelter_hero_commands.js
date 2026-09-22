@@ -61,6 +61,32 @@ function lastShelterHeroCommandleriniQeydEt(router, deps) {
     { authRequired: true, mutation: false }
   );
 
+  router.register(
+    "hero.get",
+    async ({ ws, msg, send, nowMs }) => {
+      const auth = authYoxla(ws, msg, send);
+      if (!auth) return;
+      const heroId = msg && msg.heroId != null ? String(msg.heroId).trim() : "";
+      const hero = heroTemplateProjectionHazirla(heroId);
+      if (!hero) {
+        send(ws, {
+          type: "error",
+          code: "HERO_NOT_FOUND",
+          message: "Last Shelter hero template tapilmadi.",
+          heroId
+        });
+        return;
+      }
+      send(ws, {
+        type: "hero.get",
+        playerId: auth.playerId,
+        serverTimeUnixMs: nowAl(nowMs),
+        hero
+      });
+    },
+    { authRequired: true, mutation: false }
+  );
+
   return router;
 }
 
