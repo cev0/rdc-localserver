@@ -29,6 +29,8 @@ const {LAST_SHELTER_REPAY_REFERENCE,repayEligibleRewardsAl,lastShelterRepayRunti
 const {LAST_SHELTER_ALLIANCE_GROUP_PURCHASE,allianceGroupPurchaseOfferAl,allianceGroupPurchaseRuntimeDefaultHazirla}=require("./last_shelter_alliance_group_purchase_reference");
 const {LAST_SHELTER_FORT_TROOPS,fortTroopRuntimeProjectionAl,fortInitProjectionHazirla}=require("./last_shelter_fort_troop_reference");
 const {LAST_SHELTER_TROOP_TRANSFER_TREES,troopTransferTreeAl,troopTransferPointAl}=require("./last_shelter_troop_transfer_reference");
+const {goodsStructureIdsAl,goodsStructureAl,salesRawEntriesAl}=require("./last_shelter_goods_structure_reference");
+const {getVerifiedStoreReward,getVerifiedStoreRewardIds}=require("./last_shelter_store_resource_rewards");
 
 function clone(v){return v==null?v:JSON.parse(JSON.stringify(v));}
 function auth(ws,msg,send){
@@ -43,6 +45,28 @@ function lastShelterAuxiliaryCommandleriniQeydEt(router,deps){
   if(!router)throw new Error("Command router yoxdur.");
   const {getOrCreatePlayerState}=deps||{};
   if(typeof getOrCreatePlayerState!=="function")throw new Error("getOrCreatePlayerState yoxdur.");
+
+  router.register("goods.structure.list",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const goods=goodsStructureIdsAl().map(id=>{const row=goodsStructureAl(id);return {...row,sales:salesRawEntriesAl(id)};});
+    send(ws,{type:"goods.structure.list",playerId:a.playerId,serverTimeUnixMs:now(nowMs),goods});
+  },{authRequired:true,mutation:false});
+
+  router.register("goods.structure.get",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const id=msg&&msg.itemId!=null?String(msg.itemId).trim():""; const good=goodsStructureAl(id);
+    if(!good){send(ws,{type:"error",code:"GOODS_STRUCTURE_NOT_FOUND",message:"Last Shelter goods structure tapilmadi.",itemId:id});return;}
+    send(ws,{type:"goods.structure.get",playerId:a.playerId,serverTimeUnixMs:now(nowMs),good:{...good,sales:salesRawEntriesAl(id)}});
+  },{authRequired:true,mutation:false});
+
+  router.register("store.reward.get",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const id=msg&&msg.storeId!=null?String(msg.storeId).trim():""; const reward=getVerifiedStoreReward(id);
+    if(!reward){send(ws,{type:"error",code:"STORE_REWARD_NOT_FOUND",message:"Last Shelter store reward tapilmadi.",storeId:id});return;}
+    send(ws,{type:"store.reward.get",playerId:a.playerId,serverTimeUnixMs:now(nowMs),storeId:id,reward});
+  },{authRequired:true,mutation:false});
+
+  router.register("store.reward.catalog",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const ids=getVerifiedStoreRewardIds();
+    send(ws,{type:"store.reward.catalog",playerId:a.playerId,serverTimeUnixMs:now(nowMs),count:ids.length,storeIds:ids});
+  },{authRequired:true,mutation:false});
 
   router.register("alliance.group_purchase.info",async({ws,msg,send,nowMs})=>{
     const a=auth(ws,msg,send); if(!a)return; const state=getOrCreatePlayerState(a.playerId);
