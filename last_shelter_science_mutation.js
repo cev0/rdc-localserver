@@ -17,8 +17,31 @@ const { lastShelterGoldWalletTeminEt, totalGoldAl } = require("./last_shelter_go
 
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
 function fail(code, details = {}) { return { ok: false, code, ...details }; }
-function skills(hero) { return Array.isArray(hero?.skills) ? hero.skills : []; }
-function newHeroes(state) { return state?.lastShelterHeroRuntime?.heroes || []; }
+function skills(hero) {
+  const out = [];
+  for (const value of [hero?.skills, hero?.skill, hero?.ability]) {
+    if (!Array.isArray(value)) continue;
+    for (const entry of value) {
+      if (entry == null) continue;
+      if (typeof entry === "string" || typeof entry === "number") {
+        out.push({ skillId: String(entry) });
+      } else if (typeof entry === "object") {
+        out.push(entry);
+      }
+    }
+  }
+  return out;
+}
+function newHeroes(state) {
+  const runtime = state?.lastShelterHeroRuntime;
+  if (!runtime || typeof runtime !== "object") return [];
+  if (Array.isArray(runtime.heroes)) return runtime.heroes;
+  if (Array.isArray(runtime.generals)) return runtime.generals;
+  return [];
+}
+function heroId(hero) {
+  return String(hero?.heroId ?? hero?.generalId ?? hero?.itemId ?? hero?.id ?? "");
+}
 
 function sourceSecondScienceQueueUnlocked(state) {
   // UserBuildingManager.getHeroListByItemId parses building.heroId as a
@@ -29,8 +52,8 @@ function sourceSecondScienceQueueUnlocked(state) {
     if (sourceBuildingType(building) !== "403000") continue;
     for (const id of String(building.heroId || "").split(";")) if (/^\d+$/.test(id)) stationed.add(id);
   }
-  return newHeroes(state).some(hero => stationed.has(String(hero.heroId ?? hero.id)) &&
-    skills(hero).some(skill => String(skill.skillId) === "61012"));
+  return newHeroes(state).some(hero => stationed.has(heroId(hero)) &&
+    skills(hero).some(skill => String(skill.skillId ?? skill.id ?? skill.heroSkill ?? "") === "61012"));
 }
 
 function sourceScienceEffects(state) {
@@ -109,7 +132,8 @@ function sourceScienceResearchPlan(state, request, nowUnixMs) {
   // EnergySkill's active-state lifecycle is not ported yet. Fail before
   // charging instead of silently ignoring a skill that discounts resources.
   if (newHeroes(state).some(hero => skills(hero).some(skill =>
-      (skill.state === "READY" || Number(skill.state) === 2) && String(skill.skillId) === "50046"))) {
+      (skill.state === "READY" || Number(skill.state) === 2) &&
+      String(skill.skillId ?? skill.id ?? skill.heroSkill ?? "") === "50046"))) {
     return fail("SCIENCE_ENERGY_SKILL_UNMIGRATED");
   }
   const resources = {};
