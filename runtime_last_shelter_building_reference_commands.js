@@ -7,6 +7,7 @@ const {
   buildingRuntimeStableAl,
   buildingRuntimeStableIdsAl
 } = require("./last_shelter_building_runtime_observed_reference");
+const {buildingLeveliniAl,buildingMaxLeveliniAl}=require("./last_shelter_building_kataloqu");
 
 function authYoxla(ws,msg,send) {
   const result = playerIdUyugunluqYoxla(msg,ws);
@@ -38,6 +39,19 @@ function buildingRuntimeStableCatalogHazirla() {
 
 function lastShelterBuildingReferenceCommandleriniQeydEt(router) {
   if (!router) throw new Error("Command router yoxdur.");
+
+  router.register(
+    "building.catalog.level",
+    async ({ws,msg,send,nowMs}) => {
+      const auth=authYoxla(ws,msg,send); if(!auth)return;
+      const buildingTypeId=String(msg&&msg.buildingTypeId!=null?msg.buildingTypeId:"").trim();
+      const level=Math.trunc(Number(msg&&msg.level));
+      const building=buildingTypeId&&Number.isFinite(level)?buildingLeveliniAl(buildingTypeId,level):null;
+      if(!building){send(ws,{type:"error",code:"BUILDING_CATALOG_LEVEL_NOT_FOUND",message:"Last Shelter building.xml level row not found"});return;}
+      send(ws,{type:"building.catalog.level",playerId:auth.playerId,serverTimeUnixMs:nowAl(nowMs),source:"last_shelter_v1.250.102_building_xml",maxLevel:buildingMaxLeveliniAl(buildingTypeId),building});
+    },
+    {authRequired:true,mutation:false}
+  );
 
   router.register(
     "building.reference.list",
