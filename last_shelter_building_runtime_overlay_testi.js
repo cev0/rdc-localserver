@@ -25,7 +25,11 @@ assert.deepStrictEqual(status("hq",6), {mapped:true,buildingId:"hq",buildingType
 assert.strictEqual(level("hq",25).buildTimeSeconds,1893030);
 assert.strictEqual(level("hq",25).cost.find(row => row.type === "money").amount,34000000);
 assert.strictEqual(level("hq",26),null,"Source rows above the declared cap must not unlock higher levels");
-assert.strictEqual(status("farm",1).mapped,false);\nassert.strictEqual(level("farm",1),null);\nassert.strictEqual(status("unknown_building",1).mapped,false);
+const farmStatus = status("farm", 1);
+assert.strictEqual(farmStatus.mapped, true);
+assert.strictEqual(farmStatus.buildingTypeId, "415000");
+assert.ok(level("farm", 1));
+assert.strictEqual(status("unknown_building",1).mapped,false);
 assert.strictEqual(level("unknown_building",1),null);
 
 
