@@ -4,7 +4,6 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 const {
-  m016StatusunuAl,
   dusmenMovqeyiMutasiyasiniTetbiqEt
 } = require("./dusmen_movqeyi_handler");
 const {
@@ -18,11 +17,6 @@ function kopyala(v) {
 function aktivStateHazirla() {
   return {
     playerId: "oyuncu_a",
-    missions: {
-      version: 1,
-      claimedRewardIds: ["m015"],
-      eventCounters: {}
-    },
     kesfiyyat: {
       version: 1,
       tutorial: {
@@ -37,38 +31,6 @@ function aktivStateHazirla() {
   };
 }
 
-(function missionStatusReadOnlyTesti() {
-  const state = aktivStateHazirla();
-  const evvelki = kopyala(state);
-
-  assert.strictEqual(m016StatusunuAl(state), "aktiv");
-  assert.deepStrictEqual(
-    state,
-    evvelki,
-    "M016 status yoxlaması authoritative mission state-i dəyişməməlidir."
-  );
-})();
-
-(function lockedInspectNoMutationTesti() {
-  const state = aktivStateHazirla();
-  state.missions.claimedRewardIds = [];
-  const evvelki = kopyala(state);
-
-  const netice = dusmenMovqeyiMutasiyasiniTetbiqEt(
-    state,
-    12000
-  );
-
-  assert.strictEqual(netice.success, false);
-  assert.strictEqual(netice.deyisdi, false);
-  assert.strictEqual(netice.missionStatus, "kilidli");
-  assert.deepStrictEqual(state, evvelki);
-  assert.strictEqual(
-    Object.prototype.hasOwnProperty.call(state, "dusmenMovqeleri"),
-    false
-  );
-})();
-
 (function inspectSuccessTesti() {
   const state = aktivStateHazirla();
 
@@ -79,9 +41,7 @@ function aktivStateHazirla() {
 
   assert.strictEqual(netice.success, true);
   assert.strictEqual(netice.deyisdi, true);
-  assert.strictEqual(netice.missionStatus, "aktiv");
   assert.strictEqual(netice.netice.alreadyDiscovered, false);
-  assert.strictEqual(netice.missionHadisesiLazimdir, true);
   assert.strictEqual(state.dusmenMovqeleri.tutorial.status, "askarlandi");
   assert.strictEqual(state.dusmenMovqeleri.tutorial.targetId, TUTORIAL_HEDEF_ID);
   assert.strictEqual(state.dusmenMovqeleri.tutorial.discoveredAtMs, 12000);
@@ -115,7 +75,6 @@ function aktivStateHazirla() {
 
 (function alreadyDiscoveredNoExtraMutationTesti() {
   const state = aktivStateHazirla();
-  state.missions.eventCounters.dusmen_movqeyi_askarlandi = 1;
   state.dusmenMovqeleri = {
     version: 1,
     tutorial: {
@@ -135,35 +94,7 @@ function aktivStateHazirla() {
   assert.strictEqual(netice.success, true);
   assert.strictEqual(netice.deyisdi, false);
   assert.strictEqual(netice.netice.alreadyDiscovered, true);
-  assert.strictEqual(netice.missionHadisesiLazimdir, false);
   assert.deepStrictEqual(state, evvelki);
-})();
-
-(function alreadyDiscoveredMissionBackfillTesti() {
-  const state = aktivStateHazirla();
-  state.dusmenMovqeleri = {
-    version: 1,
-    tutorial: {
-      targetId: TUTORIAL_HEDEF_ID,
-      status: "askarlandi",
-      discoveredAtMs: 12000,
-      threatLevel: 1
-    }
-  };
-
-  const netice = dusmenMovqeyiMutasiyasiniTetbiqEt(
-    state,
-    13000
-  );
-
-  assert.strictEqual(netice.success, true);
-  assert.strictEqual(netice.deyisdi, false);
-  assert.strictEqual(netice.netice.alreadyDiscovered, true);
-  assert.strictEqual(
-    netice.missionHadisesiLazimdir,
-    true,
-    "Legacy discovered state-də mission event yoxdursa backfill qorunmalıdır."
-  );
 })();
 
 (function sourceInteqrasiyaTesti() {
@@ -185,12 +116,12 @@ function aktivStateHazirla() {
     "Enemy-position info read clone state istifadə etməlidir."
   );
   assert.ok(
-    kod.includes("missiyaStatusunuAl(\n    dusmenMovqeyiReadStateKopyasi(state)"),
-    "M016 status yoxlaması da clone üzərində işləməlidir."
+    !kod.includes("missiyaStatusunuAl"),
+    "Synthetic M016 mission gate enemy-position handler-dan ayrılmış qalmalıdır."
   );
   assert.ok(
-    kod.includes("missiyaServerHadisesiniQeydEt"),
-    "Enemy-position mission-event bridge saxlanmalıdır."
+    !kod.includes("missiyaServerHadisesiniQeydEt"),
+    "Synthetic mission-event bridge enemy-position handler-dan ayrılmış qalmalıdır."
   );
 })();
 
