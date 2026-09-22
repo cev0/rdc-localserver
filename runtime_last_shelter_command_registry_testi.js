@@ -47,7 +47,7 @@ const expected=[
   "engagement.info","mission.info","building.reference.list","building.reference.get",
   "queue.list","science.catalog","science.topology.list","science.topology","science.state",
   "science.prerequisite","science.plan","troop.catalog","troop.get",
-  "troop.transfer.level6","troop.transfer.type","troop.transfer.point","hero.info","hero.get","hero.general.get","last_shelter.init"
+  "troop.transfer.level6","troop.transfer.type","troop.transfer.point","hero.info","hero.get","hero.general.list","hero.general.get","last_shelter.init"
 ];
 
 assert.deepStrictEqual([...router.routes.keys()].sort(),expected.sort());
