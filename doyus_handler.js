@@ -10,9 +10,6 @@ const {
   tutorialDoyusMukafatiniAl
 } = require("./doyus_mukafat_sistemi");
 
-const { missiyaniTap } = require("./missiya_kataloqu");
-const { missiyaStatusunuAl } = require("./missiya_proqres");
-const { missiyaServerHadisesiniQeydEt } = require("./missiya_hadise_korpu");
 const {
   oyunStateIniBerpaEt,
   oyuncuStateBerpaOlunub
@@ -51,12 +48,6 @@ function gonder(kontekst, type, melumat) {
     ...melumat,
     serverTimeUnixMs: kontekst.nowMs()
   });
-}
-
-function missiyaHadisesiVar(state, hadiseId) {
-  const counters = state && state.missions && state.missions.eventCounters;
-  const say = counters ? Number(counters[hadiseId]) : 0;
-  return Number.isFinite(say) && say > 0;
 }
 
 function saheniYedekle(state, acar) {
@@ -172,79 +163,16 @@ async function doyusMesajiniEmalEt(kontekst) {
     }
 
     const state = kontekst.getOrCreatePlayerState(playerId);
-    const m017 = missiyaniTap("M017");
-    const m018 = missiyaniTap("M018");
-    const m019 = missiyaniTap("M019");
-
-    const startMissionStatus = m017 ? missiyaStatusunuAl(state, m017) : "kilidli";
-    const resolveMissionStatus = m018 ? missiyaStatusunuAl(state, m018) : "kilidli";
-    const rewardMissionStatus = m019 ? missiyaStatusunuAl(state, m019) : "kilidli";
-
     if (type === "battle_info_request") {
       gonder(kontekst, resultType, {
         success: true,
         playerId,
-        startMissionId: "M017",
-        startMissionStatus,
-        resolveMissionId: "M018",
-        resolveMissionStatus,
-        rewardMissionId: "M019",
-        rewardMissionStatus,
         info: doyusMelumatiniHazirla(
           doyusReadStateKopyasi(state),
           kontekst.nowMs()
         )
       });
       return true;
-    }
-
-    if (type === "battle_start_request" && startMissionStatus === "kilidli") {
-      gonder(kontekst, resultType, {
-        success: false,
-        playerId,
-        missionId: "M017",
-        missionStatus: startMissionStatus,
-        message: "İlk döyüş missiyası hələ aktiv deyil."
-      });
-      return true;
-    }
-
-    if (type === "battle_resolve_request" && resolveMissionStatus === "kilidli") {
-      gonder(kontekst, resultType, {
-        success: false,
-        playerId,
-        missionId: "M018",
-        missionStatus: resolveMissionStatus,
-        message: "Döyüş nəticəsi missiyası hələ aktiv deyil."
-      });
-      return true;
-    }
-
-    if (type === "battle_reward_claim_request" && rewardMissionStatus === "kilidli") {
-      gonder(kontekst, resultType, {
-        success: false,
-        playerId,
-        missionId: "M019",
-        missionStatus: rewardMissionStatus,
-        message: "Döyüş təchizatı missiyası hələ aktiv deyil."
-      });
-      return true;
-    }
-
-    let missionId;
-    let missionStatus;
-
-    if (type === "battle_start_request") {
-      missionId = "M017";
-      missionStatus = startMissionStatus;
-    }
-    else if (type === "battle_resolve_request") {
-      missionId = "M018";
-      missionStatus = resolveMissionStatus;
-    }
-    else {
-      missionId = "M019";
-      missionStatus = rewardMissionStatus;
     }
 
     const mutasiyaNeticesi = await oyuncuStateMutasiyasiniPostgresIleIcraEt(
@@ -274,8 +202,6 @@ async function doyusMesajiniEmalEt(kontekst) {
       gonder(kontekst, resultType, {
         success: false,
         playerId,
-        missionId,
-        missionStatus,
         ...netice,
         message: mutasiyaNeticesi && mutasiyaNeticesi.message
           ? mutasiyaNeticesi.message
@@ -290,22 +216,9 @@ async function doyusMesajiniEmalEt(kontekst) {
 
     const netice = mutasiyaNeticesi.netice || {};
 
-    if (type === "battle_start_request" && !missiyaHadisesiVar(state, "doyus_basladildi")) {
-      await missiyaServerHadisesiniQeydEt(playerId, state, "doyus_basladildi", 1);
-    }
-
-    if (type === "battle_resolve_request" && netice.victory === true && !missiyaHadisesiVar(state, "doyus_qazanildi")) {
-      await missiyaServerHadisesiniQeydEt(playerId, state, "doyus_qazanildi", 1);
-    }
-
-    if (type === "battle_reward_claim_request" && !missiyaHadisesiVar(state, "doyus_mukafati_verildi")) {
-      await missiyaServerHadisesiniQeydEt(playerId, state, "doyus_mukafati_verildi", 1);
-    }
-
     gonder(kontekst, resultType, {
       success: true,
       playerId,
-      missionId,
       ...netice,
       info: doyusMelumatiniHazirla(
         doyusReadStateKopyasi(state),
