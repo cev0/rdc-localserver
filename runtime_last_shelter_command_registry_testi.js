@@ -11,6 +11,7 @@ const {lastShelterMissionCommandleriniQeydEt}=require("./runtime_last_shelter_mi
 const {lastShelterBuildingReferenceCommandleriniQeydEt}=require("./runtime_last_shelter_building_reference_commands");
 const {lastShelterQueueScienceCommandleriniQeydEt}=require("./runtime_last_shelter_queue_science_commands");
 const {lastShelterTroopReferenceCommandleriniQeydEt}=require("./runtime_last_shelter_troop_reference_commands");
+const {lastShelterHeroCommandleriniQeydEt}=require("./runtime_last_shelter_hero_commands");
 const {lastShelterInitCommandiniQeydEt}=require("./runtime_last_shelter_init_command");
 
 class StrictRouter {
@@ -38,6 +39,7 @@ lastShelterMissionCommandleriniQeydEt(router,{getOrCreatePlayerState});
 lastShelterBuildingReferenceCommandleriniQeydEt(router);
 lastShelterQueueScienceCommandleriniQeydEt(router,{getOrCreatePlayerState});
 lastShelterTroopReferenceCommandleriniQeydEt(router);
+lastShelterHeroCommandleriniQeydEt(router,{getOrCreatePlayerState});
 lastShelterInitCommandiniQeydEt(router,{getOrCreatePlayerState,ensureFreshPlayerState:async()=>state,updateServerTime:()=>{}});
 
 const expected=[
@@ -47,7 +49,7 @@ const expected=[
   "engagement.info","mission.info","building.reference.list","building.reference.get",
   "queue.list","science.catalog","science.topology.list","science.topology","science.state",
   "science.prerequisite","science.plan","troop.catalog","troop.get",
-  "troop.transfer.level6","troop.transfer.type","troop.transfer.point","last_shelter.init"
+  "troop.transfer.level6","troop.transfer.type","troop.transfer.point","hero.info","last_shelter.init"
 ];
 
 assert.deepStrictEqual([...router.routes.keys()].sort(),expected.sort());
