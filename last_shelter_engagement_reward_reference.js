@@ -199,6 +199,11 @@ function lastShelterEngagementRuntimeDefaultHazirla() {
   };
 }
 
+function normalizeNonNegativeInt(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : fallback;
+}
+
 function lastShelterEngagementRuntimeTeminEt(state) {
   if (!state || typeof state !== "object") return null;
 
@@ -220,6 +225,15 @@ function lastShelterEngagementRuntimeTeminEt(state) {
   if (!Array.isArray(runtime.onlineDuration.rewards)) {
     runtime.onlineDuration.rewards = [];
   }
+  const rewardById = new Map(runtime.onlineDuration.rewards.filter(Boolean).map(row => [String(row.entryId), row]));
+  runtime.onlineDuration.rewards = LAST_SHELTER_ONLINE_DURATION.rewards.map(template => {
+    const row = rewardById.get(template.entryId) || {};
+    return {
+      entryId: template.entryId,
+      duration: normalizeNonNegativeInt(row.duration, template.duration),
+      rewardState: normalizeNonNegativeInt(row.rewardState, template.rewardState)
+    };
+  });
 
   if (!runtime.helicopter || typeof runtime.helicopter !== "object") {
     runtime.helicopter = {};
@@ -227,8 +241,18 @@ function lastShelterEngagementRuntimeTeminEt(state) {
   if (!runtime.helicopter.record || typeof runtime.helicopter.record !== "object") {
     runtime.helicopter.record = { ...LAST_SHELTER_HELICOPTER.recordDefaults };
   }
+  for (const [key, fallback] of Object.entries(LAST_SHELTER_HELICOPTER.recordDefaults)) {
+    runtime.helicopter.record[key] = normalizeNonNegativeInt(runtime.helicopter.record[key], fallback);
+  }
+  runtime.helicopter.record.todayTaskCount = Math.min(runtime.helicopter.record.todayTaskCount, runtime.helicopter.record.todayTaskCountLimit);
   if (!Array.isArray(runtime.helicopter.refugees)) runtime.helicopter.refugees = [];
+  if (runtime.helicopter.refugees.length > LAST_SHELTER_HELICOPTER.refugeeLimit) runtime.helicopter.refugees = runtime.helicopter.refugees.slice(0, LAST_SHELTER_HELICOPTER.refugeeLimit);
   if (!Array.isArray(runtime.helicopter.taskState)) runtime.helicopter.taskState = [];
+  const taskById = new Map(runtime.helicopter.taskState.filter(Boolean).map(row => [Number(row.id), row]));
+  runtime.helicopter.taskState = LAST_SHELTER_HELICOPTER.taskTemplates.map(template => {
+    const row = taskById.get(template.id) || {};
+    return { id: template.id, state: normalizeNonNegativeInt(row.state, template.observedInitialState), finishTime: normalizeNonNegativeInt(row.finishTime, 0) };
+  });
 
   return runtime;
 }
