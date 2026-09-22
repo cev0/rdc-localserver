@@ -12,6 +12,7 @@ const {
   mainBuildingLeveliniAl,
   buildingLeveliniAl,
   buildingMaxLeveliniAl,
+  buildingDeclaredMaxLeveliniAl,
   rdcBuildingTypeIdAl
 } = require("./last_shelter_building_kataloqu");
 
@@ -372,6 +373,53 @@ for (
     `Indexed max level mismatch for building type ${typeId}`
   );
 }
+
+const expectedDeclaredMaxByType =
+  Object.values(
+    RAW_BUILDING_ROWS
+  ).reduce(
+    (index, raw) => {
+      const typeId =
+        String(
+          Number(raw.id) -
+          Number(raw.level)
+        );
+      const declaredMax =
+        Math.max(
+          0,
+          Math.trunc(
+            Number(raw.max_level) || 0
+          )
+        );
+      if (declaredMax > 0) {
+        index[typeId] =
+          Math.max(
+            Number(index[typeId]) || 0,
+            declaredMax
+          );
+      }
+      return index;
+    },
+    Object.create(null)
+  );
+
+for (
+  const [typeId, expectedMax] of
+  Object.entries(expectedDeclaredMaxByType)
+) {
+  assert.strictEqual(
+    buildingDeclaredMaxLeveliniAl(typeId),
+    expectedMax,
+    `Indexed declared max mismatch for building type ${typeId}`
+  );
+}
+
+assert.strictEqual(
+  buildingDeclaredMaxLeveliniAl(
+    "not-a-building"
+  ),
+  0
+);
 
 console.log(
   "PASS: verified Last Shelter main-building 400000-400005 reference rows are preserved."
