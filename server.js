@@ -1973,9 +1973,23 @@ function loadExternalBuildingDefinitions() {
         const id = normalizeBuildingId(definition.id);
         nextMeta[id] = meta;
 
-        const levelConfig = createLevelConfigFromDefinition(definition);
-        if (levelConfig) {
-          nextLevelConfig[id] = levelConfig;
+        const verifiedLastShelterMaxLevel =
+          verifiedLastShelterBuildingMaxLevelAl(
+            id
+          );
+
+        if (
+          verifiedLastShelterMaxLevel <= 0
+        ) {
+          const levelConfig =
+            createLevelConfigFromDefinition(
+              definition
+            );
+
+          if (levelConfig) {
+            nextLevelConfig[id] =
+              levelConfig;
+          }
         }
       }
 
