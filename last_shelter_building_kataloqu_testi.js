@@ -26,6 +26,10 @@ assert.strictEqual(
   "400000"
 );
 
+assert.strictEqual(rdcBuildingTypeIdAl("fighter_camp"), "423000");
+assert.strictEqual(rdcBuildingTypeIdAl("vehicle_factory"), "424000");
+assert.strictEqual(rdcBuildingTypeIdAl("shooter_camp"), "425000");
+
 assert.strictEqual(
   Object.isFrozen(
     RDC_TO_LAST_SHELTER_BUILDING_TYPE
@@ -272,7 +276,10 @@ const verifiedDefinitionIds = [
   "hospital",
   "farm",
   "ration_truck",
-  "tower"
+  "tower",
+  "fighter_camp",
+  "vehicle_factory",
+  "shooter_camp"
 ];
 
 for (const id of verifiedDefinitionIds) {
