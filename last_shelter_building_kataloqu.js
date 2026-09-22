@@ -74,6 +74,29 @@ const RAW_BUILDING_ROWS = Object.freeze(Object.fromEntries(sourceCatalog.rows("b
   .map(row => [row.id, Object.freeze({ ...row })])));
 sourceCatalog.release("building");
 
+const BUILDING_MAX_LEVEL_BY_TYPE = Object.freeze(
+  Object.values(RAW_BUILDING_ROWS).reduce(
+    (index, raw) => {
+      const typeId =
+        String(
+          Number(raw.id) -
+          Number(raw.level)
+        );
+      const level =
+        Number(raw.level) || 0;
+
+      index[typeId] =
+        Math.max(
+          Number(index[typeId]) || 0,
+          level
+        );
+
+      return index;
+    },
+    Object.create(null)
+  )
+);
+
 function buildingXmlRowAl(xmlId) {
   const raw = RAW_BUILDING_ROWS[String(xmlId)];
   return raw ? { ...raw } : null;
@@ -119,13 +142,23 @@ function buildingLeveliniAl(buildingTypeId, level) {
 }
 
 function buildingMaxLeveliniAl(buildingTypeId) {
-  const type=metnAl(buildingTypeId,32);
-  if (!/^\d+$/.test(type)) return 0;
-  let max=0;
-  for (const raw of Object.values(RAW_BUILDING_ROWS)) {
-    if (Number(raw.id)-Number(raw.level)===Number(type)) max=Math.max(max,Number(raw.level)||0);
+  const type =
+    metnAl(
+      buildingTypeId,
+      32
+    );
+
+  if (!/^\d+$/.test(type)) {
+    return 0;
   }
-  return max;
+
+  return (
+    Number(
+      BUILDING_MAX_LEVEL_BY_TYPE[
+        String(Number(type))
+      ]
+    ) || 0
+  );
 }
 
 function mainBuildingLeveliniAl(level) {
