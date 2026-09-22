@@ -2301,32 +2301,8 @@ if (index >= 0 && index < cfg.levels.length) {
   };
 }
 
-const last = cfg.levels[cfg.levels.length - 1];
-
-return {
-  buildTimeSeconds: Math.max(
-    0,
-    Number(last.buildTimeSeconds) || 0
-  ),
-
-  productionPerTick: Math.max(
-    0,
-    Number(last.productionPerTick) || 0
-  ),
-
-  storageCapacityBonus: Math.max(
-    0,
-    Number(last.storageCapacityBonus) || 0
-  ),
-
-  specialEffectValue: Math.max(
-    0,
-    Number(last.specialEffectValue) || 0
-  ),
-
-  cost: cloneCostArray(last.cost)
-};
   }
+
   return null;
 }
 
