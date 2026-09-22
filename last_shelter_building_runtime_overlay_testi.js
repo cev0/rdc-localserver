@@ -27,4 +27,12 @@ assert.strictEqual(level("hq",25).cost.find(row => row.type === "money").amount,
 assert.strictEqual(level("hq",26),null,"Source rows above the declared cap must not unlock higher levels");
 assert.strictEqual(level("farm",1),null);
 assert.strictEqual(max("farm"),0);
+for (const id of ["institute","house","bank","hospital","embassy","farm","ration_truck","road","tower"]) {
+  const row=verifiedLastShelterBuildingLevelDataAl(id,1);
+  assert(row, id+" level 1 must come from Last Shelter building.xml");
+  assert.strictEqual(row.targetLevel,1);
+  assert(verifiedLastShelterBuildingMaxLevelAl(id)>=1);
+  assert.strictEqual(verifiedLastShelterBuildingLevelStatusAl(id,1).verified,true);
+}
+
 console.log("PASS: complete HQ costs use the current XML level and enforce the declared cap.");
