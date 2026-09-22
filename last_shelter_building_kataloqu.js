@@ -8,7 +8,9 @@
 
 const RDC_TO_LAST_SHELTER_BUILDING_TYPE =
   Object.freeze({
-    hq: "400000"
+    hq: "400000", institute: "403000", house: "433000", bank: "434000",
+    hospital: "411000", embassy: "402000", farm: "415000",
+    ration_truck: "460000", road: "436000", tower: "418000"
   });
 
 function metnAl(value, max = 1024) {
