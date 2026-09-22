@@ -94,10 +94,29 @@ two.lastShelterHeroRuntime = { heroes: [{ heroId: 42, skills: [{ skillId: "61012
 assert.strictEqual(sourceSecondScienceQueueUnlocked(two), false, "Owning a hero without stationing is insufficient");
 two.buildings[0].heroId = "42";
 assert.strictEqual(sourceSecondScienceQueueUnlocked(two), true);
+
+const generalShape = fixture();
+generalShape.queues.push({ uuid: "q2", qid: 2, type: 6, updateTime: 0, endTime: 9999999, itemObj: {} });
+generalShape.lastShelterHeroRuntime = {
+  generals: [{ generalId: "77", skill: [{ id: "61012" }] }]
+};
+assert.strictEqual(sourceSecondScienceQueueUnlocked(generalShape), false, "General runtime also requires academy stationing");
+generalShape.buildings[0].heroId = "77";
+assert.strictEqual(sourceSecondScienceQueueUnlocked(generalShape), true, "Persisted Last Shelter general skill unlocks second science queue");
 assert(sourceScienceResearch(two, { itemId: "901000", quuid: "q2" }, 1000).ok);
 assert(sourceScienceResearch(two, { itemId: "901100" }, 1000).ok);
 assert.strictEqual(sourceScienceUpgrade(two, { itemId: "901000", quuid: "q2" }, 90000).level, 1);
 assert.strictEqual(two.queues[0].status, "running", "Explicit upgrade cannot finish another queue early");
+
+const energyShape = fixture();
+energyShape.lastShelterHeroRuntime = {
+  generals: [{ generalId: "88", skill: [{ id: "50046", state: 2 }] }]
+};
+assert.strictEqual(
+  sourceScienceResearch(energyShape, { itemId: "901000" }, 1000).code,
+  "SCIENCE_ENERGY_SKILL_UNMIGRATED",
+  "Active EnergySkill in persisted general runtime must not be silently ignored"
+);
 
 const modifiers = fixture();
 modifiers.lastShelterScienceRuntime = { externalEffects: { SCIENCE_RESEARCH_MONEY_COST: 25, NORMAL_SCIENCE_RESEARCH_TIME: 50 } };
