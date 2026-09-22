@@ -195,17 +195,6 @@ function getAdjustedBuildDurationMs(state, baseBuildTimeSeconds) {
   return Math.max(1000, Math.round(Number(netice.effectiveDurationMs) || rawMs));
 }
 
-function getAdjustedTrainingDurationMs(state, rawDurationMs) {
-  const durationMs = Math.max(0, Math.round(Number(rawDurationMs) || 0));
-  const speedPct = 0;
-
-  if (durationMs <= 0 || speedPct <= 0) return durationMs;
-
-  return Math.max(1000, Math.round(durationMs * (100 / (100 + speedPct))));
-}
-
-
-
 function ensureResourcesObject(state) {
   if (!state.resources) {
     state.resources = {
@@ -7516,7 +7505,6 @@ gameplayMutationCommandleriniQeydEt(
     spendResources,
     getBuilderSlotsRequiredForBuilding,
     refreshBuilderCapacity,
-    getAdjustedTrainingDurationMs,
     isUpgradeDisabledBuildingId,
     getMaxLevelForBuilding,
     createUpgradeJob
