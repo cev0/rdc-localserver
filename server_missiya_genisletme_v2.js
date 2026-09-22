@@ -67,7 +67,6 @@ const { dusmenMovqeyiMesajiniEmalEt } = require("./dusmen_movqeyi_handler");
 const { doyusMesajiniEmalEt } = require("./doyus_handler");
 
 const OYUNCU_MUTASIYA_MESAJLARI = new Set([
-  "mission_reward_claim_request",
   "hero_recruit_single_request",
   "hero_recruit_x10_request",
   "hero_exp_item_use_request",
