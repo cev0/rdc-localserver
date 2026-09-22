@@ -99,15 +99,19 @@ assert.strictEqual(
   0
 );
 
+state.lastShelterVipStore.refreshTime = 1789704000;
 const panel =
-  vipStorePanelInfoHazirla(
-    state,
-    1789704000
-  );
+  vipStorePanelInfoHazirla(state);
+const clientSpoofedPanel = vipStorePanelInfoHazirla(state, 9999999999);
 
 assert.strictEqual(
   panel.vipstore.refreshTime,
   1789704000
+);
+assert.strictEqual(
+  clientSpoofedPanel.vipstore.refreshTime,
+  1789704000,
+  "Client refreshTime cannot override persisted server runtime"
 );
 assert.strictEqual(
   panel.vipstore.goods.length,
