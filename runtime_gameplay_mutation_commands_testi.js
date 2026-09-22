@@ -378,7 +378,7 @@ const {
   assert.strictEqual(sent[0].code,"BUILDING_CONDITION_NOT_MET");
   assert.strictEqual(buildingSpendCalls,0);
   assert.strictEqual(upgradeJobCalls,0);
-  state.buildings.push({buildingId:"ration_truck",level:1,isCompleted:true},{buildingId:"house",level:1,isCompleted:true});
+  state.buildings.push({buildingId:"ration_truck",level:1,isCompleted:true},{buildingTypeId:"433000",buildingId:"house",level:1,isCompleted:true});
   sent.length = 0;
   await router.dispatch({type:"upgrade_request",msg:{type:"upgrade_request",buildingInstanceId:"hq-1"},ws,send,nowMs:()=>501});
   assert.strictEqual(sent[0].type,"upgrade_started");
