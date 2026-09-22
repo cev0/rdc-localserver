@@ -4,6 +4,18 @@ const {
   verified107xProjection
 } = require("./last_shelter_troop_107x_runtime_adapteri");
 
+const {
+  troopArmsUnlockMelumatiniAl
+} = require("./last_shelter_arms_unlock_reference");
+
+const {
+  scienceLevelAl
+} = require("./last_shelter_science_prerequisite_runtime");
+
+const {
+  scienceTopologyMelumatiniAl
+} = require("./last_shelter_science_full_topology");
+
 const CLASS_DEFINITIONS = Object.freeze({
   warrior: Object.freeze({
     classId: "warrior",
@@ -72,8 +84,12 @@ function unitHazirla(classDef, displayNameAz, index) {
     verified107xProjection(
       lastShelterArmyId
     );
+  const unlockReference =
+    troopArmsUnlockMelumatiniAl(
+      lastShelterArmyId
+    );
 
-  if (!verified) {
+  if (!verified || !unlockReference) {
     throw new Error(
       `Verified Last Shelter troop row yoxdur: ${lastShelterArmyId}`
     );
@@ -93,6 +109,14 @@ function unitHazirla(classDef, displayNameAz, index) {
     tier,
     buildingId:
       classDef.buildingId,
+    sourceBuildingUnlock:
+      unlockReference.building
+        ? Object.freeze({
+            ...unlockReference.building
+          })
+        : null,
+    sourceScienceUnlockId:
+      unlockReference.scienceId,
     baseTrainingSeconds:
       verified.baseTrainingSeconds,
     costPerUnit:
@@ -269,9 +293,50 @@ function qosunKilidiniYoxla(
     };
   }
 
-  // Last Shelter 107x source rows do not prove the old RDC tier->building-level
-  // thresholds. Do not enforce invented level gates until native unlock rules
-  // are recovered.
+  const scienceUnlockId =
+    unit.sourceScienceUnlockId;
+
+  if (scienceUnlockId) {
+    const topology =
+      scienceTopologyMelumatiniAl(
+        scienceUnlockId
+      );
+
+    if (!topology) {
+      return {
+        success: false,
+        reason:
+          "science_unlock_unmigrated",
+        requiredScienceId:
+          scienceUnlockId,
+        message:
+          "Bu qoşunun Last Shelter science unlock qaydası hələ runtime kataloqunda yoxdur."
+      };
+    }
+
+    const currentScienceLevel =
+      scienceLevelAl(
+        state,
+        scienceUnlockId
+      );
+
+    if (currentScienceLevel < 1) {
+      return {
+        success: false,
+        reason:
+          "research_required",
+        requiredScienceId:
+          scienceUnlockId,
+        currentScienceLevel,
+        requiredScienceLevel: 1,
+        message:
+          "Bu qoşun üçün tələb olunan Last Shelter araşdırması tamamlanmayıb."
+      };
+    }
+  }
+
+  // Raw arms.xml building token is preserved on the unit. It is not forced
+  // onto an RDC semantic building id until that numeric mapping is verified.
   const buildingLevel =
     Math.max(
       0,
@@ -444,6 +509,14 @@ function kataloquClientUcunHazirla() {
         unit.tier,
       buildingId:
         unit.buildingId,
+      sourceBuildingUnlock:
+        unit.sourceBuildingUnlock
+          ? {
+              ...unit.sourceBuildingUnlock
+            }
+          : null,
+      sourceScienceUnlockId:
+        unit.sourceScienceUnlockId,
       baseTrainingSeconds:
         unit.baseTrainingSeconds,
       costPerUnit:
