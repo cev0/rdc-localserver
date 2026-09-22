@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "description": "RDC Unity client <-> server protocol contract",
   "clientOutboundTypes": [
     "account_bind_request",
@@ -87,12 +87,6 @@
       "isBound",
       "primaryEmail",
       "emailVerified"
-    ],
-    "technologyState": [
-      "technology",
-      "techLevels",
-      "techId",
-      "level"
     ],
     "troopCatalog": [
       "troop_catalog_request",
