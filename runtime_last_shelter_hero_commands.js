@@ -38,6 +38,12 @@ function heroSnapshotHazirla(state) {
   };
 }
 
+function generalListSnapshotAl(state) {
+  const runtime = lastShelterHeroRuntimeTeminEt(state);
+  if (!runtime) return [];
+  return clone(runtime.generals || []);
+}
+
 function generalSnapshotAl(state, uuid) {
   const runtime = lastShelterHeroRuntimeTeminEt(state);
   if (!runtime) return null;
@@ -96,6 +102,24 @@ function lastShelterHeroCommandleriniQeydEt(router, deps) {
     { authRequired: true, mutation: false }
   );
 
+  // Persisted player-owned hero list. Read-only until recruit/upgrade mutation
+  // semantics are independently verified from the reference server.
+  router.register(
+    "hero.general.list",
+    async ({ ws, msg, send, nowMs }) => {
+      const auth = authYoxla(ws, msg, send);
+      if (!auth) return;
+      const state = getOrCreatePlayerState(auth.playerId);
+      send(ws, {
+        type: "hero.general.list",
+        playerId: auth.playerId,
+        serverTimeUnixMs: nowAl(nowMs),
+        generals: generalListSnapshotAl(state)
+      });
+    },
+    { authRequired: true, mutation: false }
+  );
+
   // Persisted player-owned hero lookup. This deliberately exposes only observed
   // runtime state; recruit/upgrade mutation semantics are not inferred here.
   router.register(
@@ -130,6 +154,7 @@ function lastShelterHeroCommandleriniQeydEt(router, deps) {
 
 module.exports = {
   heroSnapshotHazirla,
+  generalListSnapshotAl,
   generalSnapshotAl,
   lastShelterHeroCommandleriniQeydEt
 };
