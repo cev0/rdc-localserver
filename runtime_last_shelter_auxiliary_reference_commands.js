@@ -152,7 +152,7 @@ function lastShelterAuxiliaryCommandleriniQeydEt(router,deps){
 
   router.register("vip_store.info",async({ws,msg,send,nowMs})=>{
     const a=auth(ws,msg,send); if(!a)return; const state=getOrCreatePlayerState(a.playerId);
-    send(ws,{type:"vip_store.info",playerId:a.playerId,serverTimeUnixMs:now(nowMs),panel:clone(vipStorePanelInfoHazirla(state,msg&&msg.refreshTime))});
+    send(ws,{type:"vip_store.info",playerId:a.playerId,serverTimeUnixMs:now(nowMs),panel:clone(vipStorePanelInfoHazirla(state))});
   },{authRequired:true,mutation:false});
 
   router.register("activity.reference.list",async({ws,msg,send,nowMs})=>{
