@@ -1794,7 +1794,9 @@ function cloneCostArray(cost) {
   }));
 }
 
-// Legacy hardcoded building metadata removed; building_definitions.json is the active metadata source.\n\nlet EXTERNAL_BUILDING_DEFINITION_META = {};
+// Legacy hardcoded building metadata removed; building_definitions.json is the active metadata source.
+
+let EXTERNAL_BUILDING_DEFINITION_META = {};
 let EXTERNAL_BUILDING_LEVEL_CONFIG = {};
 let EXTERNAL_BUILDING_DEFINITION_SOURCE = null;
 
