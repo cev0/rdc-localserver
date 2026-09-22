@@ -31,6 +31,18 @@ assert.strictEqual(farmStatus.buildingTypeId, "415000");
 assert.ok(level("farm", 1));
 assert.strictEqual(status("unknown_building",1).mapped,false);
 assert.strictEqual(level("unknown_building",1),null);
+for (const [id, typeId] of [
+  ["fighter_camp","423000"],
+  ["vehicle_factory","424000"],
+  ["shooter_camp","425000"]
+]) {
+  assert.strictEqual(status(id,1).mapped,true);
+  assert.strictEqual(status(id,1).buildingTypeId,typeId);
+  assert.strictEqual(max(id),25);
+  assert.ok(level(id,1));
+  assert.ok(level(id,25));
+  assert.strictEqual(level(id,26),null);
+}
 
 
 console.log("PASS: complete HQ costs use the current XML level and enforce the declared cap.");
