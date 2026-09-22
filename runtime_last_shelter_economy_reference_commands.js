@@ -22,6 +22,9 @@ const {
   allianceGroupPurchaseOfferAl
 } = require("./last_shelter_alliance_group_purchase_reference");
 const {
+  lastShelterAllianceRuntimeTeminEt
+} = require("./last_shelter_alliance_runtime_contract");
+const {
   lastShelterVipStoreStateHazirla,
   vipStorePanelInfoHazirla
 } = require("./last_shelter_vip_store_runtime");
@@ -98,12 +101,32 @@ function repaySnapshotHazirla(state) {
 }
 
 function allianceGroupPurchaseSnapshotHazirla(state) {
-  const alliance = state && state.lastShelterAllianceRuntime && typeof state.lastShelterAllianceRuntime === "object"
-    ? state.lastShelterAllianceRuntime : {};
+  const alliance =
+    lastShelterAllianceRuntimeTeminEt(
+      state
+    ) || {
+      groupPurchaseActivity: null,
+      groupPurchaseRecords: []
+    };
+
   return {
-    reference:clone(LAST_SHELTER_ALLIANCE_GROUP_PURCHASE),
-    runtime:clone(alliance.groupPurchaseActivity || null),
-    records:clone(Array.isArray(alliance.groupPurchaseRecords) ? alliance.groupPurchaseRecords : [])
+    reference:
+      clone(
+        LAST_SHELTER_ALLIANCE_GROUP_PURCHASE
+      ),
+    runtime:
+      clone(
+        alliance.groupPurchaseActivity ||
+        null
+      ),
+    records:
+      clone(
+        Array.isArray(
+          alliance.groupPurchaseRecords
+        )
+          ? alliance.groupPurchaseRecords
+          : []
+      )
   };
 }
 
