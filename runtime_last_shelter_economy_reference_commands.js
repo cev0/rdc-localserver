@@ -87,7 +87,11 @@ function vipStoreSnapshotHazirla(state,refreshTime) {
       !Array.isArray(state.lastShelterVipStore)
         ? clone(state.lastShelterVipStore) : lastShelterVipStoreStateHazirla()
   };
-  return vipStorePanelInfoHazirla(isolated,refreshTime);
+  if (refreshTime != null) {
+    const n=Number(refreshTime);
+    if (Number.isFinite(n) && n >= 0) isolated.lastShelterVipStore.refreshTime=Math.trunc(n);
+  }
+  return vipStorePanelInfoHazirla(isolated);
 }
 
 function lastShelterEconomyReferenceCommandleriniQeydEt(router,deps) {
