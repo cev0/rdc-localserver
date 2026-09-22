@@ -2502,37 +2502,6 @@ function cloneCostArray(cost) {
   }));
 }
 
-function makeFallbackLevelData(buildingId, targetLevel) {
-  const id = normalizeBuildingId(buildingId);
-  const lvl = Math.max(1, Number(targetLevel) || 1);
-
-  const baseWood = 100 * lvl;
-  const baseMoney = 80 * lvl;
-  const baseIron = lvl >= 2 ? 60 * lvl : 0;
-
-  let buildTimeSeconds = 15 + (lvl * 15);
-
-  if (id === "vehicle_factory") buildTimeSeconds += 15;
-  if (id === "hq") buildTimeSeconds += 20;
-  if (id === "road") buildTimeSeconds = 0;
-
-  const cost = [
-    { type: "wood", amount: baseWood },
-    { type: "money", amount: baseMoney }
-  ];
-
-  if (baseIron > 0) {
-    cost.push({ type: "iron", amount: baseIron });
-  }
-
-  return {
-    buildTimeSeconds,
-    productionPerTick: 0,
-    storageCapacityBonus: 0,
-    cost
-  };
-}
-
 // Legacy hardcoded building metadata removed; building_definitions.json is the active metadata source.\n\nlet EXTERNAL_BUILDING_DEFINITION_META = {};
 let EXTERNAL_BUILDING_LEVEL_CONFIG = {};
 let EXTERNAL_BUILDING_DEFINITION_SOURCE = null;
@@ -3075,8 +3044,7 @@ return {
   cost: cloneCostArray(last.cost)
 };
   }
-
-  return makeFallbackLevelData(id, level);
+  return null;
 }
 
 function getMaxLevelForBuilding(buildingId) {
