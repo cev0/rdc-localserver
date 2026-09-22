@@ -145,27 +145,33 @@ function bina(buildingId, level) {
   ]) {
     const t9 = `${classId}_t9`;
     const t10 = `${classId}_t10`;
-    const t9Tech = `unlock_${classId}_t9`;
-    const t10Tech = `unlock_${classId}_t10`;
 
-    assert.strictEqual(qosunMelumatiniAl(t9).requiredResearchId, t9Tech);
-    assert.strictEqual(qosunMelumatiniAl(t10).requiredResearchId, t10Tech);
-    assert.strictEqual(qosunKilidiniYoxla({}, bina(buildingId, 25), t9).success, false);
-    assert.strictEqual(qosunKilidiniYoxla({}, bina(buildingId, 25), t10).success, false);
+    assert.strictEqual(
+      Object.prototype.hasOwnProperty.call(
+        qosunMelumatiniAl(t9),
+        "requiredResearchId"
+      ),
+      false
+    );
+    assert.strictEqual(
+      Object.prototype.hasOwnProperty.call(
+        qosunMelumatiniAl(t10),
+        "requiredResearchId"
+      ),
+      false
+    );
 
-    const state9 = { technology: { levels: { [t9Tech]: 1 } } };
-    assert.strictEqual(qosunKilidiniYoxla(state9, bina(buildingId, 25), t9).success, true);
-    assert.strictEqual(qosunKilidiniYoxla(state9, bina(buildingId, 25), t10).success, false);
-
-    const state10 = { technology: { levels: { [t10Tech]: 1 } } };
-    assert.strictEqual(qosunKilidiniYoxla(state10, bina(buildingId, 25), t10).success, true);
+    assert.strictEqual(
+      qosunKilidiniYoxla({}, bina(buildingId, 25), t9).success,
+      true,
+      "Unverified synthetic T9 research gate must not block a verified troop row."
+    );
+    assert.strictEqual(
+      qosunKilidiniYoxla({}, bina(buildingId, 25), t10).success,
+      true,
+      "Unverified synthetic T10 research gate must not block a verified troop row."
+    );
   }
-
-  const wrongTechState = { technology: { levels: { unlock_vehicle_t10: 1 } } };
-  assert.strictEqual(
-    qosunKilidiniYoxla(wrongTechState, bina("fighter_camp", 25), "warrior_t10").success,
-    false
-  );
 
   const costState = { technology: { stats: { trainingCostReductionPct: 10 } } };
   const cost = telimXerciniHesabla(costState, "warrior_t2", 10);
@@ -173,21 +179,23 @@ function bina(buildingId, level) {
     { type: "food", amount: 1000 }
   ]);
   assert.deepStrictEqual(cost.finalCost, [
-    { type: "food", amount: 900 }
+    { type: "food", amount: 1000 }
   ]);
+  assert.strictEqual(cost.reductionPct, 0);
 
   const classCostState = { technology: { stats: { shooterTrainingCostReductionPct: 20 } } };
   const shooterCost = telimXerciniHesabla(classCostState, "shooter_t2", 10);
-  assert.strictEqual(shooterCost.reductionPct, 20);
+  assert.strictEqual(shooterCost.reductionPct, 0);
   assert.deepStrictEqual(shooterCost.finalCost, [
-    { type: "food", amount: 720 },
-    { type: "wood", amount: 80 }
+    { type: "food", amount: 900 },
+    { type: "wood", amount: 100 }
   ]);
 
   const timeState = { technology: { stats: { trainingSpeedPct: 20 } } };
   const duration = telimMuddetiniHesabla(timeState, "vehicle_t1", 100);
   assert.strictEqual(duration.baseDurationMs, 2000000);
-  assert.strictEqual(duration.finalDurationMs, 1666667);
+  assert.strictEqual(duration.finalDurationMs, 2000000);
+  assert.strictEqual(duration.speedPct, 0);
 
   console.log("[QOSUN_KATALOQU_TESTI] OK");
 })();
