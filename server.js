@@ -7507,6 +7507,7 @@ gameplayMutationCommandleriniQeydEt(
     getOrCreatePlayerState,
     normalizeBuildingId,
     updateServerTime,
+    schedulePlayerDeadline,
     makeClientState,
     hasFreeBuilder,
     isGarageBuildingId,
