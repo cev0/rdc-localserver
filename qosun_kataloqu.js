@@ -150,6 +150,16 @@ const BY_ID =
     )
   );
 
+const BY_LAST_SHELTER_ARMY_ID =
+  new Map(
+    UNITS.map(
+      unit => [
+        unit.lastShelterArmyId,
+        unit
+      ]
+    )
+  );
+
 function qosunMelumatiniAl(unitId) {
   const id =
     typeof unitId === "string"
@@ -157,6 +167,24 @@ function qosunMelumatiniAl(unitId) {
       : "";
 
   return BY_ID.get(id) || null;
+}
+
+function qosunMelumatiniArmyIdIleAl(
+  lastShelterArmyId
+) {
+  const id =
+    lastShelterArmyId == null
+      ? ""
+      : String(
+          lastShelterArmyId
+        ).trim();
+
+  return (
+    BY_LAST_SHELTER_ARMY_ID.get(
+      id
+    ) ||
+    null
+  );
 }
 
 function sinifMelumatiniAl(classId) {
@@ -463,6 +491,7 @@ module.exports = {
   CLASS_DEFINITIONS,
   UNITS,
   qosunMelumatiniAl,
+  qosunMelumatiniArmyIdIleAl,
   sinifMelumatiniAl,
   binaSinifiniAl,
   qosunKilidiniYoxla,
