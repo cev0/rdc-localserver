@@ -102,6 +102,62 @@ function verifiedLastShelterBuildingLevelDataAl(
   };
 }
 
+function verifiedLastShelterBuildingCurrentLevelDataAl(
+  buildingId,
+  currentLevel
+) {
+  const id = metnAl(buildingId);
+  const buildingTypeId =
+    rdcBuildingTypeIdAl(id);
+
+  if (!buildingTypeId) {
+    return null;
+  }
+
+  const level =
+    Math.max(
+      1,
+      Math.trunc(
+        Number(currentLevel) || 1
+      )
+    );
+
+  const row =
+    buildingLeveliniAl(
+      buildingTypeId,
+      level
+    );
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    source:
+      "last_shelter_v1.250.102_building_xml_verified",
+    buildingId: id,
+    buildingTypeId,
+    xmlId: row.xmlId,
+    level,
+    power:
+      Math.max(
+        0,
+        Number(row.power) || 0
+      ),
+    exp:
+      Math.max(
+        0,
+        Number(row.exp) || 0
+      ),
+    buildingConditions:
+      Array.isArray(row.buildingConditions)
+        ? row.buildingConditions.map(
+            item => ({ ...item })
+          )
+        : []
+  };
+}
+
 function verifiedLastShelterBuildingMaxLevelAl(
   buildingId
 ) {
@@ -183,6 +239,7 @@ module.exports = {
   VERIFIED_RESOURCE_KEYS,
   verifiedCostArrayHazirla,
   verifiedLastShelterBuildingLevelDataAl,
+  verifiedLastShelterBuildingCurrentLevelDataAl,
   verifiedLastShelterBuildingMaxLevelAl,
   verifiedLastShelterBuildingLevelStatusAl
 };
