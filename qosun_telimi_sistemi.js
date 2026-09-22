@@ -231,7 +231,9 @@ function qosunTelimOnBaxisiniHazirla(state, buildingInstanceId, unitId, rawCount
       message: unlock && unlock.message ? unlock.message : "Qoşun hələ açılmayıb.",
       requiredBuildingLevel: unlock && unlock.requiredBuildingLevel,
       currentBuildingLevel: unlock && unlock.currentBuildingLevel,
-      requiredResearchId: unlock && unlock.requiredResearchId
+      requiredScienceId: unlock && unlock.requiredScienceId,
+      currentScienceLevel: unlock && unlock.currentScienceLevel,
+      requiredScienceLevel: unlock && unlock.requiredScienceLevel
     };
   }
 
@@ -268,8 +270,12 @@ function qosunTelimOnBaxisiniHazirla(state, buildingInstanceId, unitId, rawCount
       classId: unit.classId,
       displayNameAz: unit.displayNameAz,
       tier: unit.tier,
-      requiredBuildingLevel: unit.requiredBuildingLevel,
-      requiredResearchId: unit.requiredResearchId
+      sourceBuildingUnlock:
+        unit.sourceBuildingUnlock
+          ? { ...unit.sourceBuildingUnlock }
+          : null,
+      sourceScienceUnlockId:
+        unit.sourceScienceUnlockId
     } : null,
     count,
     costInfo,
