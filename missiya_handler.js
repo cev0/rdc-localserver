@@ -19,10 +19,6 @@ const {
 } = require("./missiya_mukafat");
 
 const {
-  gameplayNeticesiniIzlemeyeHazirla
-} = require("./missiya_gameplay_musahide");
-
-const {
   missiyaDaimiVeziyyetiniAl,
   missiyaDaimiVeziyyetiniAlClient,
   daimiVeziyyetiStateIleBirlesdir
@@ -43,13 +39,15 @@ const {
 } = require("./oyun_state_daimilik_korpu");
 
 const MISSIYA_MESAJLARI = new Set([
-  "mission_list_request",
-  "mission_info_request",
-  "mission_reward_claim_request",
-
   // Köhnə client compatibility mesajı.
   // Client state-i server state-inin üzərinə yaza bilməz.
   "save_state"
+]);
+
+const LEGACY_MISSIYA_MESAJLARI = new Set([
+  "mission_list_request",
+  "mission_info_request",
+  "mission_reward_claim_request"
 ]);
 
 const STATE_DEYISEN_MESAJLAR = new Set([
@@ -344,9 +342,22 @@ async function missiyaMesajiniEmalEt(kontekst) {
   // Auth/login başa çatandan sonra varsa PostgreSQL snapshot bərpa edilir.
   authdanSonraBerpaniPlanla(kontekst);
 
-  // Gameplay sorğularının nəticəsini yalnız server state-i dəyişəndən
-  // sonra yoxlayan observer. Client missiya progressini birbaşa yaza bilmir.
-  gameplayNeticesiniIzlemeyeHazirla(kontekst);
+  if (LEGACY_MISSIYA_MESAJLARI.has(type)) {
+    const playerId = autentifikasiyaOlunmusPlayerIdAl(
+      kontekst && kontekst.ws
+    );
+
+    ugursuzCavab(
+      kontekst,
+      neticeTipiniAl(type),
+      "Legacy RDC missiya axını söndürülüb; Last Shelter mission runtime istifadə olunmalıdır.",
+      {
+        playerId,
+        code: "LAST_SHELTER_MISSION_ROUTE_REQUIRED"
+      }
+    );
+    return true;
+  }
 
   // Missiya mesajı deyilsə də bu wrapper bütün gameplay sorğularından keçir.
   // İlk gameplay əməliyyatından əvvəl snapshot bərpasını məcburi tamamlayırıq.
