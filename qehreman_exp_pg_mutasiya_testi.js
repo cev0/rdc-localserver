@@ -30,9 +30,6 @@ function stateHazirla() {
     serverSorquIdempotentliyi: {
       version: 1,
       items: []
-    },
-    missions: {
-      eventCounters: {}
     }
   };
 }
@@ -153,7 +150,7 @@ function stateHazirla() {
   );
 })();
 
-(function skillMutationVeMissionFlagTesti() {
+(function skillMutationTesti() {
   const state = stateHazirla();
 
   const netice = qehremanProgressMutasiyasiniTetbiqEt(
@@ -186,10 +183,9 @@ function stateHazirla() {
 
   assert.strictEqual(netice.success, true);
   assert.strictEqual(netice.deyisdi, true);
-  assert.strictEqual(netice.missionHadisesiLazimdir, true);
   assert.strictEqual(state.heroes[0].skills[0].skillLevel, 2);
+  assert.strictEqual(netice.netice.newLevel, 2);
 
-  state.missions.eventCounters.qehreman_bacarigi_artdi = 1;
   const ikinci = qehremanProgressMutasiyasiniTetbiqEt(
     state,
     "hero_tutorial_skill_upgrade_request",
@@ -210,7 +206,7 @@ function stateHazirla() {
   );
 
   assert.strictEqual(ikinci.success, true);
-  assert.strictEqual(ikinci.missionHadisesiLazimdir, false);
+  assert.strictEqual(ikinci.netice.alreadyUpgraded, true);
 })();
 
 (function sourceInteqrasiyaTesti() {
@@ -228,8 +224,8 @@ function stateHazirla() {
     "Hero progress handler köhnə full-state save yolunu istifadə etməməlidir."
   );
   assert.ok(
-    kod.includes("missiyaServerHadisesiniQeydEt"),
-    "Tutorial skill mission hadisəsi qorunmalıdır."
+    !kod.includes("missiyaServerHadisesiniQeydEt"),
+    "Synthetic RDC mission-event bridge hero progress-dən ayrılmış qalmalıdır."
   );
 })();
 
