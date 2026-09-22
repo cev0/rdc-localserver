@@ -150,6 +150,22 @@ function buildCommandleriniQeydEt(
           buildingId
         );
 
+      const authoritativeLevel =
+        getLevelData(buildingId, 1);
+
+      if (
+        authoritativeLevel &&
+        authoritativeLevel.unavailable === true
+      ) {
+        errorGonder(
+          send,
+          ws,
+          "Verified Last Shelter building level data is incomplete for this building",
+          "BUILDING_LEVEL_REFERENCE_INCOMPLETE"
+        );
+        return;
+      }
+
       if (
         normalizedBuildingId ===
         "road_delete"
