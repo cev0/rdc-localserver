@@ -5,9 +5,6 @@ const {
   tutorialKesfiyyataBasla,
   tutorialKesfiyyatiTamamla
 } = require("./kesfiyyat_sistemi");
-const { missiyaniTap } = require("./missiya_kataloqu");
-const { missiyaStatusunuAl } = require("./missiya_proqres");
-const { missiyaServerHadisesiniQeydEt } = require("./missiya_hadise_korpu");
 const {
   oyunStateIniBerpaEt,
   oyuncuStateBerpaOlunub
@@ -46,13 +43,6 @@ function gonder(kontekst, type, melumat) {
   });
 }
 
-function kesfiyyatMissiyaHadisesiVar(state) {
-  const say = state && state.missions && state.missions.eventCounters
-    ? Number(state.missions.eventCounters.kesfiyyat_tamamlandi)
-    : 0;
-  return Number.isFinite(say) && say > 0;
-}
-
 function kesfiyyatYedeyiniAl(state) {
   return {
     varIdi: Object.prototype.hasOwnProperty.call(state, "kesfiyyat"),
@@ -79,18 +69,6 @@ function kesfiyyatReadStateKopyasi(state) {
   return kopyala(state) || {};
 }
 
-function m015StatusunuAl(state) {
-  const m015 = missiyaniTap("M015");
-  if (!m015) return "kilidli";
-
-  // missiyaStatusunuAl() daxilində missiya state normalizasiyası var.
-  // Status yoxlaması authoritative player state-i dəyişməsin deyə clone istifadə olunur.
-  return missiyaStatusunuAl(
-    kesfiyyatReadStateKopyasi(state),
-    m015
-  );
-}
-
 function kesfiyyatMutasiyasiniTetbiqEt(
   state,
   type,
@@ -103,19 +81,7 @@ function kesfiyyatMutasiyasiniTetbiqEt(
     return {
       success: false,
       deyisdi: false,
-      missionStatus: m015StatusunuAl(state),
       message: "Naməlum kəşfiyyat mutation sorğusu."
-    };
-  }
-
-  const missionStatus = m015StatusunuAl(state);
-
-  if (startSorqusudur && missionStatus === "kilidli") {
-    return {
-      success: false,
-      deyisdi: false,
-      missionStatus,
-      message: "Kəşfiyyat missiyası hələ aktiv deyil."
     };
   }
 
@@ -133,7 +99,6 @@ function kesfiyyatMutasiyasiniTetbiqEt(
     return {
       success: false,
       deyisdi: false,
-      missionStatus,
       message: "Kəşfiyyat nəticəsi hesablana bilmədi.",
       daxiliXeta: xeta && xeta.message ? xeta.message : String(xeta)
     };
@@ -144,7 +109,6 @@ function kesfiyyatMutasiyasiniTetbiqEt(
     return {
       success: false,
       deyisdi: false,
-      missionStatus,
       netice: netice && typeof netice === "object" ? kopyala(netice) : null,
       message: netice && netice.message
         ? netice.message
@@ -155,12 +119,7 @@ function kesfiyyatMutasiyasiniTetbiqEt(
   return {
     success: true,
     deyisdi: evvelkiImza !== kesfiyyatImzasi(state),
-    missionStatus,
-    netice: kopyala(netice),
-    missionHadisesiLazimdir:
-      completeSorqusudur &&
-      netice.alreadyCompleted !== true &&
-      !kesfiyyatMissiyaHadisesiVar(state)
+    netice: kopyala(netice)
   };
 }
 
@@ -187,12 +146,9 @@ async function kesfiyyatMesajiniEmalEt(kontekst) {
     const state = kontekst.getOrCreatePlayerState(playerId);
 
     if (type === "scout_info_request") {
-      const missionStatus = m015StatusunuAl(state);
       gonder(kontekst, resultType, {
         success: true,
         playerId,
-        missionId: "M015",
-        missionStatus,
         info: kesfiyyatMelumatiniHazirla(
           kesfiyyatReadStateKopyasi(state),
           kontekst.nowMs()
@@ -228,10 +184,6 @@ async function kesfiyyatMesajiniEmalEt(kontekst) {
       gonder(kontekst, resultType, {
         success: false,
         playerId,
-        missionId: "M015",
-        missionStatus: mutasiyaNeticesi && mutasiyaNeticesi.missionStatus
-          ? mutasiyaNeticesi.missionStatus
-          : m015StatusunuAl(state),
         ...netice,
         message: mutasiyaNeticesi && mutasiyaNeticesi.message
           ? mutasiyaNeticesi.message
@@ -242,23 +194,9 @@ async function kesfiyyatMesajiniEmalEt(kontekst) {
 
     const netice = mutasiyaNeticesi.netice || {};
 
-    if (
-      mutasiyaNeticesi.missionHadisesiLazimdir === true &&
-      !kesfiyyatMissiyaHadisesiVar(state)
-    ) {
-      await missiyaServerHadisesiniQeydEt(
-        playerId,
-        state,
-        "kesfiyyat_tamamlandi",
-        1
-      );
-    }
-
     gonder(kontekst, resultType, {
       success: true,
       playerId,
-      missionId: "M015",
-      missionStatus: mutasiyaNeticesi.missionStatus || m015StatusunuAl(state),
       ...netice
     });
   }
@@ -276,7 +214,6 @@ async function kesfiyyatMesajiniEmalEt(kontekst) {
 
 module.exports = {
   KESFIYYAT_MESAJLARI,
-  m015StatusunuAl,
   kesfiyyatMutasiyasiniTetbiqEt,
   kesfiyyatMesajiniEmalEt
 };
