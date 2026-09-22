@@ -149,6 +149,28 @@ function onlineDurationRewardAl(entryId) {
   return row ? clone(row) : null;
 }
 
+function onlineDurationRewardsSnapshotHazirla(state) {
+  const runtime = lastShelterEngagementRuntimeTeminEt(state);
+  if (!runtime) return [];
+  const byId = new Map(
+    runtime.onlineDuration.rewards
+      .filter(Boolean)
+      .map(row => [String(row.entryId), row])
+  );
+  return LAST_SHELTER_ONLINE_DURATION.rewards.map(template => {
+    const row = byId.get(template.entryId) || {};
+    return {
+      ...clone(template),
+      duration: Number.isFinite(Number(row.duration))
+        ? Math.max(0, Math.trunc(Number(row.duration)))
+        : template.duration,
+      rewardState: Number.isFinite(Number(row.rewardState))
+        ? Math.max(0, Math.trunc(Number(row.rewardState)))
+        : template.rewardState
+    };
+  });
+}
+
 function helicopterTaskTemplateAl(id) {
   const n = Number(id);
   const row = LAST_SHELTER_HELICOPTER.taskTemplates.find(x => x.id === n);
@@ -216,6 +238,7 @@ module.exports = {
   LAST_SHELTER_ONLINE_DURATION,
   LAST_SHELTER_HELICOPTER,
   onlineDurationRewardAl,
+  onlineDurationRewardsSnapshotHazirla,
   helicopterTaskTemplateAl,
   lastShelterEngagementRuntimeDefaultHazirla,
   lastShelterEngagementRuntimeTeminEt
