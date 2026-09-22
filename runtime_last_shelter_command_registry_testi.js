@@ -11,6 +11,7 @@ const {lastShelterBuildingReferenceCommandleriniQeydEt}=require("./runtime_last_
 const {lastShelterQueueScienceCommandleriniQeydEt}=require("./runtime_last_shelter_queue_science_commands");
 const {lastShelterTroopReferenceCommandleriniQeydEt}=require("./runtime_last_shelter_troop_reference_commands");
 const {lastShelterInitCommandiniQeydEt}=require("./runtime_last_shelter_init_command");
+const {lastShelterAuxiliaryCommandleriniQeydEt}=require("./runtime_last_shelter_auxiliary_reference_commands");
 
 class StrictRouter {
   constructor(){this.routes=new Map();}
@@ -37,6 +38,7 @@ lastShelterMissionCommandleriniQeydEt(router,{getOrCreatePlayerState});
 lastShelterBuildingReferenceCommandleriniQeydEt(router);
 lastShelterQueueScienceCommandleriniQeydEt(router,{getOrCreatePlayerState});
 lastShelterTroopReferenceCommandleriniQeydEt(router);
+lastShelterAuxiliaryCommandleriniQeydEt(router,{getOrCreatePlayerState});
 // Production server installs hero routes through the Last Shelter init registrar.
 lastShelterInitCommandiniQeydEt(router,{getOrCreatePlayerState,ensureFreshPlayerState:async()=>state,updateServerTime:()=>{}});
 
@@ -47,7 +49,7 @@ const expected=[
   "engagement.info","engagement.online_duration.get","engagement.helicopter.task.get","mission.info","building.reference.list","building.reference.get",
   "queue.list","science.catalog","science.topology.list","science.topology","science.state",
   "science.prerequisite","science.plan","troop.catalog","troop.get",
-  "troop.transfer.level6","troop.transfer.type","troop.transfer.point","hero.info","hero.get","hero.general.list","hero.general.get","last_shelter.init"
+  "troop.transfer.level6","troop.transfer.type","troop.transfer.point","hero.info","hero.get","hero.general.list","hero.general.get","seven_days.info","truck.info","world.info","battlefield.get","last_shelter.init"
 ];
 
 assert.deepStrictEqual([...router.routes.keys()].sort(),expected.sort());
