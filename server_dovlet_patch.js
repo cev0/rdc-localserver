@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 function birDefeDeyisdir(kod, axtarilan, yeniMetn, ad) {
+  if (kod.includes(yeniMetn)) return { kod, deyisdi: false };
   const ilk = kod.indexOf(axtarilan);
   if (ilk < 0) return { kod, deyisdi: false };
 
@@ -76,14 +77,19 @@ function dovletQaydalariniTetbiqEt() {
   kod = netice.kod;
   deyisdi = deyisdi || netice.deyisdi;
 
-  netice = birDefeDeyisdir(
-    kod,
-    `const {\n  sifreSifirlamaMesajiniEmalEt\n} = require(\"./sifre_sifirlama_handler\");`,
-    `const {\n  sifreSifirlamaMesajiniEmalEt\n} = require(\"./sifre_sifirlama_handler\");\n\nconst {\n  bazaYerdeyismeKonvoylariniGeriCagir\n} = require(\"./baza_yerdeyisme_konvoy_sistemi\");\nconst {\n  oyuncuMutasiyaKilidiIleIcraEt\n} = require(\"./server_oyuncu_mutasiya_kilidi\");\nconst {\n  oyunStateIniYaddaSaxla\n} = require(\"./oyun_state_daimilik_korpu\");\nconst {\n  dovletBazalariniAl,\n  dovletBazaKeshiniTemizle\n} = require(\"./dovlet_baza_kataloqu_postgres\");\nconst {\n  dovletYerdeyismeKilidiIleIcraEt\n} = require(\"./baza_yerdeyisme_dovlet_kilidi_postgres\");`,
-    "Baza yerdəyişmə modul importları"
-  );
-  kod = netice.kod;
-  deyisdi = deyisdi || netice.deyisdi;
+  // Runtime router owns teleport in the modular server. Legacy imports are
+  // needed only by the old inline handler; injecting them into the modular
+  // server redeclares its existing PostgreSQL catalog bindings.
+  if (kod.includes('case "base_teleport_request": {')) {
+    netice = birDefeDeyisdir(
+      kod,
+      `const {\n  sifreSifirlamaMesajiniEmalEt\n} = require(\"./sifre_sifirlama_handler\");`,
+      `const {\n  sifreSifirlamaMesajiniEmalEt\n} = require(\"./sifre_sifirlama_handler\");\n\nconst {\n  bazaYerdeyismeKonvoylariniGeriCagir\n} = require(\"./baza_yerdeyisme_konvoy_sistemi\");\nconst {\n  oyuncuMutasiyaKilidiIleIcraEt\n} = require(\"./server_oyuncu_mutasiya_kilidi\");\nconst {\n  oyunStateIniYaddaSaxla\n} = require(\"./oyun_state_daimilik_korpu\");\nconst {\n  dovletBazalariniAl,\n  dovletBazaKeshiniTemizle\n} = require(\"./dovlet_baza_kataloqu_postgres\");\nconst {\n  dovletYerdeyismeKilidiIleIcraEt\n} = require(\"./baza_yerdeyisme_dovlet_kilidi_postgres\");`,
+      "Baza yerdəyişmə modul importları"
+    );
+    kod = netice.kod;
+    deyisdi = deyisdi || netice.deyisdi;
+  }
 
   netice = birDefeDeyisdir(
     kod,
