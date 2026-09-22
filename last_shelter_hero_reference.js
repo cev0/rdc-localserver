@@ -438,6 +438,69 @@ function heroTemplateProjectionHazirla(heroId) {
   };
 }
 
+function lastShelterHeroBasePoweriniHesabla(state) {
+  const generals =
+    state &&
+    state.lastShelterHeroRuntime &&
+    Array.isArray(
+      state.lastShelterHeroRuntime.generals
+    )
+      ? state.lastShelterHeroRuntime.generals
+      : [];
+
+  let total = 0;
+
+  for (const general of generals) {
+    if (
+      !general ||
+      typeof general !== "object"
+    ) {
+      continue;
+    }
+
+    const heroId =
+      [
+        general.generalId,
+        general.heroId,
+        general.itemId,
+        general.id
+      ]
+        .map(value =>
+          value == null
+            ? ""
+            : String(value).trim()
+        )
+        .find(value =>
+          /^\d+$/.test(value)
+        ) || "";
+
+    const template =
+      heroTemplateProjectionHazirla(
+        heroId
+      );
+
+    if (
+      !template ||
+      !Number.isFinite(
+        Number(template.power)
+      )
+    ) {
+      continue;
+    }
+
+    total +=
+      Math.max(
+        0,
+        Number(template.power) || 0
+      );
+  }
+
+  return Math.max(
+    0,
+    Math.trunc(total)
+  );
+}
+
 function starterGeneralHazirla(uuidFactory) {
   const uuid = typeof uuidFactory === "function"
     ? String(uuidFactory())
@@ -481,6 +544,7 @@ module.exports = {
   heroTemplateAl,
   heroTemplateIdsAl,
   heroTemplateProjectionHazirla,
+  lastShelterHeroBasePoweriniHesabla,
   starterGeneralHazirla,
   lastShelterHeroRuntimeTeminEt
 };
