@@ -1787,7 +1787,6 @@ function cloneCostArray(cost) {
 
 let EXTERNAL_BUILDING_DEFINITION_META = {};
 let EXTERNAL_BUILDING_LEVEL_CONFIG = {};
-let EXTERNAL_BUILDING_DEFINITION_SOURCE = null;
 
 function normalizePlacementModeValue(value) {
   const raw = String(value || "").trim().toLowerCase();
@@ -1995,7 +1994,6 @@ function loadExternalBuildingDefinitions() {
 
       EXTERNAL_BUILDING_DEFINITION_META = nextMeta;
       EXTERNAL_BUILDING_LEVEL_CONFIG = nextLevelConfig;
-      EXTERNAL_BUILDING_DEFINITION_SOURCE = filePath;
 
       console.log("[BUILDING_DEFINITIONS] Loaded:", {
         filePath,
@@ -2010,7 +2008,6 @@ function loadExternalBuildingDefinitions() {
 
   EXTERNAL_BUILDING_DEFINITION_META = {};
   EXTERNAL_BUILDING_LEVEL_CONFIG = {};
-  EXTERNAL_BUILDING_DEFINITION_SOURCE = null;
   console.log("[BUILDING_DEFINITIONS] External building definitions file not found.");
 }
 
