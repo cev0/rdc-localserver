@@ -55,7 +55,8 @@ const {
   });
   assert.strictEqual(sent[1].type, "hero.get");
   assert.strictEqual(sent[1].hero.id, "240041");
-  assert.strictEqual(sent[1].hero.compose, "206011");
+  assert.strictEqual(sent[1].hero.composeItemId, "206011");
+  assert.strictEqual(sent[1].hero.composeCount, 6000);
   assert.strictEqual(sent[1].serverTimeUnixMs, 123457);
 
   sent[1].hero.id = "tampered";
