@@ -21,30 +21,39 @@ function tamEded(deyer) {
   return Number.isFinite(say) ? Math.max(0, Math.trunc(say)) : 0;
 }
 
-function stateTeminEt(state) {
-  if (!state || typeof state !== "object") {
-    throw new Error("Konvoy tutum texnologiyası üçün oyunçu state-i yoxdur.");
-  }
-
-  if (!state.resources || typeof state.resources !== "object") state.resources = {};
-  if (!state.technology || typeof state.technology !== "object") state.technology = {};
-  if (!state.technology.levels || typeof state.technology.levels !== "object") {
-    state.technology.levels = {};
-  }
-  if (!("currentResearch" in state.technology)) state.technology.currentResearch = null;
-}
-
 function cariLeveliAl(state) {
-  stateTeminEt(state);
-  return Math.min(4, tamEded(state.technology.levels[KONVOY_TUTUM_TEXNOLOGIYA_ID]));
+  const levels =
+    state &&
+    state.technology &&
+    state.technology.levels &&
+    typeof state.technology.levels === "object" &&
+    !Array.isArray(state.technology.levels)
+      ? state.technology.levels
+      : {};
+
+  return Math.min(
+    4,
+    tamEded(
+      levels[
+        KONVOY_TUTUM_TEXNOLOGIYA_ID
+      ]
+    )
+  );
 }
 
 function melumatiHazirla(state) {
-  stateTeminEt(state);
-
-  const currentLevel = cariLeveliAl(state);
-  const legacy = tutumLevelMelumatiniAl(currentLevel);
-  const currentResearch = state.technology.currentResearch;
+  const currentLevel =
+    cariLeveliAl(state);
+  const legacy =
+    tutumLevelMelumatiniAl(
+      currentLevel
+    );
+  const currentResearch =
+    state &&
+    state.technology &&
+    typeof state.technology === "object"
+      ? state.technology.currentResearch
+      : null;
   const legacyResearchRunning = !!(
     currentResearch &&
     metnAl(currentResearch.techId, 128) === KONVOY_TUTUM_TEXNOLOGIYA_ID
