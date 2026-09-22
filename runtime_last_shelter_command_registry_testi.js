@@ -38,8 +38,7 @@ lastShelterMissionCommandleriniQeydEt(router,{getOrCreatePlayerState});
 lastShelterBuildingReferenceCommandleriniQeydEt(router);
 lastShelterQueueScienceCommandleriniQeydEt(router,{getOrCreatePlayerState});
 lastShelterTroopReferenceCommandleriniQeydEt(router);
-lastShelterAuxiliaryCommandleriniQeydEt(router,{getOrCreatePlayerState});
-// Production server installs hero routes through the Last Shelter init registrar.
+// Production server installs hero and auxiliary routes through the Last Shelter init registrar.
 lastShelterInitCommandiniQeydEt(router,{getOrCreatePlayerState,ensureFreshPlayerState:async()=>state,updateServerTime:()=>{}});
 
 const expected=[
