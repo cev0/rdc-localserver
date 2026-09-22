@@ -7,6 +7,7 @@ const path = require("path");
 const {
   RDC_TO_LAST_SHELTER_BUILDING_TYPE,
   RAW_MAIN_BUILDING_LEVELS,
+  RAW_BUILDING_ROWS,
   sertleriParseEt,
   mainBuildingLeveliniAl,
   buildingLeveliniAl,
@@ -337,6 +338,37 @@ assert.strictEqual(academy1.level,1);
 assert.strictEqual(buildingLeveliniAl("403000",999),null);
 assert(buildingMaxLeveliniAl("403000")>=1);
 assert.strictEqual(buildingMaxLeveliniAl("not-a-building"),0);
+
+const expectedMaxByType =
+  Object.values(
+    RAW_BUILDING_ROWS
+  ).reduce(
+    (index, raw) => {
+      const typeId =
+        String(
+          Number(raw.id) -
+          Number(raw.level)
+        );
+      index[typeId] =
+        Math.max(
+          Number(index[typeId]) || 0,
+          Number(raw.level) || 0
+        );
+      return index;
+    },
+    Object.create(null)
+  );
+
+for (
+  const [typeId, expectedMax] of
+  Object.entries(expectedMaxByType)
+) {
+  assert.strictEqual(
+    buildingMaxLeveliniAl(typeId),
+    expectedMax,
+    `Indexed max level mismatch for building type ${typeId}`
+  );
+}
 
 console.log(
   "PASS: verified Last Shelter main-building 400000-400005 reference rows are preserved."
