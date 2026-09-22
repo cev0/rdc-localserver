@@ -37,8 +37,6 @@ const CLASS_DEFINITIONS = Object.freeze({
     displayNameAz: "Savaşçı",
     buildingId: "fighter_camp",
     lastShelterArmyPrefix: "1070",
-    tier9ResearchId: "unlock_warrior_t9",
-    tier10ResearchId: "unlock_warrior_t10",
     consumptionResourceId: "food"
   }),
   shooter: Object.freeze({
@@ -46,8 +44,6 @@ const CLASS_DEFINITIONS = Object.freeze({
     displayNameAz: "Nişançı",
     buildingId: "shooter_camp",
     lastShelterArmyPrefix: "1072",
-    tier9ResearchId: "unlock_shooter_t9",
-    tier10ResearchId: "unlock_shooter_t10",
     consumptionResourceId: "food"
   }),
   vehicle: Object.freeze({
@@ -55,8 +51,6 @@ const CLASS_DEFINITIONS = Object.freeze({
     displayNameAz: "Hərbi Maşın",
     buildingId: "vehicle_factory",
     lastShelterArmyPrefix: "1071",
-    tier9ResearchId: "unlock_vehicle_t9",
-    tier10ResearchId: "unlock_vehicle_t10",
     consumptionResourceId: "food"
   })
 });
@@ -190,12 +184,6 @@ const SHOOTER_COSTS = [
   { food: 155, wood: 77, stone: 19, iron: 13 }
 ];
 
-function requiredResearchId(classDef, tier) {
-  if (tier === 9) return classDef.tier9ResearchId;
-  if (tier === 10) return classDef.tier10ResearchId;
-  return "";
-}
-
 function costObjectToArray(cost) {
   return Object.entries(cost || {})
     .filter(([, amount]) => Number(amount) > 0)
@@ -217,7 +205,6 @@ function buildClassUnits(classDef, names, statsRows, costRows) {
       tier,
       buildingId: classDef.buildingId,
       requiredBuildingLevel: BUILDING_LEVEL_BY_TIER[tier],
-      requiredResearchId: requiredResearchId(classDef, tier),
       baseTrainingSeconds: BASE_TRAINING_SECONDS_BY_TIER[tier],
       costPerUnit: Object.freeze(costObjectToArray(costRows[index])),
       stats: Object.freeze({
@@ -261,13 +248,6 @@ function binaSinifiniAl(buildingId) {
   return Object.values(CLASS_DEFINITIONS).find(x => x.buildingId === id) || null;
 }
 
-function texnologiyaLeveliniAl(state, techId) {
-  if (!techId) return 0;
-  const levels = state && state.technology && state.technology.levels;
-  const raw = levels && typeof levels === "object" ? Number(levels[techId]) : 0;
-  return Number.isFinite(raw) ? Math.max(0, Math.trunc(raw)) : 0;
-}
-
 function qosunKilidiniYoxla(state, building, unitId) {
   const unit = qosunMelumatiniAl(unitId);
   if (!unit) {
@@ -301,18 +281,6 @@ function qosunKilidiniYoxla(state, building, unitId) {
     };
   }
 
-  if (unit.requiredResearchId) {
-    const researchLevel = texnologiyaLeveliniAl(state, unit.requiredResearchId);
-    if (researchLevel < 1) {
-      return {
-        success: false,
-        reason: "research_required",
-        requiredResearchId: unit.requiredResearchId,
-        message: "Bu qoşun səviyyəsi üçün uyğun kilid açma araşdırması tamamlanmalıdır."
-      };
-    }
-  }
-
   return {
     success: true,
     unit,
@@ -320,24 +288,14 @@ function qosunKilidiniYoxla(state, building, unitId) {
   };
 }
 
-function trainingCostReductionPctAl(state, classId) {
-  const stats = state && state.technology && state.technology.stats;
-  if (!stats || typeof stats !== "object") return 0;
-
-  const generic = Number(stats.trainingCostReductionPct) || 0;
-  const specificKey = `${classId}TrainingCostReductionPct`;
-  const specific = Number(stats[specificKey]) || 0;
-  return Math.min(90, Math.max(0, generic + specific));
+function trainingCostReductionPctAl() {
+  // Last Shelter training-cost science/effect mapping is not source-verified yet.
+  return 0;
 }
 
-function trainingSpeedPctAl(state, classId) {
-  const stats = state && state.technology && state.technology.stats;
-  if (!stats || typeof stats !== "object") return 0;
-
-  const generic = Number(stats.trainingSpeedPct) || 0;
-  const specificKey = `${classId}TrainingSpeedPct`;
-  const specific = Number(stats[specificKey]) || 0;
-  return Math.max(0, generic + specific);
+function trainingSpeedPctAl() {
+  // Last Shelter training-speed science/effect mapping is not source-verified yet.
+  return 0;
 }
 
 function telimXerciniHesabla(state, unitId, rawCount) {
@@ -400,7 +358,6 @@ function kataloquClientUcunHazirla() {
     tier: unit.tier,
     buildingId: unit.buildingId,
     requiredBuildingLevel: unit.requiredBuildingLevel,
-    requiredResearchId: unit.requiredResearchId,
     baseTrainingSeconds: unit.baseTrainingSeconds,
     costPerUnit: unit.costPerUnit.map(x => ({ ...x })),
     stats: {
@@ -423,7 +380,6 @@ module.exports = {
   qosunMelumatiniAl,
   sinifMelumatiniAl,
   binaSinifiniAl,
-  texnologiyaLeveliniAl,
   qosunKilidiniYoxla,
   trainingCostReductionPctAl,
   trainingSpeedPctAl,
