@@ -199,7 +199,9 @@ const MISSION_DEFINITIONS = {
 
 
 
-// Legacy synthetic technology balance definitions removed; Last Shelter science catalog is authoritative.\n\nfunction normalizeBuildingId(id) {
+// Legacy synthetic technology balance definitions removed; Last Shelter science catalog is authoritative.
+
+function normalizeBuildingId(id) {
   return String(id || "").trim().toLowerCase();
 }
 
@@ -207,10 +209,9 @@ function normalizeResourceKey(type) {
   return String(type || "").trim().toLowerCase();
 }
 
-// Legacy state.technology bootstrap removed; Last Shelter state.science is authoritative.\n\nfunction getAdjustedBuildDurationMs(state, baseBuildTimeSeconds) {
-  ensureTechnologyObject(state);
-  refreshTechnologyStats(state);
+// Legacy technology bootstrap removed; Last Shelter state.science is authoritative.
 
+function getAdjustedBuildDurationMs(state, baseBuildTimeSeconds) {
   const rawMs = Math.max(0, Math.round((Number(baseBuildTimeSeconds) || 0) * 1000));
   const technologySpeedPct = 0;
 
@@ -228,9 +229,6 @@ function normalizeResourceKey(type) {
 }
 
 function getAdjustedTrainingDurationMs(state, rawDurationMs) {
-  ensureTechnologyObject(state);
-  refreshTechnologyStats(state);
-
   const durationMs = Math.max(0, Math.round(Number(rawDurationMs) || 0));
   const speedPct = 0;
 
@@ -4890,9 +4888,6 @@ bazaMelumatlariniYenile(state);
   refreshSpecialStats(state);
 
   // Texnologiya məlumatlarını yoxla və yenilə.
-  ensureTechnologyObject(state);
-  refreshTechnologyStats(state);
-
   // Last Shelter economy runtimelarini kohne state snapshot-lari ucun de
   // eyni muqavileye normallasdir.
   lastShelterRepayRuntimeTeminEt(state);
@@ -4922,8 +4917,6 @@ bazaMelumatlariniYenile(state);
 async function pushStateToPlayerConnections(playerId, state) {
   refreshResourceCaps(state);
   refreshSpecialStats(state);
-  ensureTechnologyObject(state);
-  refreshTechnologyStats(state);
   const clientState = makeClientState(state);
   const sockets = [];
 
@@ -5240,12 +5233,6 @@ bazaMelumatlari: {
       cap: getBaseSpecialStats().populationCap
     },
 
-    technology: {
-      levels: {},
-      currentResearch: null,
-      stats: getBaseTechnologyStats()
-    },
-
     worldPlacement: null,
 
     worldMap: {
@@ -5303,8 +5290,6 @@ function getOrCreatePlayerState(playerId) {
     refreshBuilderCapacity(newState);
     refreshResourceCaps(newState);
     refreshSpecialStats(newState);
-    ensureTechnologyObject(newState);
-    refreshTechnologyStats(newState);
     ensureMissionState(newState);
 
     players.set(playerId, newState);
@@ -5394,8 +5379,6 @@ function getOrCreatePlayerState(playerId) {
   refreshBuilderCapacity(state);
   refreshResourceCaps(state);
   refreshSpecialStats(state);
-  ensureTechnologyObject(state);
-  refreshTechnologyStats(state);
   ensureMissionState(state);
 
   ensureProductionClock(
@@ -5944,9 +5927,6 @@ function processProductionForState(
   ensureResourcesObject(state);
   refreshResourceCaps(state);
   refreshSpecialStats(state);
-  ensureTechnologyObject(state);
-  refreshTechnologyStats(state);
-
   let changed = false;
 
   for (const building of state.buildings) {
@@ -5984,13 +5964,7 @@ function processProductionForState(
         Number(rule.amountPerTick) || 0
       );
 
-    const technologyProductionPct =
-      Math.max(
-        0,
-        Number(
-          state.technology?.stats?.productionPct
-        ) || 0
-      );
+    const technologyProductionPct = 0;
 
     const {
       stateUcunBinaIstehsaliniHesabla
@@ -7221,9 +7195,6 @@ function completeFinishedJobsForState(
 ) {
   if (!state || !state.builders || !Array.isArray(state.builders.jobs)) return false;
   if (!Array.isArray(state.buildings)) return false;
-
-  ensureTechnologyObject(state);
-
   const now =
     Math.max(0, Number(atTimeMs) || nowMs());
 
@@ -7273,7 +7244,6 @@ if (changed) {
   refreshSpecialStats(state);
 
   // Texnologiya bonuslarını yenilə.
-  refreshTechnologyStats(state);
 }
 
   return changed;
@@ -7302,20 +7272,6 @@ function nextPlayerDeadlineAtMs(state) {
       next,
       Number(zeroingRecallDueAt)
     );
-  }
-
-  const researchEndsAt =
-    Number(
-      state.technology &&
-      state.technology.currentResearch &&
-      state.technology.currentResearch.endsAtMs
-    );
-
-  if (
-    Number.isFinite(researchEndsAt) &&
-    researchEndsAt > 0
-  ) {
-    next = Math.min(next, researchEndsAt);
   }
 
   const lastShelterScienceEndsAt =
@@ -7521,12 +7477,6 @@ function settlePlayerTimeline(
       stateChanged = true;
     }
 
-    const completedResearch =
-      completeTechnologyResearchForState(
-        state,
-        nextDueAt
-      );
-
     const completedLastShelterScience =
       verifiedScienceResearchYekunlasdir(
         state,
@@ -7547,7 +7497,6 @@ function settlePlayerTimeline(
       );
 
     const eventChanged =
-      !!completedResearch ||
       completedLastShelterScience.length > 0 ||
       builderChanged ||
       trainingChanged;
@@ -7561,12 +7510,6 @@ function settlePlayerTimeline(
         }
       );
       break;
-    }
-
-    if (completedResearch) {
-      completedResearchList.push(
-        completedResearch
-      );
     }
 
     if (builderChanged) {
@@ -7720,37 +7663,6 @@ async function processPlayerDeadline(playerId) {
     await pushStateToPlayerConnections(
       playerId,
       state
-    );
-  }
-
-  for (
-    const completedResearch of
-    netice.completedResearchList ||
-    []
-  ) {
-    connections.deliver(
-      playerId,
-      {
-        type: "technology_research_completed",
-        playerId,
-        serverTimeUnixMs: nowMs(),
-        payloadJson:
-          JSON.stringify(
-            completedResearch
-          )
-      },
-      send
-    );
-
-    console.log(
-      "[TECH_RESEARCH_COMPLETED]",
-      {
-        playerId,
-        techId:
-          completedResearch.techId,
-        targetLevel:
-          completedResearch.targetLevel
-      }
     );
   }
 
