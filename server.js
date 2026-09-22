@@ -163,7 +163,7 @@ const {
 // - sonradan balansı rahat dəyişmək
 // ============================================================
 
-// Legacy BUILDING_LEVEL_CONFIG removed: authoritative Last Shelter XML and external definitions are used.\n
+// Legacy hardcoded building balance removed: Last Shelter XML/external definitions are authoritative.\n
 
 // ============================================================
 // MISSION DEFINITIONS
@@ -3099,7 +3099,7 @@ function getLevelData(buildingId, targetLevel) {
     };
   }
 
-  const cfg = EXTERNAL_BUILDING_LEVEL_CONFIG[id] || BUILDING_LEVEL_CONFIG[id];
+  const cfg = EXTERNAL_BUILDING_LEVEL_CONFIG[id];
   if (cfg && Array.isArray(cfg.levels) && cfg.levels.length > 0) {
     const index = level - 1;
 
@@ -3180,7 +3180,7 @@ function getMaxLevelForBuilding(buildingId) {
     return Math.max(1, Number(meta.maxLevel) || 1);
   }
 
-  const cfg = EXTERNAL_BUILDING_LEVEL_CONFIG[id] || BUILDING_LEVEL_CONFIG[id];
+  const cfg = EXTERNAL_BUILDING_LEVEL_CONFIG[id];
   if (cfg && Array.isArray(cfg.levels) && cfg.levels.length > 0) {
     return cfg.levels.length;
   }
