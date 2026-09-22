@@ -243,8 +243,8 @@ function stateHazirla() {
     "battle_info və cavab info-ları clone üzərində hazırlanmalıdır."
   );
   assert.ok(
-    kod.includes("missiyaServerHadisesiniQeydEt"),
-    "Tutorial battle mission-event bridge saxlanmalıdır."
+    !kod.includes("missiyaServerHadisesiniQeydEt"),
+    "Synthetic RDC mission-event bridge tutorial battle-dan ayrılmış qalmalıdır."
   );
 })();
 
