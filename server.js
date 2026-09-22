@@ -4764,9 +4764,9 @@ function makeDefaultState(playerId) {
         ""
       ),
 
-    // Verified 205-row Last Shelter task/chapter state. Kept alongside the
-    // legacy RDC M001..M020 mission flow until reward/progress semantics for
-    // every raw task type are recovered.
+    // Verified 205-row Last Shelter task/chapter state. The synthetic RDC
+    // M001..M020 mission subsystem has been removed; unresolved raw task
+    // reward/progress semantics remain reference-gated.
     lastShelterMissionRuntime:
       lastShelterMissionRuntimeDefaultHazirla(),
 
