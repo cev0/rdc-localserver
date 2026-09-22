@@ -26,14 +26,26 @@ vm.runInNewContext(source.slice(start, end), context);
 const native = Object.keys(inventory.commands);
 const matching = native.filter(name => router.has(name));
 const missing = native.filter(name => !router.has(name));
+const routeList = router.listRoutes();
+const mutationRoutes = [...router._routes].filter(([, route]) => route.mutation).map(([type]) => type).sort();
+const referenceOnlyRoutes = routeList.filter(name => /(?:\.reference\.|\.catalog$|\.topology(?:\.|$)|\.list$|\.get$|\.info$|\.state$|\.panel$)/.test(name) && !mutationRoutes.includes(name));
+const parity = {
+  nativeCommandCoveragePercent: native.length ? Number((matching.length * 100 / native.length).toFixed(2)) : 0,
+  nativeCommandsMissing: missing.length,
+  productionRoutes: routeList.length,
+  productionMutations: mutationRoutes.length,
+  productionReadOnly: routeList.length - mutationRoutes.length,
+  referenceOrProjectionReads: referenceOnlyRoutes.length
+};
 const result = {
   complete: false,
   source: { catalogs: manifest.catalogCount, xmlFiles: manifest.sourceXmlFiles, rows: manifest.itemSpecCount,
     excludedFiles: Object.keys(manifest.excluded), nativeCommands: native.length,
     scienceLevels: manifest.catalogs.science.itemSpecCount, buildingLevels: manifest.catalogs.building.itemSpecCount,
     goods: manifest.catalogs.goods.itemSpecCount, shops: manifest.catalogs.shop.itemSpecCount },
-  registeredLastShelterRoutes: router.listRoutes(),
-  mutations: [...router._routes].filter(([, route]) => route.mutation).map(([type]) => type).sort(),
+  registeredLastShelterRoutes: routeList,
+  mutations: mutationRoutes,
+  parity,
   nativeNamesWithRoutes: matching,
   nativeNamesWithoutRoutes: missing,
   limitations: [
@@ -45,7 +57,7 @@ const result = {
   ]
 };
 if (process.argv.includes("--summary")) {
-  console.log(JSON.stringify({ complete: false, ...result.source,
-    registeredLastShelterRoutes: router.listRoutes().length, mutations: result.mutations,
-    nativeNamesWithRoutes: matching.length, nativeNamesWithoutRoutes: missing.length }, null, 2));
+  console.log(JSON.stringify({ complete: false, ...result.source, ...parity,
+    mutations: result.mutations, nativeNamesWithRoutes: matching.length,
+    nativeNamesWithoutRoutes: missing.length }, null, 2));
 } else console.log(JSON.stringify(result, null, 2));
