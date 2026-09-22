@@ -31,6 +31,9 @@ const {LAST_SHELTER_FORT_TROOPS,fortTroopRuntimeProjectionAl,fortInitProjectionH
 const {LAST_SHELTER_TROOP_TRANSFER_TREES,troopTransferTreeAl,troopTransferPointAl}=require("./last_shelter_troop_transfer_reference");
 const {goodsStructureIdsAl,goodsStructureAl,salesRawEntriesAl}=require("./last_shelter_goods_structure_reference");
 const {getVerifiedStoreReward,getVerifiedStoreRewardIds}=require("./last_shelter_store_resource_rewards");
+const {LAST_SHELTER_RESOURCE_PAYLOAD_FIELDS,lastShelterResourcePayloadHazirla}=require("./last_shelter_resource_runtime");
+const {ITEM_TUNING,itemTuningAl}=require("./last_shelter_item_tuning_kataloqu");
+const {LAST_SHELTER_STARTER_ITEM_TEMPLATES,LAST_SHELTER_STARTER_QUEUE_LAYOUT,lastShelterStarterAccountRuntimeTeminEt,starterQueueInitProjectionHazirla}=require("./last_shelter_starter_account_reference");
 
 function clone(v){return v==null?v:JSON.parse(JSON.stringify(v));}
 function auth(ws,msg,send){
@@ -45,6 +48,26 @@ function lastShelterAuxiliaryCommandleriniQeydEt(router,deps){
   if(!router)throw new Error("Command router yoxdur.");
   const {getOrCreatePlayerState}=deps||{};
   if(typeof getOrCreatePlayerState!=="function")throw new Error("getOrCreatePlayerState yoxdur.");
+
+  router.register("resource.info",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const t=now(nowMs); const state=getOrCreatePlayerState(a.playerId);
+    send(ws,{type:"resource.info",playerId:a.playerId,serverTimeUnixMs:t,fields:clone(LAST_SHELTER_RESOURCE_PAYLOAD_FIELDS),resources:lastShelterResourcePayloadHazirla(state,t)});
+  },{authRequired:true,mutation:false});
+
+  router.register("item.tuning.list",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; send(ws,{type:"item.tuning.list",playerId:a.playerId,serverTimeUnixMs:now(nowMs),tuning:clone(ITEM_TUNING)});
+  },{authRequired:true,mutation:false});
+
+  router.register("item.tuning.get",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const id=msg&&msg.id!=null?String(msg.id).trim():""; const tuning=itemTuningAl(id);
+    if(!tuning){send(ws,{type:"error",code:"ITEM_TUNING_NOT_FOUND",message:"Last Shelter item tuning tapilmadi.",id});return;}
+    send(ws,{type:"item.tuning.get",playerId:a.playerId,serverTimeUnixMs:now(nowMs),id,tuning:clone(tuning)});
+  },{authRequired:true,mutation:false});
+
+  router.register("starter_account.info",async({ws,msg,send,nowMs})=>{
+    const a=auth(ws,msg,send); if(!a)return; const state=getOrCreatePlayerState(a.playerId); const runtime=lastShelterStarterAccountRuntimeTeminEt(state);
+    send(ws,{type:"starter_account.info",playerId:a.playerId,serverTimeUnixMs:now(nowMs),itemTemplates:clone(LAST_SHELTER_STARTER_ITEM_TEMPLATES),queueLayout:clone(LAST_SHELTER_STARTER_QUEUE_LAYOUT),items:clone(runtime.items),queues:starterQueueInitProjectionHazirla(runtime.queues),finishedQueue:clone(runtime.finishedQueue)});
+  },{authRequired:true,mutation:false});
 
   router.register("goods.structure.list",async({ws,msg,send,nowMs})=>{
     const a=auth(ws,msg,send); if(!a)return; const goods=goodsStructureIdsAl().map(id=>{const row=goodsStructureAl(id);return {...row,sales:salesRawEntriesAl(id)};});
