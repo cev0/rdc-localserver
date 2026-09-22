@@ -1,7 +1,6 @@
 "use strict";
 
 const { expItemIstifadeEt } = require("./qehreman_exp_sistemi");
-const { missiyaServerHadisesiniQeydEt } = require("./missiya_hadise_korpu");
 const {
   requestIdAl,
   tekrarNeticesiniTap,
@@ -124,13 +123,6 @@ function tutorialSkilliniArtir(state, heroId) {
   };
 }
 
-function skillMissiyaHadisesiVar(state) {
-  const say = state && state.missions && state.missions.eventCounters
-    ? Number(state.missions.eventCounters.qehreman_bacarigi_artdi)
-    : 0;
-  return Number.isFinite(say) && say > 0;
-}
-
 function progressYedeyiniAl(state) {
   return {
     heroesVarIdi: Object.prototype.hasOwnProperty.call(state, "heroes"),
@@ -223,8 +215,7 @@ function qehremanProgressMutasiyasiniTetbiqEt(
         deyisdi: false,
         requestId,
         idempotentReplay: true,
-        netice: replayNetice,
-        missionHadisesiLazimdir: false
+        netice: replayNetice
       };
     }
   }
@@ -295,9 +286,7 @@ function qehremanProgressMutasiyasiniTetbiqEt(
     deyisdi: true,
     requestId,
     idempotentReplay: false,
-    netice: kopyala(netice),
-    missionHadisesiLazimdir:
-      skillSorqusudur && !skillMissiyaHadisesiVar(state)
+    netice: kopyala(netice)
   };
 }
 
@@ -374,18 +363,6 @@ async function qehremanExpMesajiniEmalEt(kontekst) {
           serverTimeUnixMs: kontekst.nowMs()
         });
         return;
-      }
-
-      if (
-        mutasiyaNeticesi.missionHadisesiLazimdir === true &&
-        !skillMissiyaHadisesiVar(canliState)
-      ) {
-        await missiyaServerHadisesiniQeydEt(
-          playerId,
-          canliState,
-          "qehreman_bacarigi_artdi",
-          1
-        );
       }
 
       kontekst.send(kontekst.ws, {
