@@ -16,10 +16,21 @@ function miqrasiyaFayllariniAl() {
         throw new Error("Miqrasiyalar qovluğu tapılmadı.");
     }
 
-    return fs
+    const fayllar = fs
         .readdirSync(MIQRASIYA_QOVLUGU)
         .filter((ad) => ad.toLowerCase().endsWith(".sql"))
         .sort((a, b) => a.localeCompare(b));
+
+    // Keep existing ledger names: assignment alters the table created by runtime.
+    const runtime = "20260918_world_state_runtime.sql";
+    const assignment = "20260918_world_state_assignment.sql";
+    const runtimeIndex = fayllar.indexOf(runtime);
+    const assignmentIndex = fayllar.indexOf(assignment);
+    if (runtimeIndex >= 0 && assignmentIndex >= 0 && runtimeIndex > assignmentIndex) {
+        fayllar.splice(runtimeIndex, 1);
+        fayllar.splice(assignmentIndex, 0, runtime);
+    }
+    return fayllar;
 }
 
 async function miqrasiyalariBaslat() {
@@ -27,6 +38,8 @@ async function miqrasiyalariBaslat() {
     const client = await hovuz.connect();
 
     try {
+        // Serialize overlapping deployment starts before inspecting the ledger.
+        await client.query("SELECT pg_advisory_lock(742196, 1)");
         await client.query(`
             CREATE TABLE IF NOT EXISTS miqrasiyalar (
                 ad TEXT PRIMARY KEY,
@@ -81,7 +94,11 @@ async function miqrasiyalariBaslat() {
                 miqrasiyaAdi
             );
 
-            await client.query(sql);
+            // SQL files may own an outer BEGIN/COMMIT. Move that boundary here
+            // so the schema change and its ledger entry commit together.
+            const body = sql.trim().replace(/^BEGIN\s*;/i, "").replace(/COMMIT\s*;\s*$/i, "");
+            await client.query("BEGIN");
+            await client.query(body);
 
             await client.query(
                 `
@@ -90,6 +107,8 @@ async function miqrasiyalariBaslat() {
                 `,
                 [miqrasiyaAdi]
             );
+
+            await client.query("COMMIT");
 
             console.log(
                 "[DB_MIQ] Miqrasiya uğurla tamamlandı:",
@@ -100,6 +119,7 @@ async function miqrasiyalariBaslat() {
         console.log("[DB_MIQ] Bütün miqrasiyalar yoxlanıldı.");
     }
     catch (xeta) {
+        await client.query("ROLLBACK").catch(() => {});
         console.error(
             "[DB_MIQ] Miqrasiya uğursuz oldu:",
             xeta
@@ -107,7 +127,8 @@ async function miqrasiyalariBaslat() {
         process.exitCode = 1;
     }
     finally {
-        client.release();
+        // Closing this dedicated connection also releases the session lock.
+        client.release(true);
 
         try {
             await hovuzlariBagla();
@@ -121,4 +142,8 @@ async function miqrasiyalariBaslat() {
     }
 }
 
-miqrasiyalariBaslat();
+miqrasiyalariBaslat().catch(async (xeta) => {
+    console.error("[DB_MIQ] Başlanğıc xətası:", xeta.message);
+    process.exitCode = 1;
+    await hovuzlariBagla();
+});
