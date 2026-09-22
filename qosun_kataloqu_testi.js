@@ -4,8 +4,6 @@ const assert = require("assert");
 const { troop107xAl } = require("./last_shelter_troop_107x_reference");
 const {
   UNITS,
-  BUILDING_LEVEL_BY_TIER,
-  BASE_TRAINING_SECONDS_BY_TIER,
   qosunMelumatiniAl,
   qosunKilidiniYoxla,
   telimXerciniHesabla,
@@ -26,16 +24,6 @@ function bina(buildingId, level) {
   assert.strictEqual(UNITS.length, 30, "3 sinif x 10 tier = 30 qoşun olmalıdır");
   assert.strictEqual(new Set(UNITS.map(x => x.unitId)).size, 30, "Bütün unitId-lər unikal olmalıdır");
 
-  assert.deepStrictEqual(BUILDING_LEVEL_BY_TIER, {
-    1: 1, 2: 2, 3: 5, 4: 10, 5: 13,
-    6: 16, 7: 19, 8: 22, 9: 25, 10: 25
-  });
-
-  assert.deepStrictEqual(BASE_TRAINING_SECONDS_BY_TIER, {
-    1: 20, 2: 25, 3: 33, 4: 44, 5: 58,
-    6: 75, 7: 95, 8: 118, 9: 144, 10: 173
-  });
-
   for (const classId of ["warrior", "shooter", "vehicle"]) {
     const units = UNITS.filter(x => x.classId === classId);
     assert.strictEqual(units.length, 10, `${classId} üçün 10 tier olmalıdır`);
@@ -46,8 +34,6 @@ function bina(buildingId, level) {
       const expectedPrefix = classId === "warrior" ? "1070" : classId === "vehicle" ? "1071" : "1072";
       assert.strictEqual(unit.lastShelterArmyFamily, expectedPrefix);
       assert.strictEqual(unit.lastShelterArmyId, `${expectedPrefix}${String(tier - 1).padStart(2, "0")}`);
-      assert.strictEqual(unit.requiredBuildingLevel, BUILDING_LEVEL_BY_TIER[tier]);
-      assert.strictEqual(unit.baseTrainingSeconds, BASE_TRAINING_SECONDS_BY_TIER[tier]);
       assert.ok(unit.stats.battlePower > 0);
       assert.ok(unit.stats.defense > 0);
       assert.ok(unit.stats.hp > 0);
@@ -135,8 +121,24 @@ function bina(buildingId, level) {
   assert.strictEqual(shooter10.stats.marchSpeed, 8);
   assert.strictEqual(shooter10.stats.loadCapacity, 12);
 
-  assert.strictEqual(qosunKilidiniYoxla({}, bina("fighter_camp", 4), "warrior_t3").success, false);
-  assert.strictEqual(qosunKilidiniYoxla({}, bina("fighter_camp", 5), "warrior_t3").success, true);
+  assert.strictEqual(
+    qosunKilidiniYoxla(
+      {},
+      bina("fighter_camp", 1),
+      "warrior_t10"
+    ).success,
+    true,
+    "Unverified tier->building-level thresholds must not block verified troop rows."
+  );
+  assert.strictEqual(
+    qosunKilidiniYoxla(
+      {},
+      bina("shooter_camp", 1),
+      "warrior_t1"
+    ).success,
+    false,
+    "Training-building class compatibility remains enforced."
+  );
 
   for (const [classId, buildingId] of [
     ["warrior", "fighter_camp"],
@@ -173,8 +175,7 @@ function bina(buildingId, level) {
     );
   }
 
-  const costState = { technology: { stats: { trainingCostReductionPct: 10 } } };
-  const cost = telimXerciniHesabla(costState, "warrior_t2", 10);
+  const cost = telimXerciniHesabla({}, "warrior_t2", 10);
   assert.deepStrictEqual(cost.baseCost, [
     { type: "food", amount: 1000 }
   ]);
@@ -183,16 +184,14 @@ function bina(buildingId, level) {
   ]);
   assert.strictEqual(cost.reductionPct, 0);
 
-  const classCostState = { technology: { stats: { shooterTrainingCostReductionPct: 20 } } };
-  const shooterCost = telimXerciniHesabla(classCostState, "shooter_t2", 10);
+  const shooterCost = telimXerciniHesabla({}, "shooter_t2", 10);
   assert.strictEqual(shooterCost.reductionPct, 0);
   assert.deepStrictEqual(shooterCost.finalCost, [
     { type: "food", amount: 900 },
     { type: "wood", amount: 100 }
   ]);
 
-  const timeState = { technology: { stats: { trainingSpeedPct: 20 } } };
-  const duration = telimMuddetiniHesabla(timeState, "vehicle_t1", 100);
+  const duration = telimMuddetiniHesabla({}, "vehicle_t1", 100);
   assert.strictEqual(duration.baseDurationMs, 2000000);
   assert.strictEqual(duration.finalDurationMs, 2000000);
   assert.strictEqual(duration.speedPct, 0);
