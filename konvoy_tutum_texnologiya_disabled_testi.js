@@ -26,6 +26,14 @@ const state = {
   ]
 };
 
+const bosState = {};
+const bosEvvelki = JSON.stringify(bosState);
+const bosInfo = melumatiHazirla(bosState);
+assert.strictEqual(bosInfo.currentLevel, 0);
+assert.strictEqual(bosInfo.legacyDisabled, true);
+assert.strictEqual(JSON.stringify(bosState), bosEvvelki);
+assert.strictEqual(Object.prototype.hasOwnProperty.call(bosState, "technology"), false);
+
 const evvelki = JSON.parse(JSON.stringify(state));
 const info = melumatiHazirla(state);
 
