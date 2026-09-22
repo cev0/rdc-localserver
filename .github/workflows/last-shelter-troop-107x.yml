@@ -18,3 +18,5 @@ jobs:
         run: node last_shelter_troop_107x_reference_testi.js
       - name: Probe T10 science and training building source
         run: node last_shelter_t10_training_source_probe.js
+      - name: Probe science EnergySkill and gold source semantics
+        run: node last_shelter_science_energy_gold_source_probe.js
