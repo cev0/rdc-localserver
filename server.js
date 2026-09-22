@@ -7057,7 +7057,6 @@ function settlePlayerTimeline(
     return {
       stateChanged: false,
       builderChanged: false,
-      completedResearchList: [],
       nextDueAtMs: null
     };
   }
@@ -7070,8 +7069,6 @@ function settlePlayerTimeline(
 
   let stateChanged = false;
   let builderChangedAny = false;
-  const completedResearchList = [];
-
   // Korlanmis state sonsuz loop yaratmasin.
   let guard = 0;
 
@@ -7171,7 +7168,6 @@ function settlePlayerTimeline(
     stateChanged,
     builderChanged:
       builderChangedAny,
-    completedResearchList,
     nextDueAtMs:
       nextPlayerDeadlineAtMs(state)
   };
