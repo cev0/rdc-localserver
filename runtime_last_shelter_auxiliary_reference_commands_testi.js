@@ -7,12 +7,12 @@ class R{constructor(){this.routes=new Map()}register(t,h,o){this.routes.set(t,{h
  const r=new R(); lastShelterAuxiliaryCommandleriniQeydEt(r,{getOrCreatePlayerState:()=>state});
  for(const n of ["alliance.group_purchase.info","alliance.group_purchase.offer.get","fort.troop.list","fort.troop.get","troop_transfer.reference.list","troop_transfer.reference.get","shop.reference.list","vip_store.info","repay.info","activity.reference.list","activity.reference.get","missile.info","seven_days.info","truck.info","world.info","battlefield.get"]) assert.deepStrictEqual(r.routes.get(n).o,{authRequired:true,mutation:false});
  const sent=[],ws={_authedPlayerId:"p1"},send=(_,x)=>sent.push(x);
- await r.routes.get("alliance.group_purchase.info").h({ws,msg:{playerId:"p1"},send,nowMs:()=>4988}); assert.strictEqual(sent[6].reference.offers.length,6); assert.strictEqual(sent[6].runtime.progress,0);
- await r.routes.get("alliance.group_purchase.offer.get").h({ws,msg:{playerId:"p1",goodsId:"207055"},send,nowMs:()=>4989}); assert.strictEqual(sent[7].offer.key,"k3");
- await r.routes.get("fort.troop.list").h({ws,msg:{playerId:"p1"},send,nowMs:()=>4990}); assert.strictEqual(sent[8].troops.length,20); assert.strictEqual(sent[8].troops.find(x=>x.id==="107900").free,1);
- await r.routes.get("fort.troop.get").h({ws,msg:{playerId:"p1",id:"107900"},send,nowMs:()=>4991}); assert.strictEqual(sent[9].troop.trainingTimeSeconds,40);
- await r.routes.get("troop_transfer.reference.list").h({ws,msg:{playerId:"p1"},send,nowMs:()=>4992}); assert.strictEqual(sent[10].trees.length,4); assert.strictEqual(sent[10].trees[0].details.length,12);
- await r.routes.get("troop_transfer.reference.get").h({ws,msg:{playerId:"p1",transferType:1,pointType:"12"},send,nowMs:()=>4993}); assert.strictEqual(sent[11].point.id,"109048");
+ await r.routes.get("alliance.group_purchase.info").h({ws,msg:{playerId:"p1"},send,nowMs:()=>4988}); assert.strictEqual(sent[0].reference.offers.length,6); assert.strictEqual(sent[0].runtime.progress,0);
+ await r.routes.get("alliance.group_purchase.offer.get").h({ws,msg:{playerId:"p1",goodsId:"207055"},send,nowMs:()=>4989}); assert.strictEqual(sent[1].offer.key,"k3");
+ await r.routes.get("fort.troop.list").h({ws,msg:{playerId:"p1"},send,nowMs:()=>4990}); assert.strictEqual(sent[2].troops.length,20); assert.strictEqual(sent[2].troops.find(x=>x.id==="107900").free,1);
+ await r.routes.get("fort.troop.get").h({ws,msg:{playerId:"p1",id:"107900"},send,nowMs:()=>4991}); assert.strictEqual(sent[3].troop.trainingTimeSeconds,40);
+ await r.routes.get("troop_transfer.reference.list").h({ws,msg:{playerId:"p1"},send,nowMs:()=>4992}); assert.strictEqual(sent[4].trees.length,4); assert.strictEqual(sent[4].trees[0].details.length,12);
+ await r.routes.get("troop_transfer.reference.get").h({ws,msg:{playerId:"p1",transferType:1,pointType:"12"},send,nowMs:()=>4993}); assert.strictEqual(sent[5].point.id,"109048");
  await r.routes.get("shop.reference.list").h({ws,msg:{playerId:"p1"},send,nowMs:()=>4994}); assert.strictEqual(sent[6].shops.length,8); assert.strictEqual(sent[6].shops[0].itemTuplesRaw.length,8);
  await r.routes.get("vip_store.info").h({ws,msg:{playerId:"p1",refreshTime:123},send,nowMs:()=>4995}); assert.strictEqual(sent[7].panel.vipstore.level,1); assert.strictEqual(sent[7].panel.vipstore.refreshTime,123);
  state.lastShelterAuxiliaryRuntime={repayinfo:{payPoint:2000,claimedPoints:[400]}};
