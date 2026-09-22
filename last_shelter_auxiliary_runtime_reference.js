@@ -210,8 +210,14 @@ function lastShelterAuxiliaryRuntimeTeminEt(state) {
   }
 
   const runtime = state.lastShelterAuxiliaryRuntime;
-  const defaults =
-    lastShelterAuxiliaryRuntimeDefaultHazirla();
+  let defaults = null;
+  const defaultlariAl = () => {
+    if (!defaults) {
+      defaults =
+        lastShelterAuxiliaryRuntimeDefaultHazirla();
+    }
+    return defaults;
+  };
 
   freshInitAuxRuntimeTeminEt(
     runtime
@@ -219,7 +225,7 @@ function lastShelterAuxiliaryRuntimeTeminEt(state) {
 
   for (const key of ["armyFormation","hospital","defenseInfo","worldFortress","careerInfo"]) {
     if (!Array.isArray(runtime[key])) {
-      runtime[key] = clone(defaults[key]);
+      runtime[key] = clone(defaultlariAl()[key]);
     }
   }
 
