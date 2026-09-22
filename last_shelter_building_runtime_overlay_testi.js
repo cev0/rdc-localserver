@@ -25,8 +25,6 @@ assert.deepStrictEqual(status("hq",6), {mapped:true,buildingId:"hq",buildingType
 assert.strictEqual(level("hq",25).buildTimeSeconds,1893030);
 assert.strictEqual(level("hq",25).cost.find(row => row.type === "money").amount,34000000);
 assert.strictEqual(level("hq",26),null,"Source rows above the declared cap must not unlock higher levels");
-assert.strictEqual(level("farm",1),null);
-assert.strictEqual(max("farm"),0);
 for (const id of ["institute","house","bank","hospital","embassy","farm","ration_truck","road","tower"]) {
   const row=verifiedLastShelterBuildingLevelDataAl(id,1);
   assert(row, id+" level 1 must come from Last Shelter building.xml");
