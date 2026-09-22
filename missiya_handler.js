@@ -38,8 +38,6 @@ const POSTGRES_ATOMIK_MUTASIYA_MESAJLARI = new Set([
    * audit snapshot-a yaza bilərdi. Ona görə bu mesajlar üçün ikinci
    * snapshot writer tam söndürülür.
    */
-  "research_start",
-  "technology_research_start",
   "expand_area_request",
   "expand_base",
   "build_request",
