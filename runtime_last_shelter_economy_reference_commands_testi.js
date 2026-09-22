@@ -16,11 +16,37 @@ class FakeRouter {constructor(){this.routes=new Map();} register(type,handler,op
   assert.deepStrictEqual(repay.eligibleRewards.map(x=>x.point),[400,2000]);
   assert.deepStrictEqual(repay.claimedPoints,[400]);
   assert.deepStrictEqual(repay.claimableRewards.map(x=>x.point),[2000]);
-  assert.deepStrictEqual(state.lastShelterAuxiliaryRuntime.repayinfo.claimedPoints,[400,"400",-1,"bad"],"Read projection must not mutate persisted state.");
+  assert.deepStrictEqual(
+    state.lastShelterAuxiliaryRuntime.repayinfo.claimedPoints,
+    [400],
+    "repay.info must normalize persisted Last Shelter repay runtime before projection."
+  );
   assert.strictEqual(allianceGroupPurchaseSnapshotHazirla(state).runtime.progress,2);
   assert.strictEqual(vipStoreSnapshotHazirla(state,1789704000).vipstore.goods[0].buyAmount,4);
   assert.strictEqual(vipStoreSnapshotHazirla(state,1789704000).vipstore.refreshTime,1789704000);
   assert.strictEqual(state.lastShelterVipStore.refreshTime,undefined,"Projection provider must not mutate persisted VIP state.");
+
+  const legacyRepayState={
+    lastShelterRepay:{
+      payPoint:"400",
+      claimedPoints:["400",400,-1]
+    }
+  };
+  const legacyRepay=repaySnapshotHazirla(legacyRepayState);
+  assert.strictEqual(legacyRepay.payPoint,400);
+  assert.deepStrictEqual(legacyRepay.claimedPoints,[400]);
+  assert.strictEqual(
+    Object.prototype.hasOwnProperty.call(
+      legacyRepayState,
+      "lastShelterRepay"
+    ),
+    false,
+    "Legacy repay state must be migrated into lastShelterAuxiliaryRuntime.repayinfo."
+  );
+  assert.deepStrictEqual(
+    legacyRepayState.lastShelterAuxiliaryRuntime.repayinfo,
+    {payPoint:400,claimedPoints:[400]}
+  );
 
   const router=new FakeRouter();
   lastShelterEconomyReferenceCommandleriniQeydEt(router,{getOrCreatePlayerState:()=>state,getVipStoreRefreshTime:()=>1789704000});
@@ -50,5 +76,5 @@ class FakeRouter {constructor(){this.routes=new Map();} register(type,handler,op
   sent.length=0;
   await router.routes.get("shop.get").handler({ws,msg:{playerId:"wrong",id:"200000001"},send,nowMs:()=>106});
   assert.strictEqual(sent[0].code,"PLAYER_ID_MISMATCH");
-  console.log("PASS: Last Shelter economy reference exposes authoritative eligible/claimed/claimable repay state without mutating persistence.");
+  console.log("PASS: Last Shelter economy reference exposes normalized authoritative repay state and migrates legacy repay storage.");
 })().catch(error=>{console.error(error);process.exitCode=1;});
