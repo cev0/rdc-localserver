@@ -1511,8 +1511,13 @@ function getStorageRule(buildingId, buildingLevel) {
   const level = Math.max(1, Number(buildingLevel) || 1);
   const meta = getDefinitionMeta(id);
   const levelData = getLevelData(id, level);
+  const verifiedCoverage =
+    verifiedLastShelterBuildingLevelStatusAl(
+      id,
+      level
+    );
 
-  if (meta && meta.providesStorage && meta.storageResource) {
+  if (meta && meta.providesStorage && meta.storageResource && levelData) {
     const capacityBonus = Math.max(0, Number(levelData.storageCapacityBonus) || 0);
     if (capacityBonus > 0) {
       return {
@@ -1520,6 +1525,10 @@ function getStorageRule(buildingId, buildingLevel) {
         capacityBonus
       };
     }
+  }
+
+  if (verifiedCoverage.mapped) {
+    return null;
   }
 
   function bonusByLevel(level1, level2, level3, level4) {
@@ -1658,8 +1667,13 @@ function getSpecialEffectRule(buildingId, buildingLevel) {
   const level = Math.max(1, Number(buildingLevel) || 1);
   const meta = getDefinitionMeta(id);
   const levelData = getLevelData(id, level);
+  const verifiedCoverage =
+    verifiedLastShelterBuildingLevelStatusAl(
+      id,
+      level
+    );
 
-  if (meta && meta.specialEffectType) {
+  if (meta && meta.specialEffectType && levelData) {
     const specialEffectValue = Math.max(0, Number(levelData.specialEffectValue) || 0);
     if (specialEffectValue > 0) {
       return {
@@ -1667,6 +1681,10 @@ function getSpecialEffectRule(buildingId, buildingLevel) {
         value: specialEffectValue
       };
     }
+  }
+
+  if (verifiedCoverage.mapped) {
+    return null;
   }
 
   function amountByLevel(level1, level2, level3, level4) {
@@ -5415,8 +5433,13 @@ function getProductionRule(buildingId, buildingLevel) {
   const level = Math.max(1, Number(buildingLevel) || 1);
   const meta = getDefinitionMeta(id);
   const levelData = getLevelData(id, level);
+  const verifiedCoverage =
+    verifiedLastShelterBuildingLevelStatusAl(
+      id,
+      level
+    );
 
-  if (meta && meta.producesResource && meta.producedResource) {
+  if (meta && meta.producesResource && meta.producedResource && levelData) {
     const amountPerTick = Math.max(0, Number(levelData.productionPerTick) || 0);
     if (amountPerTick > 0) {
       return {
@@ -5424,6 +5447,10 @@ function getProductionRule(buildingId, buildingLevel) {
         amountPerTick
       };
     }
+  }
+
+  if (verifiedCoverage.mapped) {
+    return null;
   }
 
   function amountByLevel(level1, level2, level3) {
