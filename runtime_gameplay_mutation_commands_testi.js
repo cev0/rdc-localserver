@@ -422,6 +422,16 @@ const {
   assert.strictEqual(buildingSpendCalls,1);
   assert.strictEqual(upgradeJobCalls,1);
 
+  // Non-HQ mapped buildings must now consume authoritative XML level data and prerequisites.
+  const overlay=require("./last_shelter_building_runtime_overlay");
+  const instituteLevel2=overlay.verifiedLastShelterBuildingLevelDataAl("institute",2);
+  assert(instituteLevel2 && instituteLevel2.source==="last_shelter_v1.250.102_building_xml_verified");
+  assert.strictEqual(instituteLevel2.buildingTypeId,"403000");
+  assert(Array.isArray(instituteLevel2.cost));
+  assert(overlay.verifiedLastShelterBuildingMaxLevelAl("institute")>=2);
+  const farmLevel1=overlay.verifiedLastShelterBuildingLevelDataAl("farm",1);
+  assert(farmLevel1 && farmLevel1.buildingTypeId==="415000");
+
   const legacyServerCode =
     fs.readFileSync(
       require.resolve("./server.js"),
