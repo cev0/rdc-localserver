@@ -1,7 +1,6 @@
 "use strict";
 
 const {
-  canonicalBuildingTypeIdAl,
   rdcBuildingTypeIdAl
 } = require("./last_shelter_building_kataloqu");
 
@@ -17,7 +16,7 @@ function metnAl(value, max = 64) {
 
 function authoritativeBuildingTypeIdAl(buildingId) {
   const id = metnAl(buildingId);
-  return rdcBuildingTypeIdAl(id) || canonicalBuildingTypeIdAl(id) || null;
+  return rdcBuildingTypeIdAl(id) || null;
 }
 
 function stateBuildingHighestCompletedLevelAl(state, buildingId) {
