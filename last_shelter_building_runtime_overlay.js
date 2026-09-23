@@ -1,8 +1,8 @@
 "use strict";
 
 const {
-  RAW_MAIN_BUILDING_LEVELS,
-  mainBuildingLeveliniAl,
+  buildingTypeLeveliniAl,
+  buildingTypeMaxLevelAl,
   rdcBuildingTypeIdAl
 } = require("./last_shelter_building_kataloqu");
 
@@ -39,9 +39,15 @@ function verifiedLastShelterBuildingLevelDataAl(
   buildingId,
   targetLevel
 ) {
-  const id = metnAl(buildingId);
+  const id =
+    metnAl(
+      buildingId
+    );
+
   const buildingTypeId =
-    rdcBuildingTypeIdAl(id);
+    rdcBuildingTypeIdAl(
+      id
+    );
 
   if (!buildingTypeId) {
     return null;
@@ -51,48 +57,68 @@ function verifiedLastShelterBuildingLevelDataAl(
     Math.max(
       1,
       Math.trunc(
-        Number(targetLevel) || 1
+        Number(targetLevel) ||
+        1
       )
     );
 
-  // Hazırda raw building.xml-dən RDC-yə təsdiqlənmiş xəritə HQ/400000-dir.
-  // Yeni verified building type-lar kataloqa əlavə olunduqca bu overlay
-  // generik building_definitions.json dəyərlərindən avtomatik üstün olacaq.
-  if (buildingTypeId !== "400000") {
-    return null;
-  }
+  // Original runtime current-row convention:
+  // level N qurmaq/upgradeləmək üçün N-1 sətrinin xərci/müddəti istifadə olunur,
+  // N sətrinin mövcudluğu isə target level-in real olduğunu təsdiqləyir.
+  const row =
+    buildingTypeLeveliniAl(
+      buildingTypeId,
+      level - 1
+    );
 
-  // UserBuildingManager.upgradeBuilding obtains costs/time/conditions from
-  // getItemLevelId() (the CURRENT level), then verifies the next row exists.
-  // Creating level 1 similarly consumes the level-zero row.
-  const row = mainBuildingLeveliniAl(level - 1);
-  const targetRow = mainBuildingLeveliniAl(level);
+  const targetRow =
+    buildingTypeLeveliniAl(
+      buildingTypeId,
+      level
+    );
 
-  if (!row || !targetRow || level > row.maxLevelFromXml) {
+  const maxLevel =
+    buildingTypeMaxLevelAl(
+      buildingTypeId
+    );
+
+  if (
+    !row ||
+    !targetRow ||
+    maxLevel <= 0 ||
+    level > maxLevel
+  ) {
     return null;
   }
 
   return {
     source:
-      "last_shelter_v1.250.102_building_xml_verified",
-    buildingId: id,
+      "last_shelter_building_xml_authoritative",
+    buildingId:
+      id,
     buildingTypeId,
-    xmlId: row.xmlId,
-    targetXmlId: targetRow.xmlId,
-    targetLevel: level,
+    xmlId:
+      row.xmlId,
+    targetXmlId:
+      targetRow.xmlId,
+    targetLevel:
+      level,
     maxLevelFromXml:
-      Math.max(
-        1,
-        Number(row.maxLevelFromXml) || 1
-      ),
+      maxLevel,
     buildTimeSeconds:
       Math.max(
         0,
-        Number(row.buildTimeSeconds) || 0
+        Number(
+          row.buildTimeSeconds
+        ) ||
+        0
       ),
-    productionPerTick: 0,
-    storageCapacityBonus: 0,
-    specialEffectValue: 0,
+    productionPerTick:
+      0,
+    storageCapacityBonus:
+      0,
+    specialEffectValue:
+      0,
     cost:
       verifiedCostArrayHazirla(
         row.cost
@@ -102,7 +128,9 @@ function verifiedLastShelterBuildingLevelDataAl(
         row.buildingConditions
       )
         ? row.buildingConditions.map(
-            item => ({ ...item })
+            item => ({
+              ...item
+            })
           )
         : []
   };
@@ -111,49 +139,35 @@ function verifiedLastShelterBuildingLevelDataAl(
 function verifiedLastShelterBuildingMaxLevelAl(
   buildingId
 ) {
-  const id = metnAl(buildingId);
-  const buildingTypeId =
-    rdcBuildingTypeIdAl(id);
-
-  if (buildingTypeId !== "400000") {
-    return 0;
-  }
-
-  const declaredMaxLevels =
-    Object.values(
-      RAW_MAIN_BUILDING_LEVELS
-    )
-      .map(
-        row =>
-          Math.max(
-            0,
-            Math.trunc(
-              Number(
-                row &&
-                row.maxLevelFromXml
-              ) || 0
-            )
-          )
-      )
-      .filter(level => level > 0);
-
-  return declaredMaxLevels.length > 0
-    ? Math.max(...declaredMaxLevels)
-    : 0;
+  return Math.max(
+    0,
+    buildingTypeMaxLevelAl(
+      buildingId
+    ) ||
+    0
+  );
 }
 
 function verifiedLastShelterBuildingLevelStatusAl(
   buildingId,
   targetLevel
 ) {
-  const id = metnAl(buildingId);
+  const id =
+    metnAl(
+      buildingId
+    );
+
   const buildingTypeId =
-    rdcBuildingTypeIdAl(id);
+    rdcBuildingTypeIdAl(
+      id
+    );
+
   const level =
     Math.max(
       1,
       Math.trunc(
-        Number(targetLevel) || 1
+        Number(targetLevel) ||
+        1
       )
     );
 
@@ -171,11 +185,12 @@ function verifiedLastShelterBuildingLevelStatusAl(
 
   const maxLevel =
     verifiedLastShelterBuildingMaxLevelAl(
-      id
+      buildingTypeId
     );
+
   const verified =
     verifiedLastShelterBuildingLevelDataAl(
-      id,
+      buildingTypeId,
       level
     ) !== null;
 
