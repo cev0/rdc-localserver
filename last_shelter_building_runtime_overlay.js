@@ -3,6 +3,8 @@
 const {
   buildingTypeLeveliniAl,
   buildingTypeMaxLevelAl,
+  authoritativeBuildingConditionsYoxla,
+  canonicalBuildingTypeIdAl,
   rdcBuildingTypeIdAl
 } = require("./last_shelter_building_kataloqu");
 
@@ -207,10 +209,49 @@ function verifiedLastShelterBuildingLevelStatusAl(
   };
 }
 
+function verifiedLastShelterBuildingPrerequisitesYoxla(
+  buildingId,
+  targetLevel,
+  highestLevelResolver
+) {
+  const id = metnAl(buildingId);
+  const buildingTypeId = rdcBuildingTypeIdAl(id);
+
+  if (!buildingTypeId) {
+    return {
+      mapped:false,
+      ok:true,
+      buildingId:id,
+      buildingTypeId:null,
+      targetLevel:Math.max(1, Math.trunc(Number(targetLevel) || 1)),
+      conditions:[]
+    };
+  }
+
+  const level = Math.max(1, Math.trunc(Number(targetLevel) || 1));
+  const result = authoritativeBuildingConditionsYoxla(
+    buildingTypeId,
+    level,
+    requiredTypeId => {
+      if (typeof highestLevelResolver !== "function") return 0;
+      return highestLevelResolver(canonicalBuildingTypeIdAl(requiredTypeId));
+    }
+  );
+
+  return {
+    mapped:true,
+    buildingId:id,
+    buildingTypeId,
+    targetLevel:level,
+    ...result
+  };
+}
+
 module.exports = {
   VERIFIED_RESOURCE_KEYS,
   verifiedCostArrayHazirla,
   verifiedLastShelterBuildingLevelDataAl,
   verifiedLastShelterBuildingMaxLevelAl,
-  verifiedLastShelterBuildingLevelStatusAl
+  verifiedLastShelterBuildingLevelStatusAl,
+  verifiedLastShelterBuildingPrerequisitesYoxla
 };
