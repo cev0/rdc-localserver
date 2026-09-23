@@ -48,6 +48,26 @@ const LAST_SHELTER_SCIENCE_NATIVE_FLOW = deepFreeze({
     completionMode: "immediate",
     skillExpFormula: "floor(timeCostMs / 1000 / 60)"
   },
+  observedGoldCatalogRows: {
+    // Source-catalog observations only. Do not infer pricing arithmetic from
+    // these opaque k-fields until CommonUtils usage is independently mapped.
+    itemCdGold: {
+      catalog: "item",
+      id: "cd_gold",
+      k1: "24",
+      k2: "10",
+      k3: "600",
+      k4: "100"
+    },
+    itemBCdGold: {
+      catalog: "item_b",
+      id: "cd_gold",
+      k1: "24",
+      k2: "10",
+      k3: "600",
+      k4: "100"
+    }
+  },
   unresolved: {
     helpers: [
       "CommonUtils.handleResNotEnoughBuildingCost",

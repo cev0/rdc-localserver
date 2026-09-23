@@ -57,6 +57,22 @@ assert.strictEqual(
 assert.strictEqual(flow.directly.completionMode, "immediate");
 assert.strictEqual(flow.directly.completionMethod, "ScienceService.upGradeReturn");
 assert.strictEqual(flow.directly.skillExpFormula, "floor(timeCostMs / 1000 / 60)");
+assert.deepStrictEqual(flow.observedGoldCatalogRows.itemCdGold, {
+  catalog: "item",
+  id: "cd_gold",
+  k1: "24",
+  k2: "10",
+  k3: "600",
+  k4: "100"
+});
+assert.deepStrictEqual(flow.observedGoldCatalogRows.itemBCdGold, {
+  catalog: "item_b",
+  id: "cd_gold",
+  k1: "24",
+  k2: "10",
+  k3: "600",
+  k4: "100"
+});
 assert.deepStrictEqual(flow.unresolved.helpers, [
   "CommonUtils.handleResNotEnoughBuildingCost",
   "CommonUtils.handleInstantBuildingCost"
@@ -65,6 +81,9 @@ assert.deepStrictEqual(flow.unresolved.helpers, [
 assert(Object.isFrozen(flow));
 assert(Object.isFrozen(flow.research));
 assert(Object.isFrozen(flow.directly));
+assert(Object.isFrozen(flow.observedGoldCatalogRows));
+assert(Object.isFrozen(flow.observedGoldCatalogRows.itemCdGold));
+assert(Object.isFrozen(flow.observedGoldCatalogRows.itemBCdGold));
 assert(Object.isFrozen(flow.unresolved));
 
 console.log("PASS: verified Last Shelter native science gold/direct control-flow contract.");
