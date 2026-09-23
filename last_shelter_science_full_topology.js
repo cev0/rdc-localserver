@@ -23,6 +23,13 @@ const GROUP_ROWS =
 const SOURCE = Object.freeze({
   version: "1.250.102",
   endpoint: "GetScienceInfo",
+  command: "science.data.init",
+  handlerClass: "com.elex.cok.handlers.requesthandlers.science.GetScienceInfo",
+  handlerClassSha256: "0ada5557196c609441b31ffa053ce7bb336ed3e1e1449b4ef440834f3524a97e",
+  responseFields: Object.freeze(["hasKingdomAct", "scienceGroup", "science", "scienceRecord"]),
+  observedHasKingdomAct: 0,
+  observedScienceRecordCount: 0,
+  dynamicFieldsUnmapped: Object.freeze(["valid", "cd"]),
   verifiedCaptureCount: 2,
   scienceCount: 441,
   scienceGroupCount: 52,

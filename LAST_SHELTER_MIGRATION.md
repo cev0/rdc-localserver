@@ -19,8 +19,10 @@ Kataloqların mövcudluğu bütün oyun mexanikalarının Node.js-ə köçürül
 - Şəxsi server, ödəniş və hesab XML-ləri Git-ə daxil edilmir.
 
 `data/last_shelter/commands.json` orijinal qeydiyyat kodundakı 976 mümkün komanda
-adını saxlayır. Şərti qeydiyyatlar da daxildir. Bunlardan yalnız `item.buy`,
-`science.research`, `science.upgrade` hazırda eyni adla RDC-də qeydiyyatdadır.
+adını saxlayır. Şərti qeydiyyatlar da daxildir. `item.buy`, `science.research`,
+`science.upgrade` və fail-closed `science.directly` hazırda eyni native adla RDC-də
+qeydiyyatdadır. `science.data.init` üçün native handler/response envelope və 441 node +
+52 qrup capture-u qorunur, lakin dinamik `valid`/`cd` qaydaları tam xəritələnməyib.
 RDC-nin öz gameplay komandaları ayrıca mövcuddur; bu rəqəm onların yoxluğu demək deyil.
 
 Cari production registrar səthinin dəqiq coverage ölçüsünü almaq üçün

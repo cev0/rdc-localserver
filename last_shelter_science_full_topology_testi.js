@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("assert");
+const commandCatalog = require("./data/last_shelter/commands.json");
 
 const {
   SOURCE,
@@ -51,6 +52,27 @@ assert.strictEqual(
   SOURCE.endpoint,
   "GetScienceInfo"
 );
+assert.strictEqual(
+  SOURCE.command,
+  "science.data.init"
+);
+assert.strictEqual(
+  SOURCE.handlerClass,
+  "com.elex.cok.handlers.requesthandlers.science.GetScienceInfo"
+);
+assert(
+  (commandCatalog.commands[SOURCE.command] || []).some(row =>
+    row.class === SOURCE.handlerClass &&
+    row.classSha256 === SOURCE.handlerClassSha256
+  )
+);
+assert.deepStrictEqual(
+  SOURCE.responseFields,
+  ["hasKingdomAct", "scienceGroup", "science", "scienceRecord"]
+);
+assert.strictEqual(SOURCE.observedHasKingdomAct, 0);
+assert.strictEqual(SOURCE.observedScienceRecordCount, 0);
+assert.deepStrictEqual(SOURCE.dynamicFieldsUnmapped, ["valid", "cd"]);
 assert.strictEqual(
   SOURCE.verifiedCaptureCount,
   2
