@@ -40,6 +40,15 @@ assert.strictEqual(
   "CommonUtils.handleResNotEnoughBuildingCost"
 );
 assert.strictEqual(flow.research.goodsShortage, "SILVER_MEDAL_NOT_ENOUGH");
+assert.deepStrictEqual(flow.research.startSideEffects, {
+  activityReduceCostMethod: "MadScientistActivity.recordReduceCost",
+  activityType: "SCIENCE",
+  queueCostRecordMethod: "QueueManager.researchQueueRecordCost",
+  startHook: "ScienceService.onStartResearchScience",
+  skillExpMethod: "ScienceService.skillAddExp",
+  skillExpFormula: "floor(timeCostMs / 1000 / 60)",
+  skillExpCondition: "computedExp > 0"
+});
 
 assert.strictEqual(flow.directly.clientGoldAuthoritativePrice, false);
 assert.strictEqual(
@@ -57,6 +66,13 @@ assert.strictEqual(
 assert.strictEqual(flow.directly.completionMode, "immediate");
 assert.strictEqual(flow.directly.completionMethod, "ScienceService.upGradeReturn");
 assert.strictEqual(flow.directly.skillExpFormula, "floor(timeCostMs / 1000 / 60)");
+assert.strictEqual(flow.directly.activityReduceCostMethod, "MadScientistActivity.recordReduceCost");
+assert.strictEqual(flow.directly.activityType, "SCIENCE");
+assert.strictEqual(flow.directly.activityBuffMethod, "MadScientistActivity.changeActivityBuff");
+assert.strictEqual(flow.directly.activityBuffEnabled, true);
+assert.strictEqual(flow.directly.startHook, "ScienceService.onStartResearchScience");
+assert.strictEqual(flow.directly.skillExpMethod, "ScienceService.skillAddExp");
+assert.strictEqual(flow.directly.skillExpCondition, "computedExp > 0");
 assert.deepStrictEqual(flow.observedGoldCatalogRows.itemCdGold, {
   catalog: "item",
   id: "cd_gold",
@@ -80,6 +96,7 @@ assert.deepStrictEqual(flow.unresolved.helpers, [
 
 assert(Object.isFrozen(flow));
 assert(Object.isFrozen(flow.research));
+assert(Object.isFrozen(flow.research.startSideEffects));
 assert(Object.isFrozen(flow.directly));
 assert(Object.isFrozen(flow.observedGoldCatalogRows));
 assert(Object.isFrozen(flow.observedGoldCatalogRows.itemCdGold));

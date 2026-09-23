@@ -25,7 +25,16 @@ const LAST_SHELTER_SCIENCE_NATIVE_FLOW = deepFreeze({
     clientGoldAuthoritativePrice: false,
     resourceTopUpHelper: "CommonUtils.handleResNotEnoughBuildingCost",
     goodsShortage: "SILVER_MEDAL_NOT_ENOUGH",
-    completionMode: "queue"
+    completionMode: "queue",
+    startSideEffects: {
+      activityReduceCostMethod: "MadScientistActivity.recordReduceCost",
+      activityType: "SCIENCE",
+      queueCostRecordMethod: "QueueManager.researchQueueRecordCost",
+      startHook: "ScienceService.onStartResearchScience",
+      skillExpMethod: "ScienceService.skillAddExp",
+      skillExpFormula: "floor(timeCostMs / 1000 / 60)",
+      skillExpCondition: "computedExp > 0"
+    }
   },
   directly: {
     command: "science.directly",
@@ -46,7 +55,14 @@ const LAST_SHELTER_SCIENCE_NATIVE_FLOW = deepFreeze({
     clientGoldMismatchBehavior: "log-only when nonzero and different from actual server debit",
     completionMethod: "ScienceService.upGradeReturn",
     completionMode: "immediate",
-    skillExpFormula: "floor(timeCostMs / 1000 / 60)"
+    skillExpFormula: "floor(timeCostMs / 1000 / 60)",
+    activityReduceCostMethod: "MadScientistActivity.recordReduceCost",
+    activityType: "SCIENCE",
+    activityBuffMethod: "MadScientistActivity.changeActivityBuff",
+    activityBuffEnabled: true,
+    startHook: "ScienceService.onStartResearchScience",
+    skillExpMethod: "ScienceService.skillAddExp",
+    skillExpCondition: "computedExp > 0"
   },
   observedGoldCatalogRows: {
     // Source-catalog observations only. Do not infer pricing arithmetic from

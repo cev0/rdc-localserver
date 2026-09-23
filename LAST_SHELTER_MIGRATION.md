@@ -12,6 +12,8 @@ Kataloqların mövcudluğu bütün oyun mexanikalarının Node.js-ə köçürül
   səviyyə şərtləri, növbə və tamamlanma mövcud tranzaksiya sisteminə bağlanıb.
 - Native `science.research` gold seçimi və `science.directly` control-flow-u bytecode-dan
   ayrıca contract kimi qorunur; client `gold` server qiyməti sayılmır.
+- Research start/direct side-effect çağırışlarının native sərhədi də xəritələnib: activity cost qeydiyyatı,
+  queue cost qeydiyyatı, `onStartResearchScience` və vaxtdan hesablanan `skillAddExp`; helper daxililəri sübutsuz port edilmir.
 - HQ xərcləri orijinalın cari səviyyə sətrindən götürülür; bina şərtləri tətbiq edilir.
 - Eyni mənbə təkrar import olunanda mövcud snapshot dəyişdirilmir.
 - Şəxsi server, ödəniş və hesab XML-ləri Git-ə daxil edilmir.
