@@ -57,8 +57,11 @@ const LAST_SHELTER_SCIENCE_NATIVE_FLOW = deepFreeze({
   }
 });
 
+const JAVA_INT_MIN = -2147483648;
+const JAVA_INT_MAX = 2147483647;
+
 function nativeScienceResearchGoldPath(gold) {
-  if (!Number.isInteger(gold)) return null;
+  if (!Number.isInteger(gold) || gold < JAVA_INT_MIN || gold > JAVA_INT_MAX) return null;
   return gold === 0 ? "RESOURCE_DEBIT" : "SERVER_GOLD_TOPUP";
 }
 

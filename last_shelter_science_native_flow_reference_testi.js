@@ -27,6 +27,11 @@ assertHandler(flow.directly);
 assert.strictEqual(nativeScienceResearchGoldPath(0), "RESOURCE_DEBIT");
 assert.strictEqual(nativeScienceResearchGoldPath(1), "SERVER_GOLD_TOPUP");
 assert.strictEqual(nativeScienceResearchGoldPath(999999), "SERVER_GOLD_TOPUP");
+assert.strictEqual(nativeScienceResearchGoldPath(-1), "SERVER_GOLD_TOPUP");
+assert.strictEqual(nativeScienceResearchGoldPath(-2147483648), "SERVER_GOLD_TOPUP");
+assert.strictEqual(nativeScienceResearchGoldPath(2147483647), "SERVER_GOLD_TOPUP");
+assert.strictEqual(nativeScienceResearchGoldPath(-2147483649), null);
+assert.strictEqual(nativeScienceResearchGoldPath(2147483648), null);
 assert.strictEqual(nativeScienceResearchGoldPath(1.5), null);
 
 assert.strictEqual(flow.research.clientGoldAuthoritativePrice, false);

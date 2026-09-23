@@ -34,7 +34,14 @@ assert.strictEqual(sourceScienceResearch(plain, { itemId: "901000" }, 1000).code
 assert.deepStrictEqual(plain, poor);
 assert.strictEqual(sourceScienceResearch(plain, { itemId: "901000", gold: 1 }, 1000).code, "SCIENCE_GOLD_TOPUP_UNMIGRATED");
 assert.deepStrictEqual(plain, poor);
-assert.strictEqual(sourceScienceResearch(plain, { itemId: "901000", gold: -1 }, 1000).code, "INVALID_OPT");
+assert.strictEqual(
+  sourceScienceResearch(plain, { itemId: "901000", gold: -1 }, 1000).code,
+  "SCIENCE_GOLD_TOPUP_UNMIGRATED",
+  "Native science.research treats every signed nonzero int as the server-priced gold path"
+);
+assert.deepStrictEqual(plain, poor);
+assert.strictEqual(sourceScienceResearch(plain, { itemId: "901000", gold: -2147483649 }, 1000).code, "INVALID_OPT");
+assert.strictEqual(sourceScienceResearch(plain, { itemId: "901000", gold: 2147483648 }, 1000).code, "INVALID_OPT");
 
 const multi = fixture();
 assert.strictEqual(sourceScienceResearch(multi, { itemId: "901700" }, 1000).code, "SCIENCE_CONDITION_NOT_MET");

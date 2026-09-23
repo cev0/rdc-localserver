@@ -17,6 +17,7 @@ const {
 } = require("./last_shelter_science_runtime_adapteri");
 const { lastShelterResourcePayloadHazirla } = require("./last_shelter_resource_runtime");
 const { lastShelterGoldWalletTeminEt, totalGoldAl } = require("./last_shelter_gold_wallet");
+const { nativeScienceResearchGoldPath } = require("./last_shelter_science_native_flow_reference");
 
 const ENERGY_SKILL = LAST_SHELTER_SCIENCE_HERO_SKILLS.ENERGY_SKILL;
 const SECOND_RESEARCH_QUEUE_SKILL = LAST_SHELTER_SCIENCE_HERO_SKILLS.SECOND_RESEARCH_QUEUE;
@@ -134,9 +135,9 @@ function sourceSciencePrerequisite(state, row) {
 function sourceScienceResearchPlan(state, request, nowUnixMs) {
   if (!state || typeof state !== "object") return fail("STATE_MISSING");
   if (!Number.isSafeInteger(nowUnixMs) || nowUnixMs < 0) return fail("INVALID_SERVER_TIME");
-  if (request?.gold != null && (!Number.isInteger(request.gold) || request.gold < 0 || request.gold > 2147483647)) {
-    return fail("INVALID_OPT");
-  }
+  const requestGold = request?.gold ?? 0;
+  const goldPath = nativeScienceResearchGoldPath(requestGold);
+  if (!goldPath) return fail("INVALID_OPT");
   const plan = verifiedScienceResearchPlanHazirla(state, request, nowUnixMs, {
     secondQueueCheck: sourceSecondScienceQueueUnlocked
   });
@@ -180,7 +181,12 @@ function sourceScienceResearchPlan(state, request, nowUnixMs) {
     academy ? Math.fround((effects[69] || 0) + Math.fround(stationExtra)) : 0);
   if (durationMs == null || !Number.isSafeInteger(nowUnixMs + durationMs)) return fail("SCIENCE_EFFECT_INVALID");
   return {
-    ...plan, prerequisite, costs: { resources, goods }, durationMs,
+    ...plan,
+    optionalGold: requestGold,
+    goldPath,
+    prerequisite,
+    costs: { resources, goods },
+    durationMs,
     queue: { ...plan.queue, finishUnixMs: nowUnixMs + durationMs }
   };
 }
@@ -194,7 +200,7 @@ function sourceScienceResearch(state, request, nowUnixMs) {
     if (!Number.isFinite(balance) || balance < amount) missingResources.push({ resource: key, required: amount });
   }
   if (missingResources.length) {
-    return fail(plan.optionalGold > 0 ? "SCIENCE_GOLD_TOPUP_UNMIGRATED" : "USERRESOURCE_IS_NOT_ENOUGH", { missingResources });
+    return fail(plan.goldPath === "SERVER_GOLD_TOPUP" ? "SCIENCE_GOLD_TOPUP_UNMIGRATED" : "USERRESOURCE_IS_NOT_ENOUGH", { missingResources });
   }
   const inventory = state.lastShelterStarterAccountRuntime?.items || [];
   const goodsCosts = new Map();
