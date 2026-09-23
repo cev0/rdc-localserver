@@ -18,6 +18,7 @@ on:
       - 'last_shelter_science_hero_skill_reference_testi.js'
       - 'last_shelter_science_native_flow_reference.js'
       - 'last_shelter_science_native_flow_reference_testi.js'
+      - 'last_shelter_science_gold_catalog_probe.js'
       - 'package.json'
       - 'package-lock.json'
       - 'server.js'
@@ -39,6 +40,7 @@ on:
       - 'last_shelter_science_hero_skill_reference_testi.js'
       - 'last_shelter_science_native_flow_reference.js'
       - 'last_shelter_science_native_flow_reference_testi.js'
+      - 'last_shelter_science_gold_catalog_probe.js'
       - 'package.json'
       - 'package-lock.json'
       - 'server.js'
@@ -62,5 +64,7 @@ jobs:
       - run: node last_shelter_science_prerequisite_runtime_testi.js
       - run: node last_shelter_science_hero_skill_reference_testi.js
       - run: node last_shelter_science_native_flow_reference_testi.js
+      - name: Probe native science gold catalog rows
+        run: node last_shelter_science_gold_catalog_probe.js
       - run: node last_shelter_science_mutation_testi.js
       - run: node runtime_last_shelter_queue_science_commands_testi.js
