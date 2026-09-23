@@ -150,14 +150,14 @@ function sourceScienceResearchPlan(state, request, nowUnixMs) {
   }
   const effects = sourceScienceEffects(state);
   const runtime = state.lastShelterScienceRuntime || {};
-  // The verified 50046 row proves this is an active, station-scoped science
-  // skill, but not yet its runtime lifecycle. Block only when the persisted
-  // active state is actually present on a correctly stationed general.
+  // The verified 50046 row proves an active, academy-stationed science skill,
+  // but its persisted activation/cooldown lifecycle is not independently
+  // mapped yet. Do not interpret raw source `state=2` as runtime state. Fail
+  // closed whenever a stationed general owns 50046 until that lifecycle is
+  // source-backed, so the skill cannot be silently ignored or misapplied.
   const academyStationed = academyStationedHeroIds(state);
   if (newHeroes(state).some(hero => academyStationed.has(heroId(hero)) &&
-      skills(hero).some(skill =>
-        (skill.state === "READY" || Number(skill.state) === Number(ENERGY_SKILL.state)) &&
-        runtimeSkillId(skill) === ENERGY_SKILL_ID))) {
+      skills(hero).some(skill => runtimeSkillId(skill) === ENERGY_SKILL_ID))) {
     return fail("SCIENCE_ENERGY_SKILL_UNMIGRATED");
   }
   const resources = {};
