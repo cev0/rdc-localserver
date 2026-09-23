@@ -206,6 +206,12 @@ function rdcBuildingTypeIdAl(
   );
 }
 
+function canonicalBuildingTypeIdAl(buildingId) {
+  const mapped = rdcBuildingTypeIdAl(buildingId);
+  if (mapped) return mapped;
+  return metnAl(buildingId, 64).toLowerCase();
+}
+
 function buildingTypeLeveliniAl(
   buildingId,
   level
@@ -306,6 +312,60 @@ function buildingTypeMaxLevelAl(
   );
 }
 
+function authoritativeBuildingConditionsAl(buildingId, targetLevel) {
+  const level = Math.max(1, tamEded(targetLevel, 1));
+  const row = buildingTypeLeveliniAl(buildingId, level - 1);
+  if (!row || !Array.isArray(row.buildingConditions)) return [];
+  return row.buildingConditions.map(condition => ({ ...condition }));
+}
+
+function authoritativeBuildingConditionsYoxla(
+  buildingId,
+  targetLevel,
+  highestLevelResolver
+) {
+  const conditions = authoritativeBuildingConditionsAl(
+    buildingId,
+    targetLevel
+  );
+
+  if (conditions.length === 0) {
+    return { ok:true, conditions:[] };
+  }
+
+  if (typeof highestLevelResolver !== "function") {
+    return {
+      ok:false,
+      reason:"highest_level_resolver_required",
+      conditions
+    };
+  }
+
+  for (const condition of conditions) {
+    const requiredTypeId = canonicalBuildingTypeIdAl(
+      condition.buildingTypeId
+    );
+    const requiredLevel = Math.max(1, tamEded(condition.level, 1));
+    const currentLevel = Math.max(
+      0,
+      tamEded(highestLevelResolver(requiredTypeId), 0)
+    );
+
+    if (currentLevel < requiredLevel) {
+      return {
+        ok:false,
+        reason:"building_prerequisite_missing",
+        requiredBuildingTypeId:requiredTypeId,
+        requiredLevel,
+        currentLevel,
+        conditions
+      };
+    }
+  }
+
+  return { ok:true, conditions };
+}
+
 function authoritativeBuildingMetaAl(
   buildingId
 ) {
@@ -398,6 +458,9 @@ module.exports = {
   mainBuildingLeveliniAl,
   buildingTypeLeveliniAl,
   buildingTypeMaxLevelAl,
+  authoritativeBuildingConditionsAl,
+  authoritativeBuildingConditionsYoxla,
   authoritativeBuildingMetaAl,
+  canonicalBuildingTypeIdAl,
   rdcBuildingTypeIdAl
 };
