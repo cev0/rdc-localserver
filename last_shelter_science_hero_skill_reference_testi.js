@@ -5,7 +5,8 @@ const {
   LAST_SHELTER_SCIENCE_HERO_SKILLS,
   stationBuildingTypeAl,
   skillIdAl,
-  skillLevelCostlariAl
+  skillLevelCostlariAl,
+  skillLevelCostuAl
 } = require("./last_shelter_science_hero_skill_reference");
 
 const energy = LAST_SHELTER_SCIENCE_HERO_SKILLS.ENERGY_SKILL;
@@ -23,6 +24,9 @@ const energyCosts = skillLevelCostlariAl(energy);
 assert.strictEqual(energyCosts.length, 9);
 assert.deepStrictEqual(energyCosts[0], { level: 1, itemId: "210164", amount: 20 });
 assert.deepStrictEqual(energyCosts[8], { level: 9, itemId: "210164", amount: 400 });
+assert.deepStrictEqual(skillLevelCostuAl(energy, 9), { level: 9, itemId: "210164", amount: 400 });
+assert.strictEqual(skillLevelCostuAl(energy, 10), null,
+  "max_level=10 must not synthesize a tenth cost absent from the verified source row");
 
 const second = LAST_SHELTER_SCIENCE_HERO_SKILLS.SECOND_RESEARCH_QUEUE;
 assert.strictEqual(second.id, "61012");
@@ -36,6 +40,10 @@ assert.strictEqual(skillIdAl(second), "61012");
 const secondCosts = skillLevelCostlariAl(second);
 assert.strictEqual(secondCosts.length, 9);
 assert.deepStrictEqual(secondCosts[6], { level: 7, itemId: "210164", amount: 200 });
+assert.deepStrictEqual(skillLevelCostuAl(second, 7), { level: 7, itemId: "210164", amount: 200 });
+assert.strictEqual(skillLevelCostuAl(second, 10), null,
+  "max_level=10 must not synthesize a tenth cost absent from the verified source row");
+assert.strictEqual(skillLevelCostuAl(second, 0), null);
 
 assert(Object.isFrozen(LAST_SHELTER_SCIENCE_HERO_SKILLS));
 assert(Object.isFrozen(energy));
