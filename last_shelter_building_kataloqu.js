@@ -8,7 +8,16 @@
 
 const RDC_TO_LAST_SHELTER_BUILDING_TYPE =
   Object.freeze({
-    hq: "400000"
+    hq: "400000",
+    institute: "403000",
+    house: "433000",
+    bank: "434000",
+    hospital: "411000",
+    embassy: "402000",
+    farm: "415000",
+    ration_truck: "460000",
+    road: "436000",
+    tower: "418000"
   });
 
 function metnAl(value, max = 1024) {
@@ -96,10 +105,56 @@ function buildingRowHazirla(row) {
   return Object.freeze(result);
 }
 
-const RAW_MAIN_BUILDING_LEVELS = Object.freeze(Object.fromEntries(
-  Object.values(RAW_BUILDING_ROWS).filter(row => Number(row.id) - Number(row.level) === 400000)
-    .map(row => [row.level, buildingRowHazirla(row)])
-));
+const RAW_BUILDING_LEVELS_BY_TYPE =
+  Object.freeze(
+    Object.fromEntries(
+      Object.values(RAW_BUILDING_ROWS)
+        .map(buildingRowHazirla)
+        .filter(row =>
+          /^4\d{5}$/.test(
+            String(
+              row &&
+              row.buildingTypeId ||
+              ""
+            )
+          )
+        )
+        .reduce((groups,row) => {
+          const typeId =
+            String(row.buildingTypeId);
+
+          if (!groups.has(typeId)) {
+            groups.set(
+              typeId,
+              []
+            );
+          }
+
+          groups
+            .get(typeId)
+            .push(row);
+
+          return groups;
+        },new Map())
+        .entries()
+    )
+  );
+
+const RAW_MAIN_BUILDING_LEVELS =
+  Object.freeze(
+    Object.fromEntries(
+      (
+        RAW_BUILDING_LEVELS_BY_TYPE[
+          "400000"
+        ] ||
+        []
+      )
+        .map(row => [
+          row.level,
+          row
+        ])
+    )
+  );
 
 function mainBuildingLeveliniAl(level) {
   const lvl =
@@ -134,6 +189,15 @@ function rdcBuildingTypeIdAl(
       64
     ).toLowerCase();
 
+  if (/^4\d{5}$/.test(key)) {
+    return Object.prototype.hasOwnProperty.call(
+      RAW_BUILDING_LEVELS_BY_TYPE,
+      key
+    )
+      ? key
+      : null;
+  }
+
   return (
     RDC_TO_LAST_SHELTER_BUILDING_TYPE[
       key
@@ -142,13 +206,198 @@ function rdcBuildingTypeIdAl(
   );
 }
 
+function buildingTypeLeveliniAl(
+  buildingId,
+  level
+) {
+  const typeId =
+    rdcBuildingTypeIdAl(
+      buildingId
+    );
+
+  if (!typeId) {
+    return null;
+  }
+
+  const lvl =
+    tamEded(
+      level
+    );
+
+  const rows =
+    RAW_BUILDING_LEVELS_BY_TYPE[
+      typeId
+    ] ||
+    [];
+
+  const raw =
+    rows.find(
+      row =>
+        Number(row.level) ===
+        lvl
+    ) ||
+    null;
+
+  if (!raw) {
+    return null;
+  }
+
+  return {
+    ...raw,
+    cost:
+      xercHazirla(
+        raw
+      ),
+    buildingConditions:
+      sertleriParseEt(
+        raw.buildingConditionRaw
+      )
+  };
+}
+
+function buildingTypeMaxLevelAl(
+  buildingId
+) {
+  const typeId =
+    rdcBuildingTypeIdAl(
+      buildingId
+    );
+
+  if (!typeId) {
+    return 0;
+  }
+
+  const rows =
+    RAW_BUILDING_LEVELS_BY_TYPE[
+      typeId
+    ] ||
+    [];
+
+  if (rows.length === 0) {
+    return 0;
+  }
+
+  const declared =
+    rows
+      .map(
+        row =>
+          tamEded(
+            row.maxLevelFromXml
+          )
+      )
+      .filter(
+        value =>
+          value > 0
+      );
+
+  if (declared.length > 0) {
+    return Math.max(
+      ...declared
+    );
+  }
+
+  return Math.max(
+    ...rows.map(
+      row =>
+        tamEded(
+          row.level
+        )
+    )
+  );
+}
+
+function authoritativeBuildingMetaAl(
+  buildingId
+) {
+  const typeId =
+    rdcBuildingTypeIdAl(
+      buildingId
+    );
+
+  if (!typeId) {
+    return null;
+  }
+
+  const row =
+    buildingTypeLeveliniAl(
+      typeId,
+      0
+    ) ||
+    buildingTypeLeveliniAl(
+      typeId,
+      1
+    );
+
+  if (!row) {
+    return null;
+  }
+
+  const tiles =
+    Math.max(
+      1,
+      tamEded(
+        row.tiles,
+        1
+      )
+    );
+
+  const num =
+    Math.max(
+      1,
+      tamEded(
+        row.num,
+        1
+      )
+    );
+
+  return Object.freeze({
+    source:
+      "last_shelter_building_xml",
+    buildingTypeId:
+      typeId,
+    sizeX:
+      tiles,
+    sizeZ:
+      tiles,
+    isRoad:
+      typeId ===
+      "436000",
+    requiresRoad:
+      typeId !==
+        "400000" &&
+      typeId !==
+        "436000",
+    placementMode:
+      "normal",
+    requiredSlotType:
+      null,
+    multiBuild:
+      num > 1,
+    maxPlacedCount:
+      num,
+    builderSlotsRequired:
+      1,
+    maxLevel:
+      Math.max(
+        1,
+        buildingTypeMaxLevelAl(
+          typeId
+        )
+      )
+  });
+}
+
 module.exports = {
   RDC_TO_LAST_SHELTER_BUILDING_TYPE,
   RAW_MAIN_BUILDING_LEVELS,
+  RAW_BUILDING_LEVELS_BY_TYPE,
   RAW_BUILDING_ROWS,
   buildingXmlRowAl,
   buildingRowHazirla,
   sertleriParseEt,
   mainBuildingLeveliniAl,
+  buildingTypeLeveliniAl,
+  buildingTypeMaxLevelAl,
+  authoritativeBuildingMetaAl,
   rdcBuildingTypeIdAl
 };
