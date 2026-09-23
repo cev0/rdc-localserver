@@ -110,21 +110,21 @@ assert.strictEqual(two.queues[0].status, "running", "Explicit upgrade cannot fin
 
 const energyShape = fixture();
 energyShape.lastShelterHeroRuntime = {
-  generals: [{ generalId: "88", skill: [{ id: "50046", state: 2 }] }]
+  generals: [{ generalId: "88", skill: [{ id: "50046" }] }]
 };
 assert(
   sourceScienceResearch(energyShape, { itemId: "901000" }, 1000).ok,
-  "Unstationed EnergySkill must not affect science"
+  "Unstationed EnergySkill ownership must not affect science"
 );
 const stationedEnergy = fixture();
 stationedEnergy.lastShelterHeroRuntime = {
-  generals: [{ generalId: "88", skill: [{ id: "50046", state: 2 }] }]
+  generals: [{ generalId: "88", skill: [{ id: "50046" }] }]
 };
 stationedEnergy.buildings[0].heroId = "88";
 assert.strictEqual(
   sourceScienceResearch(stationedEnergy, { itemId: "901000" }, 1000).code,
   "SCIENCE_ENERGY_SKILL_UNMIGRATED",
-  "Stationed active EnergySkill must not be silently ignored"
+  "Stationed EnergySkill ownership must fail closed until native activation/cooldown lifecycle is mapped"
 );
 
 const modifiers = fixture();
