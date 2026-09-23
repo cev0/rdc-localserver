@@ -10,6 +10,8 @@ Kataloqların mövcudluğu bütün oyun mexanikalarının Node.js-ə köçürül
 - 4 596 elm səviyyəsi, 2 959 bina sətri, 1 066 əşya və 48 mağaza sətri.
 - `science.research` və `science.upgrade`: server vaxtı, resurs/əşya xərcləri,
   səviyyə şərtləri, növbə və tamamlanma mövcud tranzaksiya sisteminə bağlanıb.
+- Native `science.research` gold seçimi və `science.directly` control-flow-u bytecode-dan
+  ayrıca contract kimi qorunur; client `gold` server qiyməti sayılmır.
 - HQ xərcləri orijinalın cari səviyyə sətrindən götürülür; bina şərtləri tətbiq edilir.
 - Eyni mənbə təkrar import olunanda mövcud snapshot dəyişdirilmir.
 - Şəxsi server, ödəniş və hesab XML-ləri Git-ə daxil edilmir.
@@ -25,8 +27,10 @@ adlarını production route-larla ayrıca müqayisə edir, mutation/read-only sa
 reference/projection read səthini ayırır. Bu rəqəmlər parity sübutu deyil; qalan handler
 portlarını prioritetləşdirmək üçündür.
 
-Elm üçün qızılla çatışmayan resurs alma, birbaşa tamamlanma, EnergySkill həyat dövrü,
-qəhrəman/VIP/təchizat effektləri və hadisə mükafatlarının tam portu qalıb.
+Elm üçün qızılla çatışmayan resurs alma və birbaşa tamamlanmanın native control-flow-u
+xəritələnib, lakin `CommonUtils` resource/time-to-gold hesabının dəqiq arifmetikası hələ
+çıxarılmadığı üçün production debit yolu fail-closed qalır. EnergySkill həyat dövrü,
+qəhrəman/VIP/təchizat effektləri və hadisə mükafatlarının tam portu da qalıb.
 
 ## Olduğu kimi köçürüləcək orijinal server
 
@@ -94,4 +98,3 @@ mesaj formatı uyğunlaşdırılmalıdır. Tam orijinal server seçilirsə, davr
 JAR-da saxlanılır; Node.js portu seçilirsə, qalan handler-lər ayrıca köçürülməlidir.
 Bu mərhələdə Unity inteqrasiyası və canlı cutover tamamlanmış sayılmır.
 
-İstifadəçinin son göstərişinə uyğun əlavə test işə salınmır.
