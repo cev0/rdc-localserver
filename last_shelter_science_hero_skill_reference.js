@@ -61,17 +61,27 @@ function skillLevelCostlariAl(row) {
     if (fields.length !== 2 || !fields.every(value => /^\d+$/.test(value))) {
       throw new Error(`Invalid verified hero skill cost at level ${index + 1}`);
     }
+    const amount = Number(fields[1]);
+    if (!Number.isSafeInteger(amount)) {
+      throw new Error(`Unsafe verified hero skill cost at level ${index + 1}`);
+    }
     return {
       level: index + 1,
       itemId: fields[0],
-      amount: Number(fields[1])
+      amount
     };
   });
+}
+
+function skillLevelCostuAl(row, level) {
+  if (!Number.isSafeInteger(level) || level < 1) return null;
+  return skillLevelCostlariAl(row).find(cost => cost.level === level) || null;
 }
 
 module.exports = {
   LAST_SHELTER_SCIENCE_HERO_SKILLS,
   stationBuildingTypeAl,
   skillIdAl,
-  skillLevelCostlariAl
+  skillLevelCostlariAl,
+  skillLevelCostuAl
 };
