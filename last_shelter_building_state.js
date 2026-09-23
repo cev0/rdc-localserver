@@ -1,7 +1,17 @@
 "use strict";
 
-// Explicit bridge to the existing RDC building state. The Institute is RDC's
-// research building; the source BuildingType enum identifies ACADEMY as 403000.
+// Compatibility bridge for older RDC state readers. Canonical Last Shelter
+// identity/prerequisite decisions are delegated to the authoritative catalog
+// whenever the building is mapped; only genuinely unmapped RDC data keeps the
+// legacy compatibility path below.
+const {
+  rdcBuildingTypeIdAl
+} = require("./last_shelter_building_kataloqu");
+
+const {
+  authoritativeBuildingStatePrerequisitesYoxla
+} = require("./last_shelter_building_state_validator");
+
 const RDC_BUILDING_TYPE_IDS = Object.freeze({
   hq: "400000", institute: "403000", house: "433000", bank: "434000",
   hospital: "411000", embassy: "402000", farm: "415000",
@@ -11,8 +21,11 @@ const RDC_BUILDING_TYPE_IDS = Object.freeze({
 function sourceBuildingType(row) {
   const explicit = String(row?.buildingTypeId ?? row?.itemId ?? "");
   if (/^\d+$/.test(explicit)) return explicit;
-  return RDC_BUILDING_TYPE_IDS[String(row?.buildingId || "").trim().toLowerCase()] || null;
+
+  const buildingId = String(row?.buildingId || "").trim().toLowerCase();
+  return rdcBuildingTypeIdAl(buildingId) || RDC_BUILDING_TYPE_IDS[buildingId] || null;
 }
+
 function sourceBuildings(state) {
   const rows = [];
   for (const row of state?.buildings || []) {
@@ -25,6 +38,7 @@ function sourceBuildings(state) {
   }
   return rows;
 }
+
 function sourceBuildingLevel(state, itemId) {
   let level = 0;
   for (const row of sourceBuildings(state)) {
@@ -32,10 +46,56 @@ function sourceBuildingLevel(state, itemId) {
   }
   return level;
 }
-function sourceBuildingPrerequisites(state, levelData) {
+
+function legacySourceBuildingPrerequisites(state, levelData) {
   const missing = (levelData?.buildingConditions || []).map(requirement => ({
-    ...requirement, currentLevel: sourceBuildingLevel(state, requirement.buildingTypeId)
+    ...requirement,
+    currentLevel: sourceBuildingLevel(state, requirement.buildingTypeId)
   })).filter(requirement => requirement.currentLevel < requirement.level);
-  return { ok: missing.length === 0, missing };
+
+  return {
+    mapped: false,
+    ok: missing.length === 0,
+    missing
+  };
 }
-module.exports = { RDC_BUILDING_TYPE_IDS, sourceBuildingType, sourceBuildings, sourceBuildingLevel, sourceBuildingPrerequisites };
+
+function sourceBuildingPrerequisites(state, levelData) {
+  const buildingId =
+    levelData?.buildingId ??
+    levelData?.buildingTypeId ??
+    null;
+
+  const canonicalTypeId =
+    buildingId == null
+      ? null
+      : rdcBuildingTypeIdAl(buildingId);
+
+  if (canonicalTypeId) {
+    const targetLevel = Math.max(
+      1,
+      Math.trunc(Number(levelData?.targetLevel) || 1)
+    );
+
+    const authoritative =
+      authoritativeBuildingStatePrerequisitesYoxla(
+        state,
+        canonicalTypeId,
+        targetLevel
+      );
+
+    if (authoritative && authoritative.mapped) {
+      return authoritative;
+    }
+  }
+
+  return legacySourceBuildingPrerequisites(state, levelData);
+}
+
+module.exports = {
+  RDC_BUILDING_TYPE_IDS,
+  sourceBuildingType,
+  sourceBuildings,
+  sourceBuildingLevel,
+  sourceBuildingPrerequisites
+};
