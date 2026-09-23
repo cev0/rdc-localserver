@@ -1,0 +1,32 @@
+name: Last Shelter building state authoritative
+
+on:
+  push:
+    branches:
+      - server-v2-scalable
+    paths:
+      - "last_shelter_building_state.js"
+      - "last_shelter_building_state_validator.js"
+      - "last_shelter_building_runtime_overlay.js"
+      - "last_shelter_building_kataloqu.js"
+      - "last_shelter_building_state_authoritative_testi.js"
+      - ".github/workflows/last-shelter-building-state-authoritative.yml"
+  pull_request:
+    paths:
+      - "last_shelter_building_state.js"
+      - "last_shelter_building_state_validator.js"
+      - "last_shelter_building_runtime_overlay.js"
+      - "last_shelter_building_kataloqu.js"
+      - "last_shelter_building_state_authoritative_testi.js"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --check last_shelter_building_state.js
+      - run: node --check last_shelter_building_state_validator.js
+      - run: node last_shelter_building_state_authoritative_testi.js
