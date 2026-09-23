@@ -2,6 +2,7 @@
 
 const assert = require("assert");
 const commandCatalog = require("./data/last_shelter/commands.json");
+const { sourceCatalog } = require("./last_shelter_source_catalog");
 const {
   LAST_SHELTER_SCIENCE_NATIVE_FLOW,
   nativeScienceResearchGoldPath
@@ -89,6 +90,32 @@ assert.deepStrictEqual(flow.observedGoldCatalogRows.itemBCdGold, {
   k3: "600",
   k4: "100"
 });
+assert.deepStrictEqual(flow.observedGoldCatalogRows.itemCdCost, {
+  catalog: "item",
+  id: "cd_cost",
+  k1: "1",
+  k2: "55",
+  k3: "150",
+  k4: "400",
+  k5: "1000",
+  k6: "1800",
+  k7: "2500",
+  k8: "6500",
+  k9: "15000",
+  k10: "60000"
+});
+assert.deepStrictEqual(
+  sourceCatalog.row("item", "cd_gold"),
+  {id:"cd_gold", k1:"24", k2:"10", k3:"600", k4:"100"}
+);
+assert.deepStrictEqual(
+  sourceCatalog.row("item", "cd_cost"),
+  {
+    id:"cd_cost", k1:"1", k2:"55", k3:"150", k4:"400", k5:"1000",
+    k6:"1800", k7:"2500", k8:"6500", k9:"15000", k10:"60000"
+  }
+);
+sourceCatalog.release("item");
 assert.deepStrictEqual(flow.unresolved.helpers, [
   "CommonUtils.handleResNotEnoughBuildingCost",
   "CommonUtils.handleInstantBuildingCost"
@@ -101,6 +128,7 @@ assert(Object.isFrozen(flow.directly));
 assert(Object.isFrozen(flow.observedGoldCatalogRows));
 assert(Object.isFrozen(flow.observedGoldCatalogRows.itemCdGold));
 assert(Object.isFrozen(flow.observedGoldCatalogRows.itemBCdGold));
+assert(Object.isFrozen(flow.observedGoldCatalogRows.itemCdCost));
 assert(Object.isFrozen(flow.unresolved));
 
 console.log("PASS: verified Last Shelter native science gold/direct control-flow contract.");

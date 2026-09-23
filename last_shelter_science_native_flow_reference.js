@@ -82,6 +82,20 @@ const LAST_SHELTER_SCIENCE_NATIVE_FLOW = deepFreeze({
       k2: "10",
       k3: "600",
       k4: "100"
+    },
+    itemCdCost: {
+      catalog: "item",
+      id: "cd_cost",
+      k1: "1",
+      k2: "55",
+      k3: "150",
+      k4: "400",
+      k5: "1000",
+      k6: "1800",
+      k7: "2500",
+      k8: "6500",
+      k9: "15000",
+      k10: "60000"
     }
   },
   unresolved: {
