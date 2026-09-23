@@ -44,12 +44,13 @@ class FakeRouter {
   const router=new FakeRouter();
   lastShelterQueueScienceCommandleriniQeydEt(router,{getOrCreatePlayerState:()=>state});
   assert.deepStrictEqual(Array.from(router.routes.keys()),[
-    "queue.list","science.catalog","science.topology.list","science.topology","science.state","science.prerequisite","science.plan","science.research","science.upgrade"
+    "queue.list","science.catalog","science.topology.list","science.topology","science.state","science.prerequisite","science.plan","science.directly","science.research","science.upgrade"
   ]);
   for(const [type,route] of router.routes){
-    assert.deepStrictEqual(route.options,type === "science.research" || type === "science.upgrade"
-      ? {authRequired:true,mutation:true,postgresAuthoritative:true}
-      : {authRequired:true,mutation:false});
+    assert.deepStrictEqual(route.options,
+      type === "science.research" || type === "science.upgrade" || type === "science.directly"
+        ? {authRequired:true,mutation:true,postgresAuthoritative:true}
+        : {authRequired:true,mutation:false});
   }
 
   const ws={_authedPlayerId:"p1"};
@@ -92,6 +93,18 @@ class FakeRouter {
   sent.length=0;
   await router.routes.get("science.plan").handler({ws,msg:{playerId:"p1",itemId:"999999"},send,nowMs:()=>1000});
   assert.strictEqual(sent[0].code,"SCIENCE_ITEM_UNVERIFIED");
+
+  sent.length=0;
+  await router.routes.get("science.directly").handler({
+    ws,
+    msg:{playerId:"p1",itemId:"901100",gold:123},
+    send,
+    nowMs:()=>1000
+  });
+  assert.strictEqual(sent[0].code,"SCIENCE_DIRECTLY_GOLD_UNMIGRATED");
+  assert.strictEqual(sent[0].command,"science.directly");
+  assert.strictEqual(sent[0].itemId,"901100");
+  assert.strictEqual(sent[0].serverTimeUnixMs,1000);
 
   console.log("PASS: verified Last Shelter queue/science read runtime exposes topology and detached authoritative completed-science state with the complete source catalog and authoritative mutation routes.");
 })().catch(error=>{console.error(error);process.exitCode=1;});

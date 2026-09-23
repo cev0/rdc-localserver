@@ -4,6 +4,7 @@ const {
   playerIdUyugunluqYoxla
 } = require("./runtime_core_read_commands");
 const {
+  SCIENCE_PROTOCOL,
   scienceIdleriAl,
   scienceMelumatiniAl
 } = require("./last_shelter_science_kataloqu");
@@ -161,6 +162,22 @@ function lastShelterQueueScienceCommandleriniQeydEt(router,deps) {
     }
     send(ws,{type:"science.plan",playerId:authCheck.playerId,serverTimeUnixMs:now,prerequisite:plan.prerequisite,plan});
   },{authRequired:true,mutation:false});
+
+  // The native command exists and is a mutation, but its authoritative gold
+  // debit still depends on unmapped CommonUtils conversion arithmetic.
+  // Register it so clients do not receive UNKNOWN_COMMAND, while remaining
+  // fail-closed until that server-side pricing helper is source-backed.
+  router.register(SCIENCE_PROTOCOL.directRequest, async ({ws, msg, send, nowMs}) => {
+    const authCheck = authYoxla(ws, msg, send); if (!authCheck) return;
+    send(ws, {
+      type:"error",
+      code:"SCIENCE_DIRECTLY_GOLD_UNMIGRATED",
+      message:"Native science.directly gold conversion is not migrated",
+      command:SCIENCE_PROTOCOL.directRequest,
+      itemId:String(msg?.itemId || ""),
+      serverTimeUnixMs:serverVaxtiAl(nowMs)
+    });
+  }, {authRequired:true, mutation:true, postgresAuthoritative:true});
 
   for (const [type, execute] of [["science.research", sourceScienceResearch], ["science.upgrade", sourceScienceUpgrade]]) {
     router.register(type, async ({ws, msg, send, nowMs}) => {
