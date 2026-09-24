@@ -26,6 +26,7 @@ const {
 assert.strictEqual(rdcBuildingTypeIdAl("hq"), "400000");
 assert.strictEqual(rdcBuildingTypeIdAl("house"), "433000");
 assert.strictEqual(rdcBuildingTypeIdAl("ration_truck"), "460000");
+assert.strictEqual(rdcBuildingTypeIdAl("clone_center"), "462000");
 assert.strictEqual(rdcBuildingTypeIdAl("fighter_camp"), "423000");
 assert.strictEqual(rdcBuildingTypeIdAl("vehicle_factory"), "424000");
 assert.strictEqual(rdcBuildingTypeIdAl("shooter_camp"), "425000");
@@ -96,6 +97,13 @@ assert.ok(authoritativeBuildingMetaAl("hq"));
 assert.strictEqual(authoritativeBuildingMetaAl("hq").buildingTypeId, "400000");
 assert.strictEqual(authoritativeBuildingMetaAl("road").buildingTypeId, "436000");
 assert.strictEqual(authoritativeBuildingMetaAl("road").isRoad, true);
+
+const cloneCenterSource = buildingTypeLeveliniAl("clone_center", 0);
+assert.ok(cloneCenterSource);
+assert.strictEqual(cloneCenterSource.buildingTypeId, "462000");
+assert.strictEqual(cloneCenterSource.sourceAttributes.clone_diamond, "980000");
+assert.strictEqual(cloneCenterSource.sourceAttributes.rebirth_time, "86400");
+assert.strictEqual(cloneCenterSource.maxLevelFromXml, 25);
 
 // HQ level 2 consumes row 1 prerequisites from original building.xml.
 assert.deepStrictEqual(authoritativeBuildingConditionsAl("hq", 2), [

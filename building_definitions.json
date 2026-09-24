@@ -2754,57 +2754,6 @@
             ]
         },
         {
-            "id": "clone_center",
-            "displayName": "Clone Center",
-            "description": "",
-            "tierGroup": "clone_center",
-            "tierIndex": 1,
-            "sizeX": 2,
-            "sizeZ": 2,
-            "placementMode": "NormalGround",
-            "requiredResourceSlot": "None",
-            "isRoad": false,
-            "requiresRoad": true,
-            "multiBuild": false,
-            "maxPlacedCount": 1,
-            "builderSlotsRequired": 1,
-            "producesResource": false,
-            "producedResource": "food",
-            "providesStorage": false,
-            "storageResource": "food",
-            "specialEffectType": "none",
-            "maxLevel": 1,
-            "requiredMainBuildingLevel": 20,
-            "requiredDepotLevel": 0,
-            "requiredBuildingId": "barrack_3",
-            "requiredBuildingLevel": 10,
-            "unlockCountByMainBuildingLevel": [
-                {
-                    "requiredMainBuildingLevel": 20,
-                    "allowedPlacedCount": 1
-                }
-            ],
-            "levels": [
-                {
-                    "level": 1,
-                    "buildTimeSeconds": 20,
-                    "productionPerTick": 0,
-                    "storageCapacityBonus": 0,
-                    "specialEffectValue": 0,
-                    "cost": [
-                        {
-                            "type": "wood",
-                            "amount": 140
-                        },
-                        {
-                            "type": "money",
-                            "amount": 120
-                        }
-                    ]
-                }
-            ]
-        },
-        {
             "id": "command_center",
             "displayName": "Command Center",
             "description": "",

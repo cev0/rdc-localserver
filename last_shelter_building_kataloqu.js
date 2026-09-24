@@ -44,6 +44,7 @@ const RDC_TO_LAST_SHELTER_BUILDING_TYPE =
     iron_warehouse_2: "522000",
     iron_warehouse_3: "523000",
     ration_truck: "460000",
+    clone_center: "462000",
     road: "436000",
     tower: "418000",
     fighter_camp: LAST_SHELTER_TROOP_CLASS_REFERENCE.warrior.buildingTypeId,

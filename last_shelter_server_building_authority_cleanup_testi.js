@@ -64,6 +64,7 @@ for (const mappedAlias of [
   "house",
   "hq",
   "ration_truck",
+  "clone_center",
   "road",
   "tower",
   "institute",
@@ -118,6 +119,7 @@ for (const mappedTroopAlias of [
 for (const [alias, numericId] of [
   ["hq", "400000"],
   ["road", "436000"],
+  ["clone_center", "462000"],
   ["farm", "415000"],
   ["institute", "403000"],
   ["fighter_camp", "423000"],
