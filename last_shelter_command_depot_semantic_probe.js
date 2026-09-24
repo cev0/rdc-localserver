@@ -2,51 +2,33 @@
 
 const { sourceCatalog } = require("./last_shelter_source_catalog");
 
-const VALUE_RE = /(rally|assembly|gather|storage|warehouse|depot|command|march|team|queue|army)/i;
-const KEY_RE = /(rally|assembly|gather|storage|warehouse|depot|command|march|team|queue|army)/i;
-
-const interestingCatalogs = sourceCatalog.names().filter(name =>
-  /(building|city|army|queue|position|facility|unlock|march|team|storage|warehouse|rally|assembly)/i.test(name)
-);
-
-const hits=[];
-
-for(const name of interestingCatalogs){
-  const entries=sourceCatalog.entries(name);
-  const found=[];
-
-  for(const entry of entries){
-    const attrs=entry.attributes||{};
-    const keyHit=Object.keys(attrs).some(k=>KEY_RE.test(k));
-    const valueHit=Object.values(attrs).some(v=>VALUE_RE.test(String(v)));
-    if(!keyHit&&!valueHit) continue;
-
-    found.push({
-      groups:entry.groups||[],
-      attributes:attrs
-    });
-
-    if(found.length>=60) break;
-  }
-
-  if(found.length>0){
-    hits.push({catalog:name,hits:found});
-  }
-
-  sourceCatalog.release(name);
+function entriesWith(catalogName, predicate) {
+  const entries=sourceCatalog.entries(catalogName);
+  const hits=entries
+    .filter(entry=>predicate(entry.attributes||{},entry.groups||[]))
+    .map(entry=>({groups:entry.groups||[],attributes:entry.attributes||{}}));
+  sourceCatalog.release(catalogName);
+  return hits;
 }
 
-const buildingRows=sourceCatalog.rows("building");
-const candidates=buildingRows.filter(row=>{
-  const id=String(row.id||"");
-  if(!/^4\d{5}$/.test(id)) return false;
-  if(Number(row.level||0)>4) return false;
-  const values=Object.entries(row)
-    .filter(([k])=>/^para\d+$/.test(k)||/station|num|building|unlock/i.test(k))
-    .map(([,v])=>String(v));
-  return values.some(v=>/^(?:0|1|2|3|4|5|10|20|25|30|40|50|100|200|300)$/.test(v));
-}).slice(0,500);
+const effect406=entriesWith("effect",(a)=>String(a.id||"")==="406" || JSON.stringify(a).includes('"406"'));
+const effect449=entriesWith("effect",(a)=>String(a.id||"")==="449" || JSON.stringify(a).includes('"449"'));
 
+const buildingB429=entriesWith("building_b",(a)=>JSON.stringify(a).includes("429000") || /^4290\d\d$/.test(String(a.id||"")));
+const buildingWorld429=entriesWith("building_world",(a)=>JSON.stringify(a).includes("429000") || /^4290\d\d$/.test(String(a.id||"")));
+const city429=entriesWith("city",(a)=>JSON.stringify(a).includes("429000"));
+const unlock429=entriesWith("unlock_attribute",(a)=>JSON.stringify(a).includes("429000") || ["406","449"].some(v=>JSON.stringify(a).includes(v)));
+
+const directBuildingRows=sourceCatalog.rows("building")
+  .filter(row=>/^4290(?:00|01|02|03|04)$/.test(String(row.id||"")));
 sourceCatalog.release("building");
 
-console.log("COMMAND_DEPOT_SEMANTIC_PROBE="+JSON.stringify({hits,candidates}));
+console.log("COMMAND_DEPOT_EFFECT_PROBE="+JSON.stringify({
+  effect406,
+  effect449,
+  buildingB429,
+  buildingWorld429,
+  city429,
+  unlock429,
+  directBuildingRows
+}));
