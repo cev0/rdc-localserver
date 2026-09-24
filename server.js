@@ -2612,7 +2612,6 @@ const LEGACY_RDC_BUILDING_DEFINITION_META = {
   "garage_2": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: false, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 1 },
   "garage_3": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: false, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 1 },
   "garage_4": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: false, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 1 },
-  "garrison": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "heroes_hall": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "management_station": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "military": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },

@@ -18,6 +18,7 @@ const RDC_TO_LAST_SHELTER_BUILDING_TYPE =
     house: "433000",
     bank: "434000",
     hospital: "411000",
+    garrison: "450000",
     embassy: "402000",
     farm: "415000",
     refinery: "412000",

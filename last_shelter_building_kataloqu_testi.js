@@ -27,6 +27,7 @@ assert.strictEqual(rdcBuildingTypeIdAl("hq"), "400000");
 assert.strictEqual(rdcBuildingTypeIdAl("house"), "433000");
 assert.strictEqual(rdcBuildingTypeIdAl("ration_truck"), "460000");
 assert.strictEqual(rdcBuildingTypeIdAl("clone_center"), "462000");
+assert.strictEqual(rdcBuildingTypeIdAl("garrison"), "450000");
 assert.strictEqual(rdcBuildingTypeIdAl("fighter_camp"), "423000");
 assert.strictEqual(rdcBuildingTypeIdAl("vehicle_factory"), "424000");
 assert.strictEqual(rdcBuildingTypeIdAl("shooter_camp"), "425000");
@@ -104,6 +105,19 @@ assert.strictEqual(cloneCenterSource.buildingTypeId, "462000");
 assert.strictEqual(cloneCenterSource.sourceAttributes.clone_diamond, "980000");
 assert.strictEqual(cloneCenterSource.sourceAttributes.rebirth_time, "86400");
 assert.strictEqual(cloneCenterSource.maxLevelFromXml, 25);
+
+const garrisonSource = buildingTypeLeveliniAl("garrison", 0);
+assert.ok(garrisonSource);
+assert.strictEqual(garrisonSource.buildingTypeId, "450000");
+assert.strictEqual(garrisonSource.sourceAttributes.HP, "5000");
+assert.strictEqual(garrisonSource.sourceAttributes.attack, "100");
+assert.strictEqual(garrisonSource.maxLevelFromXml, 25);
+assert.deepStrictEqual(authoritativeBuildingConditionsAl("hq", 6), [
+  { buildingTypeId:"460000", level:5 },
+  { buildingTypeId:"434000", level:5 },
+  { buildingTypeId:"450000", level:1 },
+  { buildingTypeId:"433000", level:5 }
+]);
 
 // HQ level 2 consumes row 1 prerequisites from original building.xml.
 assert.deepStrictEqual(authoritativeBuildingConditionsAl("hq", 2), [
