@@ -10,6 +10,9 @@ on:
       - 'qosun_telimi_sistemi.js'
       - 'last_shelter_troop_107x_reference.js'
       - 'last_shelter_troop_107x_runtime_adapteri.js'
+      - 'last_shelter_troop_building_reference.js'
+      - 'last_shelter_troop_building_reference_testi.js'
+      - 'qosun_kataloqu_testi.js'
       - 'last_shelter_troop_transfer_progression_reference.js'
       - 'server.js'
       - 'server_unit_regressiya_testi.js'
@@ -22,6 +25,9 @@ on:
       - 'qosun_telimi_sistemi.js'
       - 'last_shelter_troop_107x_reference.js'
       - 'last_shelter_troop_107x_runtime_adapteri.js'
+      - 'last_shelter_troop_building_reference.js'
+      - 'last_shelter_troop_building_reference_testi.js'
+      - 'qosun_kataloqu_testi.js'
       - 'last_shelter_troop_transfer_progression_reference.js'
       - 'server.js'
       - 'server_unit_regressiya_testi.js'
@@ -35,4 +41,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - run: node last_shelter_troop_building_reference_testi.js
+      - run: node qosun_kataloqu_testi.js
       - run: node runtime_last_shelter_troop_reference_commands_testi.js

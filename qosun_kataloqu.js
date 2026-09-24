@@ -4,18 +4,23 @@ const {
   applyVerified107xBatch
 } = require("./last_shelter_troop_107x_runtime_adapteri");
 
-const BUILDING_LEVEL_BY_TIER = Object.freeze({
-  1: 1,
-  2: 2,
-  3: 5,
-  4: 10,
-  5: 13,
-  6: 16,
-  7: 19,
-  8: 22,
-  9: 25,
-  10: 25
-});
+const {
+  LAST_SHELTER_TROOP_CLASS_REFERENCE,
+  troopRequirementAl
+} = require("./last_shelter_troop_building_reference");
+
+const {
+  canonicalBuildingTypeIdAl
+} = require("./last_shelter_building_kataloqu");
+
+const BUILDING_LEVEL_BY_TIER = Object.freeze(
+  Object.fromEntries(
+    LAST_SHELTER_TROOP_CLASS_REFERENCE.warrior.requirements.map(row => [
+      row.tier,
+      row.requiredBuildingLevel
+    ])
+  )
+);
 
 const BASE_TRAINING_SECONDS_BY_TIER = Object.freeze({
   // Last Shelter v1.250.102 army 107x00..107x09 "time" dəyərləri.
@@ -35,28 +40,22 @@ const CLASS_DEFINITIONS = Object.freeze({
   warrior: Object.freeze({
     classId: "warrior",
     displayNameAz: "Savaşçı",
-    buildingId: "fighter_camp",
+    buildingId: LAST_SHELTER_TROOP_CLASS_REFERENCE.warrior.buildingTypeId,
     lastShelterArmyPrefix: "1070",
-    tier9ResearchId: "unlock_warrior_t9",
-    tier10ResearchId: "unlock_warrior_t10",
     consumptionResourceId: "food"
   }),
   shooter: Object.freeze({
     classId: "shooter",
     displayNameAz: "Nişançı",
-    buildingId: "shooter_camp",
+    buildingId: LAST_SHELTER_TROOP_CLASS_REFERENCE.shooter.buildingTypeId,
     lastShelterArmyPrefix: "1072",
-    tier9ResearchId: "unlock_shooter_t9",
-    tier10ResearchId: "unlock_shooter_t10",
     consumptionResourceId: "food"
   }),
   vehicle: Object.freeze({
     classId: "vehicle",
     displayNameAz: "Hərbi Maşın",
-    buildingId: "vehicle_factory",
+    buildingId: LAST_SHELTER_TROOP_CLASS_REFERENCE.vehicle.buildingTypeId,
     lastShelterArmyPrefix: "1071",
-    tier9ResearchId: "unlock_vehicle_t9",
-    tier10ResearchId: "unlock_vehicle_t10",
     consumptionResourceId: "food"
   })
 });
@@ -190,12 +189,6 @@ const SHOOTER_COSTS = [
   { food: 155, wood: 77, stone: 19, iron: 13 }
 ];
 
-function requiredResearchId(classDef, tier) {
-  if (tier === 9) return classDef.tier9ResearchId;
-  if (tier === 10) return classDef.tier10ResearchId;
-  return "";
-}
-
 function costObjectToArray(cost) {
   return Object.entries(cost || {})
     .filter(([, amount]) => Number(amount) > 0)
@@ -207,6 +200,11 @@ function buildClassUnits(classDef, names, statsRows, costRows) {
     const tier = index + 1;
     const stats = statsRows[index];
     const lastShelterArmyId = `${classDef.lastShelterArmyPrefix}${String(index).padStart(2, "0")}`;
+    const sourceRequirement = troopRequirementAl(lastShelterArmyId);
+    if (!sourceRequirement) {
+      throw new Error("Last Shelter troop building requirement yoxdur: " + lastShelterArmyId);
+    }
+
     return Object.freeze({
       unitId: `${classDef.classId}_t${tier}`,
       lastShelterArmyId,
@@ -215,9 +213,9 @@ function buildClassUnits(classDef, names, statsRows, costRows) {
       classDisplayNameAz: classDef.displayNameAz,
       displayNameAz,
       tier,
-      buildingId: classDef.buildingId,
-      requiredBuildingLevel: BUILDING_LEVEL_BY_TIER[tier],
-      requiredResearchId: requiredResearchId(classDef, tier),
+      buildingId: sourceRequirement.buildingTypeId,
+      requiredBuildingLevel: sourceRequirement.requiredBuildingLevel,
+      requiredResearchId: sourceRequirement.scienceId,
       baseTrainingSeconds: BASE_TRAINING_SECONDS_BY_TIER[tier],
       costPerUnit: Object.freeze(costObjectToArray(costRows[index])),
       stats: Object.freeze({
@@ -257,7 +255,7 @@ function sinifMelumatiniAl(classId) {
 }
 
 function binaSinifiniAl(buildingId) {
-  const id = typeof buildingId === "string" ? buildingId.trim().toLowerCase() : "";
+  const id = canonicalBuildingTypeIdAl(buildingId);
   return Object.values(CLASS_DEFINITIONS).find(x => x.buildingId === id) || null;
 }
 
@@ -278,9 +276,7 @@ function qosunKilidiniYoxla(state, building, unitId) {
     return { success: false, reason: "building_not_completed", message: "Qoşun binası tamamlanmayıb." };
   }
 
-  const buildingId = typeof building.buildingId === "string"
-    ? building.buildingId.trim().toLowerCase()
-    : "";
+  const buildingId = canonicalBuildingTypeIdAl(building.buildingId);
 
   if (buildingId !== unit.buildingId) {
     return {

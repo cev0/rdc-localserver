@@ -2,6 +2,7 @@
 
 const assert = require("assert");
 const { troop107xAl } = require("./last_shelter_troop_107x_reference");
+const { troopRequirementAl } = require("./last_shelter_troop_building_reference");
 const {
   UNITS,
   BUILDING_LEVEL_BY_TIER,
@@ -28,7 +29,7 @@ function bina(buildingId, level) {
 
   assert.deepStrictEqual(BUILDING_LEVEL_BY_TIER, {
     1: 1, 2: 2, 3: 5, 4: 10, 5: 13,
-    6: 16, 7: 19, 8: 22, 9: 25, 10: 25
+    6: 16, 7: 19, 8: 22, 9: 25, 10: 30
   });
 
   assert.deepStrictEqual(BASE_TRAINING_SECONDS_BY_TIER, {
@@ -135,35 +136,41 @@ function bina(buildingId, level) {
   assert.strictEqual(shooter10.stats.marchSpeed, 8);
   assert.strictEqual(shooter10.stats.loadCapacity, 12);
 
-  assert.strictEqual(qosunKilidiniYoxla({}, bina("fighter_camp", 4), "warrior_t3").success, false);
+  assert.strictEqual(qosunKilidiniYoxla({}, bina("423000", 4), "warrior_t3").success, false);
+  assert.strictEqual(qosunKilidiniYoxla({}, bina("423000", 5), "warrior_t3").success, true);
   assert.strictEqual(qosunKilidiniYoxla({}, bina("fighter_camp", 5), "warrior_t3").success, true);
 
   for (const [classId, buildingId] of [
-    ["warrior", "fighter_camp"],
-    ["shooter", "shooter_camp"],
-    ["vehicle", "vehicle_factory"]
+    ["warrior", "423000"],
+    ["shooter", "425000"],
+    ["vehicle", "424000"]
   ]) {
     const t9 = `${classId}_t9`;
     const t10 = `${classId}_t10`;
-    const t9Tech = `unlock_${classId}_t9`;
-    const t10Tech = `unlock_${classId}_t10`;
+    const t9Unit = qosunMelumatiniAl(t9);
+    const t10Unit = qosunMelumatiniAl(t10);
+    const t9Source = troopRequirementAl(t9Unit.lastShelterArmyId);
+    const t10Source = troopRequirementAl(t10Unit.lastShelterArmyId);
 
-    assert.strictEqual(qosunMelumatiniAl(t9).requiredResearchId, t9Tech);
-    assert.strictEqual(qosunMelumatiniAl(t10).requiredResearchId, t10Tech);
+    assert.strictEqual(t9Unit.requiredResearchId, t9Source.scienceId);
+    assert.strictEqual(t10Unit.requiredResearchId, t10Source.scienceId);
+    assert.match(t9Unit.requiredResearchId, /^\d+$/);
+    assert.match(t10Unit.requiredResearchId, /^\d+$/);
+
     assert.strictEqual(qosunKilidiniYoxla({}, bina(buildingId, 25), t9).success, false);
-    assert.strictEqual(qosunKilidiniYoxla({}, bina(buildingId, 25), t10).success, false);
+    assert.strictEqual(qosunKilidiniYoxla({}, bina(buildingId, 30), t10).success, false);
 
-    const state9 = { technology: { levels: { [t9Tech]: 1 } } };
+    const state9 = { technology: { levels: { [t9Source.scienceId]: 1 } } };
     assert.strictEqual(qosunKilidiniYoxla(state9, bina(buildingId, 25), t9).success, true);
-    assert.strictEqual(qosunKilidiniYoxla(state9, bina(buildingId, 25), t10).success, false);
+    assert.strictEqual(qosunKilidiniYoxla(state9, bina(buildingId, 30), t10).success, false);
 
-    const state10 = { technology: { levels: { [t10Tech]: 1 } } };
-    assert.strictEqual(qosunKilidiniYoxla(state10, bina(buildingId, 25), t10).success, true);
+    const state10 = { technology: { levels: { [t10Source.scienceId]: 1 } } };
+    assert.strictEqual(qosunKilidiniYoxla(state10, bina(buildingId, 30), t10).success, true);
   }
 
-  const wrongTechState = { technology: { levels: { unlock_vehicle_t10: 1 } } };
+  const wrongTechState = { technology: { levels: { "971700": 1 } } };
   assert.strictEqual(
-    qosunKilidiniYoxla(wrongTechState, bina("fighter_camp", 25), "warrior_t10").success,
+    qosunKilidiniYoxla(wrongTechState, bina("423000", 30), "warrior_t10").success,
     false
   );
 

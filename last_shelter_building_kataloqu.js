@@ -6,6 +6,10 @@
  * convention; source row availability alone does not prove gameplay parity.
  */
 
+const {
+  LAST_SHELTER_TROOP_CLASS_REFERENCE
+} = require("./last_shelter_troop_building_reference");
+
 const RDC_TO_LAST_SHELTER_BUILDING_TYPE =
   Object.freeze({
     hq: "400000",
@@ -17,7 +21,10 @@ const RDC_TO_LAST_SHELTER_BUILDING_TYPE =
     farm: "415000",
     ration_truck: "460000",
     road: "436000",
-    tower: "418000"
+    tower: "418000",
+    fighter_camp: LAST_SHELTER_TROOP_CLASS_REFERENCE.warrior.buildingTypeId,
+    vehicle_factory: LAST_SHELTER_TROOP_CLASS_REFERENCE.vehicle.buildingTypeId,
+    shooter_camp: LAST_SHELTER_TROOP_CLASS_REFERENCE.shooter.buildingTypeId
   });
 
 function metnAl(value, max = 1024) {
