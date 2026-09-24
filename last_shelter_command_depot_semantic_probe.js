@@ -73,3 +73,13 @@ for(const root of producerIds){
 }
 sourceCatalog.release("building");
 console.log("RESOURCE_PRODUCER_PROBE="+JSON.stringify(producerRows));
+
+const storageTierSource=sourceCatalog.rows("building");
+const storageTierIds=["520000","521000","522000","523000","524000","525000","526000","527000","528000","529000","530000","531000"];
+const storageTierRows={};
+for(const root of storageTierIds){
+  storageTierRows[root]=storageTierSource.filter(r=>String(Number(r.id||0)-Number(r.level||0))===root)
+    .filter(r=>[0,1,9,10].includes(Number(r.level||0)));
+}
+sourceCatalog.release("building");
+console.log("STORAGE_TIER_PROBE="+JSON.stringify(storageTierRows));
