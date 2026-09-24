@@ -7,7 +7,9 @@ const {
 }=require("./last_shelter_troop_building_reference");
 const {
   rdcBuildingTypeIdAl,
-  buildingTypeMaxLevelAl
+  buildingTypeLeveliniAl,
+  buildingTypeMaxLevelAl,
+  authoritativeBuildingMaxLevelAl
 }=require("./last_shelter_building_kataloqu");
 
 assert.strictEqual(LAST_SHELTER_TROOP_CLASS_REFERENCE.warrior.buildingTypeId,"423000");
@@ -35,7 +37,22 @@ for(const [classId,prefix] of [["warrior","1070"],["vehicle","1071"],["shooter",
     else assert.match(requirement.scienceId,/^\d+$/);
   }
 
-  assert.ok(buildingTypeMaxLevelAl(classRef.buildingTypeId)>=30);
+  assert.ok(
+    buildingTypeLeveliniAl(classRef.buildingTypeId,29),
+    classId+" level-29 source row must exist for target level 30."
+  );
+  assert.ok(
+    buildingTypeLeveliniAl(classRef.buildingTypeId,30),
+    classId+" level-30 source row must exist."
+  );
+  assert.ok(
+    authoritativeBuildingMaxLevelAl(classRef.buildingTypeId)>=30,
+    classId+" cross-source effective max must honor arms requirement."
+  );
+  assert.ok(
+    buildingTypeMaxLevelAl(classRef.buildingTypeId)<=
+      authoritativeBuildingMaxLevelAl(classRef.buildingTypeId)
+  );
 }
 
 assert.strictEqual(troopRequirementAl("107008").scienceId,"973400");

@@ -2,7 +2,7 @@
 
 const {
   buildingTypeLeveliniAl,
-  buildingTypeMaxLevelAl,
+  authoritativeBuildingMaxLevelAl,
   authoritativeBuildingConditionsYoxla,
   canonicalBuildingTypeIdAl,
   rdcBuildingTypeIdAl
@@ -80,7 +80,7 @@ function verifiedLastShelterBuildingLevelDataAl(
     );
 
   const maxLevel =
-    buildingTypeMaxLevelAl(
+    authoritativeBuildingMaxLevelAl(
       buildingTypeId
     );
 
@@ -143,7 +143,7 @@ function verifiedLastShelterBuildingMaxLevelAl(
 ) {
   return Math.max(
     0,
-    buildingTypeMaxLevelAl(
+    authoritativeBuildingMaxLevelAl(
       buildingId
     ) ||
     0

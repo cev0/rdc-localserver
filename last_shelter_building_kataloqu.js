@@ -7,7 +7,8 @@
  */
 
 const {
-  LAST_SHELTER_TROOP_CLASS_REFERENCE
+  LAST_SHELTER_TROOP_CLASS_REFERENCE,
+  troopBuildingRequiredMaxLevelAl
 } = require("./last_shelter_troop_building_reference");
 
 const RDC_TO_LAST_SHELTER_BUILDING_TYPE =
@@ -319,6 +320,16 @@ function buildingTypeMaxLevelAl(
   );
 }
 
+function authoritativeBuildingMaxLevelAl(buildingId) {
+  const typeId=rdcBuildingTypeIdAl(buildingId);
+  if(!typeId) return 0;
+
+  return Math.max(
+    buildingTypeMaxLevelAl(typeId),
+    troopBuildingRequiredMaxLevelAl(typeId)
+  );
+}
+
 function authoritativeBuildingConditionsAl(buildingId, targetLevel) {
   const level = Math.max(1, tamEded(targetLevel, 1));
   const row = buildingTypeLeveliniAl(buildingId, level - 1);
@@ -447,7 +458,7 @@ function authoritativeBuildingMetaAl(
     maxLevel:
       Math.max(
         1,
-        buildingTypeMaxLevelAl(
+        authoritativeBuildingMaxLevelAl(
           typeId
         )
       )
@@ -465,6 +476,7 @@ module.exports = {
   mainBuildingLeveliniAl,
   buildingTypeLeveliniAl,
   buildingTypeMaxLevelAl,
+  authoritativeBuildingMaxLevelAl,
   authoritativeBuildingConditionsAl,
   authoritativeBuildingConditionsYoxla,
   authoritativeBuildingMetaAl,

@@ -79,11 +79,26 @@ function troopRequirementAl(armyId){
   return LAST_SHELTER_TROOP_REQUIREMENTS[id]||null;
 }
 
+function troopBuildingRequiredMaxLevelAl(buildingTypeId){
+  const id=String(buildingTypeId==null?"":buildingTypeId).trim();
+
+  for(const classRef of Object.values(LAST_SHELTER_TROOP_CLASS_REFERENCE)){
+    if(classRef.buildingTypeId!==id) continue;
+    return Math.max(
+      0,
+      ...classRef.requirements.map(row=>Number(row.requiredBuildingLevel)||0)
+    );
+  }
+
+  return 0;
+}
+
 module.exports={
   CLASS_SPECS,
   LAST_SHELTER_TROOP_CLASS_REFERENCE,
   LAST_SHELTER_TROOP_REQUIREMENTS,
   buildingRequirementParseEt,
   troopClassReferenceAl,
-  troopRequirementAl
+  troopRequirementAl,
+  troopBuildingRequiredMaxLevelAl
 };
