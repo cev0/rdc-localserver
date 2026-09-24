@@ -22,6 +22,7 @@ on:
       - 'qosun_kataloqu.js'
       - 'qosun_kataloqu_testi.js'
       - 'last_shelter_server_building_authority_cleanup_testi.js'
+      - 'last_shelter_command_depot_semantic_probe.js'
       - 'server.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-building-runtime-observed.yml'
@@ -45,6 +46,7 @@ on:
       - 'qosun_kataloqu.js'
       - 'qosun_kataloqu_testi.js'
       - 'last_shelter_server_building_authority_cleanup_testi.js'
+      - 'last_shelter_command_depot_semantic_probe.js'
       - 'server.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-building-runtime-observed.yml'
@@ -66,3 +68,4 @@ jobs:
       - run: node last_shelter_server_building_authority_cleanup_testi.js
       - run: node last_shelter_troop_building_reference_testi.js
       - run: node qosun_kataloqu_testi.js
+      - run: node last_shelter_command_depot_semantic_probe.js
