@@ -143,3 +143,36 @@ const buildingBSemanticRoots=sourceCatalog.rows("building_b")
   .map(row=>({...row}));
 sourceCatalog.release("building_b");
 console.log("BUILDING_B_SEMANTIC_ROOTS="+JSON.stringify(buildingBSemanticRoots));
+
+
+const remainingRootIds=[
+  "401000","404000","407000","410000","417000","419000","427000",
+  "428000","429000","435000","444000","447000","448000","461000",
+  "462000","483000","486000"
+];
+const remainingRootRows={};
+for(const catalogName of ["building","building_b"]){
+  const rows=sourceCatalog.rows(catalogName);
+  remainingRootRows[catalogName]=Object.fromEntries(
+    remainingRootIds.map(id=>[
+      id,
+      rows.filter(row=>String(Number(row.id||0)-Number(row.level||0))===id)
+        .filter(row=>[0,1,2,5,10,15,20,25,29,30].includes(Number(row.level||0)))
+    ])
+  );
+  sourceCatalog.release(catalogName);
+}
+console.log("REMAINING_BUILDING_ROOT_ROWS="+JSON.stringify(remainingRootRows));
+
+const semanticCatalogs=["city","inner_city_map","inner_city_map_1","facility","alliance_language","building_world","eventBuilding"];
+const semanticCatalogSamples={};
+for(const catalogName of semanticCatalogs){
+  const entries=sourceCatalog.entries(catalogName);
+  semanticCatalogSamples[catalogName]=entries.filter(entry=>{
+    const raw=JSON.stringify(entry && entry.attributes || {});
+    return remainingRootIds.some(id=>raw.includes(id)) ||
+      /(command[_ -]?center|depot|warehouse|garrison|barrack|radar|clone|chip|military)/i.test(raw);
+  }).slice(0,200);
+  sourceCatalog.release(catalogName);
+}
+console.log("REMAINING_SEMANTIC_CATALOG_HITS="+JSON.stringify(semanticCatalogSamples));
