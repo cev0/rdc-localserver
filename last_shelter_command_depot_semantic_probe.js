@@ -236,3 +236,53 @@ for(const catalogName of sourceCatalog.names()){
   if(garrisonRefs.length>=120) break;
 }
 console.log("GARRISON_450_PROBE="+JSON.stringify({garrisonRows,hqRequirementRows,garrisonRefs}));
+
+
+const fingerprintBuildingRows=sourceCatalog.rows("building");
+const byRoot=new Map();
+for(const row of fingerprintBuildingRows){
+  const id=String(row.id||"");
+  const level=Number(row.level||0);
+  if(!/^\d{6}$/.test(id)) continue;
+  const root=String(Number(id)-level);
+  if(!byRoot.has(root)) byRoot.set(root,[]);
+  byRoot.get(root).push(row);
+}
+const radarCandidates=[];
+const barrackCandidates=[];
+const commandCapacityCandidates=[];
+for(const [root,rows] of byRoot.entries()){
+  const ordered=rows.slice().sort((a,b)=>Number(a.level||0)-Number(b.level||0));
+  const l0=ordered.find(r=>Number(r.level||0)===0);
+  const l1=ordered.find(r=>Number(r.level||0)===1);
+  const l2=ordered.find(r=>Number(r.level||0)===2);
+  if(l0 &&
+     Number(l0.wood||0)===510 &&
+     Number(l0.time||0)===30 &&
+     Number(l0.power||0)===55 &&
+     String(l0.building||"").split("|").some(x=>x==="400000;4")){
+    radarCandidates.push({root,rows:ordered.filter(r=>Number(r.level||0)<=5)});
+  }
+  if(l0&&l1&&l2 &&
+     Number(l0.para1||0)===1200 &&
+     Number(l1.para1||0)===1350 &&
+     Number(l2.para1||0)===1500 &&
+     Number(l0.power||0)>=30 && Number(l0.power||0)<=40){
+    barrackCandidates.push({root,rows:ordered.filter(r=>Number(r.level||0)<=5)});
+  }
+  if(l0){
+    const values=Object.entries(l0)
+      .filter(([k])=>/^para\d+$/.test(k))
+      .map(([,v])=>Number(v))
+      .filter(Number.isFinite);
+    if(values.some(v=>v>=500&&v<=700)){
+      commandCapacityCandidates.push({root,row:l0});
+    }
+  }
+}
+sourceCatalog.release("building");
+console.log("RADAR_BARRACK_FINGERPRINT_PROBE="+JSON.stringify({
+  radarCandidates,
+  barrackCandidates,
+  commandCapacityCandidates:commandCapacityCandidates.slice(0,120)
+}));
