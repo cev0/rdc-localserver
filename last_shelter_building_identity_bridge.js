@@ -10,6 +10,12 @@ const LAST_SHELTER_HQ_BUILDING_ID =
   canonicalBuildingTypeIdAl("hq");
 const LAST_SHELTER_ROAD_BUILDING_ID =
   canonicalBuildingTypeIdAl("road");
+const LAST_SHELTER_WARRIOR_TRAINING_BUILDING_ID =
+  canonicalBuildingTypeIdAl("fighter_camp");
+const LAST_SHELTER_VEHICLE_TRAINING_BUILDING_ID =
+  canonicalBuildingTypeIdAl("vehicle_factory");
+const LAST_SHELTER_SHOOTER_TRAINING_BUILDING_ID =
+  canonicalBuildingTypeIdAl("shooter_camp");
 
 function canonicalRuntimeBuildingId(buildingId) {
   return canonicalBuildingTypeIdAl(buildingId);
@@ -61,6 +67,9 @@ function stateHighestBuildingLevel(state, buildingId, options = {}) {
 module.exports = {
   LAST_SHELTER_HQ_BUILDING_ID,
   LAST_SHELTER_ROAD_BUILDING_ID,
+  LAST_SHELTER_WARRIOR_TRAINING_BUILDING_ID,
+  LAST_SHELTER_VEHICLE_TRAINING_BUILDING_ID,
+  LAST_SHELTER_SHOOTER_TRAINING_BUILDING_ID,
   authoritativeBuildingMetaForRuntimeId,
   canonicalRuntimeBuildingId,
   isHeadquartersBuildingId,

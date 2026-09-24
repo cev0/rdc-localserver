@@ -7,6 +7,9 @@ const path = require("path");
 const {
   LAST_SHELTER_HQ_BUILDING_ID,
   LAST_SHELTER_ROAD_BUILDING_ID,
+  LAST_SHELTER_WARRIOR_TRAINING_BUILDING_ID,
+  LAST_SHELTER_VEHICLE_TRAINING_BUILDING_ID,
+  LAST_SHELTER_SHOOTER_TRAINING_BUILDING_ID,
   authoritativeBuildingMetaForRuntimeId,
   canonicalRuntimeBuildingId,
   isHeadquartersBuildingId,
@@ -18,6 +21,9 @@ const {
 
 assert.strictEqual(LAST_SHELTER_HQ_BUILDING_ID, "400000");
 assert.strictEqual(LAST_SHELTER_ROAD_BUILDING_ID, "436000");
+assert.strictEqual(LAST_SHELTER_WARRIOR_TRAINING_BUILDING_ID, "423000");
+assert.strictEqual(LAST_SHELTER_VEHICLE_TRAINING_BUILDING_ID, "424000");
+assert.strictEqual(LAST_SHELTER_SHOOTER_TRAINING_BUILDING_ID, "425000");
 assert.strictEqual(canonicalRuntimeBuildingId("hq"), "400000");
 assert.strictEqual(canonicalRuntimeBuildingId("road"), "436000");
 assert.strictEqual(canonicalRuntimeBuildingId("400000"), "400000");
@@ -63,6 +69,9 @@ assert.match(serverSource,/buildingId:\s*LAST_SHELTER_HQ_BUILDING_ID/);
 assert.match(serverSource,/buildingId:\s*LAST_SHELTER_ROAD_BUILDING_ID/);
 assert.doesNotMatch(serverSource,/buildingId:\s*["']hq["']/);
 assert.doesNotMatch(serverSource,/buildingId:\s*["']road["']/);
+assert.doesNotMatch(serverSource,/case\s+["']fighter_camp["']/);
+assert.doesNotMatch(serverSource,/case\s+["']vehicle_factory["']/);
+assert.doesNotMatch(serverSource,/case\s+["']shooter_camp["']/);
 
 console.log(
   "PASS: server identity bridge accepts compatibility aliases and emits authoritative numeric HQ/road IDs."

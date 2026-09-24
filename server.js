@@ -157,6 +157,9 @@ const {
 const {
   LAST_SHELTER_HQ_BUILDING_ID,
   LAST_SHELTER_ROAD_BUILDING_ID,
+  LAST_SHELTER_WARRIOR_TRAINING_BUILDING_ID,
+  LAST_SHELTER_VEHICLE_TRAINING_BUILDING_ID,
+  LAST_SHELTER_SHOOTER_TRAINING_BUILDING_ID,
   authoritativeBuildingMetaForRuntimeId,
   canonicalRuntimeBuildingId,
   isHeadquartersBuildingId,
@@ -1754,15 +1757,15 @@ function birBinaninGucunuHesabla(building) {
       levelBasiGuc = 250;
       break;
 
-    case "fighter_camp":
+    case LAST_SHELTER_WARRIOR_TRAINING_BUILDING_ID:
       levelBasiGuc = 200;
       break;
 
-    case "shooter_camp":
+    case LAST_SHELTER_SHOOTER_TRAINING_BUILDING_ID:
       levelBasiGuc = 200;
       break;
 
-    case "vehicle_factory":
+    case LAST_SHELTER_VEHICLE_TRAINING_BUILDING_ID:
       levelBasiGuc = 300;
       break;
 
@@ -2072,15 +2075,15 @@ function birBinaninGucunuHesabla(building) {
       levelBasiGuc = 250;
       break;
 
-    case "fighter_camp":
+    case LAST_SHELTER_WARRIOR_TRAINING_BUILDING_ID:
       levelBasiGuc = 200;
       break;
 
-    case "shooter_camp":
+    case LAST_SHELTER_SHOOTER_TRAINING_BUILDING_ID:
       levelBasiGuc = 200;
       break;
 
-    case "vehicle_factory":
+    case LAST_SHELTER_VEHICLE_TRAINING_BUILDING_ID:
       levelBasiGuc = 300;
       break;
 
@@ -2605,7 +2608,7 @@ function makeFallbackLevelData(buildingId, targetLevel) {
 
   let buildTimeSeconds = 15 + (lvl * 15);
 
-  if (id === "vehicle_factory") buildTimeSeconds += 15;
+  if (id === LAST_SHELTER_VEHICLE_TRAINING_BUILDING_ID) buildTimeSeconds += 15;
   if (isHeadquartersBuildingId(id)) buildTimeSeconds += 20;
   if (isRoadBuildingId(id)) buildTimeSeconds = 0;
 
