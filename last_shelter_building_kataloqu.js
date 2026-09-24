@@ -20,6 +20,29 @@ const RDC_TO_LAST_SHELTER_BUILDING_TYPE =
     hospital: "411000",
     embassy: "402000",
     farm: "415000",
+    refinery: "412000",
+    water_treatment_plant: "413000",
+    lumber_mill: "414000",
+    power_plant: "431000",
+    oil_well: "432000",
+    power_storage_facility_1: "437000",
+    power_storage_facility_2: "530000",
+    power_storage_facility_3: "531000",
+    oil_storage_tank_1: "438000",
+    oil_storage_tank_2: "528000",
+    oil_storage_tank_3: "529000",
+    water_tank_1: "439000",
+    water_tank_2: "520000",
+    water_tank_3: "521000",
+    granary_1: "440000",
+    granary_2: "526000",
+    granary_3: "527000",
+    lumber_warehouse_1: "441000",
+    lumber_warehouse_2: "524000",
+    lumber_warehouse_3: "525000",
+    iron_warehouse_1: "442000",
+    iron_warehouse_2: "522000",
+    iron_warehouse_3: "523000",
     ration_truck: "460000",
     road: "436000",
     tower: "418000",
@@ -119,7 +142,7 @@ const RAW_BUILDING_LEVELS_BY_TYPE =
       Object.values(RAW_BUILDING_ROWS)
         .map(buildingRowHazirla)
         .filter(row =>
-          /^4\d{5}$/.test(
+          /^[45]\d{5}$/.test(
             String(
               row &&
               row.buildingTypeId ||
@@ -197,7 +220,7 @@ function rdcBuildingTypeIdAl(
       64
     ).toLowerCase();
 
-  if (/^4\d{5}$/.test(key)) {
+  if (/^[45]\d{5}$/.test(key)) {
     return Object.prototype.hasOwnProperty.call(
       RAW_BUILDING_LEVELS_BY_TYPE,
       key
@@ -428,6 +451,22 @@ function authoritativeBuildingMetaAl(
       )
     );
 
+  const sourceResourcePointType =
+    row.sourceAttributes &&
+    row.sourceAttributes.resources_points != null
+      ? String(row.sourceAttributes.resources_points)
+      : "";
+
+  const requiredSlotType =
+    ({
+      "1": "water",
+      "2": "iron",
+      "3": "wood",
+      "4": "food",
+      "12": "fuel"
+    })[sourceResourcePointType] ||
+    null;
+
   return Object.freeze({
     source:
       "last_shelter_building_xml",
@@ -446,9 +485,10 @@ function authoritativeBuildingMetaAl(
       typeId !==
         "436000",
     placementMode:
-      "normal",
-    requiredSlotType:
-      null,
+      requiredSlotType
+        ? "resource_slot"
+        : "normal",
+    requiredSlotType,
     multiBuild:
       num > 1,
     maxPlacedCount:
