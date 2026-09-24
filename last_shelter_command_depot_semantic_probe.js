@@ -63,3 +63,13 @@ for(const root of storageRoots){
 }
 sourceCatalog.release("building");
 console.log("STORAGE_GRAPH_PROBE="+JSON.stringify(storageGraph));
+
+const producerSource=sourceCatalog.rows("building");
+const producerIds=["412000","413000","414000","415000","431000","432000"];
+const producerRows={};
+for(const root of producerIds){
+  producerRows[root]=producerSource.filter(r=>String(Number(r.id||0)-Number(r.level||0))===root)
+    .filter(r=>[0,1,2,3,4,5,10,15,20,25].includes(Number(r.level||0)));
+}
+sourceCatalog.release("building");
+console.log("RESOURCE_PRODUCER_PROBE="+JSON.stringify(producerRows));
