@@ -88,7 +88,7 @@ console.log("STORAGE_TIER_PROBE="+JSON.stringify(storageTierRows));
 
 const candidateBuildingIds=[
   "410000","416000","417000","419000","426000","427000","435000",
-  "444000","446000","447000","448000","483000","486000"
+  "444000","446000","447000","448000","462000","483000","486000"
 ];
 
 function compactSemanticEntry(entry){
@@ -136,3 +136,10 @@ for(const catalogName of sourceCatalog.names()){
 
 console.log("CANDIDATE_BUILDING_CROSS_REFS="+JSON.stringify(candidateCrossRefs));
 console.log("COMMAND_DEPOT_TEXT_HITS="+JSON.stringify(semanticTextHits));
+
+
+const buildingBSemanticRoots=sourceCatalog.rows("building_b")
+  .filter(row=>Number(row.level||0)===0 && semanticRegex.test(JSON.stringify(row)))
+  .map(row=>({...row}));
+sourceCatalog.release("building_b");
+console.log("BUILDING_B_SEMANTIC_ROOTS="+JSON.stringify(buildingBSemanticRoots));
