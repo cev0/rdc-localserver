@@ -208,3 +208,31 @@ for(const catalogName of sourceCatalog.names()){
   sourceCatalog.release(catalogName);
 }
 console.log("EXACT_REMAINING_BUILDING_REFS="+JSON.stringify(exactCandidateRefs));
+
+
+const garrisonRows={};
+for(const catalogName of ["building","building_b"]){
+  const rows=sourceCatalog.rows(catalogName);
+  garrisonRows[catalogName]=rows
+    .filter(row=>String(Number(row.id||0)-Number(row.level||0))==="450000")
+    .filter(row=>[0,1,2,3,4,5,10,12,15,16,20,25,29,30].includes(Number(row.level||0)));
+  sourceCatalog.release(catalogName);
+}
+const hqRequirementRows=sourceCatalog.rows("building")
+  .filter(row=>["400005","400016"].includes(String(row.id||"")));
+sourceCatalog.release("building");
+const garrisonRefs=[];
+for(const catalogName of sourceCatalog.names()){
+  if(catalogName==="building"||catalogName==="building_b") continue;
+  const rows=sourceCatalog.rows(catalogName);
+  for(const row of rows){
+    const raw=JSON.stringify(row||{});
+    if(/(^|[^0-9])450000([^0-9]|$)/.test(raw)){
+      garrisonRefs.push({catalog:catalogName,row});
+      if(garrisonRefs.length>=120) break;
+    }
+  }
+  sourceCatalog.release(catalogName);
+  if(garrisonRefs.length>=120) break;
+}
+console.log("GARRISON_450_PROBE="+JSON.stringify({garrisonRows,hqRequirementRows,garrisonRefs}));
