@@ -44,3 +44,22 @@ const fingerprintHits=fingerprintRows.filter(row=>{
 });
 sourceCatalog.release("building");
 console.log("BUILDING_FINGERPRINT_PROBE="+JSON.stringify(fingerprintHits));
+
+const storageSource=sourceCatalog.rows("building");
+const storageRoots=["437000","438000","439000","440000","441000","442000"];
+const storageGraph={};
+for(const root of storageRoots){
+  storageGraph[root]={
+    rows:storageSource.filter(r=>String(Number(r.id||0)-Number(r.level||0))===root)
+      .filter(r=>[0,1,2,5,9,10].includes(Number(r.level||0))),
+    dependents:storageSource.filter(r=>Number(r.level||0)===0 && String(r.building||"").split("|").some(x=>{
+      const [id,lvl]=x.split(";");
+      return id===root && Number(lvl)>=9;
+    })).map(r=>({
+      typeId:String(Number(r.id||0)-Number(r.level||0)),
+      ...r
+    }))
+  };
+}
+sourceCatalog.release("building");
+console.log("STORAGE_GRAPH_PROBE="+JSON.stringify(storageGraph));
