@@ -26,6 +26,9 @@ const {
 assert.strictEqual(rdcBuildingTypeIdAl("hq"), "400000");
 assert.strictEqual(rdcBuildingTypeIdAl("house"), "433000");
 assert.strictEqual(rdcBuildingTypeIdAl("ration_truck"), "460000");
+assert.strictEqual(rdcBuildingTypeIdAl("fighter_camp"), "423000");
+assert.strictEqual(rdcBuildingTypeIdAl("vehicle_factory"), "424000");
+assert.strictEqual(rdcBuildingTypeIdAl("shooter_camp"), "425000");
 assert.strictEqual(canonicalBuildingTypeIdAl("hq"), "400000");
 assert.strictEqual(canonicalBuildingTypeIdAl("433000"), "433000");
 assert.strictEqual(Object.isFrozen(RDC_TO_LAST_SHELTER_BUILDING_TYPE), true);
@@ -139,38 +142,21 @@ const legacyUnmapped = verifiedLastShelterBuildingPrerequisitesYoxla(
 assert.strictEqual(legacyUnmapped.mapped, false);
 assert.strictEqual(legacyUnmapped.ok, true);
 
-const activeDefinitions = JSON.parse(
+const legacyDefinitions = JSON.parse(
   fs.readFileSync(path.join(__dirname, "building_definitions.json"), "utf8")
 );
-const activeList = Array.isArray(activeDefinitions)
-  ? activeDefinitions
-  : (activeDefinitions.definitions || activeDefinitions.buildings || []);
-const activeHq = activeList.find(item =>
-  String(item && item.id || "").toLowerCase() === "hq"
-);
-assert.ok(activeHq, "Aktiv HQ definition olmalıdır.");
-assert.strictEqual(activeHq.maxLevel, 5,
-  "Yalnız Last Shelter-dən təsdiqlənmiş 1-5 səviyyələr aktiv qalmalıdır.");
-assert.strictEqual(activeHq.lastShelterMaxLevel, 25,
-  "Original Last Shelter HQ maksimumu 25 kimi saxlanmalıdır.");
-assert.strictEqual(activeHq.levels.length, 5);
+const legacyList = Array.isArray(legacyDefinitions)
+  ? legacyDefinitions
+  : (legacyDefinitions.definitions || legacyDefinitions.buildings || []);
 
-for (let level = 1; level <= 5; level += 1) {
-  const active = activeHq.levels[level - 1];
-  const reference = mainBuildingLeveliniAl(level);
-  assert.ok(reference);
-  assert.strictEqual(active.level, level);
-  assert.strictEqual(active.buildTimeSeconds, reference.buildTimeSeconds);
-  const activeCost = Object.fromEntries((active.cost || []).map(item => [
-    item.type, Number(item.amount) || 0
-  ]));
-  for (const resource of ["wood","stone","iron","food","money","electricity","silver"]) {
-    assert.strictEqual(
-      Number(activeCost[resource] || 0),
-      Number(reference.cost[resource] || 0),
-      `HQ level ${level} ${resource} xərci Last Shelter ilə eyni olmalıdır.`
-    );
-  }
+for (const mappedAlias of Object.keys(RDC_TO_LAST_SHELTER_BUILDING_TYPE)) {
+  assert.ok(
+    !legacyList.some(item =>
+      String(item && item.id || "").toLowerCase() === mappedAlias
+    ),
+    "Mapped Last Shelter alias old building_definitions export-da qalmamalidir: " +
+      mappedAlias
+  );
 }
 
 const serverSource = fs.readFileSync(path.join(__dirname, "server.js"), "utf8");

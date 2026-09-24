@@ -176,91 +176,6 @@ const {
 // ============================================================
 
 const LEGACY_RDC_BUILDING_LEVEL_CONFIG = {
-  fighter_camp: {
-    levels: [
-      {
-        buildTimeSeconds: 20,
-        cost: [
-          { type: "wood", amount: 120 },
-          { type: "money", amount: 80 }
-        ]
-      },
-      {
-        buildTimeSeconds: 45,
-        cost: [
-          { type: "wood", amount: 220 },
-          { type: "iron", amount: 100 },
-          { type: "money", amount: 140 }
-        ]
-      },
-      {
-        buildTimeSeconds: 75,
-        cost: [
-          { type: "wood", amount: 350 },
-          { type: "iron", amount: 180 },
-          { type: "money", amount: 220 }
-        ]
-      }
-    ]
-  },
-
-  shooter_camp: {
-    levels: [
-      {
-        buildTimeSeconds: 20,
-        cost: [
-          { type: "wood", amount: 120 },
-          { type: "money", amount: 80 }
-        ]
-      },
-      {
-        buildTimeSeconds: 45,
-        cost: [
-          { type: "wood", amount: 220 },
-          { type: "iron", amount: 100 },
-          { type: "money", amount: 140 }
-        ]
-      },
-      {
-        buildTimeSeconds: 75,
-        cost: [
-          { type: "wood", amount: 350 },
-          { type: "iron", amount: 180 },
-          { type: "money", amount: 220 }
-        ]
-      }
-    ]
-  },
-
-  vehicle_factory: {
-    levels: [
-      {
-        buildTimeSeconds: 30,
-        cost: [
-          { type: "wood", amount: 150 },
-          { type: "iron", amount: 120 },
-          { type: "money", amount: 120 }
-        ]
-      },
-      {
-        buildTimeSeconds: 60,
-        cost: [
-          { type: "wood", amount: 280 },
-          { type: "iron", amount: 220 },
-          { type: "money", amount: 220 }
-        ]
-      },
-      {
-        buildTimeSeconds: 100,
-        cost: [
-          { type: "wood", amount: 420 },
-          { type: "iron", amount: 340 },
-          { type: "money", amount: 340 }
-        ]
-      }
-    ]
-  },
-
   command_center: {
     levels: [
       {
@@ -2723,7 +2638,6 @@ const LEGACY_RDC_BUILDING_DEFINITION_META = {
   "commercial_hub": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "depot": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "farm": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "resource_slot", requiredSlotType: "food", multiBuild: true, maxPlacedCount: 0, builderSlotsRequired: 1, maxLevel: 4 },
-  "fighter_camp": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "garage_1": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: false, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 1 },
   "garage_2": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: false, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 1 },
   "garage_3": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: false, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 1 },
@@ -2753,9 +2667,7 @@ const LEGACY_RDC_BUILDING_DEFINITION_META = {
   "power_storage_facility_3": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "radar": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "refinery": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "resource_slot", requiredSlotType: "iron", multiBuild: true, maxPlacedCount: 0, builderSlotsRequired: 1, maxLevel: 4 },
-  "shooter_camp": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "testbuilding": { sizeX: 3, sizeZ: 3, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 1 },
-  "vehicle_factory": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "water_tank_1": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "water_tank_2": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "water_tank_3": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },

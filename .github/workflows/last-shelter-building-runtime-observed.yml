@@ -17,8 +17,11 @@ on:
       - 'runtime_build_commands.js'
       - 'runtime_build_commands_testi.js'
       - 'last_shelter_building_identity_bridge.js'
+      - 'last_shelter_troop_building_reference.js'
+      - 'last_shelter_troop_building_reference_testi.js'
+      - 'qosun_kataloqu.js'
+      - 'qosun_kataloqu_testi.js'
       - 'last_shelter_server_building_authority_cleanup_testi.js'
-      - 'last_shelter_building_semantic_probe.js'
       - 'server.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-building-runtime-observed.yml'
@@ -37,8 +40,11 @@ on:
       - 'runtime_build_commands.js'
       - 'runtime_build_commands_testi.js'
       - 'last_shelter_building_identity_bridge.js'
+      - 'last_shelter_troop_building_reference.js'
+      - 'last_shelter_troop_building_reference_testi.js'
+      - 'qosun_kataloqu.js'
+      - 'qosun_kataloqu_testi.js'
       - 'last_shelter_server_building_authority_cleanup_testi.js'
-      - 'last_shelter_building_semantic_probe.js'
       - 'server.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-building-runtime-observed.yml'
@@ -58,4 +64,5 @@ jobs:
       - run: node runtime_gameplay_mutation_commands_testi.js
       - run: node runtime_build_commands_testi.js
       - run: node last_shelter_server_building_authority_cleanup_testi.js
-      - run: node last_shelter_building_semantic_probe.js
+      - run: node last_shelter_troop_building_reference_testi.js
+      - run: node qosun_kataloqu_testi.js

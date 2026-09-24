@@ -60,7 +60,10 @@ for (const mappedAlias of [
   "ration_truck",
   "road",
   "tower",
-  "institute"
+  "institute",
+  "fighter_camp",
+  "vehicle_factory",
+  "shooter_camp"
 ]) {
   assert.ok(
     !new RegExp(
@@ -78,11 +81,25 @@ assert.ok(
   "Farm resource-slot compatibility must remain explicit, not guessed."
 );
 
+for (const mappedTroopAlias of [
+  "fighter_camp",
+  "vehicle_factory",
+  "shooter_camp"
+]) {
+  assert.ok(
+    !new RegExp("^\\s*" + mappedTroopAlias + "\\s*:", "m").test(legacyLevelBlock),
+    mappedTroopAlias + " must not keep legacy level balance."
+  );
+}
+
 for (const [alias, numericId] of [
   ["hq", "400000"],
   ["road", "436000"],
   ["farm", "415000"],
-  ["institute", "403000"]
+  ["institute", "403000"],
+  ["fighter_camp", "423000"],
+  ["vehicle_factory", "424000"],
+  ["shooter_camp", "425000"]
 ]) {
   assert.strictEqual(
     mappedLastShelterBuildingTypeId(alias),
@@ -116,6 +133,26 @@ assert.ok(
   ),
   "Old building_definitions exports must be ignored for mapped Last Shelter IDs."
 );
+
+const legacyDefinitions = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "building_definitions.json"), "utf8")
+);
+const legacyDefinitionList = Array.isArray(legacyDefinitions)
+  ? legacyDefinitions
+  : (legacyDefinitions.definitions || legacyDefinitions.buildings || []);
+
+for (const mappedAlias of [
+  "hq","institute","house","bank","hospital","embassy","farm",
+  "ration_truck","road","tower",
+  "fighter_camp","vehicle_factory","shooter_camp"
+]) {
+  assert.ok(
+    !legacyDefinitionList.some(row =>
+      String(row && row.id || "").trim().toLowerCase() === mappedAlias
+    ),
+    mappedAlias + " duplicate old building_definitions entry must be removed."
+  );
+}
 
 console.log(
   "PASS: mapped Last Shelter buildings cannot fall back to old RDC balance/metadata."

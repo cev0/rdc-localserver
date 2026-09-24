@@ -307,7 +307,7 @@ const {
 
   state.buildings.push({
     instanceId: "fighter-camp-1",
-    buildingId: "fighter_camp",
+    buildingId: "423000",
     level: 1,
     isCompleted: true,
     hasRoadAccess: true
