@@ -175,67 +175,7 @@ const {
 // - sonradan balansı rahat dəyişmək
 // ============================================================
 
-const BUILDING_LEVEL_CONFIG = {
-  road: {
-    levels: [
-      {
-        buildTimeSeconds: 0,
-        cost: [
-          { type: "wood", amount: 5 }
-        ]
-      }
-    ]
-  },
-
-hq: {
-  levels: [
-    { buildTimeSeconds: 0, cost: [] }, // starter HQ level 1
-    {
-      buildTimeSeconds: 30,
-      cost: [
-        { type: "wood", amount: 200 },
-        { type: "water", amount: 50 },
-        { type: "money", amount: 150 }
-      ]
-    },
-    {
-      buildTimeSeconds: 60,
-      cost: [
-        { type: "wood", amount: 400 },
-        { type: "iron", amount: 150 },
-        { type: "money", amount: 300 }
-      ]
-    },
-    {
-      buildTimeSeconds: 120,
-      cost: [
-        { type: "wood", amount: 700 },
-        { type: "iron", amount: 350 },
-        { type: "fuel", amount: 100 },
-        { type: "money", amount: 600 }
-      ]
-    },
-    {
-      buildTimeSeconds: 240,
-      cost: [
-        { type: "wood", amount: 1100 },
-        { type: "iron", amount: 600 },
-        { type: "fuel", amount: 250 },
-        { type: "money", amount: 1000 }
-      ]
-    },
-    {
-      buildTimeSeconds: 420,
-      cost: [
-        { type: "wood", amount: 1600 },
-        { type: "iron", amount: 1000 },
-        { type: "fuel", amount: 500 },
-        { type: "money", amount: 1600 }
-      ]
-    }
-  ]
-},
-
+const LEGACY_RDC_BUILDING_LEVEL_CONFIG = {
   fighter_camp: {
     levels: [
       {
@@ -2771,9 +2711,8 @@ function makeFallbackLevelData(buildingId, targetLevel) {
   };
 }
 
-const HARD_CODED_BUILDING_DEFINITION_META = {
+const LEGACY_RDC_BUILDING_DEFINITION_META = {
   "alliance_headquarters": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "bank": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: true, maxPlacedCount: 0, builderSlotsRequired: 1, maxLevel: 4 },
   "barrack_1": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "barrack_2": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "barrack_3": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
@@ -2783,7 +2722,6 @@ const HARD_CODED_BUILDING_DEFINITION_META = {
   "command_center": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "commercial_hub": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "depot": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "embassy": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "farm": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "resource_slot", requiredSlotType: "food", multiBuild: true, maxPlacedCount: 0, builderSlotsRequired: 1, maxLevel: 4 },
   "fighter_camp": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "garage_1": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: false, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 1 },
@@ -2795,9 +2733,6 @@ const HARD_CODED_BUILDING_DEFINITION_META = {
   "granary_2": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "granary_3": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "heroes_hall": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "hospital": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: true, maxPlacedCount: 0, builderSlotsRequired: 1, maxLevel: 4 },
-  "house": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: true, maxPlacedCount: 0, builderSlotsRequired: 1, maxLevel: 4 },
-  "hq": { sizeX: 3, sizeZ: 3, isRoad: false, requiresRoad: false, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 6 },
   "iron_warehouse_1": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "iron_warehouse_2": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "iron_warehouse_3": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
@@ -2817,12 +2752,9 @@ const HARD_CODED_BUILDING_DEFINITION_META = {
   "power_storage_facility_2": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "power_storage_facility_3": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "radar": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "ration_truck": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "refinery": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "resource_slot", requiredSlotType: "iron", multiBuild: true, maxPlacedCount: 0, builderSlotsRequired: 1, maxLevel: 4 },
-  "road": { sizeX: 1, sizeZ: 1, isRoad: true, requiresRoad: false, placementMode: "normal", requiredSlotType: null, multiBuild: true, maxPlacedCount: 0, builderSlotsRequired: 1, maxLevel: 1 },
   "shooter_camp": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "testbuilding": { sizeX: 3, sizeZ: 3, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 1 },
-  "tower": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "vehicle_factory": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "water_tank_1": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "water_tank_2": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
@@ -2830,19 +2762,6 @@ const HARD_CODED_BUILDING_DEFINITION_META = {
   "water_treatment_plant": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "resource_slot", requiredSlotType: "water", multiBuild: true, maxPlacedCount: 0, builderSlotsRequired: 1, maxLevel: 4 }
 };
 
-
-HARD_CODED_BUILDING_DEFINITION_META["institute"] = {
-  sizeX: 2,
-  sizeZ: 2,
-  isRoad: false,
-  requiresRoad: true,
-  placementMode: "normal",
-  requiredSlotType: null,
-  multiBuild: false,
-  maxPlacedCount: 1,
-  builderSlotsRequired: 1,
-  maxLevel: 25
-};
 
 let EXTERNAL_BUILDING_DEFINITION_META = {};
 let EXTERNAL_BUILDING_LEVEL_CONFIG = {};
@@ -3030,6 +2949,13 @@ function loadExternalBuildingDefinitions() {
         if (!meta) continue;
 
         const id = normalizeBuildingId(definition.id);
+
+        // Mapped/numeric Last Shelter IDs must never take metadata or level
+        // balance from the old RDC export. That file is compatibility-only.
+        if (mappedLastShelterBuildingTypeId(id)) {
+          continue;
+        }
+
         nextMeta[id] = meta;
 
         const levelConfig = createLevelConfigFromDefinition(definition);
@@ -3062,7 +2988,7 @@ function loadExternalBuildingDefinitions() {
 function getDefinitionMeta(buildingId) {
   const id = normalizeBuildingId(buildingId);
 
-  const hardcoded = HARD_CODED_BUILDING_DEFINITION_META[id] || null;
+  const hardcoded = LEGACY_RDC_BUILDING_DEFINITION_META[id] || null;
   const external = EXTERNAL_BUILDING_DEFINITION_META[id] || null;
   const compatibility =
     hardcoded && external
@@ -3076,11 +3002,10 @@ function getDefinitionMeta(buildingId) {
     return compatibility;
   }
 
-  // building.xml is authoritative for fields it actually defines.
-  // Resource-slot placement stays compatibility-only until another original
-  // Last Shelter config proves its authoritative replacement.
+  // building.xml is authoritative for mapped building metadata.
+  // Only placementMode/requiredSlotType remain compatibility-only until
+  // an original Last Shelter placement source proves their replacement.
   return {
-    ...(compatibility || {}),
     ...authoritative,
     placementMode:
       compatibility && compatibility.placementMode
@@ -3345,12 +3270,13 @@ function getLevelData(buildingId, targetLevel) {
 
   if (
     verifiedCoverage.mapped &&
-    verifiedCoverage.withinDeclaredMax &&
     !verifiedCoverage.verified
   ) {
     return {
       source:
-        "last_shelter_verified_level_gap",
+        verifiedCoverage.withinDeclaredMax
+          ? "last_shelter_verified_level_gap"
+          : "last_shelter_level_outside_declared_max",
       unavailable:true,
       buildingId:id,
       buildingTypeId:
@@ -3366,7 +3292,7 @@ function getLevelData(buildingId, targetLevel) {
     };
   }
 
-  const cfg = EXTERNAL_BUILDING_LEVEL_CONFIG[id] || BUILDING_LEVEL_CONFIG[id];
+  const cfg = EXTERNAL_LEGACY_RDC_BUILDING_LEVEL_CONFIG[id] || LEGACY_RDC_BUILDING_LEVEL_CONFIG[id];
   if (cfg && Array.isArray(cfg.levels) && cfg.levels.length > 0) {
     const index = level - 1;
 
@@ -3447,7 +3373,7 @@ function getMaxLevelForBuilding(buildingId) {
     return Math.max(1, Number(meta.maxLevel) || 1);
   }
 
-  const cfg = EXTERNAL_BUILDING_LEVEL_CONFIG[id] || BUILDING_LEVEL_CONFIG[id];
+  const cfg = EXTERNAL_LEGACY_RDC_BUILDING_LEVEL_CONFIG[id] || LEGACY_RDC_BUILDING_LEVEL_CONFIG[id];
   if (cfg && Array.isArray(cfg.levels) && cfg.levels.length > 0) {
     return cfg.levels.length;
   }
