@@ -154,6 +154,17 @@ const {
   verifiedLastShelterBuildingLevelStatusAl
 } = require("./last_shelter_building_runtime_overlay");
 
+const {
+  LAST_SHELTER_HQ_BUILDING_ID,
+  LAST_SHELTER_ROAD_BUILDING_ID,
+  authoritativeBuildingMetaForRuntimeId,
+  canonicalRuntimeBuildingId,
+  isHeadquartersBuildingId,
+  isRoadBuildingId,
+  sameCanonicalBuildingType,
+  stateHighestBuildingLevel
+} = require("./last_shelter_building_identity_bridge");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -1836,9 +1847,7 @@ function oyuncuStatistikasiniTeminEt(state) {
 // ============================================================
 
 function gucUcunBinaIdNormallasdir(buildingId) {
-  return String(buildingId || "")
-    .trim()
-    .toLowerCase();
+  return canonicalRuntimeBuildingId(buildingId);
 }
 
 
@@ -1866,7 +1875,7 @@ function birBinaninGucunuHesabla(building) {
   }
 
   // Yol güc vermir.
-  if (binaId === "road") {
+  if (isRoadBuildingId(binaId)) {
     return 0;
   }
 
@@ -1881,7 +1890,7 @@ function birBinaninGucunuHesabla(building) {
   let levelBasiGuc = 100;
 
   switch (binaId) {
-    case "hq":
+    case LAST_SHELTER_HQ_BUILDING_ID:
       levelBasiGuc = 500;
       break;
 
@@ -2156,9 +2165,7 @@ function oyuncuGucMelumatlariniTeminEt(state) {
 // ============================================================
 
 function gucUcunBinaIdNormallasdir(buildingId) {
-  return String(buildingId || "")
-    .trim()
-    .toLowerCase();
+  return canonicalRuntimeBuildingId(buildingId);
 }
 
 
@@ -2186,7 +2193,7 @@ function birBinaninGucunuHesabla(building) {
   }
 
   // Yol oyunçu gücünü artırmır.
-  if (binaId === "road") {
+  if (isRoadBuildingId(binaId)) {
     return 0;
   }
 
@@ -2201,7 +2208,7 @@ function birBinaninGucunuHesabla(building) {
   let levelBasiGuc = 100;
 
   switch (binaId) {
-    case "hq":
+    case LAST_SHELTER_HQ_BUILDING_ID:
       levelBasiGuc = 500;
       break;
 
@@ -2733,7 +2740,7 @@ function cloneCostArray(cost) {
 }
 
 function makeFallbackLevelData(buildingId, targetLevel) {
-  const id = normalizeBuildingId(buildingId);
+  const id = canonicalRuntimeBuildingId(buildingId);
   const lvl = Math.max(1, Number(targetLevel) || 1);
 
   const baseWood = 100 * lvl;
@@ -2743,8 +2750,8 @@ function makeFallbackLevelData(buildingId, targetLevel) {
   let buildTimeSeconds = 15 + (lvl * 15);
 
   if (id === "vehicle_factory") buildTimeSeconds += 15;
-  if (id === "hq") buildTimeSeconds += 20;
-  if (id === "road") buildTimeSeconds = 0;
+  if (isHeadquartersBuildingId(id)) buildTimeSeconds += 20;
+  if (isRoadBuildingId(id)) buildTimeSeconds = 0;
 
   const cost = [
     { type: "wood", amount: baseWood },
@@ -3056,12 +3063,34 @@ function getDefinitionMeta(buildingId) {
 
   const hardcoded = HARD_CODED_BUILDING_DEFINITION_META[id] || null;
   const external = EXTERNAL_BUILDING_DEFINITION_META[id] || null;
+  const compatibility =
+    hardcoded && external
+      ? { ...hardcoded, ...external }
+      : (external || hardcoded || null);
 
-  if (hardcoded && external) {
-    return { ...hardcoded, ...external };
+  const authoritative =
+    authoritativeBuildingMetaForRuntimeId(id);
+
+  if (!authoritative) {
+    return compatibility;
   }
 
-  return external || hardcoded || null;
+  // building.xml is authoritative for fields it actually defines.
+  // Resource-slot placement stays compatibility-only until another original
+  // Last Shelter config proves its authoritative replacement.
+  return {
+    ...(compatibility || {}),
+    ...authoritative,
+    placementMode:
+      compatibility && compatibility.placementMode
+        ? compatibility.placementMode
+        : authoritative.placementMode,
+    requiredSlotType:
+      compatibility &&
+      Object.prototype.hasOwnProperty.call(compatibility, "requiredSlotType")
+        ? compatibility.requiredSlotType
+        : authoritative.requiredSlotType
+  };
 }
 
 function getPreviousTierBuildingId(buildingId) {
@@ -3104,7 +3133,7 @@ function getUnlockRuleForBuilding(buildingId) {
     requiredBuildingLevel: Math.max(0, Number(meta.requiredBuildingLevel) || 0)
   };
 
-  if (id === "road") {
+  if (isRoadBuildingId(id)) {
     rule.requiredMainBuildingLevel = 0;
     rule.requiredDepotLevel = 0;
     rule.requiredBuildingId = "";
@@ -3115,38 +3144,13 @@ function getUnlockRuleForBuilding(buildingId) {
 }
 
 function getHighestCompletedBuildingLevel(state, buildingId) {
-  const id = normalizeBuildingId(buildingId);
-
-  if (!state || !Array.isArray(state.buildings)) return 0;
-
-  let highestLevel = 0;
-
-  for (const building of state.buildings) {
-    if (!building) continue;
-    if (normalizeBuildingId(building.buildingId) !== id) continue;
-    if (!building.isCompleted) continue;
-
-    highestLevel = Math.max(highestLevel, Math.max(1, Number(building.level) || 1));
-  }
-
-  return highestLevel;
+  return stateHighestBuildingLevel(state, buildingId, {
+    completedOnly: true
+  });
 }
 
 function getHighestExistingBuildingLevel(state, buildingId) {
-  const id = normalizeBuildingId(buildingId);
-
-  if (!state || !Array.isArray(state.buildings)) return 0;
-
-  let highestLevel = 0;
-
-  for (const building of state.buildings) {
-    if (!building) continue;
-    if (normalizeBuildingId(building.buildingId) !== id) continue;
-
-    highestLevel = Math.max(highestLevel, Math.max(1, Number(building.level) || 1));
-  }
-
-  return highestLevel;
+  return stateHighestBuildingLevel(state, buildingId);
 }
 
 function checkUnlockRequirements(state, buildingId) {
@@ -3158,7 +3162,7 @@ function checkUnlockRequirements(state, buildingId) {
   }
 
   if (rule.requiredMainBuildingLevel > 0) {
-    const hqLevel = getHighestExistingBuildingLevel(state, "hq");
+    const hqLevel = getHighestExistingBuildingLevel(state, LAST_SHELTER_HQ_BUILDING_ID);
     if (hqLevel < rule.requiredMainBuildingLevel) {
       return {
         ok: false,
@@ -3171,8 +3175,8 @@ function checkUnlockRequirements(state, buildingId) {
     const requiredLevel = Math.max(1, Number(rule.requiredBuildingLevel) || 1);
     const requiredId = normalizeBuildingId(rule.requiredBuildingId);
     const currentLevel =
-      requiredId === "hq"
-        ? getHighestExistingBuildingLevel(state, "hq")
+      isHeadquartersBuildingId(requiredId)
+        ? getHighestExistingBuildingLevel(state, LAST_SHELTER_HQ_BUILDING_ID)
         : getHighestCompletedBuildingLevel(state, requiredId);
 
     if (currentLevel < requiredLevel) {
@@ -3222,7 +3226,7 @@ function getAllowedPlacedCountForBuilding(state, buildingId) {
     return absoluteMax;
   }
 
-  const hqLevel = getHighestExistingBuildingLevel(state, "hq");
+  const hqLevel = getHighestExistingBuildingLevel(state, LAST_SHELTER_HQ_BUILDING_ID);
   let allowed = 0;
 
   for (const step of steps) {
@@ -3253,7 +3257,7 @@ function countPlacedBuildingsOfType(state, buildingId) {
   if (!state || !Array.isArray(state.buildings)) return 0;
 
   return state.buildings.filter(
-    (b) => b && normalizeBuildingId(b.buildingId) === id
+    (b) => b && sameCanonicalBuildingType(b.buildingId, id)
   ).length;
 }
 
@@ -3266,7 +3270,7 @@ function getNextUnlockCountRequirement(state, buildingId) {
 
   if (steps.length === 0) return null;
 
-  const hqLevel = getHighestExistingBuildingLevel(state, "hq");
+  const hqLevel = getHighestExistingBuildingLevel(state, LAST_SHELTER_HQ_BUILDING_ID);
   for (const step of steps) {
     const reqLevel = Math.max(1, Number(step.requiredMainBuildingLevel) || 1);
     if (hqLevel < reqLevel) {
@@ -5708,25 +5712,25 @@ function createStarterRoadRing(playerId, hqX, hqZ, hqSizeX, hqSizeZ) {
   const minRoadZ = hqZ - 1;
   const maxRoadZ = hqZ + hqSizeZ;
 
-  roads.push({ instanceId: "road_tl_" + playerId, buildingId: "road", x: minRoadX,     z: maxRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
-  roads.push({ instanceId: "road_t1_" + playerId, buildingId: "road", x: minRoadX + 1, z: maxRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
-  roads.push({ instanceId: "road_t2_" + playerId, buildingId: "road", x: minRoadX + 2, z: maxRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
-  roads.push({ instanceId: "road_t3_" + playerId, buildingId: "road", x: minRoadX + 3, z: maxRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
-  roads.push({ instanceId: "road_tr_" + playerId, buildingId: "road", x: maxRoadX,     z: maxRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
+  roads.push({ instanceId: "road_tl_" + playerId, buildingId: LAST_SHELTER_ROAD_BUILDING_ID, x: minRoadX,     z: maxRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
+  roads.push({ instanceId: "road_t1_" + playerId, buildingId: LAST_SHELTER_ROAD_BUILDING_ID, x: minRoadX + 1, z: maxRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
+  roads.push({ instanceId: "road_t2_" + playerId, buildingId: LAST_SHELTER_ROAD_BUILDING_ID, x: minRoadX + 2, z: maxRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
+  roads.push({ instanceId: "road_t3_" + playerId, buildingId: LAST_SHELTER_ROAD_BUILDING_ID, x: minRoadX + 3, z: maxRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
+  roads.push({ instanceId: "road_tr_" + playerId, buildingId: LAST_SHELTER_ROAD_BUILDING_ID, x: maxRoadX,     z: maxRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
 
-  roads.push({ instanceId: "road_bl_" + playerId, buildingId: "road", x: minRoadX,     z: minRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
-  roads.push({ instanceId: "road_b1_" + playerId, buildingId: "road", x: minRoadX + 1, z: minRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
-  roads.push({ instanceId: "road_b2_" + playerId, buildingId: "road", x: minRoadX + 2, z: minRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
-  roads.push({ instanceId: "road_b3_" + playerId, buildingId: "road", x: minRoadX + 3, z: minRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
-  roads.push({ instanceId: "road_br_" + playerId, buildingId: "road", x: maxRoadX,     z: minRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
+  roads.push({ instanceId: "road_bl_" + playerId, buildingId: LAST_SHELTER_ROAD_BUILDING_ID, x: minRoadX,     z: minRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
+  roads.push({ instanceId: "road_b1_" + playerId, buildingId: LAST_SHELTER_ROAD_BUILDING_ID, x: minRoadX + 1, z: minRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
+  roads.push({ instanceId: "road_b2_" + playerId, buildingId: LAST_SHELTER_ROAD_BUILDING_ID, x: minRoadX + 2, z: minRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
+  roads.push({ instanceId: "road_b3_" + playerId, buildingId: LAST_SHELTER_ROAD_BUILDING_ID, x: minRoadX + 3, z: minRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
+  roads.push({ instanceId: "road_br_" + playerId, buildingId: LAST_SHELTER_ROAD_BUILDING_ID, x: maxRoadX,     z: minRoadZ, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
 
-  roads.push({ instanceId: "road_l1_" + playerId, buildingId: "road", x: minRoadX, z: hqZ,     level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
-  roads.push({ instanceId: "road_l2_" + playerId, buildingId: "road", x: minRoadX, z: hqZ + 1, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
-  roads.push({ instanceId: "road_l3_" + playerId, buildingId: "road", x: minRoadX, z: hqZ + 2, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
+  roads.push({ instanceId: "road_l1_" + playerId, buildingId: LAST_SHELTER_ROAD_BUILDING_ID, x: minRoadX, z: hqZ,     level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
+  roads.push({ instanceId: "road_l2_" + playerId, buildingId: LAST_SHELTER_ROAD_BUILDING_ID, x: minRoadX, z: hqZ + 1, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
+  roads.push({ instanceId: "road_l3_" + playerId, buildingId: LAST_SHELTER_ROAD_BUILDING_ID, x: minRoadX, z: hqZ + 2, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
 
-  roads.push({ instanceId: "road_r1_" + playerId, buildingId: "road", x: maxRoadX, z: hqZ,     level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
-  roads.push({ instanceId: "road_r2_" + playerId, buildingId: "road", x: maxRoadX, z: hqZ + 1, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
-  roads.push({ instanceId: "road_r3_" + playerId, buildingId: "road", x: maxRoadX, z: hqZ + 2, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
+  roads.push({ instanceId: "road_r1_" + playerId, buildingId: LAST_SHELTER_ROAD_BUILDING_ID, x: maxRoadX, z: hqZ,     level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
+  roads.push({ instanceId: "road_r2_" + playerId, buildingId: LAST_SHELTER_ROAD_BUILDING_ID, x: maxRoadX, z: hqZ + 1, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
+  roads.push({ instanceId: "road_r3_" + playerId, buildingId: LAST_SHELTER_ROAD_BUILDING_ID, x: maxRoadX, z: hqZ + 2, level: 1, isCompleted: true, buildFinishTimeMs: 0, isFixed: true, hasRoadAccess: true });
 
   return roads;
 }
@@ -5748,7 +5752,7 @@ function createStarterLayout(playerId) {
 
   const hq = {
     instanceId: "hq_" + playerId,
-    buildingId: "hq",
+    buildingId: LAST_SHELTER_HQ_BUILDING_ID,
     x: hqX,
     z: hqZ,
     level: 1,
@@ -6149,7 +6153,7 @@ function rebuildBlockedCellCache(state) {
       if (!b) continue;
 
       const id = normalizeBuildingId(b.buildingId);
-      if (id === "road") continue;
+      if (isRoadBuildingId(id)) continue;
 
       const rules = getBuildingRules(b.buildingId);
       if (!rules) continue;
@@ -6475,7 +6479,7 @@ function createRoadsAlongPath(state, path) {
 
   for (const b of state.buildings) {
     if (!b) continue;
-    if (normalizeBuildingId(b.buildingId) !== "road") continue;
+    if (!isRoadBuildingId(b.buildingId)) continue;
 
     occupiedRoadKeys.add(makeRoadKey(b.x, b.z));
   }
@@ -6487,7 +6491,7 @@ function createRoadsAlongPath(state, path) {
 
     const road = {
       instanceId: crypto.randomBytes(8).toString("hex"),
-      buildingId: "road",
+      buildingId: LAST_SHELTER_ROAD_BUILDING_ID,
       x: cell.x,
       z: cell.z,
       level: 1,
@@ -6929,7 +6933,7 @@ function getConnectedRoadKeys(state) {
 
   for (const b of state.buildings) {
     if (!b) continue;
-    if (normalizeBuildingId(b.buildingId) !== "road") continue;
+    if (!isRoadBuildingId(b.buildingId)) continue;
 
     const key = makeRoadKey(b.x, b.z);
     roadMap.set(key, b);
@@ -6939,7 +6943,7 @@ function getConnectedRoadKeys(state) {
 
   for (const b of state.buildings) {
     if (!b) continue;
-    if (normalizeBuildingId(b.buildingId) !== "road") continue;
+    if (!isRoadBuildingId(b.buildingId)) continue;
     if (!b.isFixed) continue;
 
     const key = makeRoadKey(b.x, b.z);
@@ -6977,12 +6981,12 @@ function refreshRoadAccessForBuildings(state) {
 
     const id = normalizeBuildingId(b.buildingId);
 
-    if (id === "hq") {
+    if (isHeadquartersBuildingId(id)) {
       b.hasRoadAccess = true;
       continue;
     }
 
-    if (id === "road") {
+    if (isRoadBuildingId(id)) {
       b.hasRoadAccess = true;
       continue;
     }
@@ -7744,7 +7748,7 @@ function removeRoadAtCell(state, x, z) {
   const index = state.buildings.findIndex(
     (b) =>
       b &&
-      String(b.buildingId || "").trim().toLowerCase() === "road" &&
+      isRoadBuildingId(b.buildingId) &&
       Number(b.x) === Number(x) &&
       Number(b.z) === Number(z)
   );
@@ -7773,7 +7777,7 @@ function placeBuildingWithoutStarting(state, buildingId, x, z) {
   const instanceId = crypto.randomBytes(8).toString("hex");
   const id = normalizeBuildingId(buildingId);
 
-  const isInstantCompleted = (id === "road" || isGarageBuildingId(id));
+  const isInstantCompleted = (isRoadBuildingId(id) || isGarageBuildingId(id));
 
   const building = {
     instanceId: instanceId,
