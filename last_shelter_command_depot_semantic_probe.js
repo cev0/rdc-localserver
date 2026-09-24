@@ -85,6 +85,7 @@ sourceCatalog.release("building");
 console.log("STORAGE_TIER_PROBE="+JSON.stringify(storageTierRows));
 
 
+
 const candidateBuildingIds=[
   "410000","416000","417000","419000","426000","427000","435000",
   "444000","446000","447000","448000","483000","486000"
@@ -105,42 +106,33 @@ function compactSemanticEntry(entry){
   };
 }
 
-const candidateCrossRefs={};
-for(const candidateId of candidateBuildingIds){
-  const hits=[];
-  for(const catalogName of sourceCatalog.names()){
-    if(catalogName==="building") continue;
-    const entries=sourceCatalog.entries(catalogName);
-    for(const entry of entries){
-      const raw=JSON.stringify(entry && entry.attributes || {});
-      if(!raw.includes(candidateId)) continue;
-      hits.push({
-        catalog:catalogName,
-        ...compactSemanticEntry(entry)
-      });
-      if(hits.length>=60) break;
-    }
-    sourceCatalog.release(catalogName);
-    if(hits.length>=60) break;
-  }
-  candidateCrossRefs[candidateId]=hits;
-}
-console.log("CANDIDATE_BUILDING_CROSS_REFS="+JSON.stringify(candidateCrossRefs));
-
 const semanticRegex=/(command[_ -]?center|depot|warehouse|storage|garrison|barrack|military|radar|clone|chip[_ -]?building|hero(?:es)?[_ -]?hall|management[_ -]?station|commercial[_ -]?hub)/i;
+const candidateCrossRefs=Object.fromEntries(candidateBuildingIds.map(id=>[id,[]]));
 const semanticTextHits=[];
+
 for(const catalogName of sourceCatalog.names()){
+  if(catalogName==="building") continue;
   const entries=sourceCatalog.entries(catalogName);
   for(const entry of entries){
     const raw=JSON.stringify(entry && entry.attributes || {});
-    if(!semanticRegex.test(raw)) continue;
-    semanticTextHits.push({
-      catalog:catalogName,
-      ...compactSemanticEntry(entry)
-    });
-    if(semanticTextHits.length>=220) break;
+    for(const candidateId of candidateBuildingIds){
+      const bucket=candidateCrossRefs[candidateId];
+      if(bucket.length<60 && raw.includes(candidateId)){
+        bucket.push({
+          catalog:catalogName,
+          ...compactSemanticEntry(entry)
+        });
+      }
+    }
+    if(semanticTextHits.length<220 && semanticRegex.test(raw)){
+      semanticTextHits.push({
+        catalog:catalogName,
+        ...compactSemanticEntry(entry)
+      });
+    }
   }
   sourceCatalog.release(catalogName);
-  if(semanticTextHits.length>=220) break;
 }
+
+console.log("CANDIDATE_BUILDING_CROSS_REFS="+JSON.stringify(candidateCrossRefs));
 console.log("COMMAND_DEPOT_TEXT_HITS="+JSON.stringify(semanticTextHits));
