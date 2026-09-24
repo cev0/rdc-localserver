@@ -25,6 +25,14 @@ assert.deepStrictEqual(status("hq",6), {mapped:true,buildingId:"hq",buildingType
 assert.strictEqual(level("hq",25).buildTimeSeconds,1893030);
 assert.strictEqual(level("hq",25).cost.find(row => row.type === "money").amount,34000000);
 assert.strictEqual(level("hq",26),null,"Source rows above the declared cap must not unlock higher levels");
-assert.strictEqual(level("farm",1),null);
-assert.strictEqual(max("farm"),0);
+const farmFirst = level("farm", 1);
+assert.strictEqual(farmFirst.buildingTypeId, "415000");
+assert.strictEqual(farmFirst.xmlId, "415000");
+assert.strictEqual(farmFirst.targetXmlId, "415001");
+assert.strictEqual(farmFirst.buildTimeSeconds, 2);
+assert.deepStrictEqual(farmFirst.cost, [{ type:"iron", amount:100 }]);
+assert.deepStrictEqual(farmFirst.buildingConditions, [
+  { buildingTypeId:"400000", level:1 }
+]);
+assert.strictEqual(max("farm"),25);
 console.log("PASS: complete HQ costs use the current XML level and enforce the declared cap.");
