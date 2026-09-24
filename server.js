@@ -161,6 +161,7 @@ const {
   canonicalRuntimeBuildingId,
   isHeadquartersBuildingId,
   isRoadBuildingId,
+  mappedLastShelterBuildingTypeId,
   sameCanonicalBuildingType,
   stateHighestBuildingLevel
 } = require("./last_shelter_building_identity_bridge");
@@ -3124,6 +3125,16 @@ function resolveUnlockRequiredBuildingId(buildingId, meta) {
 
 function getUnlockRuleForBuilding(buildingId) {
   const id = normalizeBuildingId(buildingId);
+
+  if (mappedLastShelterBuildingTypeId(id)) {
+    return {
+      requiredMainBuildingLevel: 0,
+      requiredDepotLevel: 0,
+      requiredBuildingId: "",
+      requiredBuildingLevel: 0
+    };
+  }
+
   const meta = getDefinitionMeta(id) || {};
 
   const rule = {
@@ -3155,6 +3166,17 @@ function getHighestExistingBuildingLevel(state, buildingId) {
 
 function checkUnlockRequirements(state, buildingId) {
   const id = normalizeBuildingId(buildingId);
+
+  // Mapped Last Shelter buildings are gated by original building.xml
+  // prerequisites in runtime_build_commands / gameplay mutation routes.
+  // This function is now compatibility-only for genuinely unmapped RDC IDs.
+  if (mappedLastShelterBuildingTypeId(id)) {
+    return {
+      ok: true,
+      source: "last_shelter_building_xml_authoritative"
+    };
+  }
+
   const rule = getUnlockRuleForBuilding(id);
 
   if (!rule) {
@@ -3218,6 +3240,12 @@ function getAllowedPlacedCountForBuilding(state, buildingId) {
     return absoluteMax;
   }
 
+  // building.xml 'num' is the authoritative placement cap for mapped types.
+  // Old RDC HQ-level count steps remain only for unmapped compatibility IDs.
+  if (mappedLastShelterBuildingTypeId(id)) {
+    return absoluteMax;
+  }
+
   const steps = Array.isArray(meta.unlockCountByMainBuildingLevel)
     ? meta.unlockCountByMainBuildingLevel
     : [];
@@ -3263,6 +3291,11 @@ function countPlacedBuildingsOfType(state, buildingId) {
 
 function getNextUnlockCountRequirement(state, buildingId) {
   const id = normalizeBuildingId(buildingId);
+
+  if (mappedLastShelterBuildingTypeId(id)) {
+    return null;
+  }
+
   const meta = getDefinitionMeta(id) || {};
   const steps = Array.isArray(meta.unlockCountByMainBuildingLevel)
     ? meta.unlockCountByMainBuildingLevel
@@ -3521,11 +3554,9 @@ function refreshBuilderCapacity(state) {
 function hasUnfinishedBuildingOfSameType(state, buildingId) {
   if (!state || !Array.isArray(state.buildings)) return false;
 
-  const normalizedId = normalizeBuildingId(buildingId);
-
   for (const building of state.buildings) {
     if (!building) continue;
-    if (normalizeBuildingId(building.buildingId) !== normalizedId) continue;
+    if (!sameCanonicalBuildingType(building.buildingId, buildingId)) continue;
     if (building.isCompleted) continue;
     return true;
   }
@@ -7775,13 +7806,13 @@ function removeRoadAtCell(state, x, z) {
 
 function placeBuildingWithoutStarting(state, buildingId, x, z) {
   const instanceId = crypto.randomBytes(8).toString("hex");
-  const id = normalizeBuildingId(buildingId);
+  const id = canonicalRuntimeBuildingId(buildingId);
 
   const isInstantCompleted = (isRoadBuildingId(id) || isGarageBuildingId(id));
 
   const building = {
     instanceId: instanceId,
-    buildingId: buildingId,
+    buildingId: id,
     x: x,
     z: z,
     level: 1,
@@ -7803,7 +7834,8 @@ function placeBuildingWithoutStarting(state, buildingId, x, z) {
 
 function createBuildJob(state, buildingId, x, z) {
   const now = nowMs();
-  const levelData = getLevelData(buildingId, 1);
+  const canonicalBuildingId = canonicalRuntimeBuildingId(buildingId);
+  const levelData = getLevelData(canonicalBuildingId, 1);
   const durationMs = getAdjustedBuildDurationMs(
     state,
     Number(levelData.buildTimeSeconds) || 0
@@ -7814,7 +7846,7 @@ function createBuildJob(state, buildingId, x, z) {
 
   const building = {
     instanceId: instanceId,
-    buildingId: buildingId,
+    buildingId: canonicalBuildingId,
     x: x,
     z: z,
     level: 1,
@@ -7828,7 +7860,7 @@ function createBuildJob(state, buildingId, x, z) {
     jobId: jobId,
     kind: "build",
     buildingInstanceId: instanceId,
-    buildingId: buildingId,
+    buildingId: canonicalBuildingId,
     x: x,
     z: z,
     targetLevel: 1,

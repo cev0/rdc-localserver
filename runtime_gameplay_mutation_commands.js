@@ -3,6 +3,11 @@
 const crypto = require("crypto");
 const { sourceBuildingPrerequisites } = require("./last_shelter_building_state");
 const {
+  isHeadquartersBuildingId,
+  isRoadBuildingId,
+  sameCanonicalBuildingType
+} = require("./last_shelter_building_identity_bridge");
+const {
   playerIdUyugunluqYoxla
 } = require("./runtime_core_read_commands");
 const {
@@ -124,7 +129,10 @@ function gameplayMutationCommandleriniQeydEt(
               b =>
                 b &&
                 b.instanceId === buildingInstanceId &&
-                normalizeBuildingId(b.buildingId) === "institute"
+                sameCanonicalBuildingType(
+                  b.buildingId,
+                  "institute"
+                )
             )
           : null;
 
@@ -336,8 +344,8 @@ function gameplayMutationCommandleriniQeydEt(
         );
 
       if (
-        buildingId === "road" ||
-        buildingId === "hq" ||
+        isRoadBuildingId(buildingId) ||
+        isHeadquartersBuildingId(buildingId) ||
         isGarageBuildingId(buildingId)
       ) {
         errorGonder(
@@ -695,7 +703,7 @@ function gameplayMutationCommandleriniQeydEt(
         );
 
       if (
-        buildingId === "road" ||
+        isRoadBuildingId(buildingId) ||
         isUpgradeDisabledBuildingId(
           buildingId
         )

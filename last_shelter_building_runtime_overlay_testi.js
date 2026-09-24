@@ -3,7 +3,7 @@ const assert = require("assert");
 const { verifiedLastShelterBuildingLevelDataAl: level, verifiedLastShelterBuildingMaxLevelAl: max,
   verifiedLastShelterBuildingLevelStatusAl: status } = require("./last_shelter_building_runtime_overlay");
 const first = level("hq", 1);
-assert.strictEqual(first.source, "last_shelter_v1.250.102_building_xml_verified");
+assert.strictEqual(first.source, "last_shelter_building_xml_authoritative");
 assert.strictEqual(first.buildingTypeId, "400000");
 assert.strictEqual(first.xmlId, "400000");
 assert.strictEqual(first.targetXmlId, "400001");

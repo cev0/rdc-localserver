@@ -14,6 +14,9 @@ on:
       - 'runtime_last_shelter_command_registry_testi.js'
       - 'runtime_gameplay_mutation_commands.js'
       - 'runtime_gameplay_mutation_commands_testi.js'
+      - 'runtime_build_commands.js'
+      - 'runtime_build_commands_testi.js'
+      - 'last_shelter_building_identity_bridge.js'
       - 'server.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-building-runtime-observed.yml'
@@ -29,6 +32,9 @@ on:
       - 'runtime_last_shelter_command_registry_testi.js'
       - 'runtime_gameplay_mutation_commands.js'
       - 'runtime_gameplay_mutation_commands_testi.js'
+      - 'runtime_build_commands.js'
+      - 'runtime_build_commands_testi.js'
+      - 'last_shelter_building_identity_bridge.js'
       - 'server.js'
       - 'server_unit_regressiya_testi.js'
       - '.github/workflows/last-shelter-building-runtime-observed.yml'
@@ -46,3 +52,4 @@ jobs:
       - run: node runtime_last_shelter_building_reference_commands_testi.js
       - run: node runtime_last_shelter_command_registry_testi.js
       - run: node runtime_gameplay_mutation_commands_testi.js
+      - run: node runtime_build_commands_testi.js

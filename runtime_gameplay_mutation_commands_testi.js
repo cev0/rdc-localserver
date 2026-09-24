@@ -27,7 +27,7 @@ const {
     buildings: [
       {
         instanceId: "institute-1",
-        buildingId: "institute",
+        buildingId: "403000",
         isCompleted: true,
         hasRoadAccess: true
       }
@@ -277,6 +277,35 @@ const {
   deadlines.length = 0;
 
   state.buildings.push({
+    instanceId: "road-authoritative",
+    buildingId: "436000",
+    level: 1,
+    isCompleted: false,
+    hasRoadAccess: true,
+    buildFinishTimeMs: 0
+  });
+
+  await router.dispatch({
+    type: "start_construction_request",
+    msg: {
+      type: "start_construction_request",
+      playerId: "p1",
+      buildingInstanceId: "road-authoritative"
+    },
+    ws,
+    send,
+    nowMs: () => 250
+  });
+
+  assert.strictEqual(
+    sent[0].message,
+    "This building cannot start construction",
+    "Numeric road must retain road-only construction behavior."
+  );
+
+  sent.length = 0;
+
+  state.buildings.push({
     instanceId: "fighter-camp-1",
     buildingId: "fighter_camp",
     level: 1,
@@ -337,7 +366,7 @@ const {
 
   state.buildings.push({
     instanceId: "hq-1",
-    buildingId: "hq",
+    buildingId: "400000",
     level: 5,
     isCompleted: true,
     hasRoadAccess: true
@@ -402,8 +431,8 @@ const {
 
   assert.strictEqual(
     lockCalls.length,
-    4,
-    "Training ve verified-gap upgrade request-ləri PostgreSQL-authoritative executor-dan keçməlidir."
+    5,
+    "Numeric road, training ve verified-gap upgrade request-ləri PostgreSQL-authoritative executor-dan keçməlidir."
   );
 
   // Real source HQ level 1 -> 2 requires food distribution and housing.

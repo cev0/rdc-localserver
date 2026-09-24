@@ -15,6 +15,11 @@ const {
   const sent = [];
   const mapCalls = [];
   const locks = [];
+  let legacyUnlockCalls = 0;
+
+  const {
+    verifiedLastShelterBuildingLevelDataAl
+  } = require("./last_shelter_building_runtime_overlay");
 
   const state = {
     playerId: "p1",
@@ -101,7 +106,16 @@ const {
         () => ({ ok: true }),
 
       checkUnlockRequirements:
-        () => ({ ok: true }),
+        (_state, buildingId) => {
+          legacyUnlockCalls += 1;
+
+          return buildingId === "testbuilding"
+            ? { ok: true }
+            : {
+                ok: false,
+                message: "legacy unlock must not gate mapped Last Shelter buildings"
+              };
+        },
 
       countPlacedBuildingsOfType:
         () => 0,
@@ -125,9 +139,15 @@ const {
         () => false,
 
       getLevelData:
-        () => ({
-          cost: []
-        }),
+        (buildingId, targetLevel) =>
+          verifiedLastShelterBuildingLevelDataAl(
+            buildingId,
+            targetLevel
+          ) || {
+            buildingId,
+            targetLevel,
+            cost: []
+          },
 
       hasEnoughResources:
         () => ({
@@ -197,7 +217,7 @@ const {
       msg: {
         type: "build_request",
         playerId: "p1",
-        buildingId: "farm",
+        buildingId: "testbuilding",
         x: 4,
         z: 6
       },
@@ -237,6 +257,80 @@ const {
       "local:p1",
       "world:p1"
     ]
+  );
+
+  assert.strictEqual(
+    legacyUnlockCalls,
+    1,
+    "Unmapped RDC building must still use the compatibility unlock gate."
+  );
+
+  sent.length = 0;
+
+  await router.dispatch({
+    type: "build_request",
+    msg: {
+      type: "build_request",
+      playerId: "p1",
+      buildingId: "436000",
+      x: 8,
+      z: 8
+    },
+    ws,
+    send,
+    nowMs: () => 1100
+  });
+
+  assert.strictEqual(
+    sent[0].code,
+    "BUILDING_CONDITION_NOT_MET",
+    "Numeric road placement must enforce original building.xml HQ prerequisite."
+  );
+
+  assert.strictEqual(
+    legacyUnlockCalls,
+    1,
+    "Mapped Last Shelter placement must not call the legacy unlock gate."
+  );
+
+  state.buildings.push({
+    instanceId: "hq-authoritative",
+    buildingId: "400000",
+    level: 1,
+    isCompleted: true,
+    buildFinishTimeMs: 0
+  });
+
+  sent.length = 0;
+
+  await router.dispatch({
+    type: "build_request",
+    msg: {
+      type: "build_request",
+      playerId: "p1",
+      buildingId: "436000",
+      x: 8,
+      z: 8
+    },
+    ws,
+    send,
+    nowMs: () => 1200
+  });
+
+  assert.strictEqual(
+    sent[0].type,
+    "build_placed"
+  );
+
+  assert.strictEqual(
+    JSON.parse(sent[0].payloadJson).buildingId,
+    "436000"
+  );
+
+  assert.strictEqual(
+    legacyUnlockCalls,
+    1,
+    "Satisfied mapped placement remains authoritative and bypasses legacy unlock metadata."
   );
 
   const serverCode =

@@ -4,6 +4,16 @@ const {
   playerIdUyugunluqYoxla
 } = require("./runtime_core_read_commands");
 
+const {
+  sourceBuildingPrerequisites
+} = require("./last_shelter_building_state");
+
+const {
+  LAST_SHELTER_ROAD_BUILDING_ID,
+  isRoadBuildingId,
+  mappedLastShelterBuildingTypeId
+} = require("./last_shelter_building_identity_bridge");
+
 function errorGonder(send, ws, message, code) {
   send(ws, {
     type: "error",
@@ -179,7 +189,7 @@ function buildCommandleriniQeydEt(
             JSON.stringify({
               x,
               z,
-              buildingId: "road"
+              buildingId: LAST_SHELTER_ROAD_BUILDING_ID
             })
         });
 
@@ -197,19 +207,70 @@ function buildCommandleriniQeydEt(
         return;
       }
 
-      const unlockCheck =
-        checkUnlockRequirements(
-          state,
+      const mappedBuildingTypeId =
+        mappedLastShelterBuildingTypeId(
           normalizedBuildingId
         );
 
-      if (!unlockCheck.ok) {
-        errorGonder(
-          send,
-          ws,
-          unlockCheck.message
-        );
-        return;
+      if (mappedBuildingTypeId) {
+        const placementLevelData =
+          getLevelData(
+            normalizedBuildingId,
+            1
+          );
+
+        if (
+          !placementLevelData ||
+          placementLevelData.unavailable === true
+        ) {
+          errorGonder(
+            send,
+            ws,
+            "Verified Last Shelter building level data is incomplete for placement",
+            "BUILDING_LEVEL_REFERENCE_INCOMPLETE"
+          );
+          return;
+        }
+
+        const prerequisite =
+          sourceBuildingPrerequisites(
+            state,
+            {
+              ...placementLevelData,
+              buildingId:
+                normalizedBuildingId,
+              buildingTypeId:
+                mappedBuildingTypeId,
+              targetLevel:
+                1
+            }
+          );
+
+        if (!prerequisite.ok) {
+          errorGonder(
+            send,
+            ws,
+            "Required Last Shelter building level is missing",
+            "BUILDING_CONDITION_NOT_MET"
+          );
+          return;
+        }
+      }
+      else {
+        const unlockCheck =
+          checkUnlockRequirements(
+            state,
+            normalizedBuildingId
+          );
+
+        if (!unlockCheck.ok) {
+          errorGonder(
+            send,
+            ws,
+            unlockCheck.message
+          );
+          return;
+        }
       }
 
       const currentPlacedCount =
@@ -295,8 +356,9 @@ function buildCommandleriniQeydEt(
       }
 
       if (
-        normalizedBuildingId ===
-          "road" ||
+        isRoadBuildingId(
+          normalizedBuildingId
+        ) ||
         isGarageBuildingId(
           normalizedBuildingId
         )
