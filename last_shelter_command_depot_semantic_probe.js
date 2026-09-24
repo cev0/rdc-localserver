@@ -176,3 +176,35 @@ for(const catalogName of semanticCatalogs){
   sourceCatalog.release(catalogName);
 }
 console.log("REMAINING_SEMANTIC_CATALOG_HITS="+JSON.stringify(semanticCatalogSamples));
+
+
+const promotionStorageCatalogs=["train","trooptran","extraArms","battle_protect","resources","resource2","alliance_item_warehouse"];
+const promotionStorageProbe={};
+for(const catalogName of promotionStorageCatalogs){
+  const rows=sourceCatalog.rows(catalogName);
+  promotionStorageProbe[catalogName]={
+    keys:[...new Set(rows.flatMap(row=>Object.keys(row)))].sort(),
+    rows:rows.slice(0,300)
+  };
+  sourceCatalog.release(catalogName);
+}
+console.log("COMMAND_PROMOTION_STORAGE_PROBE="+JSON.stringify(promotionStorageProbe));
+
+const exactCandidateIds=["401000","404000","410000","416000","419000","427000","428000","435000","444000","447000","448000"];
+const exactCandidateRefs=Object.fromEntries(exactCandidateIds.map(id=>[id,[]]));
+for(const catalogName of sourceCatalog.names()){
+  if(catalogName==="building" || catalogName==="building_b") continue;
+  const rows=sourceCatalog.rows(catalogName);
+  for(const row of rows){
+    const raw=JSON.stringify(row||{});
+    for(const id of exactCandidateIds){
+      if(exactCandidateRefs[id].length>=120) continue;
+      const re=new RegExp("(^|[^0-9])"+id+"([^0-9]|$)");
+      if(re.test(raw)){
+        exactCandidateRefs[id].push({catalog:catalogName,row});
+      }
+    }
+  }
+  sourceCatalog.release(catalogName);
+}
+console.log("EXACT_REMAINING_BUILDING_REFS="+JSON.stringify(exactCandidateRefs));
