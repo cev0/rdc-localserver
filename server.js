@@ -169,6 +169,11 @@ const {
   stateHighestBuildingLevel
 } = require("./last_shelter_building_identity_bridge");
 
+const {
+  lastShelterResourceProductionReferenceAl,
+  lastShelterResourceStorageReferenceAl
+} = require("./last_shelter_resource_building_reference");
+
 // ============================================================
 // TEMP BUILDING LEVEL DATA
 // ------------------------------------------------------------
@@ -2324,6 +2329,25 @@ function ensureResourceCapsObject(state) {
 function getStorageRule(buildingId, buildingLevel) {
   const id = normalizeBuildingId(buildingId);
   const level = Math.max(1, Number(buildingLevel) || 1);
+
+  const sourceStorage =
+    lastShelterResourceStorageReferenceAl(
+      id,
+      level
+    );
+
+  if (
+    sourceStorage &&
+    sourceStorage.capacity > 0
+  ) {
+    return {
+      resourceType:
+        sourceStorage.resourceType,
+      capacityBonus:
+        sourceStorage.capacity
+    };
+  }
+
   const meta = getDefinitionMeta(id);
   const levelData = getLevelData(id, level);
 
@@ -2337,59 +2361,7 @@ function getStorageRule(buildingId, buildingLevel) {
     }
   }
 
-  function bonusByLevel(level1, level2, level3, level4) {
-    if (level <= 1) return level1;
-    if (level === 2) return level2;
-    if (level === 3) return level3;
-    return level4;
-  }
-
-  switch (id) {
-    case "granary_1":
-      return { resourceType: "food", capacityBonus: bonusByLevel(5000, 7000, 9000, 12000) };
-    case "granary_2":
-      return { resourceType: "food", capacityBonus: bonusByLevel(9000, 12000, 16000, 21000) };
-    case "granary_3":
-      return { resourceType: "food", capacityBonus: bonusByLevel(14000, 18000, 23000, 30000) };
-
-    case "water_tank_1":
-      return { resourceType: "water", capacityBonus: bonusByLevel(5000, 7000, 9000, 12000) };
-    case "water_tank_2":
-      return { resourceType: "water", capacityBonus: bonusByLevel(9000, 12000, 16000, 21000) };
-    case "water_tank_3":
-      return { resourceType: "water", capacityBonus: bonusByLevel(14000, 18000, 23000, 30000) };
-
-    case "lumber_warehouse_1":
-      return { resourceType: "wood", capacityBonus: bonusByLevel(5000, 7000, 9000, 12000) };
-    case "lumber_warehouse_2":
-      return { resourceType: "wood", capacityBonus: bonusByLevel(9000, 12000, 16000, 21000) };
-    case "lumber_warehouse_3":
-      return { resourceType: "wood", capacityBonus: bonusByLevel(14000, 18000, 23000, 30000) };
-
-    case "iron_warehouse_1":
-      return { resourceType: "iron", capacityBonus: bonusByLevel(5000, 7000, 9000, 12000) };
-    case "iron_warehouse_2":
-      return { resourceType: "iron", capacityBonus: bonusByLevel(9000, 12000, 16000, 21000) };
-    case "iron_warehouse_3":
-      return { resourceType: "iron", capacityBonus: bonusByLevel(14000, 18000, 23000, 30000) };
-
-    case "oil_storage_tank_1":
-      return { resourceType: "fuel", capacityBonus: bonusByLevel(5000, 7000, 9000, 12000) };
-    case "oil_storage_tank_2":
-      return { resourceType: "fuel", capacityBonus: bonusByLevel(9000, 12000, 16000, 21000) };
-    case "oil_storage_tank_3":
-      return { resourceType: "fuel", capacityBonus: bonusByLevel(14000, 18000, 23000, 30000) };
-
-    case "power_storage_facility_1":
-      return { resourceType: "electricity", capacityBonus: bonusByLevel(5000, 7000, 9000, 12000) };
-    case "power_storage_facility_2":
-      return { resourceType: "electricity", capacityBonus: bonusByLevel(9000, 12000, 16000, 21000) };
-    case "power_storage_facility_3":
-      return { resourceType: "electricity", capacityBonus: bonusByLevel(14000, 18000, 23000, 30000) };
-
-    default:
-      return null;
-  }
+  return null;
 }
 
 function calculateResourceCaps(state) {
@@ -2503,9 +2475,6 @@ function getSpecialEffectRule(buildingId, buildingLevel) {
 
     case "chip_plant":
       return { effectType: "chips_per_tick", value: amountByLevel(1, 2, 3, 5) };
-
-    case "power_plant":
-      return { effectType: "electricity_per_tick", value: amountByLevel(8, 14, 22, 32) };
 
     default:
       return null;
@@ -2640,41 +2609,17 @@ const LEGACY_RDC_BUILDING_DEFINITION_META = {
   "command_center": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "commercial_hub": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "depot": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "farm": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "resource_slot", requiredSlotType: "food", multiBuild: true, maxPlacedCount: 0, builderSlotsRequired: 1, maxLevel: 4 },
   "garage_1": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: false, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 1 },
   "garage_2": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: false, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 1 },
   "garage_3": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: false, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 1 },
   "garage_4": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: false, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 1 },
   "garrison": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "granary_1": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "granary_2": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "granary_3": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "heroes_hall": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "iron_warehouse_1": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "iron_warehouse_2": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "iron_warehouse_3": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "lumber_mill": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "resource_slot", requiredSlotType: "wood", multiBuild: true, maxPlacedCount: 0, builderSlotsRequired: 1, maxLevel: 4 },
-  "lumber_warehouse_1": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "lumber_warehouse_2": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "lumber_warehouse_3": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "management_station": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "military": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "military_academy": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "oil_storage_tank_1": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "oil_storage_tank_2": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "oil_storage_tank_3": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "oil_well": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "resource_slot", requiredSlotType: "fuel", multiBuild: true, maxPlacedCount: 0, builderSlotsRequired: 1, maxLevel: 4 },
-  "power_plant": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: true, maxPlacedCount: 0, builderSlotsRequired: 1, maxLevel: 4 },
-  "power_storage_facility_1": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "power_storage_facility_2": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "power_storage_facility_3": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
   "radar": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "refinery": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "resource_slot", requiredSlotType: "iron", multiBuild: true, maxPlacedCount: 0, builderSlotsRequired: 1, maxLevel: 4 },
   "testbuilding": { sizeX: 3, sizeZ: 3, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 1 },
-  "water_tank_1": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "water_tank_2": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "water_tank_3": { sizeX: 2, sizeZ: 2, isRoad: false, requiresRoad: true, placementMode: "normal", requiredSlotType: null, multiBuild: false, maxPlacedCount: 1, builderSlotsRequired: 1, maxLevel: 4 },
-  "water_treatment_plant": { sizeX: 1, sizeZ: 1, isRoad: false, requiresRoad: true, placementMode: "resource_slot", requiredSlotType: "water", multiBuild: true, maxPlacedCount: 0, builderSlotsRequired: 1, maxLevel: 4 }
 };
 
 
@@ -6385,6 +6330,26 @@ function createRoadsAlongPath(state, path) {
 function getProductionRule(buildingId, buildingLevel) {
   const id = normalizeBuildingId(buildingId);
   const level = Math.max(1, Number(buildingLevel) || 1);
+
+  const sourceProduction =
+    lastShelterResourceProductionReferenceAl(
+      id,
+      level,
+      DEFAULT_PRODUCTION_TICK_MS
+    );
+
+  if (
+    sourceProduction &&
+    sourceProduction.amountPerHour > 0
+  ) {
+    return {
+      resourceType:
+        sourceProduction.resourceType,
+      amountPerTick:
+        sourceProduction.amountPerTick
+    };
+  }
+
   const meta = getDefinitionMeta(id);
   const levelData = getLevelData(id, level);
 
@@ -6411,21 +6376,18 @@ function getProductionRule(buildingId, buildingLevel) {
         amountPerTick: amountByLevel(5, 8, 12)
       };
 
-    case "farm":
     case "food":
       return {
         resourceType: "food",
         amountPerTick: amountByLevel(10, 16, 24)
       };
 
-    case "water_treatment_plant":
     case "water":
       return {
         resourceType: "water",
         amountPerTick: amountByLevel(8, 14, 20)
       };
 
-    case "lumber_mill":
     case "wood":
     case "sawmill":
       return {
@@ -6433,36 +6395,30 @@ function getProductionRule(buildingId, buildingLevel) {
         amountPerTick: amountByLevel(12, 20, 30)
       };
 
-    case "refinery":
     case "iron":
       return {
         resourceType: "iron",
         amountPerTick: amountByLevel(8, 14, 22)
       };
 
-    case "oil_well":
     case "fuel":
       return {
         resourceType: "fuel",
         amountPerTick: amountByLevel(6, 10, 16)
       };
 
-    case "power_plant":
     case "powerplant":
       return {
         resourceType: "electricity",
         amountPerTick: amountByLevel(5, 9, 14)
       };
 
-    case "bank":
-    case "commercial_hub":
     case "money":
       return {
         resourceType: "money",
         amountPerTick: amountByLevel(10, 18, 28)
       };
 
-    case "chip_plant":
     case "chip_factory":
     case "chips":
       return {
