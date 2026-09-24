@@ -24,3 +24,9 @@ for (const name of catalogs) {
   sourceCatalog.release(name);
 }
 console.log("COMMAND_DEPOT_SCHEMA_PROBE="+JSON.stringify(schemas));
+
+const extraArms = sourceCatalog.rows("arms").filter(row => String(row.id || "").startsWith("1079")).slice(0, 100);
+sourceCatalog.release("arms");
+const extraBuilding = sourceCatalog.rows("building").filter(row => ["416000","417000","419000","426000","427000","435000","444000","447000","448000"].includes(String(Number(row.id || 0) - Number(row.level || 0)))).filter(row => [0,1,5,10,15,20,25,29,30].includes(Number(row.level || 0)));
+sourceCatalog.release("building");
+console.log("COMMAND_CENTER_EXTRA_PROBE=" + JSON.stringify({extraArms, extraBuilding}));
