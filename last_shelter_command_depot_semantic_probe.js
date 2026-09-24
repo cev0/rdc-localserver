@@ -286,3 +286,35 @@ console.log("RADAR_BARRACK_FINGERPRINT_PROBE="+JSON.stringify({
   barrackCandidates,
   commandCapacityCandidates:commandCapacityCandidates.slice(0,120)
 }));
+
+
+const deepRows=sourceCatalog.rows("building");
+const deepGroups=new Map();
+for(const row of deepRows){
+  const level=Number(row.level||0);
+  const id=String(row.id||"");
+  if(!/^\d{6}$/.test(id)) continue;
+  const root=String(Number(id)-level);
+  if(!deepGroups.has(root)) deepGroups.set(root,[]);
+  deepGroups.get(root).push(row);
+}
+const radarLoose=deepRows.filter(row=>{
+  const req=String(row.building||"").split("|");
+  return Number(row.time||0)===30 && req.includes("400000;4");
+});
+const barrackLoose=[];
+const garrisonHallLoose=[];
+for(const [root,rows] of deepGroups.entries()){
+  const ordered=rows.slice().sort((a,b)=>Number(a.level||0)-Number(b.level||0));
+  const first=ordered.filter(r=>[0,1,2].includes(Number(r.level||0)));
+  if(first.length<3) continue;
+  const paraAt=(row,value)=>Object.entries(row||{}).some(([k,v])=>/^para\d+$/.test(k) && String(v)===String(value));
+  if(paraAt(first[0],1200)&&paraAt(first[1],1350)&&paraAt(first[2],1500)){
+    barrackLoose.push({root,rows:ordered.filter(r=>Number(r.level||0)<=5)});
+  }
+  if(paraAt(first[0],100)&&paraAt(first[1],110)&&paraAt(first[2],120)){
+    garrisonHallLoose.push({root,rows:ordered.filter(r=>Number(r.level||0)<=5)});
+  }
+}
+sourceCatalog.release("building");
+console.log("DEEP_RADAR_BARRACK_PROBE="+JSON.stringify({radarLoose,barrackLoose,garrisonHallLoose}));
