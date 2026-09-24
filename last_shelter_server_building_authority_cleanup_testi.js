@@ -5,8 +5,14 @@ const fs = require("fs");
 const path = require("path");
 
 const {
+  authoritativeBuildingMetaForRuntimeId,
   mappedLastShelterBuildingTypeId
 } = require("./last_shelter_building_identity_bridge");
+
+const {
+  lastShelterResourceProductionReferenceAl,
+  lastShelterResourceStorageReferenceAl
+} = require("./last_shelter_resource_building_reference");
 
 const {
   verifiedLastShelterBuildingLevelDataAl,
@@ -63,7 +69,31 @@ for (const mappedAlias of [
   "institute",
   "fighter_camp",
   "vehicle_factory",
-  "shooter_camp"
+  "shooter_camp",
+  "farm",
+  "refinery",
+  "water_treatment_plant",
+  "lumber_mill",
+  "power_plant",
+  "oil_well",
+  "power_storage_facility_1",
+  "power_storage_facility_2",
+  "power_storage_facility_3",
+  "oil_storage_tank_1",
+  "oil_storage_tank_2",
+  "oil_storage_tank_3",
+  "water_tank_1",
+  "water_tank_2",
+  "water_tank_3",
+  "granary_1",
+  "granary_2",
+  "granary_3",
+  "lumber_warehouse_1",
+  "lumber_warehouse_2",
+  "lumber_warehouse_3",
+  "iron_warehouse_1",
+  "iron_warehouse_2",
+  "iron_warehouse_3"
 ]) {
   assert.ok(
     !new RegExp(
@@ -73,13 +103,6 @@ for (const mappedAlias of [
     mappedAlias + " must not keep duplicate legacy metadata."
   );
 }
-
-// Farm placement remains an explicit compatibility exception only until an
-// original Last Shelter placement source is recovered.
-assert.ok(
-  /^\s*"farm"\s*:/m.test(legacyMetaBlock),
-  "Farm resource-slot compatibility must remain explicit, not guessed."
-);
 
 for (const mappedTroopAlias of [
   "fighter_camp",
@@ -99,12 +122,81 @@ for (const [alias, numericId] of [
   ["institute", "403000"],
   ["fighter_camp", "423000"],
   ["vehicle_factory", "424000"],
-  ["shooter_camp", "425000"]
+  ["shooter_camp", "425000"],
+  ["refinery", "412000"],
+  ["water_treatment_plant", "413000"],
+  ["lumber_mill", "414000"],
+  ["power_plant", "431000"],
+  ["oil_well", "432000"],
+  ["power_storage_facility_1", "437000"],
+  ["power_storage_facility_2", "530000"],
+  ["power_storage_facility_3", "531000"],
+  ["oil_storage_tank_1", "438000"],
+  ["oil_storage_tank_2", "528000"],
+  ["oil_storage_tank_3", "529000"],
+  ["water_tank_1", "439000"],
+  ["water_tank_2", "520000"],
+  ["water_tank_3", "521000"],
+  ["granary_1", "440000"],
+  ["granary_2", "526000"],
+  ["granary_3", "527000"],
+  ["lumber_warehouse_1", "441000"],
+  ["lumber_warehouse_2", "524000"],
+  ["lumber_warehouse_3", "525000"],
+  ["iron_warehouse_1", "442000"],
+  ["iron_warehouse_2", "522000"],
+  ["iron_warehouse_3", "523000"]
 ]) {
   assert.strictEqual(
     mappedLastShelterBuildingTypeId(alias),
     numericId
   );
+}
+
+for (const [alias, requiredSlotType] of [
+  ["farm", "food"],
+  ["water_treatment_plant", "water"],
+  ["lumber_mill", "wood"],
+  ["refinery", "iron"],
+  ["oil_well", "fuel"]
+]) {
+  const meta = authoritativeBuildingMetaForRuntimeId(alias);
+  assert.ok(meta, alias + " must have authoritative building.xml metadata.");
+  assert.strictEqual(meta.placementMode, "resource_slot");
+  assert.strictEqual(meta.requiredSlotType, requiredSlotType);
+}
+
+const farmProduction =
+  lastShelterResourceProductionReferenceAl("farm", 1, 5000);
+assert.ok(farmProduction);
+assert.strictEqual(farmProduction.buildingTypeId, "415000");
+assert.strictEqual(farmProduction.resourceType, "food");
+assert.strictEqual(farmProduction.amountPerHour, 400);
+assert.ok(Math.abs(farmProduction.amountPerTick - (400 / 720)) < 1e-12);
+
+const powerProduction =
+  lastShelterResourceProductionReferenceAl("power_plant", 1, 5000);
+assert.ok(powerProduction);
+assert.strictEqual(powerProduction.buildingTypeId, "431000");
+assert.strictEqual(powerProduction.resourceType, "electricity");
+assert.strictEqual(powerProduction.amountPerHour, 2200);
+
+for (const [alias, typeId, resourceType, capacity] of [
+  ["power_storage_facility_1", "437000", "electricity", 20000],
+  ["oil_storage_tank_1", "438000", "fuel", 30000],
+  ["water_tank_1", "439000", "water", 30000],
+  ["granary_1", "440000", "food", 30000],
+  ["lumber_warehouse_1", "441000", "wood", 30000],
+  ["iron_warehouse_1", "442000", "iron", 25000],
+  ["water_tank_2", "520000", "water", 1000000],
+  ["water_tank_3", "521000", "water", 20000000]
+]) {
+  const storage =
+    lastShelterResourceStorageReferenceAl(alias, 1);
+  assert.ok(storage, alias + " must resolve source capacity.");
+  assert.strictEqual(storage.buildingTypeId, typeId);
+  assert.strictEqual(storage.resourceType, resourceType);
+  assert.strictEqual(storage.capacity, capacity);
 }
 
 const hqLevel1 =
@@ -142,9 +234,42 @@ const legacyDefinitionList = Array.isArray(legacyDefinitions)
   : (legacyDefinitions.definitions || legacyDefinitions.buildings || []);
 
 for (const mappedAlias of [
-  "hq","institute","house","bank","hospital","embassy","farm",
-  "ration_truck","road","tower",
-  "fighter_camp","vehicle_factory","shooter_camp"
+  "bank",
+  "embassy",
+  "hospital",
+  "house",
+  "hq",
+  "ration_truck",
+  "road",
+  "tower",
+  "institute",
+  "fighter_camp",
+  "vehicle_factory",
+  "shooter_camp",
+  "farm",
+  "refinery",
+  "water_treatment_plant",
+  "lumber_mill",
+  "power_plant",
+  "oil_well",
+  "power_storage_facility_1",
+  "power_storage_facility_2",
+  "power_storage_facility_3",
+  "oil_storage_tank_1",
+  "oil_storage_tank_2",
+  "oil_storage_tank_3",
+  "water_tank_1",
+  "water_tank_2",
+  "water_tank_3",
+  "granary_1",
+  "granary_2",
+  "granary_3",
+  "lumber_warehouse_1",
+  "lumber_warehouse_2",
+  "lumber_warehouse_3",
+  "iron_warehouse_1",
+  "iron_warehouse_2",
+  "iron_warehouse_3"
 ]) {
   assert.ok(
     !legacyDefinitionList.some(row =>
